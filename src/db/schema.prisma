@@ -63,6 +63,7 @@ model Organization {
   stripeSubscriptionId String?
   runCredits           Int      @default(0)
   createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   users   User[]
   clients Client[]
@@ -85,6 +86,7 @@ model User {
   triggeredRuns   ContentRun[]    @relation("TriggeredBy")
   approvalEvents  ApprovalEvent[]
 
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -119,6 +121,7 @@ model Client {
   contentRuns  ContentRun[]
   posts        Post[]
 
+  @@index([organizationId])
   @@map("clients")
 }
 
@@ -126,6 +129,7 @@ model ContentRun {
   id              String    @id @default(cuid())
   clientId        String
   triggeredById   String
+  /// Format: YYYY-MM (e.g. "2026-05"). Always store in this format — queries sort and filter by this field.
   targetMonth     String
   status          RunStatus @default(queued)
   triggerJobId    String?
@@ -143,6 +147,7 @@ model ContentRun {
   triggeredBy User   @relation("TriggeredBy", fields: [triggeredById], references: [id])
   posts       Post[]
 
+  @@index([clientId])
   @@map("content_runs")
 }
 
@@ -162,23 +167,27 @@ model Post {
   updatedAt      DateTime       @updatedAt
 
   contentRun     ContentRun      @relation(fields: [contentRunId], references: [id], onDelete: Cascade)
-  client         Client          @relation(fields: [clientId], references: [id])
+  client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   approvalEvents ApprovalEvent[]
 
+  @@index([contentRunId])
+  @@index([clientId])
+  @@index([approvalStatus])
   @@map("posts")
 }
 
 model ApprovalEvent {
   id        String         @id @default(cuid())
   postId    String
-  userId    String
+  userId    String?
   action    ApprovalAction
   stage     ApprovalStage
   comment   String?
   createdAt DateTime       @default(now())
 
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
+  post Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([postId])
   @@map("approval_events")
 }
