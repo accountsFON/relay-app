@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
 
+// These tests validate our route matching logic in isolation.
+// We intentionally do not import from src/middleware.ts because
+// @clerk/nextjs/server is a server-only package that cannot run
+// in jsdom. The local isPublicRoute mirrors the same patterns
+// used in createRouteMatcher — if those patterns change, update both.
+
 // Test the public route patterns — not Clerk itself (that's an integration test)
 const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/approve/']
 
