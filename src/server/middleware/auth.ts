@@ -1,6 +1,5 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { findUserByClerkId } from '@/server/repositories/users'
-import { findOrgByClerkId } from '@/server/repositories/organizations'
 import type { OrgContext } from '@/lib/types'
 
 /**
@@ -13,17 +12,14 @@ export async function getOrgContext(): Promise<OrgContext | null> {
   if (!userId || !orgId) return null
 
   const dbUser = await findUserByClerkId(userId)
-  if (!dbUser) return null
-
-  const org = await findOrgByClerkId(orgId)
-  if (!org) return null
+  if (!dbUser || !dbUser.organization) return null
 
   return {
     userId,
     orgId,
-    role: dbUser.role as OrgContext['role'],
-    plan: org.plan as OrgContext['plan'],
-    organizationDbId: org.id,
+    role: dbUser.role,
+    plan: dbUser.organization.plan,
+    organizationDbId: dbUser.organization.id,
     userDbId: dbUser.id,
   }
 }
