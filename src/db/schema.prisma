@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Plan {
+  smb
+  agency
+  enterprise
+}
+
+enum UserRole {
+  admin
+  account_manager
+  designer
+  client
+}
+
+enum ClientStatus {
+  active
+  paused
+  archived
+}
+
+enum RunStatus {
+  queued
+  running
+  complete
+  failed
+}
+
+enum ApprovalStatus {
+  draft
+  am_review
+  design_review
+  client_review
+  approved
+  scheduled
+}
+
+enum ApprovalAction {
+  approved
+  rejected
+  commented
+  edited
+}
+
+enum ApprovalStage {
+  am
+  design
+  client
+}
+
+model Organization {
+  id                   String   @id @default(cuid())
+  name                 String
+  plan                 Plan     @default(smb)
+  clerkOrgId           String   @unique
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  runCredits           Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  users   User[]
+  clients Client[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  clerkUserId    String   @unique
+  organizationId String
+  role           UserRole @default(admin)
+  email          String
+  name           String
+  avatarUrl      String?
+  createdAt      DateTime @default(now())
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedClients Client[]        @relation("AssignedAM")
+  triggeredRuns   ContentRun[]    @relation("TriggeredBy")
+  approvalEvents  ApprovalEvent[]
+
+  @@map("users")
+}
+
+model Client {
+  id              String       @id @default(cuid())
+  organizationId  String
+  assignedAmId    String?
+  name            String
+  businessSummary String?      @db.Text
+  brandVoice      String?      @db.Text
+  industry        String?
+  location        String?
+  phone           String?
+  mainCta         String?
+  focus1          String?
+  focus2          String?
+  focus3          String?
+  dos             String?      @db.Text
+  donts           String?      @db.Text
+  postingDays     String       @default("Mon,Wed,Fri")
+  postLength      String?
+  urls            String[]
+  targetAudience  String?      @db.Text
+  holidayHandling String       @default("Major-US")
+  excludedDates   String[]
+  assetsFolderUrl String?
+  status          ClientStatus @default(active)
+  createdAt       DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedAm   User?        @relation("AssignedAM", fields: [assignedAmId], references: [id])
+  contentRuns  ContentRun[]
+  posts        Post[]
+
+  @@map("clients")
+}
+
+model ContentRun {
+  id              String    @id @default(cuid())
+  clientId        String
+  triggeredById   String
+  targetMonth     String
+  status          RunStatus @default(queued)
+  triggerJobId    String?
+  brief           String?   @db.Text
+  supportingFacts String?   @db.Text
+  crawledContent  String?   @db.Text
+  postingDates    String[]
+  aiCostUsd       Decimal?  @db.Decimal(10, 4)
+  errorMessage    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  triggeredBy User   @relation("TriggeredBy", fields: [triggeredById], references: [id])
+  posts       Post[]
+
+  @@map("content_runs")
+}
+
+model Post {
+  id             String         @id @default(cuid())
+  contentRunId   String
+  clientId       String
+  postDate       DateTime
+  caption        String         @db.Text
+  hashtags       String[]
+  graphicHook    String?
+  designerNotes  String?
+  approvalStatus ApprovalStatus @default(draft)
+  mediaUrls      String[]
+  scheduledAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  contentRun     ContentRun      @relation(fields: [contentRunId], references: [id], onDelete: Cascade)
+  client         Client          @relation(fields: [clientId], references: [id])
+  approvalEvents ApprovalEvent[]
+
+  @@map("posts")
+}
+
+model ApprovalEvent {
+  id        String         @id @default(cuid())
+  postId    String
+  userId    String
+  action    ApprovalAction
+  stage     ApprovalStage
+  comment   String?
+  createdAt DateTime       @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("approval_events")
+}
