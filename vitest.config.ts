@@ -11,6 +11,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
+      exclude: [
+        'src/generated/**',
+        'src/components/ui/**',
+        'src/lib/utils.ts',
+        '**/*.config.*',
+        '**/node_modules/**',
+      ],
     },
   },
   resolve: {
