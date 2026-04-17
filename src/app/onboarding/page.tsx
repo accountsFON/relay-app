@@ -1,6 +1,15 @@
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import { findUserByClerkId } from '@/server/repositories/users'
 import { completeOnboarding } from './actions'
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  // If the user already has a DB record, skip onboarding
+  const { userId } = await auth()
+  if (userId) {
+    const existing = await findUserByClerkId(userId)
+    if (existing) redirect('/dashboard')
+  }
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50">
       <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
