@@ -2,39 +2,43 @@
 
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { createOrganization } from '@/server/repositories/organizations'
+import { findOrgByClerkId, createOrganization } from '@/server/repositories/organizations'
 import { createUser } from '@/server/repositories/users'
-import type { Plan } from '@/lib/types'
+
+// Single org identifier — all users belong to the Five One Nine org.
+// In v2 (multi-org), this becomes dynamic.
+const FON_ORG_CLERK_ID = 'fon-internal'
 
 export async function completeOnboarding(formData: FormData) {
-  const { userId, orgId } = await auth()
+  const { userId } = await auth()
   const clerkUser = await currentUser()
 
-  if (!userId || !orgId || !clerkUser) {
+  if (!userId || !clerkUser) {
     throw new Error('Not authenticated')
   }
 
-  const orgName = formData.get('orgName') as string
-  const plan = formData.get('plan') as Plan
-
-  if (!orgName || !plan) {
-    throw new Error('Missing required fields')
+  const displayName = formData.get('displayName') as string
+  if (!displayName) {
+    throw new Error('Display name is required')
   }
 
-  const org = await createOrganization({
-    clerkOrgId: orgId,
-    name: orgName,
-    plan,
-  })
+  // Find or create the single org
+  let org = await findOrgByClerkId(FON_ORG_CLERK_ID)
+  if (!org) {
+    org = await createOrganization({
+      clerkOrgId: FON_ORG_CLERK_ID,
+      name: 'Five One Nine Marketing',
+      plan: 'agency',
+    })
+  }
 
   const email = clerkUser.emailAddresses[0]?.emailAddress ?? ''
-  const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ')
 
   await createUser({
     clerkUserId: userId,
     organizationId: org.id,
     email,
-    name,
+    name: displayName,
     role: 'admin',
   })
 

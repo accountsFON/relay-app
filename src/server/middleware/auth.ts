@@ -4,19 +4,21 @@ import type { OrgContext } from '@/lib/types'
 
 /**
  * Resolves the current Clerk session to a full OrgContext.
- * Returns null if the user is not authenticated or not yet in the DB.
- * Use in Server Components and Server Actions.
+ * Returns null if unauthenticated or user has no DB record yet.
+ *
+ * Single-org mode: org context comes from the user's DB record,
+ * not from a Clerk org session. No orgId dependency.
  */
 export async function getOrgContext(): Promise<OrgContext | null> {
-  const { userId, orgId } = await auth()
-  if (!userId || !orgId) return null
+  const { userId } = await auth()
+  if (!userId) return null
 
   const dbUser = await findUserByClerkId(userId)
   if (!dbUser || !dbUser.organization) return null
 
   return {
     userId,
-    orgId,
+    orgId: dbUser.organization.clerkOrgId,
     role: dbUser.role,
     plan: dbUser.organization.plan,
     organizationDbId: dbUser.organization.id,
