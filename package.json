@@ -63,6 +63,7 @@
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.4",
+    "csv-parse": "^6.2.1",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
@@ -70,6 +71,7 @@
     "prisma": "^7.7.0",
     "shadcn": "^4.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.4"
   }
