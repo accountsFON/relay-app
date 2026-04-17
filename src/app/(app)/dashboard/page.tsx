@@ -4,7 +4,13 @@ import { Card } from '@/components/ui/card'
 
 export default async function DashboardPage() {
   const ctx = await requireOrgContext()
-  const costSummary = await getMonthlyCostSummary(ctx.organizationDbId)
+
+  let costSummary = { totalCostUsd: 0, totalRuns: 0, byClient: [] as { name: string; cost: number; runs: number }[] }
+  try {
+    costSummary = await getMonthlyCostSummary(ctx.organizationDbId)
+  } catch {
+    // DB query may fail if schema hasn't been pushed or connection issues
+  }
 
   const monthLabel = new Date().toLocaleString('en-US', {
     month: 'long',
