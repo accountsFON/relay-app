@@ -7,6 +7,7 @@ import {
   findExistingRun,
   findContentRun,
 } from '@/server/repositories/contentRuns'
+import { generateContentTask } from '@/server/jobs/generateContent'
 
 export async function triggerGeneration(clientId: string, targetMonth: string) {
   const ctx = await requireClientEditor()
@@ -28,8 +29,7 @@ export async function triggerGeneration(clientId: string, targetMonth: string) {
     targetMonth,
   })
 
-  // TODO: trigger Trigger.dev task once account is configured
-  // await generateContentTask.trigger({ contentRunId: contentRun.id })
+  await generateContentTask.trigger({ contentRunId: contentRun.id })
 
   return { contentRunId: contentRun.id }
 }
