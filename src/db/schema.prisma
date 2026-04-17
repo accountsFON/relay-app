@@ -138,8 +138,13 @@ model ContentRun {
   supportingFacts String?   @db.Text
   crawledContent  String?   @db.Text
   postingDates    String[]
-  aiCostUsd       Decimal?  @db.Decimal(10, 4)
-  errorMessage    String?
+  openaiCostUsd    Decimal?  @db.Decimal(10, 4)
+  anthropicCostUsd Decimal?  @db.Decimal(10, 4)
+  apifyCostUsd     Decimal?  @db.Decimal(10, 4)
+  totalCostUsd     Decimal?  @db.Decimal(10, 4)
+  creditsConsumed  Int?
+  tokenUsage       Json?
+  errorMessage     String?
   startedAt       DateTime?
   completedAt     DateTime?
   createdAt       DateTime  @default(now())
