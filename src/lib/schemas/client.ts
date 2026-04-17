@@ -49,7 +49,33 @@ export const clientInputSchema = z.object({
   status: statusEnum.default('active'),
 })
 
-export const clientUpdateSchema = clientInputSchema.partial()
+// Explicit partial schema without defaults — so updates only touch the fields
+// the caller actually provides.
+export const clientUpdateSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200).optional(),
+  businessSummary: z.string().max(2000).optional(),
+  brandVoice: z.string().max(1000).optional(),
+  industry: z.string().max(100).optional(),
+  location: z.string().max(200).optional(),
+  phone: z.string().max(50).optional(),
+  mainCta: z.string().max(1000).optional(),
+  focus1: z.string().max(500).optional(),
+  focus2: z.string().max(500).optional(),
+  focus3: z.string().max(500).optional(),
+  dos: z.string().max(2000).optional(),
+  donts: z.string().max(2000).optional(),
+  postingDays: z.string().optional(),
+  postLength: z.string().max(500).optional(),
+  urls: z.preprocess(csvToArray, z.array(z.string().url())).optional(),
+  targetAudience: z.string().max(2000).optional(),
+  holidayHandling: holidayHandlingEnum.optional(),
+  excludedDates: z
+    .preprocess(csvToArray, z.array(z.string().regex(isoDate, 'Must be YYYY-MM-DD')))
+    .optional(),
+  assetsFolderUrl: z.string().url().optional().or(z.literal('')),
+  assignedAmId: z.string().optional(),
+  status: statusEnum.optional(),
+})
 
 export type ClientInput = z.infer<typeof clientInputSchema>
 export type ClientUpdate = z.infer<typeof clientUpdateSchema>
