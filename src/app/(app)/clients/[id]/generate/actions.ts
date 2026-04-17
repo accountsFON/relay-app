@@ -7,7 +7,6 @@ import {
   findExistingRun,
   findContentRun,
 } from '@/server/repositories/contentRuns'
-import { generateContentTask } from '@/server/jobs/generateContent'
 
 export async function triggerGeneration(clientId: string, targetMonth: string) {
   const ctx = await requireClientEditor()
@@ -29,7 +28,23 @@ export async function triggerGeneration(clientId: string, targetMonth: string) {
     targetMonth,
   })
 
-  await generateContentTask.trigger({ contentRunId: contentRun.id })
+  try {
+    const { generateContentTask } = await import('@/server/jobs/generateContent')
+    await generateContentTask.trigger({ contentRunId: contentRun.id })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('Trigger.dev trigger failed:', message)
+    // Update the run to reflect the trigger failure but don't crash —
+    // the ContentRun is created so the user can see something happened
+    const { db } = await import('@/db/client')
+    await db.contentRun.update({
+      where: { id: contentRun.id },
+      data: {
+        status: 'failed',
+        errorMessage: `Pipeline trigger failed: ${message}. Ensure TRIGGER_SECRET_KEY is set and the task is deployed to Trigger.dev.`,
+      },
+    })
+  }
 
   return { contentRunId: contentRun.id }
 }
