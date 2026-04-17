@@ -11,6 +11,7 @@ vi.mock('@/server/repositories/organizations', () => ({
 }))
 
 vi.mock('@/server/repositories/users', () => ({
+  findUserByClerkId: vi.fn(),
   createUser: vi.fn(),
 }))
 
@@ -20,7 +21,7 @@ vi.mock('next/navigation', () => ({
 
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { findOrgByClerkId, createOrganization } from '@/server/repositories/organizations'
-import { createUser } from '@/server/repositories/users'
+import { findUserByClerkId, createUser } from '@/server/repositories/users'
 import { redirect } from 'next/navigation'
 import { completeOnboarding } from '@/app/onboarding/actions'
 
@@ -39,8 +40,9 @@ beforeEach(() => {
 
 describe('completeOnboarding', () => {
   it('finds or creates the org, creates the user, then redirects to dashboard', async () => {
-    vi.mocked(findOrgByClerkId).mockResolvedValue(null) // first run, org doesn't exist
+    vi.mocked(findOrgByClerkId).mockResolvedValue(null)
     vi.mocked(createOrganization).mockResolvedValue({ id: 'cuid_org_1' } as any)
+    vi.mocked(findUserByClerkId).mockResolvedValue(null) // new user, no existing record
     vi.mocked(createUser).mockResolvedValue({ id: 'cuid_user_1' } as any)
 
     const formData = new FormData()
@@ -65,6 +67,7 @@ describe('completeOnboarding', () => {
 
   it('reuses existing org on subsequent sign-ups', async () => {
     vi.mocked(findOrgByClerkId).mockResolvedValue({ id: 'cuid_org_1' } as any)
+    vi.mocked(findUserByClerkId).mockResolvedValue(null) // still a new user
     vi.mocked(createUser).mockResolvedValue({ id: 'cuid_user_2' } as any)
 
     const formData = new FormData()
