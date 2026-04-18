@@ -36,7 +36,6 @@ export async function generateCaptions(
 
   const stream = anthropic.messages.stream({
     model: config.model,
-    temperature: config.temperature,
     max_tokens: config.maxTokens,
     messages: [
       { role: 'user', content: user },
@@ -58,7 +57,6 @@ export async function generateCaptions(
   if (!posts) {
     const retryStream = anthropic.messages.stream({
       model: config.model,
-      temperature: 0.3,
       max_tokens: config.maxTokens,
       messages: [
         { role: 'user', content: user },
