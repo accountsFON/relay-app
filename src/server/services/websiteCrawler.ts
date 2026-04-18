@@ -32,12 +32,14 @@ export async function crawlWebsites(
 
   if (primaryUrl) {
     try {
-      const crawlResult = await firecrawl.crawl(primaryUrl, {
-        limit: 5,
-        allowExternalLinks: false,
-        maxDiscoveryDepth: 2,
-        timeout: 120000,
-      })
+      const crawlResult = await retryOnRateLimit(() =>
+        firecrawl.crawl(primaryUrl, {
+          limit: 5,
+          allowExternalLinks: false,
+          maxDiscoveryDepth: 2,
+          timeout: 120000,
+        })
+      )
 
       if (crawlResult.data) {
         for (const doc of crawlResult.data) {
@@ -56,10 +58,12 @@ export async function crawlWebsites(
 
   for (const url of secondaryUrls) {
     try {
-      const result = await firecrawl.scrape(url, {
-        formats: ['markdown'],
-        timeout: CRAWL_CONFIG.scrapeTimeoutMs,
-      })
+      const result = await retryOnRateLimit(() =>
+        firecrawl.scrape(url, {
+          formats: ['markdown'],
+          timeout: CRAWL_CONFIG.scrapeTimeoutMs,
+        })
+      )
 
       if (result.markdown) {
         pages.push(`${url}\n\n${result.markdown}`)
@@ -154,6 +158,25 @@ function getDomain(url: string): string | null {
 function getBaseDomain(hostname: string): string {
   const parts = hostname.split('.')
   return parts.length >= 2 ? parts.slice(-2).join('.') : hostname
+}
+
+async function retryOnRateLimit<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (message.includes('Rate limit') && attempt < maxRetries) {
+        const waitMatch = message.match(/retry after (\d+)s/)
+        const waitSecs = waitMatch ? parseInt(waitMatch[1], 10) + 2 : 30
+        console.warn(`Firecrawl rate limited, waiting ${waitSecs}s (attempt ${attempt + 1}/${maxRetries})`)
+        await new Promise((resolve) => setTimeout(resolve, waitSecs * 1000))
+        continue
+      }
+      throw error
+    }
+  }
+  throw new Error('Rate limit retries exhausted')
 }
 
 function isValidUrl(str: string): boolean {
