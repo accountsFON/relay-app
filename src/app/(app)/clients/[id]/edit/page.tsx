@@ -39,15 +39,15 @@ export default async function EditClientPage({
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 sm:mb-8">
         <Link
           href={`/clients/${client.id}`}
-          className="text-sm text-slate-500 hover:text-slate-900"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
-          ← Back to {client.name}
+          &larr; Back to {client.name}
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Edit client</h1>
+        <h1 className="mt-2 text-xl font-bold text-foreground sm:text-2xl">Edit client</h1>
       </div>
 
       <EditClientForm clientId={client.id} defaultValues={defaultValues} />

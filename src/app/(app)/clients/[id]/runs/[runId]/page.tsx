@@ -24,28 +24,28 @@ export default async function RunDetailPage({
   const monthLabel = formatMonth(run.targetMonth)
 
   return (
-    <div className="p-8 max-w-4xl">
-      <div className="mb-6">
+    <div className="p-4 md:p-8 max-w-4xl">
+      <div className="mb-4 sm:mb-6">
         <Link
           href={`/clients/${id}`}
-          className="text-sm text-slate-500 hover:text-slate-900"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
-          ← Back to {client.name}
+          &larr; Back to {client.name}
         </Link>
       </div>
 
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {client.name} — {monthLabel}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
+            {client.name} &mdash; {monthLabel}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {run.posts.length} posts
             {run.totalCostUsd && ` · $${Number(run.totalCostUsd).toFixed(4)} cost`}
             {run.creditsConsumed && ` · ${run.creditsConsumed} credits`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <ExportButton
             posts={run.posts.map((p) => ({
               date: p.postDate.toISOString().split('T')[0],

@@ -19,7 +19,7 @@ type Post = {
 const STATUS_OPTIONS = ['draft', 'approved', 'scheduled'] as const
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-slate-100 text-slate-700',
+  draft: 'bg-muted text-muted-foreground',
   am_review: 'bg-amber-100 text-amber-700',
   approved: 'bg-green-100 text-green-700',
   scheduled: 'bg-blue-100 text-blue-700',
@@ -69,9 +69,9 @@ export function PostCard({ post }: { post: Post }) {
 
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-slate-900">{dateLabel}</span>
+          <span className="text-sm font-semibold text-foreground">{dateLabel}</span>
           <Badge className={STATUS_COLORS[status] ?? STATUS_COLORS.draft}>
             {status}
           </Badge>
@@ -80,7 +80,7 @@ export function PostCard({ post }: { post: Post }) {
           <select
             value={status}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="text-xs border rounded px-2 py-1"
+            className="text-xs border border-border rounded px-2 py-1 bg-background"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -102,7 +102,7 @@ export function PostCard({ post }: { post: Post }) {
       {isEditing ? (
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-slate-500">Caption</label>
+            <label className="text-xs font-medium text-muted-foreground">Caption</label>
             <textarea
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
@@ -111,16 +111,16 @@ export function PostCard({ post }: { post: Post }) {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-500">Hashtags</label>
+            <label className="text-xs font-medium text-muted-foreground">Hashtags</label>
             <input
               value={hashtags}
               onChange={(e) => setHashtags(e.target.value)}
               className="w-full border rounded px-3 py-2 text-sm mt-1"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-slate-500">Graphic Hook</label>
+              <label className="text-xs font-medium text-muted-foreground">Graphic Hook</label>
               <input
                 value={graphicHook}
                 onChange={(e) => setGraphicHook(e.target.value)}
@@ -128,7 +128,7 @@ export function PostCard({ post }: { post: Post }) {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-500">Designer Notes</label>
+              <label className="text-xs font-medium text-muted-foreground">Designer Notes</label>
               <input
                 value={designerNotes}
                 onChange={(e) => setDesignerNotes(e.target.value)}
@@ -157,17 +157,17 @@ export function PostCard({ post }: { post: Post }) {
         </div>
       ) : (
         <div>
-          <p className="text-sm text-slate-800 whitespace-pre-line mb-3">
+          <p className="text-sm text-foreground whitespace-pre-line mb-3">
             {caption}
           </p>
           <p className="text-sm text-blue-600 mb-3">{post.hashtags.join(' ')}</p>
           {post.graphicHook && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               <span className="font-medium">Graphic Hook:</span> {post.graphicHook}
             </p>
           )}
           {post.designerNotes && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               <span className="font-medium">Designer Notes:</span> {post.designerNotes}
             </p>
           )}

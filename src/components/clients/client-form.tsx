@@ -160,8 +160,8 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-6">
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+    <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
+      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </h2>
       <div className="space-y-4">{children}</div>
@@ -186,7 +186,7 @@ function Field({
     <div className="space-y-1.5">
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   )

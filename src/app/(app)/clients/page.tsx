@@ -14,11 +14,11 @@ export default async function ClientsPage() {
   const canCreate = canEditClients(ctx.role)
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Clients</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Clients</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {clients.length} {clients.length === 1 ? 'client' : 'clients'}
           </p>
         </div>
@@ -30,8 +30,8 @@ export default async function ClientsPage() {
       </div>
 
       {clients.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-12 text-center">
-          <p className="text-sm text-slate-500">
+        <div className="rounded-lg border border-dashed border-border bg-card p-8 sm:p-12 text-center">
+          <p className="text-sm text-muted-foreground">
             No clients yet.
             {canCreate && ' Click "New client" to add your first one.'}
           </p>

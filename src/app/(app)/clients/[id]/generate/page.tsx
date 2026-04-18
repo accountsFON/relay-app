@@ -104,15 +104,15 @@ export default function GeneratePage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl relative">
+    <div className="p-4 md:p-8 max-w-2xl relative">
       {showCelebration && <Celebration />}
 
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">
+      <h1 className="text-xl font-bold text-foreground mb-4 sm:text-2xl sm:mb-6">
         Generate Content
       </h1>
 
       <Card className="p-6 mb-6">
-        <label className="block text-sm font-medium text-slate-700 mb-2">
+        <label className="block text-sm font-medium text-foreground mb-2">
           Target Month
         </label>
         <input
@@ -121,7 +121,7 @@ export default function GeneratePage() {
           onChange={(e) => setTargetMonth(e.target.value)}
           className="border rounded px-3 py-2 text-sm w-full mb-4"
         />
-        <p className="text-sm text-slate-500 mb-4">
+        <p className="text-sm text-muted-foreground mb-4">
           Generate {formatMonth(targetMonth)} social media posts for this client.
         </p>
         <Button
@@ -143,7 +143,7 @@ export default function GeneratePage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Pipeline Progress</h2>
             {progress.status !== 'complete' && progress.status !== 'failed' && (
-              <span className="text-sm text-slate-400 font-mono">{formatTime(elapsed)}</span>
+              <span className="text-sm text-muted-foreground/70 font-mono">{formatTime(elapsed)}</span>
             )}
           </div>
 
@@ -204,7 +204,7 @@ export default function GeneratePage() {
                   </span>
                 </p>
                 {progress.totalCostUsd !== null && (
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Cost: ${progress.totalCostUsd.toFixed(4)}
                     {progress.postCount > 0 && ` (${progress.postCount} posts)`}
                   </p>
@@ -246,17 +246,17 @@ function Step({
             ? 'bg-green-100 text-green-600'
             : active
               ? 'bg-amber-100 text-amber-600 animate-pulse'
-              : 'bg-slate-100 text-slate-400'
+              : 'bg-muted text-muted-foreground/70'
         }`}
       >
         {done ? '✓' : active ? '...' : '·'}
       </div>
       <div>
-        <span className={done ? 'text-slate-900 font-medium' : active ? 'text-amber-700 font-medium' : 'text-slate-400'}>
+        <span className={done ? 'text-foreground font-medium' : active ? 'text-amber-700 font-medium' : 'text-muted-foreground/70'}>
           {label}
         </span>
         {(done || active) && (
-          <p className="text-xs text-slate-400 mt-0.5">{detail}</p>
+          <p className="text-xs text-muted-foreground/70 mt-0.5">{detail}</p>
         )}
       </div>
     </div>

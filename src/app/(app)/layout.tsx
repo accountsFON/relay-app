@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { findUserByClerkId } from '@/server/repositories/users'
-import { Sidebar } from '@/components/sidebar'
+import { AppShell } from '@/components/app-shell'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const { userId } = await auth()
@@ -17,17 +17,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown DB error'
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="max-w-md text-center p-8">
-          <h1 className="text-xl font-bold text-slate-900 mb-2">Connection Error</h1>
-          <p className="text-sm text-slate-500 mb-4">
+      <div className="flex h-dvh items-center justify-center bg-background">
+        <div className="max-w-md text-center p-6">
+          <h1 className="text-xl font-bold text-foreground mb-2">Connection Error</h1>
+          <p className="text-sm text-muted-foreground mb-4">
             Could not connect to the database. This usually means the DATABASE_URL
             environment variable is missing or the database is waking up from sleep.
           </p>
-          <p className="text-xs text-slate-400 font-mono">{message}</p>
+          <p className="text-xs text-muted-foreground font-mono">{message}</p>
           <a
             href="/dashboard"
-            className="mt-4 inline-block px-4 py-2 bg-slate-900 text-white text-sm rounded hover:bg-slate-800"
+            className="mt-4 inline-block px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90"
           >
             Retry
           </a>
@@ -41,11 +41,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <AppShell>
+      {children}
+    </AppShell>
   )
 }
