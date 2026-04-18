@@ -4,8 +4,6 @@ import { calculateCost, type CostResult } from '@/server/services/costTracker'
 import { buildBriefPrompt } from '@/server/prompts/briefPrompt'
 import type { PostingDate } from '@/server/services/dateCalculator'
 
-const openai = new OpenAI()
-
 const EXPECTED_SECTIONS = [
   'Elevator Summary',
   'Brand Voice',
@@ -39,6 +37,7 @@ export async function generateBrief(
   holidayTags: string[]
 ): Promise<BriefResult> {
   const config = AI_MODELS.brief
+  const openai = new OpenAI()
   const { system, user } = buildBriefPrompt(client, postingDates, holidays, holidayTags)
 
   const response = await openai.chat.completions.create({

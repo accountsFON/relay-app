@@ -3,8 +3,6 @@ import { AI_MODELS } from '@/server/config/aiModels'
 import { calculateCost, type CostResult } from '@/server/services/costTracker'
 import { buildFactsPrompt } from '@/server/prompts/factsPrompt'
 
-const openai = new OpenAI()
-
 const EXPECTED_SECTIONS = ['What we do']
 
 export type FactsResult = {
@@ -21,6 +19,7 @@ export async function extractFacts(crawledContent: string): Promise<FactsResult>
   }
 
   const config = AI_MODELS.facts
+  const openai = new OpenAI()
   const { system, user } = buildFactsPrompt(crawledContent)
 
   const response = await openai.chat.completions.create({

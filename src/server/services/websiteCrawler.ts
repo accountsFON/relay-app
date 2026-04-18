@@ -1,8 +1,6 @@
 import { ApifyClient } from 'apify-client'
 import { APIFY_CONFIG } from '@/server/config/aiModels'
 
-const apify = new ApifyClient({ token: process.env.APIFY_TOKEN })
-
 export type CrawlResult = {
   crawledContent: string
   urlsCrawled: number
@@ -20,6 +18,7 @@ export async function crawlWebsites(
   }
 
   const startUrls = mergedUrls.map((url) => ({ url }))
+  const apify = new ApifyClient({ token: process.env.APIFY_TOKEN })
 
   const run = await apify.actor(APIFY_CONFIG.actorId).call(
     {

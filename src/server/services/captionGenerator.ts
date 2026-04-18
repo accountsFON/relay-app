@@ -4,8 +4,6 @@ import { calculateCost, type CostResult } from '@/server/services/costTracker'
 import { buildCaptionPrompt } from '@/server/prompts/captionPrompt'
 import type { PostingDate } from '@/server/services/dateCalculator'
 
-const anthropic = new Anthropic()
-
 export type ParsedPost = {
   postNumber: number
   date: string
@@ -33,6 +31,7 @@ export async function generateCaptions(
   client: CaptionClient
 ): Promise<CaptionResult> {
   const config = AI_MODELS.captions
+  const anthropic = new Anthropic()
   const { user, assistantPrefill } = buildCaptionPrompt(brief, facts, postingDates, client)
 
   const response = await anthropic.messages.create({
