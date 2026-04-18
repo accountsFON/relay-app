@@ -10,6 +10,7 @@ import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { DeleteRunButton, RegenRunButton } from './run-management'
 
 const STATUS_COLORS: Record<string, string> = {
   complete: 'text-green-600 bg-green-50',
@@ -101,7 +102,7 @@ export default async function ClientDetailPage({
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {run.status === 'complete' && run._count.posts > 0 && (
                       <Link href={`/clients/${client.id}/runs/${run.id}`}>
                         <Button variant="outline" size="sm">
@@ -109,6 +110,8 @@ export default async function ClientDetailPage({
                         </Button>
                       </Link>
                     )}
+                    <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} />
+                    <DeleteRunButton runId={run.id} status={run.status} />
                     {run.status === 'failed' && run.errorMessage && (
                       <span className="text-xs text-destructive max-w-xs truncate">
                         {run.errorMessage}

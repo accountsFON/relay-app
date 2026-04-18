@@ -4,7 +4,7 @@ import {
   canEditClients,
 } from '@/server/middleware/permissions'
 import { listClientsByOrg } from '@/server/repositories/clients'
-import { ClientListItem } from '@/components/clients/client-list-item'
+import { BulkGenerateList } from './bulk-generate'
 import { Button } from '@/components/ui/button'
 
 export default async function ClientsPage() {
@@ -37,11 +37,14 @@ export default async function ClientsPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {clients.map((client) => (
-            <ClientListItem key={client.id} client={client} />
-          ))}
-        </div>
+        <BulkGenerateList
+          clients={clients.map((c) => ({
+            id: c.id,
+            name: c.name,
+            status: c.status,
+            industry: c.industry,
+          }))}
+        />
       )}
     </div>
   )

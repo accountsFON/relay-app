@@ -17,14 +17,11 @@ export async function triggerGeneration(clientId: string, targetMonth: string) {
 
   const existing = await findExistingRun(clientId, targetMonth)
   if (existing) {
-    if (existing.status === 'queued' || existing.status === 'failed') {
-      await db.contentRun.delete({ where: { id: existing.id } })
-    } else {
-      throw new Error(
-        `A run for ${targetMonth} is already ${existing.status}. ` +
-          'Wait for it to finish or delete it first.'
-      )
+    if (existing.status === 'running') {
+      throw new Error('A run is currently in progress for this month. Wait for it to finish.')
     }
+    await db.post.deleteMany({ where: { contentRunId: existing.id } })
+    await db.contentRun.delete({ where: { id: existing.id } })
   }
 
   const contentRun = await createContentRun({
