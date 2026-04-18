@@ -110,7 +110,7 @@ export default async function ClientDetailPage({
                         </Button>
                       </Link>
                     )}
-                    <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} />
+                    <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} status={run.status} />
                     <DeleteRunButton runId={run.id} status={run.status} />
                     {run.status === 'failed' && run.errorMessage && (
                       <span className="text-xs text-destructive max-w-xs truncate">

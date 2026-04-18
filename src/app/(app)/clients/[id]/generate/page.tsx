@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -40,7 +40,8 @@ const STEP_INSIGHTS = [
 
 export default function GeneratePage() {
   const { id: clientId } = useParams<{ id: string }>()
-  const [targetMonth, setTargetMonth] = useState(getNextMonth)
+  const searchParams = useSearchParams()
+  const [targetMonth, setTargetMonth] = useState(searchParams.get('month') ?? getNextMonth())
   const [progress, setProgress] = useState<RunProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()

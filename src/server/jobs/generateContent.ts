@@ -14,7 +14,6 @@ type TokenUsageLog = Record<string, { input: number; output: number }>
 export const generateContentTask = task({
   id: 'generate-content',
   retry: { maxAttempts: 2 },
-  queue: { concurrencyLimit: 4 },
   run: async ({ contentRunId, reCrawl = true }: { contentRunId: string; reCrawl?: boolean }) => {
     const pipelineStart = Date.now()
 

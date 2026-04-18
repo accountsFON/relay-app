@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { deleteContentRun, regenerateContentRun } from '../run-actions'
+import { deleteContentRun } from '../run-actions'
 
 export function DeleteRunButton({ runId, status }: { runId: string; status: string }) {
   const [confirming, setConfirming] = useState(false)
@@ -55,27 +56,19 @@ export function DeleteRunButton({ runId, status }: { runId: string; status: stri
 export function RegenRunButton({
   clientId,
   targetMonth,
+  status,
 }: {
   clientId: string
   targetMonth: string
+  status: string
 }) {
-  const [isPending, startTransition] = useTransition()
-  const router = useRouter()
+  if (status === 'running' || status === 'queued') return null
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={isPending}
-      onClick={() => {
-        startTransition(async () => {
-          await regenerateContentRun(clientId, targetMonth)
-          router.push(`/clients/${clientId}/generate`)
-          router.refresh()
-        })
-      }}
-    >
-      {isPending ? 'Re-running...' : 'Re-run'}
-    </Button>
+    <Link href={`/clients/${clientId}/generate?month=${targetMonth}`}>
+      <Button variant="outline" size="sm">
+        Re-run
+      </Button>
+    </Link>
   )
 }
