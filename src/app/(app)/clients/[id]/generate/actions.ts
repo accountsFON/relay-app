@@ -7,6 +7,7 @@ import {
   findExistingRun,
   findContentRun,
 } from '@/server/repositories/contentRuns'
+import { db } from '@/db/client'
 
 export async function triggerGeneration(clientId: string, targetMonth: string) {
   const ctx = await requireClientEditor()
@@ -16,10 +17,14 @@ export async function triggerGeneration(clientId: string, targetMonth: string) {
 
   const existing = await findExistingRun(clientId, targetMonth)
   if (existing) {
-    throw new Error(
-      `A run for ${targetMonth} already exists (status: ${existing.status}). ` +
-        'Archive or delete it before generating again.'
-    )
+    if (existing.status === 'queued' || existing.status === 'failed') {
+      await db.contentRun.delete({ where: { id: existing.id } })
+    } else {
+      throw new Error(
+        `A run for ${targetMonth} is already ${existing.status}. ` +
+          'Wait for it to finish or delete it first.'
+      )
+    }
   }
 
   const contentRun = await createContentRun({
@@ -33,15 +38,11 @@ export async function triggerGeneration(clientId: string, targetMonth: string) {
     await generateContentTask.trigger({ contentRunId: contentRun.id })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error('Trigger.dev trigger failed:', message)
-    // Update the run to reflect the trigger failure but don't crash —
-    // the ContentRun is created so the user can see something happened
-    const { db } = await import('@/db/client')
     await db.contentRun.update({
       where: { id: contentRun.id },
       data: {
         status: 'failed',
-        errorMessage: `Pipeline trigger failed: ${message}. Ensure TRIGGER_SECRET_KEY is set and the task is deployed to Trigger.dev.`,
+        errorMessage: `Pipeline trigger failed: ${message}`,
       },
     })
   }

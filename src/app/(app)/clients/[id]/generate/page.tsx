@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { triggerGeneration, getRunStatus } from './actions'
@@ -28,22 +28,12 @@ type RunProgress = {
   errorMessage: string | null
 }
 
-export default function GeneratePage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const [clientId, setClientId] = useState<string | null>(null)
+export default function GeneratePage() {
+  const { id: clientId } = useParams<{ id: string }>()
   const [targetMonth, setTargetMonth] = useState(getNextMonth)
   const [progress, setProgress] = useState<RunProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const router = useRouter()
-
-  if (!clientId) {
-    params.then((p) => setClientId(p.id))
-    return <div className="p-8">Loading...</div>
-  }
 
   const handleGenerate = () => {
     setError(null)
@@ -54,12 +44,16 @@ export default function GeneratePage({
         let attempts = 0
         const poll = setInterval(async () => {
           attempts++
-          const status = await getRunStatus(contentRunId)
-          if (status) {
-            setProgress(status)
-            if (status.status === 'complete' || status.status === 'failed' || attempts > 120) {
-              clearInterval(poll)
+          try {
+            const status = await getRunStatus(contentRunId)
+            if (status) {
+              setProgress(status)
+              if (status.status === 'complete' || status.status === 'failed' || attempts > 120) {
+                clearInterval(poll)
+              }
             }
+          } catch {
+            clearInterval(poll)
           }
         }, 3000)
       } catch (err) {
