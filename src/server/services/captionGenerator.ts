@@ -34,7 +34,7 @@ export async function generateCaptions(
   const anthropic = new Anthropic()
   const { user, assistantPrefill } = buildCaptionPrompt(brief, facts, postingDates, client)
 
-  const response = await anthropic.messages.create({
+  const stream = anthropic.messages.stream({
     model: config.model,
     temperature: config.temperature,
     max_tokens: config.maxTokens,
@@ -43,6 +43,8 @@ export async function generateCaptions(
       { role: 'assistant', content: assistantPrefill },
     ],
   })
+
+  const response = await stream.finalMessage()
 
   const textBlock = response.content.find((b) => b.type === 'text')
   const rawText = textBlock && 'text' in textBlock ? textBlock.text : ''
@@ -54,7 +56,7 @@ export async function generateCaptions(
   }
 
   if (!posts) {
-    const retryResponse = await anthropic.messages.create({
+    const retryStream = anthropic.messages.stream({
       model: config.model,
       temperature: 0.3,
       max_tokens: config.maxTokens,
@@ -69,6 +71,7 @@ export async function generateCaptions(
       ],
     })
 
+    const retryResponse = await retryStream.finalMessage()
     const retryBlock = retryResponse.content.find((b) => b.type === 'text')
     const retryText = retryBlock && 'text' in retryBlock ? retryBlock.text : ''
     posts = tryParsePostsJSON(retryText)
