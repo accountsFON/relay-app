@@ -25,17 +25,10 @@ export const TOKEN_PRICING: Record<string, { input: number; output: number }> = 
   'claude-sonnet-4-20250514': { input: 3.0 / 1_000_000, output: 15.0 / 1_000_000 },
 }
 
-export const APIFY_CONFIG = {
-  actorId: 'aYG0l9s7dbB7j3gbS',
-  crawlerType: 'playwright:adaptive' as const,
-  maxCrawlDepth: 0,
-  maxPagesPerCrawl: 5,
-  maxResults: 5,
-  requestTimeoutSecs: 15,
-  outputFormat: 'markdown' as const,
+export const CRAWL_CONFIG = {
   maxUrls: 10,
-  fallbackCostPerCU: 0.4,
-  memoryMbytes: 2048,
+  scrapeTimeoutMs: 30000,
+  costPerCredit: 0.0053,
 }
 
 export const INFRA_COST_ESTIMATES = {

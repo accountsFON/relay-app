@@ -21,8 +21,8 @@ export type RunCostBreakdown = {
     captions: CostResult
     total: number
   }
-  apify: {
-    computeUnits: number
+  crawl: {
+    credits: number
     urlsCrawled: number
     usd: number
   }
@@ -57,10 +57,10 @@ export function buildCostBreakdown(params: {
   briefCost: CostResult
   factsCost: CostResult
   captionsCost: CostResult
-  apifyCost: { computeUnits: number; usd: number; urlsCrawled: number }
+  crawlCost: { credits: number; usd: number; urlsCrawled: number }
   pipelineDurationSeconds: number
 }): RunCostBreakdown {
-  const { briefCost, factsCost, captionsCost, apifyCost, pipelineDurationSeconds } = params
+  const { briefCost, factsCost, captionsCost, crawlCost, pipelineDurationSeconds } = params
 
   const openaiTotal = round4(briefCost.usd + factsCost.usd)
   const anthropicTotal = round4(captionsCost.usd)
@@ -73,7 +73,7 @@ export function buildCostBreakdown(params: {
   )
   const infraTotal = round4(triggerDevCost + vercelCost + neonCost)
 
-  const subtotal = round4(openaiTotal + anthropicTotal + apifyCost.usd + infraTotal)
+  const subtotal = round4(openaiTotal + anthropicTotal + crawlCost.usd + infraTotal)
   const infraBuffer = round4(subtotal * (INFRA_COST_ESTIMATES.infraBufferMultiplier - 1))
   const total = round4(subtotal + infraBuffer)
 
@@ -87,10 +87,10 @@ export function buildCostBreakdown(params: {
       captions: captionsCost,
       total: anthropicTotal,
     },
-    apify: {
-      computeUnits: apifyCost.computeUnits,
-      urlsCrawled: apifyCost.urlsCrawled,
-      usd: apifyCost.usd,
+    crawl: {
+      credits: crawlCost.credits,
+      urlsCrawled: crawlCost.urlsCrawled,
+      usd: crawlCost.usd,
     },
     infra: {
       triggerDev: triggerDevCost,

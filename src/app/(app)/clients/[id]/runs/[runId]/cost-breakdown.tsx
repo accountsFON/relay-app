@@ -14,8 +14,8 @@ type Breakdown = {
     captions: { inputTokens: number; outputTokens: number; usd: number }
     total: number
   }
-  apify: {
-    computeUnits: number
+  crawl: {
+    credits: number
     urlsCrawled: number
     usd: number
   }
@@ -72,8 +72,8 @@ export function CostBreakdown({
           <p className="text-lg font-bold text-purple-900">{fmt(breakdown.anthropic.total)}</p>
         </div>
         <div className="rounded-lg bg-amber-50 p-3">
-          <p className="text-xs text-amber-600 font-medium">Apify</p>
-          <p className="text-lg font-bold text-amber-900">{fmt(breakdown.apify.usd)}</p>
+          <p className="text-xs text-amber-600 font-medium">Firecrawl</p>
+          <p className="text-lg font-bold text-amber-900">{fmt(breakdown.crawl.usd)}</p>
         </div>
         <div className="rounded-lg bg-green-50 p-3">
           <p className="text-xs text-green-600 font-medium">Total</p>
@@ -125,11 +125,11 @@ export function CostBreakdown({
               </tr>
               <tr>
                 <td className="py-2">
-                  <span className="font-medium">Apify</span>
-                  <span className="text-muted-foreground"> - Crawl ({breakdown.apify.urlsCrawled} URLs, {breakdown.apify.computeUnits.toFixed(3)} CU)</span>
+                  <span className="font-medium">Firecrawl</span>
+                  <span className="text-muted-foreground"> - Crawl ({breakdown.crawl.urlsCrawled} URLs, {breakdown.crawl.credits} credits)</span>
                 </td>
                 <td className="py-2 text-right text-muted-foreground">-</td>
-                <td className="py-2 text-right">{fmt(breakdown.apify.usd)}</td>
+                <td className="py-2 text-right">{fmt(breakdown.crawl.usd)}</td>
               </tr>
               <tr className="text-muted-foreground">
                 <td className="py-2">

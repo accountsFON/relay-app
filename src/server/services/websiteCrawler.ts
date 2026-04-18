@@ -1,10 +1,10 @@
-import { ApifyClient } from 'apify-client'
-import { APIFY_CONFIG } from '@/server/config/aiModels'
+import FirecrawlApp from '@mendable/firecrawl-js'
+import { CRAWL_CONFIG } from '@/server/config/aiModels'
 
 export type CrawlResult = {
   crawledContent: string
   urlsCrawled: number
-  cost: { computeUnits: number; usd: number }
+  cost: { credits: number; usd: number }
 }
 
 export async function crawlWebsites(
@@ -14,53 +14,37 @@ export async function crawlWebsites(
   const mergedUrls = mergeAndScoreUrls(clientUrls, briefText)
 
   if (mergedUrls.length === 0) {
-    return { crawledContent: '', urlsCrawled: 0, cost: { computeUnits: 0, usd: 0 } }
+    return { crawledContent: '', urlsCrawled: 0, cost: { credits: 0, usd: 0 } }
   }
 
-  const startUrls = mergedUrls.map((url) => ({ url }))
-  const apify = new ApifyClient({ token: process.env.APIFY_TOKEN })
+  const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
+  const pages: string[] = []
+  let creditsUsed = 0
 
-  const run = await apify.actor(APIFY_CONFIG.actorId).call(
-    {
-      startUrls,
-      crawlerType: APIFY_CONFIG.crawlerType,
-      maxCrawlDepth: APIFY_CONFIG.maxCrawlDepth,
-      maxPagesPerCrawl: APIFY_CONFIG.maxPagesPerCrawl,
-      maxResults: APIFY_CONFIG.maxResults,
-      requestTimeoutSecs: APIFY_CONFIG.requestTimeoutSecs,
-      outputFormats: [APIFY_CONFIG.outputFormat],
-      removeCookieWarnings: true,
-      removeElementsCssSelector: 'nav, footer, script, style, [class*="cookie"]',
-      aggressivePrune: true,
-      blockMedia: true,
-    },
-    { waitSecs: 120 }
-  )
+  for (const url of mergedUrls) {
+    try {
+      const result = await firecrawl.scrape(url, {
+        formats: ['markdown'],
+        timeout: CRAWL_CONFIG.scrapeTimeoutMs,
+      })
 
-  const { items } = await apify
-    .dataset(run.defaultDatasetId)
-    .listItems({ limit: 100 })
-
-  const pages = items
-    .map((item: Record<string, unknown>) => {
-      const url = (item.url as string) ?? ''
-      const content = (item.markdown as string) ?? (item.text as string) ?? ''
-      return content ? `${url}\n\n${content}` : ''
-    })
-    .filter(Boolean)
+      if (result.markdown) {
+        pages.push(`${url}\n\n${result.markdown}`)
+        creditsUsed++
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`Firecrawl failed for ${url}: ${message}`)
+    }
+  }
 
   const crawledContent = pages.join('\n\n======\n\n')
-
-  const computeUnits = run.stats?.computeUnits ?? 0
-  const runAny = run as unknown as Record<string, unknown>
-  const usd = runAny.usageTotalUsd
-    ? Number(runAny.usageTotalUsd)
-    : Math.round(computeUnits * APIFY_CONFIG.fallbackCostPerCU * 10000) / 10000
+  const usd = Math.round(creditsUsed * CRAWL_CONFIG.costPerCredit * 10000) / 10000
 
   return {
     crawledContent,
     urlsCrawled: pages.length,
-    cost: { computeUnits, usd },
+    cost: { credits: creditsUsed, usd },
   }
 }
 
@@ -94,7 +78,7 @@ function mergeAndScoreUrls(clientUrls: string[], briefText: string): string[] {
 
   return Array.from(urlSet.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, APIFY_CONFIG.maxUrls)
+    .slice(0, CRAWL_CONFIG.maxUrls)
     .map(([url]) => url)
 }
 

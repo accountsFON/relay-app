@@ -31,7 +31,7 @@ export const generateContentTask = task({
     let briefCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
     let factsCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
     let captionsCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
-    let apifyCostDetail = { computeUnits: 0, usd: 0, urlsCrawled: 0 }
+    let crawlCostDetail = { credits: 0, usd: 0, urlsCrawled: 0 }
 
     try {
       await db.contentRun.update({
@@ -76,8 +76,8 @@ export const generateContentTask = task({
       const crawlResult = await crawlWebsites(client.urls, briefResult.brief)
 
       apifyCost = crawlResult.cost.usd
-      apifyCostDetail = {
-        computeUnits: crawlResult.cost.computeUnits,
+      crawlCostDetail = {
+        credits: crawlResult.cost.credits,
         usd: crawlResult.cost.usd,
         urlsCrawled: crawlResult.urlsCrawled,
       }
@@ -133,7 +133,7 @@ export const generateContentTask = task({
         briefCost,
         factsCost,
         captionsCost,
-        apifyCost: apifyCostDetail,
+        crawlCost: crawlCostDetail,
         pipelineDurationSeconds,
       })
 
@@ -143,7 +143,7 @@ export const generateContentTask = task({
           status: 'complete',
           openaiCostUsd: breakdown.openai.total,
           anthropicCostUsd: breakdown.anthropic.total,
-          apifyCostUsd: breakdown.apify.usd,
+          apifyCostUsd: breakdown.crawl.usd,
           totalCostUsd: breakdown.total,
           creditsConsumed: breakdown.credits,
           tokenUsage: {
@@ -164,7 +164,7 @@ export const generateContentTask = task({
         briefCost,
         factsCost,
         captionsCost,
-        apifyCost: apifyCostDetail,
+        crawlCost: crawlCostDetail,
         pipelineDurationSeconds,
       })
 
@@ -175,7 +175,7 @@ export const generateContentTask = task({
           errorMessage: message,
           openaiCostUsd: partialBreakdown.openai.total || undefined,
           anthropicCostUsd: partialBreakdown.anthropic.total || undefined,
-          apifyCostUsd: partialBreakdown.apify.usd || undefined,
+          apifyCostUsd: partialBreakdown.crawl.usd || undefined,
           totalCostUsd: partialBreakdown.total || undefined,
           tokenUsage: Object.keys(tokenUsage).length > 0
             ? {
