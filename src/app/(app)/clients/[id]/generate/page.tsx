@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { triggerGeneration, getRunStatus } from './actions'
+import { triggerGeneration, getRunStatus, getClientCrawlInfo } from './actions'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 function getNextMonth(): string {
   const d = new Date()
@@ -45,6 +46,22 @@ export default function GeneratePage() {
   const [isPending, startTransition] = useTransition()
   const [elapsed, setElapsed] = useState(0)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [reCrawl, setReCrawl] = useState(true)
+  const [crawlInfoLoaded, setCrawlInfoLoaded] = useState(false)
+  const [lastCrawled, setLastCrawled] = useState<string | null>(null)
+
+  useEffect(() => {
+    getClientCrawlInfo(clientId).then((info) => {
+      if (info) {
+        const shouldCrawl =
+          info.autoCrawl === 'always' ||
+          (info.autoCrawl === 'when_empty' && !info.hasCrawledData)
+        setReCrawl(shouldCrawl)
+        setLastCrawled(info.crawledDataAt)
+      }
+      setCrawlInfoLoaded(true)
+    })
+  }, [clientId])
 
   useEffect(() => {
     if (!progress || progress.status === 'complete' || progress.status === 'failed') return
@@ -66,7 +83,7 @@ export default function GeneratePage() {
     setElapsed(0)
     startTransition(async () => {
       try {
-        const { contentRunId } = await triggerGeneration(clientId, targetMonth)
+        const { contentRunId } = await triggerGeneration(clientId, targetMonth, reCrawl)
 
         let attempts = 0
         const poll = setInterval(async () => {
@@ -124,6 +141,26 @@ export default function GeneratePage() {
         <p className="text-sm text-muted-foreground mb-4">
           Generate {formatMonth(targetMonth)} social media posts for this client.
         </p>
+
+        <div className="flex items-center gap-2 mb-4">
+          <input
+            type="checkbox"
+            id="reCrawl"
+            checked={reCrawl}
+            onChange={(e) => setReCrawl(e.target.checked)}
+            className="h-4 w-4 rounded border-border"
+          />
+          <label htmlFor="reCrawl" className="text-sm text-foreground">
+            Re-crawl websites
+          </label>
+          <InfoTooltip text="When enabled, Relay crawls the client's websites for fresh content. When disabled, the pipeline uses previously stored website data. Disable to save time and credits for clients whose websites rarely change." />
+          {lastCrawled && !reCrawl && (
+            <span className="text-xs text-muted-foreground">
+              (using data from {new Date(lastCrawled).toLocaleDateString()})
+            </span>
+          )}
+        </div>
+
         <Button
           onClick={handleGenerate}
           disabled={isPending || (progress?.status === 'running') || (progress?.status === 'queued')}

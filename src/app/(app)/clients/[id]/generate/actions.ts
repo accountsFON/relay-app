@@ -9,7 +9,7 @@ import {
 } from '@/server/repositories/contentRuns'
 import { db } from '@/db/client'
 
-export async function triggerGeneration(clientId: string, targetMonth: string) {
+export async function triggerGeneration(clientId: string, targetMonth: string, reCrawl?: boolean) {
   const ctx = await requireClientEditor()
 
   const client = await findClientById(clientId, ctx.organizationDbId)
@@ -32,7 +32,8 @@ export async function triggerGeneration(clientId: string, targetMonth: string) {
 
   try {
     const { generateContentTask } = await import('@/server/jobs/generateContent')
-    await generateContentTask.trigger({ contentRunId: contentRun.id })
+    const shouldCrawl = reCrawl ?? (client.autoCrawl === 'always' || (client.autoCrawl === 'when_empty' && !client.crawledData))
+    await generateContentTask.trigger({ contentRunId: contentRun.id, reCrawl: shouldCrawl })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     await db.contentRun.update({
@@ -45,6 +46,18 @@ export async function triggerGeneration(clientId: string, targetMonth: string) {
   }
 
   return { contentRunId: contentRun.id }
+}
+
+export async function getClientCrawlInfo(clientId: string) {
+  const ctx = await requireClientEditor()
+  const client = await findClientById(clientId, ctx.organizationDbId)
+  if (!client) return null
+
+  return {
+    autoCrawl: client.autoCrawl,
+    hasCrawledData: !!client.crawledData,
+    crawledDataAt: client.crawledDataAt?.toISOString() ?? null,
+  }
 }
 
 export async function getRunStatus(contentRunId: string) {

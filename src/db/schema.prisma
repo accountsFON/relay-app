@@ -114,6 +114,9 @@ model Client {
   holidayHandling String       @default("Major-US")
   excludedDates   String[]
   assetsFolderUrl String?
+  autoCrawl       String       @default("always")
+  crawledData     String?      @db.Text
+  crawledDataAt   DateTime?
   status          ClientStatus @default(active)
   createdAt       DateTime     @default(now())
 

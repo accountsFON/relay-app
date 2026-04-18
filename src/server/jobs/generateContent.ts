@@ -15,7 +15,7 @@ export const generateContentTask = task({
   id: 'generate-content',
   retry: { maxAttempts: 2 },
   queue: { concurrencyLimit: 4 },
-  run: async ({ contentRunId }: { contentRunId: string }) => {
+  run: async ({ contentRunId, reCrawl = true }: { contentRunId: string; reCrawl?: boolean }) => {
     const pipelineStart = Date.now()
 
     const contentRun = await db.contentRun.findUniqueOrThrow({
@@ -72,26 +72,39 @@ export const generateContentTask = task({
         data: { brief: briefResult.brief, openaiCostUsd: openaiCost },
       })
 
-      // Step 3: Crawl websites
-      const crawlResult = await crawlWebsites(client.urls, briefResult.brief)
+      // Step 3: Crawl websites (or use cached data)
+      let crawledContent = ''
 
-      apifyCost = crawlResult.cost.usd
-      crawlCostDetail = {
-        credits: crawlResult.cost.credits,
-        usd: crawlResult.cost.usd,
-        urlsCrawled: crawlResult.urlsCrawled,
+      if (reCrawl || !client.crawledData) {
+        const crawlResult = await crawlWebsites(client.urls, briefResult.brief)
+
+        crawledContent = crawlResult.crawledContent
+        apifyCost = crawlResult.cost.usd
+        crawlCostDetail = {
+          credits: crawlResult.cost.credits,
+          usd: crawlResult.cost.usd,
+          urlsCrawled: crawlResult.urlsCrawled,
+        }
+
+        await db.client.update({
+          where: { id: client.id },
+          data: { crawledData: crawledContent, crawledDataAt: new Date() },
+        })
+      } else {
+        crawledContent = client.crawledData
+        crawlCostDetail = { credits: 0, usd: 0, urlsCrawled: 0 }
       }
 
       await db.contentRun.update({
         where: { id: contentRunId },
         data: {
-          crawledContent: crawlResult.crawledContent,
+          crawledContent,
           apifyCostUsd: apifyCost,
         },
       })
 
       // Step 4: Extract facts
-      const factsResult = await extractFacts(crawlResult.crawledContent)
+      const factsResult = await extractFacts(crawledContent)
 
       factsCost = factsResult.cost
       tokenUsage.facts = {

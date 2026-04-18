@@ -44,6 +44,9 @@ const mockClient: Client = {
   holidayHandling: 'Major-US',
   excludedDates: [],
   assetsFolderUrl: null,
+  autoCrawl: 'always',
+  crawledData: null,
+  crawledDataAt: null,
   status: 'active',
   createdAt: new Date(),
 }

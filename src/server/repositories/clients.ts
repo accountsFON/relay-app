@@ -41,6 +41,7 @@ type CreateClientInput = {
   holidayHandling: string
   excludedDates: string[]
   assetsFolderUrl?: string
+  autoCrawl?: string
   assignedAmId?: string
   status: ClientStatus
 }
@@ -69,6 +70,7 @@ type UpdateClientData = Partial<{
   holidayHandling: string
   excludedDates: string[]
   assetsFolderUrl: string
+  autoCrawl: string
   assignedAmId: string
   status: ClientStatus
 }>

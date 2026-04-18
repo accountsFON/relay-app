@@ -5,6 +5,7 @@ const isoDate = /^\d{4}-\d{2}-\d{2}$/
 const holidayHandlingEnum = z.enum(['Major-US', 'Off'])
 
 const statusEnum = z.enum(['active', 'paused', 'archived'])
+const autoCrawlEnum = z.enum(['always', 'when_empty', 'never'])
 
 function csvToArray(val: unknown): unknown {
   if (typeof val !== 'string') return val
@@ -45,6 +46,7 @@ export const clientInputSchema = z.object({
   holidayHandling: holidayHandlingEnum.default('Major-US'),
   excludedDates: excludedDatesField,
   assetsFolderUrl: z.string().url().optional().or(z.literal('')),
+  autoCrawl: autoCrawlEnum.default('always'),
   assignedAmId: z.string().optional(),
   status: statusEnum.default('active'),
 })
@@ -73,6 +75,7 @@ export const clientUpdateSchema = z.object({
     .preprocess(csvToArray, z.array(z.string().regex(isoDate, 'Must be YYYY-MM-DD')))
     .optional(),
   assetsFolderUrl: z.string().url().optional().or(z.literal('')),
+  autoCrawl: autoCrawlEnum.optional(),
   assignedAmId: z.string().optional(),
   status: statusEnum.optional(),
 })

@@ -43,6 +43,7 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
       holidayHandling: defaultValues?.holidayHandling ?? 'Major-US',
       excludedDates: arrayToCsv(defaultValues?.excludedDates),
       assetsFolderUrl: defaultValues?.assetsFolderUrl ?? '',
+      autoCrawl: defaultValues?.autoCrawl ?? 'always',
       status: defaultValues?.status ?? 'active',
     },
   })
@@ -142,6 +143,23 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
             {...form.register('assetsFolderUrl')}
             placeholder="https://..."
           />
+        </Field>
+      </Section>
+
+      <Section title="Crawl Settings">
+        <Field label="Auto-crawl behavior" htmlFor="autoCrawl">
+          <select
+            id="autoCrawl"
+            {...form.register('autoCrawl')}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+          >
+            <option value="always">Always re-crawl (every generation)</option>
+            <option value="when_empty">Only when no stored data exists</option>
+            <option value="never">Never auto-crawl (use stored data)</option>
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Controls whether the pipeline crawls websites during content generation. &quot;Always&quot; gives freshest data but uses crawl credits each time. &quot;Never&quot; is free but uses older data.
+          </p>
         </Field>
       </Section>
 

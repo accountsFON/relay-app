@@ -57,6 +57,7 @@ describe('createClientAction', () => {
       holidayHandling: 'Major-US',
       urls: [],
       excludedDates: [],
+      autoCrawl: 'always',
       status: 'active',
     })
 
@@ -79,6 +80,7 @@ describe('createClientAction', () => {
         holidayHandling: 'Major-US',
         urls: [],
         excludedDates: [],
+        autoCrawl: 'always',
         status: 'active',
       })
     ).rejects.toThrow()

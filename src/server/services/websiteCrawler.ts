@@ -1,6 +1,13 @@
 import FirecrawlApp from '@mendable/firecrawl-js'
 import { CRAWL_CONFIG } from '@/server/config/aiModels'
 
+const SOCIAL_DOMAINS = new Set([
+  'facebook.com', 'fb.com', 'instagram.com', 'twitter.com', 'x.com',
+  'linkedin.com', 'youtube.com', 'tiktok.com', 'pinterest.com',
+  'yelp.com', 'google.com', 'drive.google.com', 'docs.google.com',
+  'dropbox.com', 'canva.com', 'behance.net', 'dribbble.com',
+])
+
 export type CrawlResult = {
   crawledContent: string
   urlsCrawled: number
@@ -11,9 +18,9 @@ export async function crawlWebsites(
   clientUrls: string[],
   briefText: string
 ): Promise<CrawlResult> {
-  const mergedUrls = mergeAndScoreUrls(clientUrls, briefText)
+  const allUrls = mergeUrls(clientUrls, briefText)
 
-  if (mergedUrls.length === 0) {
+  if (allUrls.length === 0) {
     return { crawledContent: '', urlsCrawled: 0, cost: { credits: 0, usd: 0 } }
   }
 
@@ -21,7 +28,33 @@ export async function crawlWebsites(
   const pages: string[] = []
   let creditsUsed = 0
 
-  for (const url of mergedUrls) {
+  const { primaryUrl, secondaryUrls } = classifyUrls(allUrls)
+
+  if (primaryUrl) {
+    try {
+      const crawlResult = await firecrawl.crawl(primaryUrl, {
+        limit: 5,
+        allowExternalLinks: false,
+        maxDiscoveryDepth: 2,
+        timeout: 120000,
+      })
+
+      if (crawlResult.data) {
+        for (const doc of crawlResult.data) {
+          if (doc.markdown) {
+            const url = doc.metadata?.url ?? doc.metadata?.sourceURL ?? primaryUrl
+            pages.push(`${url}\n\n${doc.markdown}`)
+          }
+        }
+      }
+      creditsUsed += crawlResult.creditsUsed ?? crawlResult.data?.length ?? 0
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`Firecrawl crawl failed for ${primaryUrl}: ${message}`)
+    }
+  }
+
+  for (const url of secondaryUrls) {
     try {
       const result = await firecrawl.scrape(url, {
         formats: ['markdown'],
@@ -34,7 +67,7 @@ export async function crawlWebsites(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.warn(`Firecrawl failed for ${url}: ${message}`)
+      console.warn(`Firecrawl scrape failed for ${url}: ${message}`)
     }
   }
 
@@ -48,38 +81,52 @@ export async function crawlWebsites(
   }
 }
 
-function mergeAndScoreUrls(clientUrls: string[], briefText: string): string[] {
-  const urlSet = new Map<string, number>()
+function classifyUrls(urls: string[]): {
+  primaryUrl: string | null
+  secondaryUrls: string[]
+} {
+  let primaryUrl: string | null = null
+  const secondaryUrls: string[] = []
+
+  for (const url of urls) {
+    const domain = getDomain(url)
+    if (!domain) continue
+
+    if (SOCIAL_DOMAINS.has(domain) || SOCIAL_DOMAINS.has(getBaseDomain(domain))) {
+      secondaryUrls.push(url)
+    } else if (!primaryUrl) {
+      primaryUrl = url
+    } else if (getDomain(primaryUrl) === domain) {
+      // skip duplicate primary domain pages (crawl() will find them)
+    } else {
+      secondaryUrls.push(url)
+    }
+  }
+
+  return { primaryUrl, secondaryUrls }
+}
+
+function mergeUrls(clientUrls: string[], briefText: string): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
 
   for (const url of clientUrls) {
     const cleaned = url.trim()
-    if (cleaned && isValidUrl(cleaned)) {
-      urlSet.set(cleaned, (urlSet.get(cleaned) ?? 0) + 100)
+    if (cleaned && isValidUrl(cleaned) && !seen.has(cleaned)) {
+      seen.add(cleaned)
+      result.push(cleaned)
     }
   }
 
   const briefUrls = extractUrlsFromBrief(briefText)
   for (const url of briefUrls) {
-    if (isValidUrl(url)) {
-      urlSet.set(url, (urlSet.get(url) ?? 0) + 50)
+    if (isValidUrl(url) && !seen.has(url)) {
+      seen.add(url)
+      result.push(url)
     }
   }
 
-  for (const [url, score] of urlSet) {
-    const path = new URL(url).pathname.toLowerCase()
-    if (path.includes('service') || path.includes('product')) {
-      urlSet.set(url, score + 10)
-    } else if (path.includes('about')) {
-      urlSet.set(url, score + 8)
-    } else if (path.includes('blog')) {
-      urlSet.set(url, score + 3)
-    }
-  }
-
-  return Array.from(urlSet.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, CRAWL_CONFIG.maxUrls)
-    .map(([url]) => url)
+  return result.slice(0, CRAWL_CONFIG.maxUrls)
 }
 
 function extractUrlsFromBrief(text: string): string[] {
@@ -89,12 +136,24 @@ function extractUrlsFromBrief(text: string): string[] {
       const urls = JSON.parse(`[${jsonMatch[1]}]`)
       if (Array.isArray(urls)) return urls.filter((u: unknown) => typeof u === 'string')
     } catch {
-      // fall through to regex
+      // fall through
     }
   }
-
   const urlRegex = /https?:\/\/[^\s,)"']+/g
   return Array.from(text.matchAll(urlRegex), (m) => m[0])
+}
+
+function getDomain(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+function getBaseDomain(hostname: string): string {
+  const parts = hostname.split('.')
+  return parts.length >= 2 ? parts.slice(-2).join('.') : hostname
 }
 
 function isValidUrl(str: string): boolean {
