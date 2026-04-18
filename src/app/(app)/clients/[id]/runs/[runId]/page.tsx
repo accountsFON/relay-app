@@ -5,6 +5,7 @@ import { findClientById } from '@/server/repositories/clients'
 import { findContentRun } from '@/server/repositories/contentRuns'
 import { PostCard } from './post-card'
 import { ExportButton } from './export-button'
+import { CostBreakdown } from './cost-breakdown'
 import { Button } from '@/components/ui/button'
 
 export default async function RunDetailPage({
@@ -63,7 +64,24 @@ export default async function RunDetailPage({
         </div>
       </div>
 
-      <div className="space-y-4">
+      <CostBreakdown
+        breakdown={
+          run.tokenUsage &&
+          typeof run.tokenUsage === 'object' &&
+          'breakdown' in (run.tokenUsage as Record<string, unknown>)
+            ? (run.tokenUsage as Record<string, unknown>).breakdown as Parameters<typeof CostBreakdown>[0]['breakdown']
+            : null
+        }
+        pipelineDurationSeconds={
+          run.tokenUsage &&
+          typeof run.tokenUsage === 'object' &&
+          'pipelineDurationSeconds' in (run.tokenUsage as Record<string, unknown>)
+            ? Number((run.tokenUsage as Record<string, unknown>).pipelineDurationSeconds)
+            : null
+        }
+      />
+
+      <div className="space-y-4 mt-6">
         {run.posts.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}

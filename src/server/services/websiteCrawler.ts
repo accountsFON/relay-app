@@ -52,7 +52,10 @@ export async function crawlWebsites(
   const crawledContent = pages.join('\n\n======\n\n')
 
   const computeUnits = run.stats?.computeUnits ?? 0
-  const usd = Math.round(computeUnits * 0.4 * 10000) / 10000
+  const runAny = run as unknown as Record<string, unknown>
+  const usd = runAny.usageTotalUsd
+    ? Number(runAny.usageTotalUsd)
+    : Math.round(computeUnits * APIFY_CONFIG.fallbackCostPerCU * 10000) / 10000
 
   return {
     crawledContent,

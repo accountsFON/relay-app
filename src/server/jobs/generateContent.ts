@@ -6,8 +6,8 @@ import { crawlWebsites } from '@/server/services/websiteCrawler'
 import { extractFacts } from '@/server/services/factsExtractor'
 import { generateCaptions } from '@/server/services/captionGenerator'
 import { createPostsFromCaptions } from '@/server/services/postParser'
-import { sumCosts, costToCredits } from '@/server/services/costTracker'
-import type { CostResult } from '@/server/services/costTracker'
+import { sumCosts, costToCredits, buildCostBreakdown } from '@/server/services/costTracker'
+import type { CostResult, RunCostBreakdown } from '@/server/services/costTracker'
 
 type TokenUsageLog = Record<string, { input: number; output: number }>
 
@@ -15,6 +15,8 @@ export const generateContentTask = task({
   id: 'generate-content',
   retry: { maxAttempts: 2 },
   run: async ({ contentRunId }: { contentRunId: string }) => {
+    const pipelineStart = Date.now()
+
     const contentRun = await db.contentRun.findUniqueOrThrow({
       where: { id: contentRunId },
       include: { client: true },
@@ -25,6 +27,10 @@ export const generateContentTask = task({
     let openaiCost = 0
     let anthropicCost = 0
     let apifyCost = 0
+    let briefCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
+    let factsCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
+    let captionsCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
+    let apifyCostDetail = { computeUnits: 0, usd: 0, urlsCrawled: 0 }
 
     try {
       await db.contentRun.update({
@@ -53,6 +59,7 @@ export const generateContentTask = task({
         holidayTags
       )
 
+      briefCost = briefResult.cost
       tokenUsage.brief = {
         input: briefResult.cost.inputTokens,
         output: briefResult.cost.outputTokens,
@@ -68,6 +75,11 @@ export const generateContentTask = task({
       const crawlResult = await crawlWebsites(client.urls, briefResult.brief)
 
       apifyCost = crawlResult.cost.usd
+      apifyCostDetail = {
+        computeUnits: crawlResult.cost.computeUnits,
+        usd: crawlResult.cost.usd,
+        urlsCrawled: crawlResult.urlsCrawled,
+      }
 
       await db.contentRun.update({
         where: { id: contentRunId },
@@ -80,6 +92,7 @@ export const generateContentTask = task({
       // Step 4: Extract facts
       const factsResult = await extractFacts(crawlResult.crawledContent)
 
+      factsCost = factsResult.cost
       tokenUsage.facts = {
         input: factsResult.cost.inputTokens,
         output: factsResult.cost.outputTokens,
@@ -99,6 +112,7 @@ export const generateContentTask = task({
         client
       )
 
+      captionsCost = captionResult.cost
       tokenUsage.captions = {
         input: captionResult.cost.inputTokens,
         output: captionResult.cost.outputTokens,
@@ -112,37 +126,62 @@ export const generateContentTask = task({
         client.id
       )
 
-      const totalCost = sumCosts(openaiCost, anthropicCost, apifyCost)
+      const pipelineDurationSeconds = Math.round((Date.now() - pipelineStart) / 1000)
+
+      const breakdown = buildCostBreakdown({
+        briefCost,
+        factsCost,
+        captionsCost,
+        apifyCost: apifyCostDetail,
+        pipelineDurationSeconds,
+      })
 
       await db.contentRun.update({
         where: { id: contentRunId },
         data: {
           status: 'complete',
-          openaiCostUsd: openaiCost,
-          anthropicCostUsd: anthropicCost,
-          apifyCostUsd: apifyCost,
-          totalCostUsd: totalCost,
-          creditsConsumed: costToCredits(totalCost),
-          tokenUsage: tokenUsage as unknown as Record<string, never>,
+          openaiCostUsd: breakdown.openai.total,
+          anthropicCostUsd: breakdown.anthropic.total,
+          apifyCostUsd: breakdown.apify.usd,
+          totalCostUsd: breakdown.total,
+          creditsConsumed: breakdown.credits,
+          tokenUsage: {
+            ...tokenUsage,
+            breakdown: JSON.parse(JSON.stringify(breakdown)),
+            pipelineDurationSeconds,
+          },
           completedAt: new Date(),
         },
       })
 
-      return { postCount, totalCostUsd: totalCost }
+      return { postCount, totalCostUsd: breakdown.total, breakdown }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
+      const pipelineDurationSeconds = Math.round((Date.now() - pipelineStart) / 1000)
+
+      const partialBreakdown = buildCostBreakdown({
+        briefCost,
+        factsCost,
+        captionsCost,
+        apifyCost: apifyCostDetail,
+        pipelineDurationSeconds,
+      })
 
       await db.contentRun.update({
         where: { id: contentRunId },
         data: {
           status: 'failed',
           errorMessage: message,
-          openaiCostUsd: openaiCost || undefined,
-          anthropicCostUsd: anthropicCost || undefined,
-          apifyCostUsd: apifyCost || undefined,
-          totalCostUsd: sumCosts(openaiCost, anthropicCost, apifyCost) || undefined,
+          openaiCostUsd: partialBreakdown.openai.total || undefined,
+          anthropicCostUsd: partialBreakdown.anthropic.total || undefined,
+          apifyCostUsd: partialBreakdown.apify.usd || undefined,
+          totalCostUsd: partialBreakdown.total || undefined,
           tokenUsage: Object.keys(tokenUsage).length > 0
-            ? (tokenUsage as unknown as Record<string, never>)
+            ? {
+                ...tokenUsage,
+                breakdown: JSON.parse(JSON.stringify(partialBreakdown)),
+                pipelineDurationSeconds,
+              }
             : undefined,
         },
       })

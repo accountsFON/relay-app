@@ -22,7 +22,7 @@ export const AI_MODELS = {
 export const TOKEN_PRICING: Record<string, { input: number; output: number }> = {
   'gpt-4.1': { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
   'claude-opus-4-20250514': { input: 15.0 / 1_000_000, output: 75.0 / 1_000_000 },
-  'claude-sonnet-4-6-20260320': { input: 3.0 / 1_000_000, output: 15.0 / 1_000_000 },
+  'claude-sonnet-4-20250514': { input: 3.0 / 1_000_000, output: 15.0 / 1_000_000 },
 }
 
 export const APIFY_CONFIG = {
@@ -34,4 +34,13 @@ export const APIFY_CONFIG = {
   requestTimeoutSecs: 15,
   outputFormat: 'markdown' as const,
   maxUrls: 10,
+  fallbackCostPerCU: 0.4,
+}
+
+export const INFRA_COST_ESTIMATES = {
+  triggerDevPerSecond: 0.001,
+  vercelPerInvocation: 0.0000006,
+  neonPerComputeHour: 0.16,
+  estimatedDbSecondsPerRun: 2,
+  infraBufferMultiplier: 1.05,
 }
