@@ -35,6 +35,7 @@ export const APIFY_CONFIG = {
   outputFormat: 'markdown' as const,
   maxUrls: 10,
   fallbackCostPerCU: 0.4,
+  memoryMbytes: 2048,
 }
 
 export const INFRA_COST_ESTIMATES = {
