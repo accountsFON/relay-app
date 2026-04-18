@@ -37,9 +37,9 @@ export async function generateCaptions(
   const stream = anthropic.messages.stream({
     model: config.model,
     max_tokens: config.maxTokens,
+    system: assistantPrefill,
     messages: [
       { role: 'user', content: user },
-      { role: 'assistant', content: assistantPrefill },
     ],
   })
 
@@ -48,19 +48,19 @@ export async function generateCaptions(
   const textBlock = response.content.find((b) => b.type === 'text')
   const rawText = textBlock && 'text' in textBlock ? textBlock.text : ''
 
-  let posts = tryParsePostsJSON(assistantPrefill + rawText)
-
-  if (!posts) {
-    posts = tryParsePostsJSON(rawText)
-  }
+  let posts = tryParsePostsJSON(rawText)
 
   if (!posts) {
     const retryStream = anthropic.messages.stream({
       model: config.model,
       max_tokens: config.maxTokens,
+      system: assistantPrefill,
       messages: [
         { role: 'user', content: user },
-        { role: 'assistant', content: assistantPrefill },
+        {
+          role: 'assistant',
+          content: 'I understand. Let me try again.',
+        },
         {
           role: 'user',
           content:
