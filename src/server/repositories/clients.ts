@@ -137,3 +137,39 @@ export async function archiveClient(id: string, organizationId: string) {
     data: { status: 'archived' },
   })
 }
+
+/** Admin-only: lists all clients in the org with their assigned AM and designer (id+name only). */
+export async function listClientsByOrgWithAssignments(organizationId: string) {
+  return db.client.findMany({
+    where: { organizationId },
+    include: {
+      assignedAm: { select: { id: true, name: true } },
+      assignedDesigner: { select: { id: true, name: true } },
+    },
+    orderBy: { name: 'asc' },
+  })
+}
+
+/** Admin-only: set or clear the AM assignment on a client. Pass null to unassign. */
+export async function assignClientAm(
+  id: string,
+  organizationId: string,
+  amUserId: string | null,
+) {
+  return db.client.updateMany({
+    where: { id, organizationId },
+    data: { assignedAmId: amUserId },
+  })
+}
+
+/** Admin-only: set or clear the Designer assignment on a client. Pass null to unassign. */
+export async function assignClientDesigner(
+  id: string,
+  organizationId: string,
+  designerUserId: string | null,
+) {
+  return db.client.updateMany({
+    where: { id, organizationId },
+    data: { assignedDesignerId: designerUserId },
+  })
+}
