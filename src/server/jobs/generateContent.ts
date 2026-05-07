@@ -132,11 +132,12 @@ export const generateContentTask = task({
       }
       anthropicCost = captionResult.cost.usd
 
-      // Step 6: Create Post records
+      // Step 6: Create Post records — CTA is appended deterministically here, never touched by the model
       const postCount = await createPostsFromCaptions(
         captionResult.posts,
         contentRunId,
-        client.id
+        client.id,
+        client.mainCta
       )
 
       const pipelineDurationSeconds = Math.round((Date.now() - pipelineStart) / 1000)

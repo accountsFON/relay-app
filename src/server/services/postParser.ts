@@ -4,13 +4,16 @@ import type { ParsedPost } from '@/server/services/captionGenerator'
 export async function createPostsFromCaptions(
   posts: ParsedPost[],
   contentRunId: string,
-  clientId: string
+  clientId: string,
+  mainCta: string | null
 ): Promise<number> {
+  const ctaSuffix = mainCta ? `\n\n${mainCta}` : ''
+
   const data = posts.map((p) => ({
     contentRunId,
     clientId,
     postDate: parsePostDate(p.date),
-    caption: p.caption,
+    caption: `${p.caption.trimEnd()}${ctaSuffix}`,
     hashtags: p.hashtags,
     graphicHook: p.graphicHook || null,
     designerNotes: p.designerNotes || null,

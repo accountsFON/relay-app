@@ -8,7 +8,6 @@ export type ParsedPost = {
   postNumber: number
   date: string
   caption: string
-  cta: string
   hashtags: string[]
   graphicHook: string
   designerNotes: string
@@ -20,7 +19,6 @@ export type CaptionResult = {
 }
 
 type CaptionClient = {
-  mainCta?: string | null
   postLength?: string | null
 }
 
@@ -128,7 +126,6 @@ function tryParsePostsJSON(text: string): ParsedPost[] | null {
       postNumber: typeof p.postNumber === 'number' ? p.postNumber : i + 1,
       date: String(p.date ?? ''),
       caption: String(p.caption ?? ''),
-      cta: String(p.cta ?? ''),
       hashtags: Array.isArray(p.hashtags) ? p.hashtags.map(String) : [],
       graphicHook: String(p.graphicHook ?? ''),
       designerNotes: String(p.designerNotes ?? ''),
