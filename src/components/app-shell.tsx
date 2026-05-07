@@ -5,16 +5,28 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { LayoutDashboard, Users, Settings, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const navItems = [
+const baseNavItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Clients', href: '/clients', icon: Users },
   { label: 'Settings', href: '/settings/org', icon: Settings },
 ]
+const adminNavItem = {
+  label: 'Admin',
+  href: '/admin/users',
+  icon: ShieldCheck,
+}
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  showAdmin = false,
+}: {
+  children: React.ReactNode
+  showAdmin?: boolean
+}) {
+  const navItems = showAdmin ? [...baseNavItems, adminNavItem] : baseNavItems
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
 

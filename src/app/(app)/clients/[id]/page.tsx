@@ -4,7 +4,7 @@ import {
   requireClientViewer,
   canEditClients,
 } from '@/server/middleware/permissions'
-import { findClientById } from '@/server/repositories/clients'
+import { findClientForUser } from '@/server/repositories/clients'
 import { listRunsByClient } from '@/server/repositories/contentRuns'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { Button } from '@/components/ui/button'
@@ -23,11 +23,11 @@ export default async function ClientDetailPage({
   const ctx = await requireClientViewer()
   const { id } = await params
 
-  const client = await findClientById(id, ctx.organizationDbId)
+  const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
   const runs = await listRunsByClient(id)
-  const canEdit = canEditClients(ctx.role)
+  const canEdit = canEditClients(ctx)
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">

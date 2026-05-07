@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireClientViewer } from '@/server/middleware/permissions'
-import { findClientById } from '@/server/repositories/clients'
+import { findClientForUser } from '@/server/repositories/clients'
 import { findContentRun } from '@/server/repositories/contentRuns'
 import { PostCard } from './post-card'
 import { ExportButton } from './export-button'
@@ -17,7 +17,7 @@ export default async function RunDetailPage({
   const ctx = await requireClientViewer()
   const { id, runId } = await params
 
-  const client = await findClientById(id, ctx.organizationDbId)
+  const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
   const run = await findContentRun(runId)

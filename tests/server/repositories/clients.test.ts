@@ -25,6 +25,7 @@ const mockClient: Client = {
   id: 'cuid_client_1',
   organizationId: 'cuid_org_1',
   assignedAmId: null,
+  assignedDesignerId: null,
   name: 'Akkoo Coffee',
   businessSummary: 'Specialty coffee.',
   brandVoice: 'Warm',

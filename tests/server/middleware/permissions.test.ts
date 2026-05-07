@@ -1,42 +1,56 @@
 import { describe, it, expect } from 'vitest'
-import type { UserRole } from '@/lib/types'
+import type { OrgContext, UserRole } from '@/lib/types'
 import {
   canEditClients,
   canViewClients,
 } from '@/server/middleware/permissions'
 
+function makeCtx(role: UserRole): OrgContext {
+  return {
+    userId: 'u_test',
+    orgId: 'o_test',
+    role,
+    plan: 'smb',
+    organizationDbId: 'org_db',
+    userDbId: 'user_db',
+    linkedClientId: null,
+    permissionOverrides: null,
+    roleDefaults: {},
+  }
+}
+
 describe('canEditClients', () => {
   it('returns true for admin', () => {
-    expect(canEditClients('admin' as UserRole)).toBe(true)
+    expect(canEditClients(makeCtx('admin'))).toBe(true)
   })
 
   it('returns true for account_manager', () => {
-    expect(canEditClients('account_manager' as UserRole)).toBe(true)
+    expect(canEditClients(makeCtx('account_manager'))).toBe(true)
   })
 
   it('returns false for designer', () => {
-    expect(canEditClients('designer' as UserRole)).toBe(false)
+    expect(canEditClients(makeCtx('designer'))).toBe(false)
   })
 
   it('returns false for client', () => {
-    expect(canEditClients('client' as UserRole)).toBe(false)
+    expect(canEditClients(makeCtx('client'))).toBe(false)
   })
 })
 
 describe('canViewClients', () => {
   it('returns true for admin', () => {
-    expect(canViewClients('admin' as UserRole)).toBe(true)
+    expect(canViewClients(makeCtx('admin'))).toBe(true)
   })
 
   it('returns true for account_manager', () => {
-    expect(canViewClients('account_manager' as UserRole)).toBe(true)
+    expect(canViewClients(makeCtx('account_manager'))).toBe(true)
   })
 
   it('returns true for designer', () => {
-    expect(canViewClients('designer' as UserRole)).toBe(true)
+    expect(canViewClients(makeCtx('designer'))).toBe(true)
   })
 
-  it('returns false for client', () => {
-    expect(canViewClients('client' as UserRole)).toBe(false)
+  it('returns true for client', () => {
+    expect(canViewClients(makeCtx('client'))).toBe(true)
   })
 })

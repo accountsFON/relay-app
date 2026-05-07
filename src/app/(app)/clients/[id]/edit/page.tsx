@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { requireClientEditor } from '@/server/middleware/permissions'
-import { findClientById } from '@/server/repositories/clients'
+import { findClientForUser } from '@/server/repositories/clients'
 import { EditClientForm } from './edit-form'
 import { PageHeader } from '@/components/page-header'
 
@@ -12,7 +12,7 @@ export default async function EditClientPage({
   const ctx = await requireClientEditor()
   const { id } = await params
 
-  const client = await findClientById(id, ctx.organizationDbId)
+  const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
   const defaultValues = {

@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { findUserByClerkId } from '@/server/repositories/users'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
+import { can } from '@/server/auth/permissions'
+import { getOrgContext } from '@/server/middleware/auth'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const { userId } = await auth()
@@ -43,8 +45,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect('/onboarding')
   }
 
+  const ctx = await getOrgContext()
+  const showAdmin = ctx ? can(ctx, 'admin.portal') : false
+
   return (
-    <AppShell>
+    <AppShell showAdmin={showAdmin}>
       {children}
     </AppShell>
   )
