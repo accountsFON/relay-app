@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireClientEditor } from '@/server/middleware/permissions'
-import { findClientById } from '@/server/repositories/clients'
+import { findClientForUser } from '@/server/repositories/clients'
 import {
   createContentRun,
   findExistingRun,
@@ -18,6 +18,11 @@ export async function deleteContentRun(runId: string) {
   })
 
   if (!run || run.client.organizationId !== ctx.organizationDbId) {
+    throw new Error('Run not found')
+  }
+
+  const scoped = await findClientForUser(ctx, run.client.id)
+  if (!scoped) {
     throw new Error('Run not found')
   }
 
@@ -38,7 +43,7 @@ export async function regenerateContentRun(
 ) {
   const ctx = await requireClientEditor()
 
-  const client = await findClientById(clientId, ctx.organizationDbId)
+  const client = await findClientForUser(ctx, clientId)
   if (!client) throw new Error('Client not found')
 
   const existing = await db.contentRun.findMany({
@@ -86,7 +91,7 @@ export async function bulkGenerateContent(
   const results: { clientId: string; clientName: string; contentRunId?: string; error?: string }[] = []
 
   for (const clientId of clientIds) {
-    const client = await findClientById(clientId, ctx.organizationDbId)
+    const client = await findClientForUser(ctx, clientId)
     if (!client) {
       results.push({ clientId, clientName: 'Unknown', error: 'Client not found' })
       continue

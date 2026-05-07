@@ -1,7 +1,7 @@
 'use server'
 
 import { requireClientEditor } from '@/server/middleware/permissions'
-import { findClientById } from '@/server/repositories/clients'
+import { findClientForUser } from '@/server/repositories/clients'
 import {
   createContentRun,
   findExistingRun,
@@ -12,7 +12,7 @@ import { db } from '@/db/client'
 export async function triggerGeneration(clientId: string, targetMonth: string, reCrawl?: boolean) {
   const ctx = await requireClientEditor()
 
-  const client = await findClientById(clientId, ctx.organizationDbId)
+  const client = await findClientForUser(ctx, clientId)
   if (!client) throw new Error('Client not found')
 
   const existing = await findExistingRun(clientId, targetMonth)
@@ -50,7 +50,7 @@ export async function triggerGeneration(clientId: string, targetMonth: string, r
 
 export async function getClientCrawlInfo(clientId: string) {
   const ctx = await requireClientEditor()
-  const client = await findClientById(clientId, ctx.organizationDbId)
+  const client = await findClientForUser(ctx, clientId)
   if (!client) return null
 
   return {

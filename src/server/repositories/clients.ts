@@ -1,12 +1,21 @@
 import { db } from '@/db/client'
-import type { ClientStatus } from '@/lib/types'
+import type { ClientStatus, OrgContext } from '@/lib/types'
+import { getClientScopeFilter } from '@/server/auth/scope'
 
+/**
+ * Admin-only: returns a client by id within the org, ignoring assignment scoping.
+ * Use this in /admin/* surfaces only. Everywhere else, prefer findClientForUser.
+ */
 export async function findClientById(id: string, organizationId: string) {
   return db.client.findFirst({
     where: { id, organizationId },
   })
 }
 
+/**
+ * Admin-only: lists every client in the org. Use only in admin portal.
+ * Everywhere else, prefer listClientsForUser.
+ */
 export async function listClientsByOrg(
   organizationId: string,
   filters?: { status?: ClientStatus }
@@ -14,6 +23,42 @@ export async function listClientsByOrg(
   return db.client.findMany({
     where: {
       organizationId,
+      ...(filters?.status ? { status: filters.status } : {}),
+    },
+    orderBy: { name: 'asc' },
+  })
+}
+
+/**
+ * Returns the single client by id, scoped both to the user's org AND their
+ * assignment scope. AMs only see clients where they're assigned AM; designers
+ * only see clients where they're assigned designer; clients only see their
+ * linked client. Returns null if the client doesn't exist or the user lacks
+ * scope (caller should call notFound() on null to avoid existence leaks).
+ */
+export async function findClientForUser(ctx: OrgContext, id: string) {
+  return db.client.findFirst({
+    where: {
+      id,
+      organizationId: ctx.organizationDbId,
+      ...getClientScopeFilter(ctx),
+    },
+  })
+}
+
+/**
+ * Lists all clients the user is allowed to see, ordered by name.
+ * Admin: all org clients. AM/Designer: only their assignments. Client: only
+ * their single linked client (or none if unlinked).
+ */
+export async function listClientsForUser(
+  ctx: OrgContext,
+  filters?: { status?: ClientStatus },
+) {
+  return db.client.findMany({
+    where: {
+      organizationId: ctx.organizationDbId,
+      ...getClientScopeFilter(ctx),
       ...(filters?.status ? { status: filters.status } : {}),
     },
     orderBy: { name: 'asc' },

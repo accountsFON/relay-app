@@ -4,7 +4,7 @@ import {
   requireClientViewer,
   canEditClients,
 } from '@/server/middleware/permissions'
-import { findClientById } from '@/server/repositories/clients'
+import { findClientForUser } from '@/server/repositories/clients'
 import { listRunsByClient } from '@/server/repositories/contentRuns'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +27,7 @@ export default async function ClientDetailPage({
   const ctx = await requireClientViewer()
   const { id } = await params
 
-  const client = await findClientById(id, ctx.organizationDbId)
+  const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
   const runs = await listRunsByClient(id)

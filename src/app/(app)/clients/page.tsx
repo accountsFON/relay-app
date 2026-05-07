@@ -3,13 +3,13 @@ import {
   requireClientViewer,
   canEditClients,
 } from '@/server/middleware/permissions'
-import { listClientsByOrg } from '@/server/repositories/clients'
+import { listClientsForUser } from '@/server/repositories/clients'
 import { BulkGenerateList } from './bulk-generate'
 import { Button } from '@/components/ui/button'
 
 export default async function ClientsPage() {
   const ctx = await requireClientViewer()
-  const clients = await listClientsByOrg(ctx.organizationDbId)
+  const clients = await listClientsForUser(ctx)
 
   const canCreate = canEditClients(ctx)
 
