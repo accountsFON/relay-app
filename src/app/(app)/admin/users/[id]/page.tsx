@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AssignmentToggle } from './assignment-toggle'
 import { PermissionEditor } from './permission-editor'
+import { RoleChanger } from './role-changer'
 import {
   can,
   PERMISSION_KEYS,
@@ -90,6 +91,17 @@ export default async function AdminUserDetailPage({
           )}
         </p>
       </div>
+
+      <Card className="mb-6 p-4">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+          Role
+        </h2>
+        <RoleChanger
+          userId={user.id}
+          currentRole={user.role}
+          isSelf={user.id === ctx.userDbId}
+        />
+      </Card>
 
       {editableSlot === null ? (
         <Card className="p-6">
