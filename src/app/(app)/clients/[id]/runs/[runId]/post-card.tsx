@@ -3,7 +3,10 @@
 import { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Badge, StatusDot } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { updatePostAction, updatePostStatusAction } from './actions'
 
 type Post = {
@@ -18,11 +21,11 @@ type Post = {
 
 const STATUS_OPTIONS = ['draft', 'approved', 'scheduled'] as const
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  am_review: 'bg-amber-100 text-amber-700',
-  approved: 'bg-green-100 text-green-700',
-  scheduled: 'bg-blue-100 text-blue-700',
+const STATUS_VARIANT: Record<string, 'default' | 'primary' | 'accent' | 'secondary'> = {
+  draft: 'secondary',
+  am_review: 'default',
+  approved: 'primary',
+  scheduled: 'accent',
 }
 
 export function PostCard({ post }: { post: Post }) {
@@ -68,19 +71,20 @@ export function PostCard({ post }: { post: Post }) {
   }
 
   return (
-    <Card className="p-5">
-      <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-center sm:justify-between">
+    <Card>
+      <div className="px-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-foreground">{dateLabel}</span>
-          <Badge className={STATUS_COLORS[status] ?? STATUS_COLORS.draft}>
+          <span className="text-[15px] font-semibold text-foreground">{dateLabel}</span>
+          <Badge variant={STATUS_VARIANT[status] ?? 'secondary'}>
+            <StatusDot status={status === 'approved' ? 'complete' : status === 'scheduled' ? 'active' : 'queued'} />
             {status}
           </Badge>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={status}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="text-xs border border-border rounded px-2 py-1 bg-background"
+            className="h-8 rounded-full border border-input bg-card px-3 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
@@ -88,91 +92,101 @@ export function PostCard({ post }: { post: Post }) {
               </option>
             ))}
           </select>
-          <Button variant="outline" size="sm" onClick={handleCopy}>
-            {copied ? 'Copied!' : 'Copy'}
+          <Button variant="ghost" size="sm" onClick={handleCopy}>
+            {copied ? 'Copied' : 'Copy'}
           </Button>
           {!isEditing && (
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+            <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
               Edit
             </Button>
           )}
         </div>
       </div>
 
-      {isEditing ? (
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Caption</label>
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              rows={6}
-              className="w-full border rounded px-3 py-2 text-sm mt-1"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Hashtags</label>
-            <input
-              value={hashtags}
-              onChange={(e) => setHashtags(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm mt-1"
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Graphic Hook</label>
-              <input
-                value={graphicHook}
-                onChange={(e) => setGraphicHook(e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm mt-1"
+      <div className="px-5">
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor={`caption-${post.id}`}>Caption</Label>
+              <Textarea
+                id={`caption-${post.id}`}
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                rows={6}
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Designer Notes</label>
-              <input
-                value={designerNotes}
-                onChange={(e) => setDesignerNotes(e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm mt-1"
+            <div className="space-y-2">
+              <Label htmlFor={`hashtags-${post.id}`}>Hashtags</Label>
+              <Input
+                id={`hashtags-${post.id}`}
+                value={hashtags}
+                onChange={(e) => setHashtags(e.target.value)}
               />
             </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor={`hook-${post.id}`}>Graphic hook</Label>
+                <Input
+                  id={`hook-${post.id}`}
+                  value={graphicHook}
+                  onChange={(e) => setGraphicHook(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`notes-${post.id}`}>Designer notes</Label>
+                <Input
+                  id={`notes-${post.id}`}
+                  value={designerNotes}
+                  onChange={(e) => setDesignerNotes(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="accent" size="sm" onClick={handleSave} disabled={isPending}>
+                {isPending ? 'Saving…' : 'Save'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCaption(post.caption)
+                  setHashtags(post.hashtags.join(' '))
+                  setGraphicHook(post.graphicHook ?? '')
+                  setDesignerNotes(post.designerNotes ?? '')
+                  setIsEditing(false)
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={handleSave} disabled={isPending}>
-              {isPending ? 'Saving...' : 'Save'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setCaption(post.caption)
-                setHashtags(post.hashtags.join(' '))
-                setGraphicHook(post.graphicHook ?? '')
-                setDesignerNotes(post.designerNotes ?? '')
-                setIsEditing(false)
-              }}
-            >
-              Cancel
-            </Button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-[15px] text-foreground whitespace-pre-line leading-relaxed">
+              {caption}
+            </p>
+            {post.hashtags.length > 0 && (
+              <p className="text-[14px] text-orange">{post.hashtags.join(' ')}</p>
+            )}
+            {post.graphicHook && (
+              <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
+                <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
+                  Graphic hook
+                </p>
+                <p className="text-[14px] text-foreground mt-1">{post.graphicHook}</p>
+              </div>
+            )}
+            {post.designerNotes && (
+              <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
+                <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
+                  Designer notes
+                </p>
+                <p className="text-[14px] text-foreground mt-1">{post.designerNotes}</p>
+              </div>
+            )}
           </div>
-        </div>
-      ) : (
-        <div>
-          <p className="text-sm text-foreground whitespace-pre-line mb-3">
-            {caption}
-          </p>
-          <p className="text-sm text-blue-600 mb-3">{post.hashtags.join(' ')}</p>
-          {post.graphicHook && (
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium">Graphic Hook:</span> {post.graphicHook}
-            </p>
-          )}
-          {post.designerNotes && (
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium">Designer Notes:</span> {post.designerNotes}
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   )
 }

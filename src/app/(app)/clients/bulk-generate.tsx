@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge, StatusDot } from '@/components/ui/badge'
+import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
 import { bulkGenerateContent } from './run-actions'
 import Link from 'next/link'
 
@@ -12,6 +13,7 @@ type Client = {
   name: string
   status: string
   industry: string | null
+  location: string | null
 }
 
 function getNextMonth(): string {
@@ -64,31 +66,32 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
   }
 
   return (
-    <div>
+    <div className="space-y-4">
       {selected.size > 0 && (
-        <Card className="p-4 mb-4 border-primary/20 bg-primary/5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-medium text-foreground">
+        <Card className="bg-cream-warm">
+          <div className="px-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[15px] font-semibold text-foreground">
               {selected.size} client{selected.size > 1 ? 's' : ''} selected
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="month"
                 value={targetMonth}
                 onChange={(e) => setTargetMonth(e.target.value)}
-                className="border border-border rounded px-2 py-1 text-sm bg-background"
+                className="h-10 rounded-xl border border-input bg-card px-3 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
               />
               <Button
+                variant="accent"
                 size="sm"
                 onClick={handleBulkGenerate}
                 disabled={isPending}
               >
                 {isPending
-                  ? 'Generating...'
+                  ? 'Generating…'
                   : `Generate ${formatMonth(targetMonth)} for ${selected.size}`}
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setSelected(new Set())}
               >
@@ -100,75 +103,89 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
       )}
 
       {results && (
-        <Card className="p-4 mb-4">
-          <h3 className="text-sm font-semibold mb-2">Bulk Generation Results</h3>
-          <div className="space-y-1">
-            {results.map((r) => (
-              <div key={r.clientId} className="flex items-center justify-between text-sm">
-                <span>{r.clientName}</span>
-                {r.error ? (
-                  <Badge className="bg-red-100 text-red-700">{r.error}</Badge>
-                ) : (
-                  <Badge className="bg-green-100 text-green-700">Queued</Badge>
-                )}
-              </div>
-            ))}
+        <Card>
+          <div className="px-5">
+            <h3 className="text-[15px] font-semibold mb-3">Bulk generation results</h3>
+            <div className="space-y-2">
+              {results.map((r) => (
+                <div key={r.clientId} className="flex items-center justify-between text-[14px]">
+                  <span>{r.clientName}</span>
+                  {r.error ? (
+                    <Badge variant="destructive">{r.error}</Badge>
+                  ) : (
+                    <Badge variant="primary">Queued</Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-4"
+              onClick={() => setResults(null)}
+            >
+              Dismiss
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-3"
-            onClick={() => setResults(null)}
-          >
-            Dismiss
-          </Button>
         </Card>
       )}
 
-      <div className="mb-3 flex items-center gap-2">
-        <button
-          onClick={selectAll}
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          {selected.size === activeClients.length ? 'Deselect all' : 'Select all active'}
-        </button>
-      </div>
-
-      <div className="space-y-2">
-        {clients.map((client) => (
-          <div
-            key={client.id}
-            className="flex items-center gap-3"
+      {activeClients.length > 0 && (
+        <div className="flex items-center gap-2 px-1">
+          <button
+            onClick={selectAll}
+            className="text-[13px] text-muted-foreground hover:text-foreground transition-colors"
           >
-            {client.status === 'active' && (
-              <input
-                type="checkbox"
-                checked={selected.has(client.id)}
-                onChange={() => toggleClient(client.id)}
-                className="h-4 w-4 rounded border-border shrink-0"
-              />
-            )}
-            {client.status !== 'active' && <div className="w-4 shrink-0" />}
-            <Link
-              href={`/clients/${client.id}`}
-              className="flex-1 flex items-center justify-between rounded-lg border border-border bg-card p-3 sm:p-4 hover:bg-muted/50 transition-colors"
-            >
-              <div className="min-w-0">
-                <p className="font-medium text-foreground truncate">{client.name}</p>
-                {client.industry && (
-                  <p className="text-sm text-muted-foreground">{client.industry}</p>
+            {selected.size === activeClients.length ? 'Deselect all' : 'Select all active'}
+          </button>
+        </div>
+      )}
+
+      <DataRowGroup>
+        {clients.map((client) => {
+          const subtitle = [client.industry, client.location].filter(Boolean).join(' · ') || 'No details set'
+          const isSelectable = client.status === 'active'
+          const isSelected = selected.has(client.id)
+
+          return (
+            <div key={client.id} className="flex items-center">
+              <div className="pl-5 shrink-0">
+                {isSelectable ? (
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleClient(client.id)}
+                    className="size-4 rounded border-input accent-orange"
+                    aria-label={`Select ${client.name}`}
+                  />
+                ) : (
+                  <div className="size-4" />
                 )}
               </div>
-              <Badge
-                variant={client.status === 'active' ? 'default' : 'secondary'}
-                className="shrink-0 ml-2"
+              <Link
+                href={`/clients/${client.id}`}
+                className="flex-1 flex items-center gap-4 px-4 py-4 transition-colors hover:bg-cream-warm/60"
               >
-                {client.status}
-              </Badge>
-            </Link>
-          </div>
-        ))}
-      </div>
+                <RowAvatar initials={client.name.slice(0, 2)} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <StatusDot status={isSelectable ? 'active' : 'inactive'} />
+                    <span className="text-[15px] font-semibold text-foreground truncate">
+                      {client.name}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 text-[13px] text-muted-foreground truncate">
+                    {subtitle}
+                  </div>
+                </div>
+                {!isSelectable && (
+                  <Badge variant="secondary">{client.status}</Badge>
+                )}
+              </Link>
+            </div>
+          )
+        })}
+      </DataRowGroup>
     </div>
   )
 }

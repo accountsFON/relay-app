@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
@@ -27,30 +28,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-dvh flex-col md:flex-row bg-background">
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          className="fixed inset-0 z-40 bg-ink/40 md:hidden"
           onClick={closeSidebar}
         />
       )}
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card transition-transform duration-200 md:static md:z-auto md:w-56 md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-cream-warm transition-transform duration-200 md:static md:z-auto md:w-60 md:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex h-14 items-center justify-between border-b border-border px-4">
-          <Link href="/dashboard" className="text-lg font-bold text-foreground">
-            Relay
+        <div className="flex h-16 items-center justify-between px-5">
+          <Link href="/dashboard" className="flex items-center" aria-label="Relay home">
+            <Image
+              src="/brand/logo-no-padding-dark-text.svg"
+              alt="Relay"
+              width={96}
+              height={28}
+              priority
+              className="h-7 w-auto"
+            />
           </Link>
           <button
             onClick={closeSidebar}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted md:hidden"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-cream-80 md:hidden"
+            aria-label="Close menu"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname.startsWith(item.href)
@@ -59,33 +68,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-full px-3 py-2.5 text-[14px] font-medium transition-colors',
                   isActive
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-ink-50 hover:bg-cream-80 hover:text-foreground'
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-orange')} />
                 {item.label}
               </Link>
             )
           })}
         </nav>
 
-        <div className="border-t border-border p-4">
+        <div className="px-5 py-4 flex items-center gap-3">
           <UserButton />
+          <span className="text-[12px] text-muted-foreground italic" style={{ fontFamily: 'var(--font-serif)' }}>
+            beta
+          </span>
         </div>
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4 md:hidden">
+        <header className="flex h-14 shrink-0 items-center gap-3 bg-cream-warm px-4 md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-cream-80"
+            aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-lg font-bold text-foreground">Relay</span>
+          <Image
+            src="/brand/logo-no-padding-dark-text.svg"
+            alt="Relay"
+            width={80}
+            height={24}
+            priority
+            className="h-6 w-auto"
+          />
         </header>
 
         <main className="flex-1 overflow-y-auto">

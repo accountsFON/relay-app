@@ -1,5 +1,12 @@
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+/**
+ * PageHeader — Wise-style page title block.
+ * Optional circular back button above the title, big title, supporting copy.
+ * Action bar (chip row) sits in its own row below for reliable wrapping.
+ */
 export function PageHeader({
   title,
   description,
@@ -8,36 +15,33 @@ export function PageHeader({
   actions,
   className,
 }: {
-  title: string
-  description?: string
+  title: React.ReactNode
+  description?: React.ReactNode
   backHref?: string
   backLabel?: string
   actions?: React.ReactNode
   className?: string
 }) {
   return (
-    <div className={cn('space-y-1', className)}>
+    <div className={cn('space-y-5', className)}>
       {backHref && (
-        <a
+        <Link
           href={backHref}
-          className="inline-block text-sm text-muted-foreground hover:text-foreground mb-2"
+          className="inline-flex items-center justify-center size-10 rounded-full bg-cream-warm text-foreground transition-colors hover:bg-cream-80"
+          aria-label={backLabel ?? 'Back'}
         >
-          &larr; {backLabel ?? 'Back'}
-        </a>
+          <ArrowLeft className="size-4" />
+        </Link>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl truncate">
-            {title}
-          </h1>
-          {description && (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          )}
-        </div>
-        {actions && (
-          <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>
+      <div className="space-y-2">
+        <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-[-0.5px] leading-tight">
+          {title}
+        </h1>
+        {description && (
+          <p className="text-[15px] text-muted-foreground max-w-2xl">{description}</p>
         )}
       </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   )
 }

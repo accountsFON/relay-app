@@ -6,6 +6,8 @@ import {
 import { listClientsByOrg } from '@/server/repositories/clients'
 import { BulkGenerateList } from './bulk-generate'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/page-header'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function ClientsPage() {
   const ctx = await requireClientViewer()
@@ -14,38 +16,44 @@ export default async function ClientsPage() {
   const canCreate = canEditClients(ctx.role)
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Clients</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {clients.length} {clients.length === 1 ? 'client' : 'clients'}
-          </p>
-        </div>
-        {canCreate && (
-          <Link href="/clients/new">
-            <Button>New client</Button>
-          </Link>
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+      <PageHeader
+        title="Clients"
+        description={`${clients.length} ${clients.length === 1 ? 'client' : 'clients'} in this workspace.`}
+        actions={
+          canCreate && (
+            <Link href="/clients/new">
+              <Button variant="accent">New client</Button>
+            </Link>
+          )
+        }
+      />
+
+      <div className="mt-10">
+        {clients.length === 0 ? (
+          <EmptyState
+            title="No clients here yet."
+            description="Add a brand and Relay can start drafting their content."
+            action={
+              canCreate && (
+                <Link href="/clients/new">
+                  <Button variant="accent" size="lg">Add your first client</Button>
+                </Link>
+              )
+            }
+          />
+        ) : (
+          <BulkGenerateList
+            clients={clients.map((c) => ({
+              id: c.id,
+              name: c.name,
+              status: c.status,
+              industry: c.industry,
+              location: c.location,
+            }))}
+          />
         )}
       </div>
-
-      {clients.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-card p-8 sm:p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            No clients yet.
-            {canCreate && ' Click "New client" to add your first one.'}
-          </p>
-        </div>
-      ) : (
-        <BulkGenerateList
-          clients={clients.map((c) => ({
-            id: c.id,
-            name: c.name,
-            status: c.status,
-            industry: c.industry,
-          }))}
-        />
-      )}
     </div>
   )
 }

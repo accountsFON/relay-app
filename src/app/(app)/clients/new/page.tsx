@@ -1,23 +1,21 @@
-import Link from 'next/link'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { CreateClientForm } from './create-form'
+import { PageHeader } from '@/components/page-header'
 
 export default async function NewClientPage() {
   await requireClientEditor()
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="mb-6 sm:mb-8">
-        <Link href="/clients" className="text-sm text-muted-foreground hover:text-foreground">
-          &larr; Back to clients
-        </Link>
-        <h1 className="mt-2 text-xl font-bold text-foreground sm:text-2xl">New client</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Add a new brand to the system. You can always edit these fields later.
-        </p>
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-3xl">
+      <PageHeader
+        title="New client"
+        description="Add a new brand to the system. You can always edit these fields later."
+        backHref="/clients"
+        backLabel="Back to clients"
+      />
+      <div className="mt-10">
+        <CreateClientForm />
       </div>
-
-      <CreateClientForm />
     </div>
   )
 }
