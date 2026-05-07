@@ -6,7 +6,16 @@ import {
   assignClientAm,
   assignClientDesigner,
 } from '@/server/repositories/clients'
-import { updateUserRole, findUserInOrg } from '@/server/repositories/users'
+import {
+  updateUserRole,
+  findUserInOrg,
+  updateUserPermissionOverrides,
+} from '@/server/repositories/users'
+import { recordPermissionAudits } from '@/server/repositories/permissionAuditLogs'
+import {
+  PERMISSION_KEYS,
+  type PermissionKey,
+} from '@/server/auth/permissions'
 import type { UserRole } from '@/lib/types'
 
 export async function setClientAssignment(input: {
@@ -44,4 +53,63 @@ export async function changeUserRole(userId: string, role: UserRole) {
 
   revalidatePath(`/admin/users/${userId}`)
   revalidatePath('/admin/users')
+}
+
+/**
+ * Replaces the user's permissionOverrides map with the desired one.
+ * Pass `null` for a key to clear that override (revert to role default).
+ * Audits every key whose effective override changed.
+ */
+export async function updateUserPermissions(input: {
+  userId: string
+  overrides: Partial<Record<PermissionKey, boolean | null>>
+}) {
+  const ctx = await requireAdminPortal()
+
+  const target = await findUserInOrg(input.userId, ctx.organizationDbId)
+  if (!target) throw new Error('User not found')
+
+  const current =
+    (target.permissionOverrides as Record<string, boolean> | null) ?? {}
+
+  // Build the new override map: null entries clear, defined entries set,
+  // missing keys preserve the existing value.
+  const next: Record<string, boolean> = {}
+  for (const key of PERMISSION_KEYS) {
+    const incoming = input.overrides[key]
+    if (incoming === null) continue
+    if (incoming === undefined) {
+      if (key in current) next[key] = current[key]
+      continue
+    }
+    next[key] = incoming
+  }
+
+  // Diff for audit
+  const audits = []
+  for (const key of PERMISSION_KEYS) {
+    const before = key in current ? current[key] : null
+    const after = key in next ? next[key] : null
+    if (before === after) continue
+    audits.push({
+      organizationId: ctx.organizationDbId,
+      actorUserId: ctx.userDbId,
+      targetUserId: input.userId,
+      targetRole: null,
+      permissionKey: key,
+      fromValue: before,
+      toValue: after,
+    })
+  }
+
+  const finalOverrides = Object.keys(next).length > 0 ? next : null
+
+  await updateUserPermissionOverrides(
+    input.userId,
+    ctx.organizationDbId,
+    finalOverrides,
+  )
+  await recordPermissionAudits(audits)
+
+  revalidatePath(`/admin/users/${input.userId}`)
 }

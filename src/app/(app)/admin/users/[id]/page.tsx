@@ -6,6 +6,12 @@ import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AssignmentToggle } from './assignment-toggle'
+import { PermissionEditor } from './permission-editor'
+import {
+  can,
+  PERMISSION_KEYS,
+  type PermissionKey,
+} from '@/server/auth/permissions'
 import type { UserRole } from '@/lib/types'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -39,6 +45,22 @@ export default async function AdminUserDetailPage({
     user.role === 'designer'
       ? user.designedClients.length
       : user.assignedClients.length
+
+  // Compute the merged (system + org role default) value for each permission
+  // — this is the "default" the editor displays alongside the override radios.
+  const defaultsByKey: Partial<Record<PermissionKey, boolean>> = {}
+  for (const key of PERMISSION_KEYS) {
+    defaultsByKey[key] = can(
+      {
+        role: user.role,
+        permissionOverrides: null,
+        roleDefaults: ctx.roleDefaults,
+      },
+      key,
+    )
+  }
+  const initialOverrides =
+    (user.permissionOverrides as Partial<Record<PermissionKey, boolean>>) ?? {}
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -147,6 +169,14 @@ export default async function AdminUserDetailPage({
           )}
         </Card>
       )}
+
+      <Card className="mt-8">
+        <PermissionEditor
+          userId={user.id}
+          defaultsByKey={defaultsByKey}
+          initialOverrides={initialOverrides}
+        />
+      </Card>
     </div>
   )
 }
