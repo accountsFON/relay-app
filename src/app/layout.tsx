@@ -1,14 +1,11 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-import { Inter } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
-
 export const metadata: Metadata = {
   title: 'Relay',
-  description: 'Social media content management for agencies and businesses',
+  description: 'A marketing tool for people who ship.',
 }
 
 export default function RootLayout({
@@ -19,7 +16,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={inter.className}>{children}</body>
+        <body>{children}</body>
       </html>
     </ClerkProvider>
   )
