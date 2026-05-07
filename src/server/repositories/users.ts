@@ -4,11 +4,6 @@ import type { UserRole } from '@/lib/types'
 export async function findUserByClerkId(clerkUserId: string) {
   return db.user.findUnique({
     where: { clerkUserId },
-    include: {
-      organization: {
-        include: { roleDefaults: true },
-      },
-    },
   })
 }
 

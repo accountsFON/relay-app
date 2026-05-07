@@ -156,10 +156,14 @@ export async function assignClientAm(
   organizationId: string,
   amUserId: string | null,
 ) {
-  return db.client.updateMany({
+  const result = await db.client.updateMany({
     where: { id, organizationId },
     data: { assignedAmId: amUserId },
   })
+  if (result.count === 0) {
+    throw new Error('Client not found in this organization')
+  }
+  return result
 }
 
 /** Admin-only: set or clear the Designer assignment on a client. Pass null to unassign. */
@@ -168,8 +172,12 @@ export async function assignClientDesigner(
   organizationId: string,
   designerUserId: string | null,
 ) {
-  return db.client.updateMany({
+  const result = await db.client.updateMany({
     where: { id, organizationId },
     data: { assignedDesignerId: designerUserId },
   })
+  if (result.count === 0) {
+    throw new Error('Client not found in this organization')
+  }
+  return result
 }

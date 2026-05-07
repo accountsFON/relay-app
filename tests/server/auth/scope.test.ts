@@ -33,9 +33,9 @@ describe('getClientScopeFilter()', () => {
     expect(filter).toEqual({ assignedDesignerId: 'user_db_42' })
   })
 
-  it('client without linkedClientId is locked out (impossible id)', () => {
+  it('client without linkedClientId is locked out (impossible filter)', () => {
     const filter = getClientScopeFilter(makeCtx('client'))
-    expect(filter).toEqual({ id: '__none__' })
+    expect(filter).toEqual({ id: { in: [] } })
   })
 
   it('client with linkedClientId sees only their record', () => {
@@ -43,5 +43,10 @@ describe('getClientScopeFilter()', () => {
       makeCtx('client', { linkedClientId: 'client_db_99' }),
     )
     expect(filter).toEqual({ id: 'client_db_99' })
+  })
+
+  it('platformOwner returns empty filter regardless of role', () => {
+    const filter = getClientScopeFilter(makeCtx('designer', { platformOwner: true }))
+    expect(filter).toEqual({})
   })
 })

@@ -2,21 +2,18 @@ import type { ReactNode } from 'react'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { findUserByClerkId } from '@/server/repositories/users'
+import { getOrgContext } from '@/server/middleware/auth'
+import { can } from '@/server/auth/permissions'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
-import { can } from '@/server/auth/permissions'
-import { getOrgContext } from '@/server/middleware/auth'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const { userId } = await auth()
+  if (!userId) redirect('/sign-in')
 
-  if (!userId) {
-    redirect('/sign-in')
-  }
-
-  let dbUser
+  let ctx
   try {
-    dbUser = await findUserByClerkId(userId)
+    ctx = await getOrgContext()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown DB error'
     return (
@@ -41,16 +38,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!dbUser) {
-    redirect('/onboarding')
+  if (!ctx) {
+    // Distinguish "needs onboarding" (no DB user) from "no agency access".
+    const dbUser = await findUserByClerkId(userId)
+    if (!dbUser) redirect('/onboarding')
+    redirect('/no-access')
   }
 
-  const ctx = await getOrgContext()
-  const showAdmin = ctx ? can(ctx, 'admin.portal') : false
-
-  return (
-    <AppShell showAdmin={showAdmin}>
-      {children}
-    </AppShell>
-  )
+  const showAdmin = can(ctx, 'admin.portal')
+  return <AppShell showAdmin={showAdmin}>{children}</AppShell>
 }

@@ -132,12 +132,15 @@ export type PermissionResolutionContext = {
   role: UserRole
   permissionOverrides?: UserPermissionOverrides | null
   roleDefaults?: RoleDefaultsByRole | null
+  platformOwner?: boolean
 }
 
 export function can(
   ctx: PermissionResolutionContext,
   action: PermissionKey,
 ): boolean {
+  if (ctx.platformOwner === true) return true
+
   const userOverride = ctx.permissionOverrides?.[action]
   if (userOverride !== undefined) return userOverride
 
