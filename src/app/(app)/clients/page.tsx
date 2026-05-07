@@ -11,7 +11,7 @@ export default async function ClientsPage() {
   const ctx = await requireClientViewer()
   const clients = await listClientsByOrg(ctx.organizationDbId)
 
-  const canCreate = canEditClients(ctx.role)
+  const canCreate = canEditClients(ctx)
 
   return (
     <div className="p-4 md:p-8">

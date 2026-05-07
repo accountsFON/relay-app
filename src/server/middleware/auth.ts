@@ -1,6 +1,6 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { findUserByClerkId } from '@/server/repositories/users'
-import type { OrgContext } from '@/lib/types'
+import type { OrgContext, UserRole } from '@/lib/types'
 
 /**
  * Resolves the current Clerk session to a full OrgContext.
@@ -16,6 +16,14 @@ export async function getOrgContext(): Promise<OrgContext | null> {
   const dbUser = await findUserByClerkId(userId)
   if (!dbUser || !dbUser.organization) return null
 
+  const roleDefaults: Partial<
+    Record<UserRole, Partial<Record<string, boolean>>>
+  > = {}
+  for (const rd of dbUser.organization.roleDefaults) {
+    const bucket = (roleDefaults[rd.role] ??= {})
+    bucket[rd.permissionKey] = rd.allow
+  }
+
   return {
     userId,
     orgId: dbUser.organization.clerkOrgId,
@@ -23,6 +31,10 @@ export async function getOrgContext(): Promise<OrgContext | null> {
     plan: dbUser.organization.plan,
     organizationDbId: dbUser.organization.id,
     userDbId: dbUser.id,
+    linkedClientId: dbUser.linkedClientId,
+    permissionOverrides:
+      (dbUser.permissionOverrides as Record<string, boolean> | null) ?? null,
+    roleDefaults,
   }
 }
 

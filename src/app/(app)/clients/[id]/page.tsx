@@ -31,7 +31,7 @@ export default async function ClientDetailPage({
   if (!client) notFound()
 
   const runs = await listRunsByClient(id)
-  const canEdit = canEditClients(ctx.role)
+  const canEdit = canEditClients(ctx)
 
   return (
     <div className="p-4 md:p-8">

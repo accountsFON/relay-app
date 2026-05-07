@@ -1,29 +1,41 @@
-import type { UserRole } from '@/lib/types'
+import type { OrgContext } from '@/lib/types'
 import { requireOrgContext } from '@/server/middleware/auth'
+import {
+  can,
+  type PermissionKey,
+} from '@/server/auth/permissions'
 
-const EDITOR_ROLES: UserRole[] = ['admin', 'account_manager']
-const VIEWER_ROLES: UserRole[] = ['admin', 'account_manager', 'designer']
-
-export function canEditClients(role: UserRole): boolean {
-  return EDITOR_ROLES.includes(role)
-}
-
-export function canViewClients(role: UserRole): boolean {
-  return VIEWER_ROLES.includes(role)
-}
-
-export async function requireClientEditor() {
+/**
+ * Throws Unauthorized/Forbidden errors based on permission checks.
+ * Use in Server Actions and API routes.
+ */
+export async function requireCan(action: PermissionKey): Promise<OrgContext> {
   const ctx = await requireOrgContext()
-  if (!canEditClients(ctx.role)) {
-    throw new Error('Forbidden: client editor role required')
+  if (!can(ctx, action)) {
+    throw new Error(`Forbidden: missing permission '${action}'`)
   }
   return ctx
+}
+
+export async function requireAdminPortal(): Promise<OrgContext> {
+  return requireCan('admin.portal')
+}
+
+// --- Legacy helpers, kept for backwards-compat with existing call sites. ---
+// Prefer requireCan(...) for new code.
+
+export async function requireClientEditor() {
+  return requireCan('client.edit')
 }
 
 export async function requireClientViewer() {
-  const ctx = await requireOrgContext()
-  if (!canViewClients(ctx.role)) {
-    throw new Error('Forbidden: client role cannot view /clients')
-  }
-  return ctx
+  return requireCan('client.view')
+}
+
+export function canEditClients(ctx: OrgContext): boolean {
+  return can(ctx, 'client.edit')
+}
+
+export function canViewClients(ctx: OrgContext): boolean {
+  return can(ctx, 'client.view')
 }

@@ -26,6 +26,9 @@ export type OrgContext = {
   plan: Plan
   organizationDbId: string // DB Organization.id (cuid)
   userDbId: string         // DB User.id (cuid)
+  linkedClientId: string | null
+  permissionOverrides: Record<string, boolean> | null
+  roleDefaults: Partial<Record<UserRole, Partial<Record<string, boolean>>>>
 }
 
 /** Minimum client data needed to trigger a pipeline run. */

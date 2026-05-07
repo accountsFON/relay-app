@@ -10,6 +10,9 @@ describe('OrgContext type', () => {
       plan: 'smb',
       organizationDbId: 'cluid123',
       userDbId: 'cluid456',
+      linkedClientId: null,
+      permissionOverrides: null,
+      roleDefaults: {},
     }
     expect(ctx.role).toBe('admin')
     expect(ctx.plan).toBe('smb')

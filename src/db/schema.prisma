@@ -66,81 +66,95 @@ model Organization {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  users   User[]
-  clients Client[]
+  users               User[]
+  clients             Client[]
+  roleDefaults        RoleDefault[]
+  permissionAuditLogs PermissionAuditLog[]
 
   @@map("organizations")
 }
 
 model User {
-  id             String   @id @default(cuid())
-  clerkUserId    String   @unique
-  organizationId String
-  role           UserRole @default(admin)
-  email          String
-  name           String
-  avatarUrl      String?
-  createdAt      DateTime @default(now())
+  id                  String   @id @default(cuid())
+  clerkUserId         String   @unique
+  organizationId      String
+  role                UserRole @default(admin)
+  email               String
+  name                String
+  avatarUrl           String?
+  linkedClientId      String?
+  permissionOverrides Json?
+  createdAt           DateTime @default(now())
 
-  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assignedClients Client[]        @relation("AssignedAM")
-  triggeredRuns   ContentRun[]    @relation("TriggeredBy")
-  approvalEvents  ApprovalEvent[]
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedClients   Client[]             @relation("AssignedAM")
+  designedClients   Client[]             @relation("AssignedDesigner")
+  linkedClient      Client?              @relation("LinkedClient", fields: [linkedClientId], references: [id])
+  triggeredRuns     ContentRun[]         @relation("TriggeredBy")
+  approvalEvents    ApprovalEvent[]
+  auditLogsAsActor  PermissionAuditLog[] @relation("AuditActor")
+  auditLogsAsTarget PermissionAuditLog[] @relation("AuditTarget")
 
   @@index([organizationId])
+  @@index([linkedClientId])
   @@map("users")
 }
 
 model Client {
-  id              String       @id @default(cuid())
-  organizationId  String
-  assignedAmId    String?
-  name            String
-  businessSummary String?      @db.Text
-  brandVoice      String?      @db.Text
-  industry        String?
-  location        String?
-  phone           String?
-  mainCta         String?
-  focus1          String?
-  focus2          String?
-  focus3          String?
-  dos             String?      @db.Text
-  donts           String?      @db.Text
-  postingDays     String       @default("Mon,Wed,Fri")
-  postLength      String?
-  urls            String[]
-  targetAudience  String?      @db.Text
-  holidayHandling String       @default("Major-US")
-  excludedDates   String[]
-  assetsFolderUrl String?
-  autoCrawl       String       @default("always")
-  crawledData     String?      @db.Text
-  crawledDataAt   DateTime?
-  status          ClientStatus @default(active)
-  createdAt       DateTime     @default(now())
+  id                 String       @id @default(cuid())
+  organizationId     String
+  assignedAmId       String?
+  assignedDesignerId String?
+  name               String
+  businessSummary    String?      @db.Text
+  brandVoice         String?      @db.Text
+  industry           String?
+  location           String?
+  phone              String?
+  mainCta            String?
+  focus1             String?
+  focus2             String?
+  focus3             String?
+  dos                String?      @db.Text
+  donts              String?      @db.Text
+  postingDays        String       @default("Mon,Wed,Fri")
+  postLength         String?
+  urls               String[]
+  targetAudience     String?      @db.Text
+  holidayHandling    String       @default("Major-US")
+  excludedDates      String[]
+  assetsFolderUrl    String?
+  autoCrawl          String       @default("always")
+  crawledData        String?      @db.Text
+  crawledDataAt      DateTime?
+  status             ClientStatus @default(active)
+  createdAt          DateTime     @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assignedAm   User?        @relation("AssignedAM", fields: [assignedAmId], references: [id])
-  contentRuns  ContentRun[]
-  posts        Post[]
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedAm        User?        @relation("AssignedAM", fields: [assignedAmId], references: [id])
+  assignedDesigner  User?        @relation("AssignedDesigner", fields: [assignedDesignerId], references: [id])
+  linkedClientUsers User[]       @relation("LinkedClient")
+  contentRuns       ContentRun[]
+  posts             Post[]
 
   @@index([organizationId])
+  @@index([assignedAmId])
+  @@index([assignedDesignerId])
   @@map("clients")
 }
 
 model ContentRun {
-  id              String    @id @default(cuid())
-  clientId        String
-  triggeredById   String
+  id               String    @id @default(cuid())
+  clientId         String
+  triggeredById    String
   /// Format: YYYY-MM (e.g. "2026-05"). Always store in this format — queries sort and filter by this field.
-  targetMonth     String
-  status          RunStatus @default(queued)
-  triggerJobId    String?
-  brief           String?   @db.Text
-  supportingFacts String?   @db.Text
-  crawledContent  String?   @db.Text
-  postingDates    String[]
+  targetMonth      String
+  status           RunStatus @default(queued)
+  triggerJobId     String?
+  brief            String?   @db.Text
+  supportingFacts  String?   @db.Text
+  crawledContent   String?   @db.Text
+  postingDates     String[]
   openaiCostUsd    Decimal?  @db.Decimal(10, 4)
   anthropicCostUsd Decimal?  @db.Decimal(10, 4)
   apifyCostUsd     Decimal?  @db.Decimal(10, 4)
@@ -148,9 +162,9 @@ model ContentRun {
   creditsConsumed  Int?
   tokenUsage       Json?
   errorMessage     String?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  createdAt       DateTime  @default(now())
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
 
   client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   triggeredBy User   @relation("TriggeredBy", fields: [triggeredById], references: [id])
@@ -199,4 +213,39 @@ model ApprovalEvent {
 
   @@index([postId])
   @@map("approval_events")
+}
+
+model RoleDefault {
+  id             String   @id @default(cuid())
+  organizationId String
+  role           UserRole
+  permissionKey  String
+  allow          Boolean
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, role, permissionKey])
+  @@index([organizationId])
+  @@map("role_defaults")
+}
+
+model PermissionAuditLog {
+  id             String    @id @default(cuid())
+  organizationId String
+  actorUserId    String
+  targetUserId   String?
+  targetRole     UserRole?
+  permissionKey  String
+  fromValue      Boolean?
+  toValue        Boolean?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User         @relation("AuditActor", fields: [actorUserId], references: [id])
+  target       User?        @relation("AuditTarget", fields: [targetUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([targetUserId])
+  @@map("permission_audit_logs")
 }
