@@ -65,15 +65,15 @@
 }
 
 :root {
-  /* Relay brand primitives */
+  /* Relay brand primitives — beta */
   --ink: #131521;
   --ink-80: #2A2E45;
   --ink-50: #6B6E80;
   --ink-20: #C9CAD2;
-  --cream: #FAFAF8;
-  --cream-warm: #F5F2EA;
-  --cream-80: #F0EEE5;
-  --orange: #FF4A1A;
+  --cream: #F8F8F8;        /* page surface — neutral cool */
+  --cream-warm: #F1F1F1;   /* secondary surface — neutral cool */
+  --cream-80: #EBEBEB;     /* tertiary surface — neutral cool */
+  --orange: #FF4A1A;       /* reserved for logo only; not used in UI */
 
   /* Type stacks (system, no Google Fonts) */
   --font-sans: "Helvetica Neue", -apple-system, BlinkMacSystemFont, system-ui, Arial, sans-serif;
@@ -93,14 +93,14 @@
   --secondary-foreground: var(--ink);
   --muted: var(--cream-warm);
   --muted-foreground: var(--ink-50);
-  --accent: var(--orange);
-  --accent-foreground: #FFFFFF;
+  --accent: var(--ink);
+  --accent-foreground: var(--cream);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: rgba(19, 21, 33, 0.10);
-  --border-strong: rgba(19, 21, 33, 0.18);
+  --border: rgba(19, 21, 33, 0.08);
+  --border-strong: rgba(19, 21, 33, 0.16);
   --input: rgba(19, 21, 33, 0.10);
-  --ring: var(--orange);
-  --chart-1: var(--orange);
+  --ring: var(--ink);
+  --chart-1: var(--ink);
   --chart-2: var(--ink-80);
   --chart-3: var(--ink-50);
   --chart-4: var(--ink-20);
@@ -114,8 +114,8 @@
   --sidebar-primary-foreground: var(--cream);
   --sidebar-accent: var(--cream-80);
   --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: rgba(19, 21, 33, 0.10);
-  --sidebar-ring: var(--orange);
+  --sidebar-border: rgba(19, 21, 33, 0.08);
+  --sidebar-ring: var(--ink);
 }
 
 /* Dark mode intentionally unset for the beta. When ready, define

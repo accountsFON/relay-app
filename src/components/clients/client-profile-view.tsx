@@ -1,85 +1,95 @@
 'use client'
 
 import * as React from 'react'
-import { useState } from 'react'
+import { useState, useEffect, useTransition, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Client } from '@prisma/client'
-import { ExternalLink, Link as LinkIcon } from 'lucide-react'
+import { ExternalLink, Link as LinkIcon, Pencil, Check, X } from 'lucide-react'
 import { PageSection } from '@/components/ui/page-section'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { updateClientAction } from '@/app/(app)/clients/actions'
+import type { ClientUpdate } from '@/lib/schemas/client'
 
 const POSTING_DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-export function ClientProfileView({ client }: { client: Client }) {
+type FieldKey = keyof ClientUpdate
+
+export function ClientProfileView({
+  client,
+  canEdit = false,
+}: {
+  client: Client
+  canEdit?: boolean
+}) {
   return (
     <div className="space-y-6">
       <PageSection title="Identity">
         <KeyValueGrid>
-          <KeyValue label="Name" value={client.name} />
-          <KeyValue label="Industry" value={client.industry} />
-          <KeyValue label="Location" value={client.location} />
-          <KeyValue label="Phone" value={client.phone} kind="phone" />
+          <KeyValueField clientId={client.id} fieldKey="name" label="Name" value={client.name} canEdit={canEdit} required />
+          <KeyValueField clientId={client.id} fieldKey="industry" label="Industry" value={client.industry} canEdit={canEdit} />
+          <KeyValueField clientId={client.id} fieldKey="location" label="Location" value={client.location} canEdit={canEdit} placeholder="City, State" />
+          <KeyValueField clientId={client.id} fieldKey="phone" label="Phone" value={client.phone} canEdit={canEdit} kind="phone" />
         </KeyValueGrid>
       </PageSection>
 
       <PageSection title="Brand">
         <FieldStack>
-          <NarrativeField label="Business summary" value={client.businessSummary} />
-          <NarrativeField label="Brand voice" value={client.brandVoice} />
-          <NarrativeField label="Target audience" value={client.targetAudience} />
+          <NarrativeField clientId={client.id} fieldKey="businessSummary" label="Business summary" value={client.businessSummary} canEdit={canEdit} />
+          <NarrativeField clientId={client.id} fieldKey="brandVoice" label="Brand voice" value={client.brandVoice} canEdit={canEdit} />
+          <NarrativeField clientId={client.id} fieldKey="targetAudience" label="Target audience" value={client.targetAudience} canEdit={canEdit} />
         </FieldStack>
       </PageSection>
 
       <PageSection title="Strategy">
         <div className="space-y-6">
-          <NarrativeField label="Main CTA" value={client.mainCta} clampLines={6} />
+          <NarrativeField clientId={client.id} fieldKey="mainCta" label="Main CTA" value={client.mainCta} canEdit={canEdit} maxHeight={280} />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <FocusCard index={1} value={client.focus1} />
-            <FocusCard index={2} value={client.focus2} />
-            <FocusCard index={3} value={client.focus3} />
+            <FocusCard clientId={client.id} fieldKey="focus1" index={1} value={client.focus1} canEdit={canEdit} />
+            <FocusCard clientId={client.id} fieldKey="focus2" index={2} value={client.focus2} canEdit={canEdit} />
+            <FocusCard clientId={client.id} fieldKey="focus3" index={3} value={client.focus3} canEdit={canEdit} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <NarrativeField
-              label="Dos"
-              value={client.dos}
-              clampLines={8}
-              accent="default"
-            />
-            <NarrativeField
-              label="Don'ts"
-              value={client.donts}
-              clampLines={8}
-              accent="warning"
-            />
+            <NarrativeField clientId={client.id} fieldKey="dos" label="Dos" value={client.dos} canEdit={canEdit} maxHeight={260} />
+            <NarrativeField clientId={client.id} fieldKey="donts" label="Don'ts" value={client.donts} canEdit={canEdit} maxHeight={260} />
           </div>
         </div>
       </PageSection>
 
       <PageSection title="Scheduling">
         <KeyValueGrid>
-          <KeyValue label="Posting days" value={client.postingDays} kind="days" />
-          <KeyValue label="Post length" value={client.postLength} />
-          <KeyValue label="Holiday handling" value={client.holidayHandling} />
-          <KeyValue
-            label="Excluded dates"
-            value={client.excludedDates.length ? client.excludedDates : null}
-            kind="chips"
+          <PostingDaysField clientId={client.id} value={client.postingDays} canEdit={canEdit} />
+          <KeyValueField clientId={client.id} fieldKey="postLength" label="Post length" value={client.postLength} canEdit={canEdit} placeholder="e.g. Max 360 characters" />
+          <SelectField
+            clientId={client.id}
+            fieldKey="holidayHandling"
+            label="Holiday handling"
+            value={client.holidayHandling}
+            canEdit={canEdit}
+            options={[
+              { value: 'Major-US', label: 'Major US holidays' },
+              { value: 'Off', label: 'None' },
+            ]}
           />
+          <ChipsField clientId={client.id} fieldKey="excludedDates" label="Excluded dates" value={client.excludedDates} canEdit={canEdit} placeholder="2026-01-01, 2026-07-04" />
         </KeyValueGrid>
       </PageSection>
 
       <PageSection title="Assets">
         <FieldStack>
-          <UrlListField label="URLs" urls={client.urls} />
-          <LinkField label="Assets folder" href={client.assetsFolderUrl} />
+          <UrlListField clientId={client.id} label="URLs" urls={client.urls} canEdit={canEdit} />
+          <LinkField clientId={client.id} fieldKey="assetsFolderUrl" label="Assets folder" href={client.assetsFolderUrl} canEdit={canEdit} />
         </FieldStack>
       </PageSection>
     </div>
   )
 }
 
-// ---------- Layout helpers ----------
+// ============================================================
+// Layout helpers
+// ============================================================
 
 function KeyValueGrid({ children }: { children: React.ReactNode }) {
   return (
@@ -90,59 +100,484 @@ function KeyValueGrid({ children }: { children: React.ReactNode }) {
 }
 
 function FieldStack({ children }: { children: React.ReactNode }) {
-  return <div className="divide-y divide-border -my-5">
-    {React.Children.map(children, (child, i) => (
-      <div key={i} className="py-5">{child}</div>
-    ))}
-  </div>
-}
-
-// ---------- Field components ----------
-
-function KeyValue({
-  label,
-  value,
-  kind = 'text',
-}: {
-  label: string
-  value: string | string[] | null | undefined
-  kind?: 'text' | 'phone' | 'days' | 'chips'
-}) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <dt className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="text-[15px] text-foreground">
-        {renderValue(value, kind)}
-      </dd>
+    <div className="divide-y divide-border -my-5">
+      {React.Children.map(children, (child, i) => (
+        <div key={i} className="py-5">{child}</div>
+      ))}
     </div>
   )
 }
 
-function renderValue(
-  value: string | string[] | null | undefined,
-  kind: 'text' | 'phone' | 'days' | 'chips'
-): React.ReactNode {
-  if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
-    return <span className="text-ink-20">—</span>
-  }
+// ============================================================
+// Editing infrastructure
+// ============================================================
 
-  if (kind === 'phone' && typeof value === 'string') {
+/**
+ * Adds a beforeunload listener while `dirty` is true.
+ * Browser will prompt user before close/reload/navigation away.
+ */
+function useUnsavedChanges(dirty: boolean) {
+  useEffect(() => {
+    if (!dirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
+}
+
+/**
+ * useFieldEditor — common state machine for one editable field.
+ * Tracks dirty, pending, and exposes save/cancel.
+ */
+function useFieldEditor<T>({
+  clientId,
+  fieldKey,
+  initial,
+  serialize = (v: T) => v as unknown as ClientUpdate[FieldKey],
+}: {
+  clientId: string
+  fieldKey: FieldKey
+  initial: T
+  serialize?: (value: T) => ClientUpdate[FieldKey]
+}) {
+  const router = useRouter()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<T>(initial)
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  // When the upstream value changes (after a save), refresh the draft baseline.
+  useEffect(() => {
+    if (!editing) setDraft(initial)
+  }, [initial, editing])
+
+  const isDirty = editing && !equal(draft, initial)
+  useUnsavedChanges(isDirty)
+
+  const startEdit = useCallback(() => {
+    setDraft(initial)
+    setError(null)
+    setEditing(true)
+  }, [initial])
+
+  const cancel = useCallback(() => {
+    if (isDirty && !window.confirm('Discard unsaved changes?')) return
+    setEditing(false)
+    setError(null)
+  }, [isDirty])
+
+  const save = useCallback(() => {
+    if (!isDirty) {
+      setEditing(false)
+      return
+    }
+    setError(null)
+    startTransition(async () => {
+      try {
+        await updateClientAction(clientId, { [fieldKey]: serialize(draft) } as ClientUpdate)
+        setEditing(false)
+        router.refresh()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Save failed')
+      }
+    })
+  }, [isDirty, clientId, fieldKey, draft, serialize, router])
+
+  return { editing, draft, setDraft, pending, error, isDirty, startEdit, cancel, save }
+}
+
+function equal(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    return a.every((v, i) => v === b[i])
+  }
+  return a === b
+}
+
+/**
+ * Field chrome shared by all editable fields:
+ * label row + edit affordance + dirty pip + save/cancel toolbar.
+ */
+function FieldHeader({
+  label,
+  canEdit,
+  editing,
+  pending,
+  isDirty,
+  onEdit,
+  onSave,
+  onCancel,
+}: {
+  label: string
+  canEdit: boolean
+  editing: boolean
+  pending: boolean
+  isDirty: boolean
+  onEdit: () => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 min-h-7">
+      <div className="flex items-center gap-2 min-w-0">
+        <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground truncate">
+          {label}
+        </h3>
+        {isDirty && (
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/70">
+            <span className="size-1.5 rounded-full bg-foreground" />
+            Unsaved
+          </span>
+        )}
+      </div>
+      {canEdit && !editing && (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Edit ${label}`}
+          className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-warm hover:text-foreground transition-colors shrink-0"
+        >
+          <Pencil className="size-3.5" />
+        </button>
+      )}
+      {editing && (
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Cancel"
+            className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-warm hover:text-foreground transition-colors"
+          >
+            <X className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={pending || !isDirty}
+            aria-label="Save"
+            className="inline-flex items-center justify-center size-7 rounded-full bg-foreground text-cream hover:bg-ink-80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <Check className="size-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FieldError({ error }: { error: string | null }) {
+  if (!error) return null
+  return <p className="text-[12px] text-destructive mt-1">{error}</p>
+}
+
+// ============================================================
+// Field components
+// ============================================================
+
+function KeyValueField({
+  clientId,
+  fieldKey,
+  label,
+  value,
+  canEdit,
+  kind = 'text',
+  placeholder,
+  required = false,
+}: {
+  clientId: string
+  fieldKey: FieldKey
+  label: string
+  value: string | null | undefined
+  canEdit: boolean
+  kind?: 'text' | 'phone'
+  placeholder?: string
+  required?: boolean
+}) {
+  const editor = useFieldEditor<string>({
+    clientId,
+    fieldKey,
+    initial: value ?? '',
+  })
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <FieldHeader
+        label={label}
+        canEdit={canEdit}
+        editing={editor.editing}
+        pending={editor.pending}
+        isDirty={editor.isDirty}
+        onEdit={editor.startEdit}
+        onSave={editor.save}
+        onCancel={editor.cancel}
+      />
+      {editor.editing ? (
+        <>
+          <input
+            type={kind === 'phone' ? 'tel' : 'text'}
+            autoFocus
+            value={editor.draft}
+            onChange={(e) => editor.setDraft(e.target.value)}
+            placeholder={placeholder}
+            required={required}
+            className="h-10 w-full rounded-xl border border-input bg-card px-3 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                editor.save()
+              } else if (e.key === 'Escape') {
+                editor.cancel()
+              }
+            }}
+          />
+          <FieldError error={editor.error} />
+        </>
+      ) : (
+        <dd className="text-[15px] text-foreground break-words">
+          {renderInlineValue(value, kind)}
+        </dd>
+      )}
+    </div>
+  )
+}
+
+function renderInlineValue(
+  value: string | null | undefined,
+  kind: 'text' | 'phone'
+): React.ReactNode {
+  if (!value) return <EmptyValue />
+  if (kind === 'phone') {
     const tel = value.replace(/[^+\d]/g, '')
     return (
-      <a href={`tel:${tel}`} className="hover:text-orange transition-colors">
+      <a href={`tel:${tel}`} className="hover:text-ink-50 transition-colors underline-offset-2 hover:underline">
         {value}
       </a>
     )
   }
+  return value
+}
 
-  if (kind === 'days' && typeof value === 'string') {
-    const days = value.split(',').map((d) => d.trim())
-    return (
+function NarrativeField({
+  clientId,
+  fieldKey,
+  label,
+  value,
+  canEdit,
+  maxHeight = 240,
+}: {
+  clientId: string
+  fieldKey: FieldKey
+  label: string
+  value: string | null | undefined
+  canEdit: boolean
+  maxHeight?: number
+}) {
+  const editor = useFieldEditor<string>({
+    clientId,
+    fieldKey,
+    initial: value ?? '',
+  })
+
+  return (
+    <div className="space-y-2">
+      <FieldHeader
+        label={label}
+        canEdit={canEdit}
+        editing={editor.editing}
+        pending={editor.pending}
+        isDirty={editor.isDirty}
+        onEdit={editor.startEdit}
+        onSave={editor.save}
+        onCancel={editor.cancel}
+      />
+      {editor.editing ? (
+        <>
+          <textarea
+            autoFocus
+            value={editor.draft}
+            onChange={(e) => editor.setDraft(e.target.value)}
+            rows={6}
+            className="w-full min-h-[120px] max-h-[400px] overflow-y-auto rounded-xl border border-input bg-card px-3.5 py-2.5 text-[14px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 resize-y"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') editor.cancel()
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                editor.save()
+              }
+            }}
+          />
+          <p className="text-[11px] text-muted-foreground">⌘↵ to save · Esc to cancel</p>
+          <FieldError error={editor.error} />
+        </>
+      ) : value ? (
+        <ScrollableContent maxHeight={maxHeight}>
+          <Linkified text={value} />
+        </ScrollableContent>
+      ) : (
+        <div className="rounded-xl bg-cream-warm/60 px-4 py-3 text-[14px]">
+          <EmptyValue />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FocusCard({
+  clientId,
+  fieldKey,
+  index,
+  value,
+  canEdit,
+}: {
+  clientId: string
+  fieldKey: FieldKey
+  index: number
+  value: string | null | undefined
+  canEdit: boolean
+}) {
+  const editor = useFieldEditor<string>({
+    clientId,
+    fieldKey,
+    initial: value ?? '',
+  })
+
+  return (
+    <div className="rounded-xl bg-cream-warm/60 px-4 py-4 h-full flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2 min-h-7">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="inline-flex size-6 items-center justify-center rounded-full bg-foreground text-[11px] font-bold text-cream tabular-nums shrink-0">
+            {index}
+          </span>
+          <span className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+            Focus
+          </span>
+          {editor.isDirty && (
+            <span className="size-1.5 rounded-full bg-foreground" aria-label="Unsaved" />
+          )}
+        </div>
+        {canEdit && !editor.editing && (
+          <button
+            type="button"
+            onClick={editor.startEdit}
+            aria-label={`Edit Focus ${index}`}
+            className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-80 hover:text-foreground transition-colors shrink-0"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+        )}
+        {editor.editing && (
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={editor.cancel}
+              aria-label="Cancel"
+              className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-80 hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={editor.save}
+              disabled={editor.pending || !editor.isDirty}
+              aria-label="Save"
+              className="inline-flex items-center justify-center size-7 rounded-full bg-foreground text-cream hover:bg-ink-80 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Check className="size-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+      {editor.editing ? (
+        <>
+          <textarea
+            autoFocus
+            value={editor.draft}
+            onChange={(e) => editor.setDraft(e.target.value)}
+            rows={4}
+            className="w-full min-h-[100px] max-h-[300px] overflow-y-auto rounded-lg border border-input bg-card px-3 py-2 text-[14px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') editor.cancel()
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                editor.save()
+              }
+            }}
+          />
+          <FieldError error={editor.error} />
+        </>
+      ) : (
+        <div className="flex-1 min-h-0">
+          <ScrollableContent maxHeight={180} bare>
+            {value ? <Linkified text={value} /> : <EmptyValue />}
+          </ScrollableContent>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PostingDaysField({
+  clientId,
+  value,
+  canEdit,
+}: {
+  clientId: string
+  value: string
+  canEdit: boolean
+}) {
+  const editor = useFieldEditor<string>({
+    clientId,
+    fieldKey: 'postingDays',
+    initial: value,
+  })
+
+  const activeDays = editor.editing
+    ? new Set(editor.draft.split(',').map((d) => d.trim()))
+    : new Set(value.split(',').map((d) => d.trim()))
+
+  const toggleDay = (d: string) => {
+    const next = new Set(editor.draft.split(',').map((s) => s.trim()))
+    if (next.has(d)) next.delete(d)
+    else next.add(d)
+    editor.setDraft(POSTING_DAY_ORDER.filter((day) => next.has(day)).join(','))
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <FieldHeader
+        label="Posting days"
+        canEdit={canEdit}
+        editing={editor.editing}
+        pending={editor.pending}
+        isDirty={editor.isDirty}
+        onEdit={editor.startEdit}
+        onSave={editor.save}
+        onCancel={editor.cancel}
+      />
       <div className="flex flex-wrap gap-1.5">
         {POSTING_DAY_ORDER.map((d) => {
-          const active = days.includes(d)
+          const active = activeDays.has(d)
+          if (editor.editing) {
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => toggleDay(d)}
+                className={cn(
+                  'inline-flex h-8 min-w-9 items-center justify-center rounded-full px-2.5 text-[12px] font-semibold transition-colors',
+                  active
+                    ? 'bg-foreground text-cream hover:bg-ink-80'
+                    : 'bg-cream-warm text-ink-50 hover:bg-cream-80 hover:text-foreground'
+                )}
+              >
+                {d}
+              </button>
+            )
+          }
           return (
             <span
               key={d}
@@ -158,110 +593,202 @@ function renderValue(
           )
         })}
       </div>
-    )
-  }
-
-  if (kind === 'chips' && Array.isArray(value)) {
-    return (
-      <div className="flex flex-wrap gap-1.5">
-        {value.map((v) => (
-          <span
-            key={v}
-            className="inline-flex h-7 items-center rounded-full bg-cream-warm px-3 text-[13px] tabular-nums text-foreground"
-          >
-            {v}
-          </span>
-        ))}
-      </div>
-    )
-  }
-
-  return typeof value === 'string' ? value : value.join(', ')
+      <FieldError error={editor.error} />
+    </div>
+  )
 }
 
-function NarrativeField({
+function ChipsField({
+  clientId,
+  fieldKey,
   label,
   value,
-  clampLines = 6,
-  accent = 'default',
+  canEdit,
+  placeholder,
 }: {
+  clientId: string
+  fieldKey: FieldKey
   label: string
-  value: string | null | undefined
-  clampLines?: number
-  accent?: 'default' | 'warning'
+  value: string[]
+  canEdit: boolean
+  placeholder?: string
 }) {
-  const [expanded, setExpanded] = useState(false)
-  const lines = value?.split('\n').length ?? 0
-  const isLong = lines > clampLines || (value?.length ?? 0) > clampLines * 70
-  const showClamp = isLong && !expanded
+  const editor = useFieldEditor<string>({
+    clientId,
+    fieldKey,
+    initial: value.join(', '),
+    serialize: (v) =>
+      v
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean) as unknown as ClientUpdate[FieldKey],
+  })
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-          {label}
-        </h3>
-        {isLong && (
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="text-[12px] font-medium text-orange hover:underline shrink-0"
-          >
-            {expanded ? 'Show less' : 'Show full'}
-          </button>
-        )}
-      </div>
-      {value ? (
-        <div
-          className={cn(
-            'rounded-xl px-4 py-3 text-[14px] leading-relaxed text-foreground whitespace-pre-wrap',
-            accent === 'warning' ? 'bg-cream-warm/60' : 'bg-cream-warm/60'
-          )}
-          style={
-            showClamp
-              ? {
-                  display: '-webkit-box',
-                  WebkitLineClamp: clampLines,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }
-              : undefined
-          }
-        >
-          <Linkified text={value} />
-        </div>
+    <div className="flex flex-col gap-1.5">
+      <FieldHeader
+        label={label}
+        canEdit={canEdit}
+        editing={editor.editing}
+        pending={editor.pending}
+        isDirty={editor.isDirty}
+        onEdit={editor.startEdit}
+        onSave={editor.save}
+        onCancel={editor.cancel}
+      />
+      {editor.editing ? (
+        <>
+          <input
+            autoFocus
+            value={editor.draft}
+            onChange={(e) => editor.setDraft(e.target.value)}
+            placeholder={placeholder}
+            className="h-10 w-full rounded-xl border border-input bg-card px-3 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                editor.save()
+              } else if (e.key === 'Escape') {
+                editor.cancel()
+              }
+            }}
+          />
+          <p className="text-[11px] text-muted-foreground">Comma-separated</p>
+          <FieldError error={editor.error} />
+        </>
+      ) : value.length === 0 ? (
+        <EmptyValue />
       ) : (
-        <div className="rounded-xl px-4 py-3 text-[14px] text-ink-20">—</div>
+        <div className="flex flex-wrap gap-1.5">
+          {value.map((v) => (
+            <span
+              key={v}
+              className="inline-flex h-7 items-center rounded-full bg-cream-warm px-3 text-[13px] tabular-nums text-foreground"
+            >
+              {v}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   )
 }
 
-function FocusCard({ index, value }: { index: number; value: string | null | undefined }) {
+function SelectField({
+  clientId,
+  fieldKey,
+  label,
+  value,
+  canEdit,
+  options,
+}: {
+  clientId: string
+  fieldKey: FieldKey
+  label: string
+  value: string
+  canEdit: boolean
+  options: { value: string; label: string }[]
+}) {
+  const editor = useFieldEditor<string>({
+    clientId,
+    fieldKey,
+    initial: value,
+  })
+
+  const selectedLabel = options.find((o) => o.value === value)?.label ?? value
+
   return (
-    <div className="rounded-xl bg-cream-warm/60 px-4 py-4 h-full">
-      <div className="flex items-center gap-2">
-        <span className="inline-flex size-6 items-center justify-center rounded-full bg-foreground text-[11px] font-bold text-cream tabular-nums">
-          {index}
-        </span>
-        <span className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-          Focus
-        </span>
-      </div>
-      <p className="mt-3 text-[14px] leading-relaxed text-foreground whitespace-pre-wrap">
-        {value || <span className="text-ink-20">—</span>}
-      </p>
+    <div className="flex flex-col gap-1.5">
+      <FieldHeader
+        label={label}
+        canEdit={canEdit}
+        editing={editor.editing}
+        pending={editor.pending}
+        isDirty={editor.isDirty}
+        onEdit={editor.startEdit}
+        onSave={editor.save}
+        onCancel={editor.cancel}
+      />
+      {editor.editing ? (
+        <>
+          <select
+            autoFocus
+            value={editor.draft}
+            onChange={(e) => editor.setDraft(e.target.value)}
+            className="h-10 w-full rounded-xl border border-input bg-card px-3 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+          >
+            {options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <FieldError error={editor.error} />
+        </>
+      ) : (
+        <dd className="text-[15px] text-foreground">{selectedLabel}</dd>
+      )}
     </div>
   )
 }
 
-function UrlListField({ label, urls }: { label: string; urls: string[] }) {
+function UrlListField({
+  clientId,
+  label,
+  urls,
+  canEdit,
+}: {
+  clientId: string
+  label: string
+  urls: string[]
+  canEdit: boolean
+}) {
+  const editor = useFieldEditor<string>({
+    clientId,
+    fieldKey: 'urls',
+    initial: urls.join(', '),
+    serialize: (v) =>
+      v
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean) as unknown as ClientUpdate['urls'],
+  })
+
   return (
     <div className="space-y-2">
-      <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-        {label}
-      </h3>
-      {urls.length > 0 ? (
+      <FieldHeader
+        label={label}
+        canEdit={canEdit}
+        editing={editor.editing}
+        pending={editor.pending}
+        isDirty={editor.isDirty}
+        onEdit={editor.startEdit}
+        onSave={editor.save}
+        onCancel={editor.cancel}
+      />
+      {editor.editing ? (
+        <>
+          <input
+            autoFocus
+            value={editor.draft}
+            onChange={(e) => editor.setDraft(e.target.value)}
+            placeholder="https://example.com, https://example.com/about"
+            className="h-10 w-full rounded-xl border border-input bg-card px-3 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                editor.save()
+              } else if (e.key === 'Escape') {
+                editor.cancel()
+              }
+            }}
+          />
+          <p className="text-[11px] text-muted-foreground">Comma-separated full URLs</p>
+          <FieldError error={editor.error} />
+        </>
+      ) : urls.length === 0 ? (
+        <EmptyValue />
+      ) : (
         <div className="flex flex-wrap gap-2">
           {urls.map((url) => (
             <a
@@ -276,37 +803,148 @@ function UrlListField({ label, urls }: { label: string; urls: string[] }) {
             </a>
           ))}
         </div>
-      ) : (
-        <p className="text-[14px] text-ink-20">—</p>
       )}
     </div>
   )
 }
 
-function LinkField({ label, href }: { label: string; href: string | null | undefined }) {
+function LinkField({
+  clientId,
+  fieldKey,
+  label,
+  href,
+  canEdit,
+}: {
+  clientId: string
+  fieldKey: FieldKey
+  label: string
+  href: string | null | undefined
+  canEdit: boolean
+}) {
+  const editor = useFieldEditor<string>({
+    clientId,
+    fieldKey,
+    initial: href ?? '',
+  })
+
   return (
     <div className="space-y-2">
-      <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-        {label}
-      </h3>
-      {href ? (
+      <FieldHeader
+        label={label}
+        canEdit={canEdit}
+        editing={editor.editing}
+        pending={editor.pending}
+        isDirty={editor.isDirty}
+        onEdit={editor.startEdit}
+        onSave={editor.save}
+        onCancel={editor.cancel}
+      />
+      {editor.editing ? (
+        <>
+          <input
+            autoFocus
+            type="url"
+            value={editor.draft}
+            onChange={(e) => editor.setDraft(e.target.value)}
+            placeholder="https://drive.google.com/..."
+            className="h-10 w-full rounded-xl border border-input bg-card px-3 text-[14px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                editor.save()
+              } else if (e.key === 'Escape') {
+                editor.cancel()
+              }
+            }}
+          />
+          <FieldError error={editor.error} />
+        </>
+      ) : href ? (
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-[14px] text-foreground hover:text-orange transition-colors max-w-full"
+          className="inline-flex items-center gap-1.5 text-[14px] text-foreground hover:text-ink-50 transition-colors max-w-full break-words"
         >
-          <span className="truncate">{prettyUrl(href)}</span>
+          <span className="break-all">{prettyUrl(href)}</span>
           <ExternalLink className="size-3.5 shrink-0" />
         </a>
       ) : (
-        <p className="text-[14px] text-ink-20">—</p>
+        <EmptyValue />
       )}
     </div>
   )
 }
 
-// ---------- Utilities ----------
+// ============================================================
+// Display helpers
+// ============================================================
+
+function ScrollableContent({
+  children,
+  maxHeight,
+  bare = false,
+}: {
+  children: React.ReactNode
+  maxHeight: number
+  bare?: boolean
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [scrollState, setScrollState] = useState<'none' | 'top' | 'middle' | 'bottom'>('none')
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => {
+      const overflow = el.scrollHeight > el.clientHeight + 1
+      if (!overflow) {
+        setScrollState('none')
+        return
+      }
+      const atTop = el.scrollTop <= 1
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 1
+      if (atTop) setScrollState('top')
+      else if (atBottom) setScrollState('bottom')
+      else setScrollState('middle')
+    }
+    update()
+    el.addEventListener('scroll', update)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [children])
+
+  const showTopFade = scrollState === 'middle' || scrollState === 'bottom'
+  const showBottomFade = scrollState === 'top' || scrollState === 'middle'
+
+  return (
+    <div className="relative">
+      <div
+        ref={ref}
+        style={{ maxHeight }}
+        className={cn(
+          'overflow-y-auto text-[14px] leading-relaxed text-foreground whitespace-pre-wrap break-words',
+          bare ? '' : 'rounded-xl bg-cream-warm/60 px-4 py-3'
+        )}
+      >
+        {children}
+      </div>
+      {showTopFade && !bare && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-4 rounded-t-xl bg-gradient-to-b from-cream-warm/95 to-transparent" />
+      )}
+      {showBottomFade && !bare && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-4 rounded-b-xl bg-gradient-to-t from-cream-warm/95 to-transparent" />
+      )}
+    </div>
+  )
+}
+
+function EmptyValue() {
+  return <span className="text-ink-20">—</span>
+}
 
 function prettyUrl(url: string): string {
   try {
@@ -352,7 +990,7 @@ function Linkified({ text }: { text: string }) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-orange hover:underline break-all"
+              className="text-foreground underline underline-offset-2 hover:text-ink-50 break-all"
             >
               {t.value}
             </a>
@@ -361,7 +999,11 @@ function Linkified({ text }: { text: string }) {
         if (t.type === 'phone') {
           const tel = t.value.replace(/[^+\d]/g, '')
           return (
-            <a key={i} href={`tel:${tel}`} className="text-orange hover:underline">
+            <a
+              key={i}
+              href={`tel:${tel}`}
+              className="text-foreground underline underline-offset-2 hover:text-ink-50"
+            >
               {t.value}
             </a>
           )
@@ -371,4 +1013,3 @@ function Linkified({ text }: { text: string }) {
     </>
   )
 }
-

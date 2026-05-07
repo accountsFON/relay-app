@@ -155,7 +155,7 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleClient(client.id)}
-                    className="size-4 rounded border-input accent-orange"
+                    className="size-4 rounded border-input accent-foreground"
                     aria-label={`Select ${client.name}`}
                   />
                 ) : (

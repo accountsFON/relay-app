@@ -11,10 +11,10 @@ const badgeVariants = cva(
       variant: {
         default: "bg-cream-warm text-foreground",
         primary: "bg-primary text-primary-foreground",
-        accent: "bg-orange text-white",
+        accent: "bg-foreground text-cream",
         secondary: "bg-cream-80 text-ink-80",
         success: "bg-cream-warm text-foreground",
-        warning: "bg-cream-warm text-orange",
+        warning: "bg-cream-warm text-foreground",
         destructive: "bg-destructive/10 text-destructive",
         outline: "border-border text-foreground",
       },
@@ -59,8 +59,8 @@ function StatusDot({
   className?: string
 }) {
   const color = {
-    active: 'bg-orange',
-    running: 'bg-orange',
+    active: 'bg-foreground',
+    running: 'bg-foreground animate-pulse',
     queued: 'bg-ink-50',
     complete: 'bg-foreground',
     failed: 'bg-destructive',

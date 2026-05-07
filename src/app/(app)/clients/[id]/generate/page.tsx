@@ -159,7 +159,7 @@ export default function GeneratePage() {
                 id="reCrawl"
                 checked={reCrawl}
                 onChange={(e) => setReCrawl(e.target.checked)}
-                className="size-4 rounded border-input accent-orange"
+                className="size-4 rounded border-input accent-foreground"
               />
               <Label htmlFor="reCrawl" className="cursor-pointer">
                 Re-crawl websites
@@ -291,7 +291,7 @@ function Step({
           done
             ? 'bg-foreground text-cream'
             : active
-              ? 'bg-orange/15 text-orange'
+              ? 'bg-foreground/10 text-foreground'
               : 'bg-cream-warm text-ink-20'
         }`}
       >
@@ -316,7 +316,7 @@ function Celebration() {
     delay: Math.random() * 0.5,
     duration: 1.5 + Math.random() * 2,
     size: 6 + Math.random() * 8,
-    color: ['#FF4A1A', '#131521', '#F5F2EA', '#FF4A1A', '#2A2E45'][Math.floor(Math.random() * 5)],
+    color: ['#131521', '#2A2E45', '#6B6E80', '#131521', '#2A2E45'][Math.floor(Math.random() * 5)],
   }))
 
   return (

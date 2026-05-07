@@ -107,7 +107,7 @@ export default async function ClientDetailPage({
       )}
 
       <div className="mt-10">
-        <ClientProfileView client={client} />
+        <ClientProfileView client={client} canEdit={canEdit} />
       </div>
     </div>
   )

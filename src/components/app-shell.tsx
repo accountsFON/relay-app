@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     : 'text-ink-50 hover:bg-cream-80 hover:text-foreground'
                 )}
               >
-                <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-orange')} />
+                <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-foreground')} />
                 {item.label}
               </Link>
             )

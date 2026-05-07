@@ -166,7 +166,7 @@ export function PostCard({ post }: { post: Post }) {
               {caption}
             </p>
             {post.hashtags.length > 0 && (
-              <p className="text-[14px] text-orange">{post.hashtags.join(' ')}</p>
+              <p className="text-[14px] text-ink-50">{post.hashtags.join(' ')}</p>
             )}
             {post.graphicHook && (
               <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
