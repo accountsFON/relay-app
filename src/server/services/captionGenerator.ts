@@ -3,11 +3,13 @@ import { AI_MODELS } from '@/server/config/aiModels'
 import { calculateCost, type CostResult } from '@/server/services/costTracker'
 import { buildCaptionPrompt } from '@/server/prompts/captionPrompt'
 import type { PostingDate } from '@/server/services/dateCalculator'
+import type { CtaCandidate } from '@/server/services/postParser'
 
 export type ParsedPost = {
   postNumber: number
   date: string
   caption: string
+  ctaIndex?: number
   hashtags: string[]
   graphicHook: string
   designerNotes: string
@@ -26,11 +28,18 @@ export async function generateCaptions(
   brief: string,
   facts: string,
   postingDates: PostingDate[],
-  client: CaptionClient
+  client: CaptionClient,
+  ctaCandidates: CtaCandidate[]
 ): Promise<CaptionResult> {
   const config = AI_MODELS.captions
   const anthropic = new Anthropic()
-  const { user, assistantPrefill } = buildCaptionPrompt(brief, facts, postingDates, client)
+  const { user, assistantPrefill } = buildCaptionPrompt(
+    brief,
+    facts,
+    postingDates,
+    client,
+    ctaCandidates
+  )
 
   const stream = anthropic.messages.stream({
     model: config.model,
@@ -126,6 +135,7 @@ function tryParsePostsJSON(text: string): ParsedPost[] | null {
       postNumber: typeof p.postNumber === 'number' ? p.postNumber : i + 1,
       date: String(p.date ?? ''),
       caption: String(p.caption ?? ''),
+      ctaIndex: typeof p.ctaIndex === 'number' ? p.ctaIndex : undefined,
       hashtags: Array.isArray(p.hashtags) ? p.hashtags.map(String) : [],
       graphicHook: String(p.graphicHook ?? ''),
       designerNotes: String(p.designerNotes ?? ''),

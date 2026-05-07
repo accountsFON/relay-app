@@ -5,7 +5,7 @@ import { generateBrief } from '@/server/services/briefGenerator'
 import { crawlWebsites } from '@/server/services/websiteCrawler'
 import { extractFacts } from '@/server/services/factsExtractor'
 import { generateCaptions } from '@/server/services/captionGenerator'
-import { createPostsFromCaptions } from '@/server/services/postParser'
+import { createPostsFromCaptions, parseCtaCandidates } from '@/server/services/postParser'
 import { sumCosts, costToCredits, buildCostBreakdown } from '@/server/services/costTracker'
 import type { CostResult, RunCostBreakdown } from '@/server/services/costTracker'
 
@@ -117,12 +117,15 @@ export const generateContentTask = task({
         data: { supportingFacts: factsResult.facts, openaiCostUsd: openaiCost },
       })
 
-      // Step 5: Generate captions
+      // Step 5: Generate captions — parse CTA candidates once, share between prompt + parser
+      const ctaCandidates = parseCtaCandidates(client.mainCta)
+
       const captionResult = await generateCaptions(
         briefResult.brief,
         factsResult.facts,
         postingDates,
-        client
+        client,
+        ctaCandidates
       )
 
       captionsCost = captionResult.cost
@@ -132,12 +135,12 @@ export const generateContentTask = task({
       }
       anthropicCost = captionResult.cost.usd
 
-      // Step 6: Create Post records — CTA is appended deterministically here, never touched by the model
+      // Step 6: Create Post records — model picks ctaIndex, code copies the chosen candidate body verbatim
       const postCount = await createPostsFromCaptions(
         captionResult.posts,
         contentRunId,
         client.id,
-        client.mainCta
+        ctaCandidates
       )
 
       const pipelineDurationSeconds = Math.round((Date.now() - pipelineStart) / 1000)
