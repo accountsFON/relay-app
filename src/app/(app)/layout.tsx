@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { findUserByClerkId } from '@/server/repositories/users'
 import { AppShell } from '@/components/app-shell'
+import { Button } from '@/components/ui/button'
 import { can } from '@/server/auth/permissions'
 import { getOrgContext } from '@/server/middleware/auth'
 
@@ -19,19 +20,21 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown DB error'
     return (
-      <div className="flex h-dvh items-center justify-center bg-background">
-        <div className="max-w-md text-center p-6">
-          <h1 className="text-xl font-bold text-foreground mb-2">Connection Error</h1>
-          <p className="text-sm text-muted-foreground mb-4">
-            Could not connect to the database. This usually means the DATABASE_URL
-            environment variable is missing or the database is waking up from sleep.
-          </p>
-          <p className="text-xs text-muted-foreground font-mono">{message}</p>
-          <a
-            href="/dashboard"
-            className="mt-4 inline-block px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90"
+      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
+        <div className="max-w-md rounded-2xl bg-card p-8 text-center">
+          <h1
+            className="text-2xl font-normal italic text-foreground"
+            style={{ fontFamily: 'var(--font-serif)', letterSpacing: '-0.5px', lineHeight: 1.15 }}
           >
-            Retry
+            Something's off.
+          </h1>
+          <p className="mt-3 text-[15px] text-muted-foreground">
+            Could not connect to the database. Usually this means DATABASE_URL is
+            missing or the database is waking up.
+          </p>
+          <p className="mt-3 text-xs text-muted-foreground font-mono break-all">{message}</p>
+          <a href="/dashboard" className="mt-6 inline-block">
+            <Button>Retry</Button>
           </a>
         </div>
       </div>
