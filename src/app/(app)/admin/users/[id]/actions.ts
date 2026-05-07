@@ -7,10 +7,10 @@ import {
   assignClientDesigner,
 } from '@/server/repositories/clients'
 import {
-  updateUserRole,
-  findUserInOrg,
-  updateUserPermissionOverrides,
-} from '@/server/repositories/users'
+  findMembership,
+  updateMembershipRole,
+  updateMembershipPermissionOverrides,
+} from '@/server/repositories/memberships'
 import { recordPermissionAudits } from '@/server/repositories/permissionAuditLogs'
 import {
   PERMISSION_KEYS,
@@ -26,8 +26,8 @@ export async function setClientAssignment(input: {
 }) {
   const ctx = await requireAdminPortal()
 
-  const target = await findUserInOrg(input.userId, ctx.organizationDbId)
-  if (!target) throw new Error('User not found')
+  const membership = await findMembership(input.userId, ctx.organizationDbId)
+  if (!membership) throw new Error('User is not a member of this agency')
 
   const newValue = input.assigned ? input.userId : null
 
@@ -42,38 +42,40 @@ export async function setClientAssignment(input: {
   revalidatePath('/admin/clients')
 }
 
-export async function changeUserRole(userId: string, role: UserRole) {
+export async function changeMembershipRole(userId: string, role: UserRole) {
   const ctx = await requireAdminPortal()
 
   if (userId === ctx.userDbId && role !== 'admin') {
     throw new Error('Cannot demote yourself out of admin role')
   }
 
-  await updateUserRole(userId, ctx.organizationDbId, role)
+  const membership = await findMembership(userId, ctx.organizationDbId)
+  if (!membership) throw new Error('User is not a member of this agency')
+
+  // Repo enforces the at-least-one-admin invariant.
+  await updateMembershipRole(membership.id, role)
 
   revalidatePath(`/admin/users/${userId}`)
   revalidatePath('/admin/users')
 }
 
 /**
- * Replaces the user's permissionOverrides map with the desired one.
+ * Replaces the membership's permissionOverrides with the desired map.
  * Pass `null` for a key to clear that override (revert to role default).
  * Audits every key whose effective override changed.
  */
-export async function updateUserPermissions(input: {
+export async function updateMembershipPermissions(input: {
   userId: string
   overrides: Partial<Record<PermissionKey, boolean | null>>
 }) {
   const ctx = await requireAdminPortal()
 
-  const target = await findUserInOrg(input.userId, ctx.organizationDbId)
-  if (!target) throw new Error('User not found')
+  const membership = await findMembership(input.userId, ctx.organizationDbId)
+  if (!membership) throw new Error('User is not a member of this agency')
 
   const current =
-    (target.permissionOverrides as Record<string, boolean> | null) ?? {}
+    (membership.permissionOverrides as Record<string, boolean> | null) ?? {}
 
-  // Build the new override map: null entries clear, defined entries set,
-  // missing keys preserve the existing value.
   const next: Record<string, boolean> = {}
   for (const key of PERMISSION_KEYS) {
     const incoming = input.overrides[key]
@@ -85,7 +87,6 @@ export async function updateUserPermissions(input: {
     next[key] = incoming
   }
 
-  // Diff for audit
   const audits = []
   for (const key of PERMISSION_KEYS) {
     const before = key in current ? current[key] : null
@@ -95,20 +96,18 @@ export async function updateUserPermissions(input: {
       organizationId: ctx.organizationDbId,
       actorUserId: ctx.userDbId,
       targetUserId: input.userId,
+      targetMembershipId: membership.id,
       targetRole: null,
       permissionKey: key,
       fromValue: before,
       toValue: after,
+      usedPlatformOverride: ctx.platformOwner,
     })
   }
 
   const finalOverrides = Object.keys(next).length > 0 ? next : null
 
-  await updateUserPermissionOverrides(
-    input.userId,
-    ctx.organizationDbId,
-    finalOverrides,
-  )
+  await updateMembershipPermissionOverrides(membership.id, finalOverrides)
   await recordPermissionAudits(audits)
 
   revalidatePath(`/admin/users/${input.userId}`)

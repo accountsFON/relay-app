@@ -6,7 +6,7 @@ import {
   assignClientAm,
   assignClientDesigner,
 } from '@/server/repositories/clients'
-import { findUserInOrg } from '@/server/repositories/users'
+import { findMembership } from '@/server/repositories/memberships'
 
 /**
  * Sets or clears the AM/Designer slot on a client. Pass userId='' to clear.
@@ -20,8 +20,8 @@ export async function setClientPrimary(input: {
   const ctx = await requireAdminPortal()
 
   if (input.userId) {
-    const target = await findUserInOrg(input.userId, ctx.organizationDbId)
-    if (!target) throw new Error('User not found in this org')
+    const membership = await findMembership(input.userId, ctx.organizationDbId)
+    if (!membership) throw new Error('User is not a member of this agency')
   }
 
   if (input.slot === 'am') {

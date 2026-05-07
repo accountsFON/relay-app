@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { updateUserPermissions } from './actions'
+import { updateMembershipPermissions } from './actions'
 import {
   PERMISSION_KEYS,
   PERMISSION_LABELS,
@@ -94,7 +94,7 @@ export function PermissionEditor({
 
     startTransition(async () => {
       try {
-        await updateUserPermissions({ userId, overrides })
+        await updateMembershipPermissions({ userId, overrides })
         setSavedAt(Date.now())
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to save permissions')

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { changeUserRole } from './actions'
+import { changeMembershipRole } from './actions'
 import type { UserRole } from '@/lib/types'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -28,7 +28,7 @@ export function RoleChanger({ userId, currentRole, isSelf }: Props) {
     setError(null)
     startTransition(async () => {
       try {
-        await changeUserRole(userId, selected)
+        await changeMembershipRole(userId, selected)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to change role')
       }
