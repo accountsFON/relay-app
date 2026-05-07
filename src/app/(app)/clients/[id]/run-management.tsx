@@ -16,10 +16,14 @@ export function DeleteRunButton({ runId, status }: { runId: string; status: stri
   if (!confirming) {
     return (
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
-        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-        onClick={() => setConfirming(true)}
+        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setConfirming(true)
+        }}
       >
         Delete
       </Button>
@@ -29,23 +33,28 @@ export function DeleteRunButton({ runId, status }: { runId: string; status: stri
   return (
     <div className="flex items-center gap-1">
       <Button
-        variant="outline"
+        variant="destructive"
         size="sm"
-        className="text-red-600 hover:bg-red-50"
         disabled={isPending}
-        onClick={() => {
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
           startTransition(async () => {
             await deleteContentRun(runId)
             router.refresh()
           })
         }}
       >
-        {isPending ? 'Deleting...' : 'Confirm delete'}
+        {isPending ? 'Deleting…' : 'Confirm'}
       </Button>
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
-        onClick={() => setConfirming(false)}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setConfirming(false)
+        }}
       >
         Cancel
       </Button>
@@ -65,8 +74,11 @@ export function RegenRunButton({
   if (status === 'running' || status === 'queued') return null
 
   return (
-    <Link href={`/clients/${clientId}/generate?month=${targetMonth}`}>
-      <Button variant="outline" size="sm">
+    <Link
+      href={`/clients/${clientId}/generate?month=${targetMonth}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Button variant="ghost" size="sm">
         Re-run
       </Button>
     </Link>

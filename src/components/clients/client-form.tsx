@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { PageSection } from '@/components/ui/page-section'
 
 function arrayToCsv(val: unknown): string {
   if (Array.isArray(val)) return val.join(', ')
@@ -53,137 +54,130 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
   return (
     <form
       onSubmit={form.handleSubmit((data) => onSubmit(data as ClientInput))}
-      className="space-y-8"
+      className="space-y-6"
     >
-      <Section title="Identity">
-        <Field
-          label="Name"
-          htmlFor="name"
-          error={form.formState.errors.name?.message as string | undefined}
-        >
-          <Input id="name" {...form.register('name')} />
-        </Field>
-        <Field label="Industry" htmlFor="industry">
-          <Input id="industry" {...form.register('industry')} />
-        </Field>
-        <Field label="Location" htmlFor="location">
-          <Input id="location" {...form.register('location')} placeholder="City, State" />
-        </Field>
-        <Field label="Phone" htmlFor="phone">
-          <Input id="phone" {...form.register('phone')} />
-        </Field>
-      </Section>
-
-      <Section title="Brand">
-        <Field label="Business summary" htmlFor="businessSummary">
-          <Textarea id="businessSummary" {...form.register('businessSummary')} rows={3} />
-        </Field>
-        <Field label="Brand voice" htmlFor="brandVoice">
-          <Textarea id="brandVoice" {...form.register('brandVoice')} rows={2} />
-        </Field>
-        <Field label="Target audience" htmlFor="targetAudience">
-          <Textarea id="targetAudience" {...form.register('targetAudience')} rows={2} />
-        </Field>
-      </Section>
-
-      <Section title="Strategy">
-        <Field label="Main CTA" htmlFor="mainCta">
-          <Textarea id="mainCta" {...form.register('mainCta')} rows={3} />
-        </Field>
-        <Field label="Focus 1" htmlFor="focus1">
-          <Textarea id="focus1" {...form.register('focus1')} rows={2} />
-        </Field>
-        <Field label="Focus 2" htmlFor="focus2">
-          <Textarea id="focus2" {...form.register('focus2')} rows={2} />
-        </Field>
-        <Field label="Focus 3" htmlFor="focus3">
-          <Textarea id="focus3" {...form.register('focus3')} rows={2} />
-        </Field>
-        <Field label="Dos" htmlFor="dos">
-          <Textarea id="dos" {...form.register('dos')} rows={2} />
-        </Field>
-        <Field label="Don'ts" htmlFor="donts">
-          <Textarea id="donts" {...form.register('donts')} rows={2} />
-        </Field>
-      </Section>
-
-      <Section title="Scheduling">
-        <Field label="Posting days" hint="Comma-separated: Mon,Wed,Fri" htmlFor="postingDays">
-          <Input id="postingDays" {...form.register('postingDays')} />
-        </Field>
-        <Field label="Post length" htmlFor="postLength">
-          <Input
-            id="postLength"
-            {...form.register('postLength')}
-            placeholder="e.g. Max 360 characters"
-          />
-        </Field>
-        <Field label="Holiday handling" htmlFor="holidayHandling">
-          <select
-            id="holidayHandling"
-            {...form.register('holidayHandling')}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+      <PageSection title="Identity">
+        <div className="space-y-5">
+          <Field
+            label="Name"
+            htmlFor="name"
+            error={form.formState.errors.name?.message as string | undefined}
           >
-            <option value="Major-US">Major US holidays</option>
-            <option value="Off">None</option>
-          </select>
-        </Field>
-        <Field label="Excluded dates" hint="Comma-separated YYYY-MM-DD" htmlFor="excludedDates">
-          <Input id="excludedDates" {...form.register('excludedDates')} />
-        </Field>
-      </Section>
+            <Input id="name" {...form.register('name')} />
+          </Field>
+          <Field label="Industry" htmlFor="industry">
+            <Input id="industry" {...form.register('industry')} />
+          </Field>
+          <Field label="Location" htmlFor="location">
+            <Input id="location" {...form.register('location')} placeholder="City, State" />
+          </Field>
+          <Field label="Phone" htmlFor="phone">
+            <Input id="phone" {...form.register('phone')} />
+          </Field>
+        </div>
+      </PageSection>
 
-      <Section title="Assets">
-        <Field label="URLs" hint="Comma-separated full URLs" htmlFor="urls">
-          <Input id="urls" {...form.register('urls')} />
-        </Field>
-        <Field label="Assets folder URL" htmlFor="assetsFolderUrl">
-          <Input
-            id="assetsFolderUrl"
-            {...form.register('assetsFolderUrl')}
-            placeholder="https://..."
-          />
-        </Field>
-      </Section>
+      <PageSection title="Brand">
+        <div className="space-y-5">
+          <Field label="Business summary" htmlFor="businessSummary">
+            <Textarea id="businessSummary" {...form.register('businessSummary')} rows={3} />
+          </Field>
+          <Field label="Brand voice" htmlFor="brandVoice">
+            <Textarea id="brandVoice" {...form.register('brandVoice')} rows={2} />
+          </Field>
+          <Field label="Target audience" htmlFor="targetAudience">
+            <Textarea id="targetAudience" {...form.register('targetAudience')} rows={2} />
+          </Field>
+        </div>
+      </PageSection>
 
-      <Section title="Crawl Settings">
+      <PageSection title="Strategy">
+        <div className="space-y-5">
+          <Field label="Main CTA" htmlFor="mainCta">
+            <Textarea id="mainCta" {...form.register('mainCta')} rows={3} />
+          </Field>
+          <Field label="Focus 1" htmlFor="focus1">
+            <Textarea id="focus1" {...form.register('focus1')} rows={2} />
+          </Field>
+          <Field label="Focus 2" htmlFor="focus2">
+            <Textarea id="focus2" {...form.register('focus2')} rows={2} />
+          </Field>
+          <Field label="Focus 3" htmlFor="focus3">
+            <Textarea id="focus3" {...form.register('focus3')} rows={2} />
+          </Field>
+          <Field label="Dos" htmlFor="dos">
+            <Textarea id="dos" {...form.register('dos')} rows={2} />
+          </Field>
+          <Field label="Don'ts" htmlFor="donts">
+            <Textarea id="donts" {...form.register('donts')} rows={2} />
+          </Field>
+        </div>
+      </PageSection>
+
+      <PageSection title="Scheduling">
+        <div className="space-y-5">
+          <Field label="Posting days" hint="Comma-separated: Mon,Wed,Fri" htmlFor="postingDays">
+            <Input id="postingDays" {...form.register('postingDays')} />
+          </Field>
+          <Field label="Post length" htmlFor="postLength">
+            <Input
+              id="postLength"
+              {...form.register('postLength')}
+              placeholder="e.g. Max 360 characters"
+            />
+          </Field>
+          <Field label="Holiday handling" htmlFor="holidayHandling">
+            <select
+              id="holidayHandling"
+              {...form.register('holidayHandling')}
+              className="h-11 w-full rounded-xl border border-input bg-card px-3.5 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+            >
+              <option value="Major-US">Major US holidays</option>
+              <option value="Off">None</option>
+            </select>
+          </Field>
+          <Field label="Excluded dates" hint="Comma-separated YYYY-MM-DD" htmlFor="excludedDates">
+            <Input id="excludedDates" {...form.register('excludedDates')} />
+          </Field>
+        </div>
+      </PageSection>
+
+      <PageSection title="Assets">
+        <div className="space-y-5">
+          <Field label="URLs" hint="Comma-separated full URLs" htmlFor="urls">
+            <Input id="urls" {...form.register('urls')} />
+          </Field>
+          <Field label="Assets folder URL" htmlFor="assetsFolderUrl">
+            <Input
+              id="assetsFolderUrl"
+              {...form.register('assetsFolderUrl')}
+              placeholder="https://..."
+            />
+          </Field>
+        </div>
+      </PageSection>
+
+      <PageSection title="Crawl Settings">
         <Field label="Auto-crawl behavior" htmlFor="autoCrawl">
           <select
             id="autoCrawl"
             {...form.register('autoCrawl')}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+            className="h-11 w-full rounded-xl border border-input bg-card px-3.5 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
           >
             <option value="always">Always re-crawl (every generation)</option>
             <option value="when_empty">Only when no stored data exists</option>
             <option value="never">Never auto-crawl (use stored data)</option>
           </select>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-[13px] text-muted-foreground mt-2">
             Controls whether the pipeline crawls websites during content generation. &quot;Always&quot; gives freshest data but uses crawl credits each time. &quot;Never&quot; is free but uses older data.
           </p>
         </Field>
-      </Section>
+      </PageSection>
 
-      <div className="flex justify-end">
-        <Button type="submit">{submitLabel}</Button>
+      <div className="flex justify-end gap-2">
+        <Button variant="accent" size="lg" type="submit">{submitLabel}</Button>
       </div>
     </form>
-  )
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h2>
-      <div className="space-y-4">{children}</div>
-    </section>
   )
 }
 
@@ -201,11 +195,11 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={htmlFor}>{label}</Label>
+    <div className="space-y-2">
+      <Label htmlFor={htmlFor} className="text-[13px] font-medium text-foreground">{label}</Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {hint && <p className="text-[12px] text-muted-foreground">{hint}</p>}
+      {error && <p className="text-[12px] text-destructive">{error}</p>}
     </div>
   )
 }

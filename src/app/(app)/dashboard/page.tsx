@@ -1,6 +1,10 @@
 import { requireOrgContext } from '@/server/middleware/auth'
 import { getMonthlyCostSummary } from '@/server/repositories/contentRuns'
 import { Card } from '@/components/ui/card'
+import { PageHeader } from '@/components/page-header'
+import { PageSection } from '@/components/ui/page-section'
+import { EmptyState } from '@/components/ui/empty-state'
+import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
 
 export default async function DashboardPage() {
   const ctx = await requireOrgContext()
@@ -17,76 +21,59 @@ export default async function DashboardPage() {
     year: 'numeric',
   })
 
-  return (
-    <div className="p-4 md:p-8">
-      <h1 className="text-xl font-bold text-foreground sm:text-2xl">Dashboard</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Role: {ctx.role}</p>
+  const avgCost =
+    costSummary.totalRuns > 0
+      ? costSummary.totalCostUsd / costSummary.totalRuns
+      : 0
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 md:mt-8 md:gap-4 md:grid-cols-3">
-        <Card className="p-4 md:p-6">
-          <p className="text-sm text-muted-foreground">{monthLabel} Cost</p>
-          <p className="text-2xl font-bold text-foreground mt-1 md:text-3xl">
-            ${costSummary.totalCostUsd.toFixed(2)}
-          </p>
-        </Card>
-        <Card className="p-4 md:p-6">
-          <p className="text-sm text-muted-foreground">{monthLabel} Runs</p>
-          <p className="text-2xl font-bold text-foreground mt-1 md:text-3xl">
-            {costSummary.totalRuns}
-          </p>
-        </Card>
-        <Card className="p-4 md:p-6">
-          <p className="text-sm text-muted-foreground">Avg Cost / Run</p>
-          <p className="text-2xl font-bold text-foreground mt-1 md:text-3xl">
-            $
-            {costSummary.totalRuns > 0
-              ? (costSummary.totalCostUsd / costSummary.totalRuns).toFixed(2)
-              : '0.00'}
-          </p>
-        </Card>
+  return (
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
+      <PageHeader
+        title="Dashboard"
+        description={`Activity for ${monthLabel}.`}
+      />
+
+      <div className="mt-10 grid gap-4 sm:grid-cols-3">
+        <StatCard label={`${monthLabel} cost`} value={`$${costSummary.totalCostUsd.toFixed(2)}`} />
+        <StatCard label={`${monthLabel} runs`} value={costSummary.totalRuns.toLocaleString()} />
+        <StatCard label="Avg cost / run" value={`$${avgCost.toFixed(2)}`} />
       </div>
 
-      {costSummary.byClient.length > 0 && (
-        <div className="mt-6 md:mt-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Cost by Client
-          </h2>
-          <div className="rounded-lg border border-border overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
-                    Client
-                  </th>
-                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">
-                    Runs
-                  </th>
-                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">
-                    Cost
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {costSummary.byClient.map((c) => (
-                  <tr key={c.name} className="border-t border-border">
-                    <td className="px-4 py-2">{c.name}</td>
-                    <td className="px-4 py-2 text-right">{c.runs}</td>
-                    <td className="px-4 py-2 text-right">
-                      ${c.cost.toFixed(4)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {costSummary.byClient.length === 0 && (
-        <div className="mt-6 md:mt-8 rounded-lg border border-border bg-card p-6 md:p-8 text-center text-muted-foreground">
-          No completed runs this month. Generate content for a client to see cost tracking here.
-        </div>
-      )}
+      <div className="mt-10">
+        {costSummary.byClient.length > 0 ? (
+          <PageSection title="Cost by client">
+            <DataRowGroup className="-mx-1">
+              {costSummary.byClient.map((c) => (
+                <DataRow
+                  key={c.name}
+                  leading={<RowAvatar initials={c.name.slice(0, 2)} />}
+                  title={c.name}
+                  subtitle={`${c.runs} ${c.runs === 1 ? 'run' : 'runs'}`}
+                  meta={`$${c.cost.toFixed(4)}`}
+                />
+              ))}
+            </DataRowGroup>
+          </PageSection>
+        ) : (
+          <EmptyState
+            title="Nothing's shipped yet."
+            description="Generate content for a client and cost tracking will start showing up here."
+          />
+        )}
+      </div>
     </div>
+  )
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <div className="px-5">
+        <p className="text-[13px] text-muted-foreground">{label}</p>
+        <p className="mt-2 text-3xl font-bold text-foreground tabular-nums tracking-[-0.5px]">
+          {value}
+        </p>
+      </div>
+    </Card>
   )
 }

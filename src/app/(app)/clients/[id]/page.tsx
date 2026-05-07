@@ -7,17 +7,13 @@ import {
 import { findClientById } from '@/server/repositories/clients'
 import { listRunsByClient } from '@/server/repositories/contentRuns'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { PageHeader } from '@/components/page-header'
+import { PageSection } from '@/components/ui/page-section'
+import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
+import { Badge, StatusDot } from '@/components/ui/badge'
+import { Calendar } from 'lucide-react'
 import { DeleteRunButton, RegenRunButton } from './run-management'
-
-const STATUS_COLORS: Record<string, string> = {
-  complete: 'text-green-600 bg-green-50',
-  running: 'text-amber-600 bg-amber-50',
-  queued: 'text-blue-600 bg-blue-50',
-  failed: 'text-red-600 bg-red-50',
-}
 
 export default async function ClientDetailPage({
   params,
@@ -34,98 +30,85 @@ export default async function ClientDetailPage({
   const canEdit = canEditClients(ctx.role)
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="mb-4 sm:mb-6">
-        <Link
-          href="/clients"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          &larr; Back to clients
-        </Link>
-      </div>
-
-      <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl truncate">{client.name}</h1>
-          <div className="mt-2 flex items-center gap-2">
-            <Badge variant={client.status === 'active' ? 'default' : 'secondary'}>
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+      <PageHeader
+        title={client.name}
+        description={
+          [client.industry, client.location].filter(Boolean).join(' · ') ||
+          undefined
+        }
+        backHref="/clients"
+        backLabel="Back to clients"
+        actions={
+          canEdit ? (
+            <>
+              <Link href={`/clients/${client.id}/generate`}>
+                <Button variant="accent">Generate content</Button>
+              </Link>
+              <Link href={`/clients/${client.id}/edit`}>
+                <Button variant="outline">Edit profile</Button>
+              </Link>
+              <Badge variant={client.status === 'active' ? 'primary' : 'secondary'}>
+                <StatusDot status={client.status === 'active' ? 'active' : 'inactive'} />
+                {client.status}
+              </Badge>
+            </>
+          ) : (
+            <Badge variant={client.status === 'active' ? 'primary' : 'secondary'}>
+              <StatusDot status={client.status === 'active' ? 'active' : 'inactive'} />
               {client.status}
             </Badge>
-            {client.industry && (
-              <span className="text-sm text-muted-foreground">{client.industry}</span>
-            )}
-          </div>
-        </div>
-        {canEdit && (
-          <div className="flex shrink-0 gap-2">
-            <Link href={`/clients/${client.id}/edit`}>
-              <Button variant="outline">Edit</Button>
-            </Link>
-            <Link href={`/clients/${client.id}/generate`}>
-              <Button>Generate content</Button>
-            </Link>
-          </div>
-        )}
-      </div>
+          )
+        }
+      />
 
       {runs.length > 0 && (
-        <div className="mb-6 sm:mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Content Runs
-          </h2>
-          <div className="space-y-3">
-            {runs.map((run) => (
-              <Card key={run.id} className="p-3 sm:p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {formatMonth(run.targetMonth)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {run.createdAt.toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${STATUS_COLORS[run.status] ?? 'text-muted-foreground bg-muted'}`}
-                    >
-                      {run.status}
+        <div className="mt-10">
+          <PageSection title="Content runs">
+            <DataRowGroup className="-mx-1">
+              {runs.map((run) => (
+                <DataRow
+                  key={run.id}
+                  href={
+                    run.status === 'complete' && run._count.posts > 0
+                      ? `/clients/${client.id}/runs/${run.id}`
+                      : undefined
+                  }
+                  leading={<RowAvatar icon={<Calendar className="size-5 text-ink-50" />} />}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <StatusDot status={run.status} />
+                      {formatMonth(run.targetMonth)}
                     </span>
-                    {run._count.posts > 0 && (
-                      <span className="text-sm text-muted-foreground">
-                        {run._count.posts} posts
-                      </span>
-                    )}
-                    {run.totalCostUsd && (
-                      <span className="text-sm text-muted-foreground">
-                        ${Number(run.totalCostUsd).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {run.status === 'complete' && run._count.posts > 0 && (
-                      <Link href={`/clients/${client.id}/runs/${run.id}`}>
-                        <Button variant="outline" size="sm">
-                          View posts
-                        </Button>
-                      </Link>
-                    )}
-                    <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} status={run.status} />
-                    <DeleteRunButton runId={run.id} status={run.status} />
-                    {run.status === 'failed' && run.errorMessage && (
-                      <span className="text-xs text-destructive max-w-xs truncate">
-                        {run.errorMessage}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                  }
+                  subtitle={
+                    <span>
+                      {run.createdAt.toLocaleDateString()}
+                      {run._count.posts > 0 && ` · ${run._count.posts} posts`}
+                      {run.totalCostUsd && ` · $${Number(run.totalCostUsd).toFixed(2)}`}
+                      {run.status === 'failed' && run.errorMessage && (
+                        <span className="ml-2 text-destructive">{run.errorMessage}</span>
+                      )}
+                    </span>
+                  }
+                  trailing={
+                    canEdit ? (
+                      <div className="flex items-center gap-1">
+                        <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} status={run.status} />
+                        <DeleteRunButton runId={run.id} status={run.status} />
+                      </div>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </DataRowGroup>
+          </PageSection>
         </div>
       )}
 
-      <ClientProfileView client={client} />
+      <div className="mt-10">
+        <ClientProfileView client={client} canEdit={canEdit} />
+      </div>
     </div>
   )
 }

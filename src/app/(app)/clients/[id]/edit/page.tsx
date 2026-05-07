@@ -1,8 +1,8 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientById } from '@/server/repositories/clients'
 import { EditClientForm } from './edit-form'
+import { PageHeader } from '@/components/page-header'
 
 export default async function EditClientPage({
   params,
@@ -39,18 +39,15 @@ export default async function EditClientPage({
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="mb-6 sm:mb-8">
-        <Link
-          href={`/clients/${client.id}`}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          &larr; Back to {client.name}
-        </Link>
-        <h1 className="mt-2 text-xl font-bold text-foreground sm:text-2xl">Edit client</h1>
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-3xl">
+      <PageHeader
+        title={`Edit ${client.name}`}
+        backHref={`/clients/${client.id}`}
+        backLabel={`Back to ${client.name}`}
+      />
+      <div className="mt-10">
+        <EditClientForm clientId={client.id} defaultValues={defaultValues} />
       </div>
-
-      <EditClientForm clientId={client.id} defaultValues={defaultValues} />
     </div>
   )
 }
