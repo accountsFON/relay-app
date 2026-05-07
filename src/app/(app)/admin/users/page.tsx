@@ -40,11 +40,28 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl font-bold text-foreground sm:text-2xl">Team</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {users.length} {users.length === 1 ? 'member' : 'members'}
-        </p>
+      <div className="mb-6 sm:mb-8 flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Team</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {users.length} {users.length === 1 ? 'member' : 'members'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/clients"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Clients view
+          </Link>
+          <span className="text-muted-foreground">·</span>
+          <Link
+            href="/admin/roles"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Role defaults
+          </Link>
+        </div>
       </div>
 
       <div className="space-y-8">
