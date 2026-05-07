@@ -42,20 +42,14 @@ export function ClientProfileView({
       </PageSection>
 
       <PageSection title="Strategy">
-        <div className="space-y-6">
+        <FieldStack>
           <NarrativeField clientId={client.id} fieldKey="mainCta" label="Main CTA" value={client.mainCta} canEdit={canEdit} maxHeight={280} />
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <FocusCard clientId={client.id} fieldKey="focus1" index={1} value={client.focus1} canEdit={canEdit} />
-            <FocusCard clientId={client.id} fieldKey="focus2" index={2} value={client.focus2} canEdit={canEdit} />
-            <FocusCard clientId={client.id} fieldKey="focus3" index={3} value={client.focus3} canEdit={canEdit} />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <NarrativeField clientId={client.id} fieldKey="dos" label="Dos" value={client.dos} canEdit={canEdit} maxHeight={260} />
-            <NarrativeField clientId={client.id} fieldKey="donts" label="Don'ts" value={client.donts} canEdit={canEdit} maxHeight={260} />
-          </div>
-        </div>
+          <FocusField clientId={client.id} fieldKey="focus1" index={1} value={client.focus1} canEdit={canEdit} />
+          <FocusField clientId={client.id} fieldKey="focus2" index={2} value={client.focus2} canEdit={canEdit} />
+          <FocusField clientId={client.id} fieldKey="focus3" index={3} value={client.focus3} canEdit={canEdit} />
+          <NarrativeField clientId={client.id} fieldKey="dos" label="Dos" value={client.dos} canEdit={canEdit} maxHeight={260} />
+          <NarrativeField clientId={client.id} fieldKey="donts" label="Don'ts" value={client.donts} canEdit={canEdit} maxHeight={260} />
+        </FieldStack>
       </PageSection>
 
       <PageSection title="Scheduling">
@@ -426,7 +420,12 @@ function NarrativeField({
   )
 }
 
-function FocusCard({
+/**
+ * FocusField — same shape as NarrativeField but with a numbered badge
+ * inline with the label, so Focus 1/2/3 stack consistently with Main CTA,
+ * Dos, Don'ts in the Strategy section.
+ */
+function FocusField({
   clientId,
   fieldKey,
   index,
@@ -446,17 +445,20 @@ function FocusCard({
   })
 
   return (
-    <div className="rounded-xl bg-cream-warm/60 px-4 py-4 h-full flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2 min-h-7">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3 min-h-7">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="inline-flex size-6 items-center justify-center rounded-full bg-foreground text-[11px] font-bold text-cream tabular-nums shrink-0">
+          <span className="inline-flex size-5 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-cream tabular-nums shrink-0">
             {index}
           </span>
-          <span className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+          <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground truncate">
             Focus
-          </span>
+          </h3>
           {editor.isDirty && (
-            <span className="size-1.5 rounded-full bg-foreground" aria-label="Unsaved" />
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/70">
+              <span className="size-1.5 rounded-full bg-foreground" />
+              Unsaved
+            </span>
           )}
         </div>
         {canEdit && !editor.editing && (
@@ -464,7 +466,7 @@ function FocusCard({
             type="button"
             onClick={editor.startEdit}
             aria-label={`Edit Focus ${index}`}
-            className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-80 hover:text-foreground transition-colors shrink-0"
+            className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-warm hover:text-foreground transition-colors shrink-0"
           >
             <Pencil className="size-3.5" />
           </button>
@@ -475,7 +477,7 @@ function FocusCard({
               type="button"
               onClick={editor.cancel}
               aria-label="Cancel"
-              className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-80 hover:text-foreground"
+              className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-warm hover:text-foreground transition-colors"
             >
               <X className="size-3.5" />
             </button>
@@ -484,7 +486,7 @@ function FocusCard({
               onClick={editor.save}
               disabled={editor.pending || !editor.isDirty}
               aria-label="Save"
-              className="inline-flex items-center justify-center size-7 rounded-full bg-foreground text-cream hover:bg-ink-80 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center size-7 rounded-full bg-foreground text-cream hover:bg-ink-80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <Check className="size-3.5" />
             </button>
@@ -498,7 +500,7 @@ function FocusCard({
             value={editor.draft}
             onChange={(e) => editor.setDraft(e.target.value)}
             rows={4}
-            className="w-full min-h-[100px] max-h-[300px] overflow-y-auto rounded-lg border border-input bg-card px-3 py-2 text-[14px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+            className="w-full min-h-[100px] max-h-[300px] overflow-y-auto rounded-xl border border-input bg-card px-3.5 py-2.5 text-[14px] leading-relaxed outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 resize-y"
             onKeyDown={(e) => {
               if (e.key === 'Escape') editor.cancel()
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -507,13 +509,16 @@ function FocusCard({
               }
             }}
           />
+          <p className="text-[11px] text-muted-foreground">⌘↵ to save · Esc to cancel</p>
           <FieldError error={editor.error} />
         </>
+      ) : value ? (
+        <ScrollableContent maxHeight={200}>
+          <Linkified text={value} />
+        </ScrollableContent>
       ) : (
-        <div className="flex-1 min-h-0">
-          <ScrollableContent maxHeight={180} bare>
-            {value ? <Linkified text={value} /> : <EmptyValue />}
-          </ScrollableContent>
+        <div className="rounded-xl bg-cream-warm/60 px-4 py-3 text-[14px]">
+          <EmptyValue />
         </div>
       )}
     </div>
