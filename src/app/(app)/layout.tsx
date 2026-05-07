@@ -2,12 +2,18 @@ import type { ReactNode } from 'react'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { findUserByClerkId } from '@/server/repositories/users'
+import { listMembershipsForUser } from '@/server/repositories/memberships'
 import { getOrgContext } from '@/server/middleware/auth'
 import { can } from '@/server/auth/permissions'
 import { AppShell } from '@/components/app-shell'
+import { MaintenanceScreen } from '@/components/maintenance-screen'
 import { Button } from '@/components/ui/button'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
+  if (process.env.RELAY_MAINTENANCE_MODE === 'true') {
+    return <MaintenanceScreen />
+  }
+
   const { userId } = await auth()
   if (!userId) redirect('/sign-in')
 
@@ -39,12 +45,27 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   if (!ctx) {
-    // Distinguish "needs onboarding" (no DB user) from "no agency access".
     const dbUser = await findUserByClerkId(userId)
     if (!dbUser) redirect('/onboarding')
     redirect('/no-access')
   }
 
+  const memberships = await listMembershipsForUser(ctx.userDbId)
+  const activeMembership = memberships.find(
+    (m) => m.organizationId === ctx.organizationDbId,
+  )
+  const activeAgencyName = activeMembership?.organization.name ?? 'Platform'
+
   const showAdmin = can(ctx, 'admin.portal')
-  return <AppShell showAdmin={showAdmin}>{children}</AppShell>
+
+  return (
+    <AppShell
+      showAdmin={showAdmin}
+      platformOwner={ctx.platformOwner}
+      membershipCount={memberships.length}
+      activeAgencyName={activeAgencyName}
+    >
+      {children}
+    </AppShell>
+  )
 }
