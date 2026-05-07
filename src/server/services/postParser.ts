@@ -6,29 +6,42 @@ export type CtaCandidate = {
   body: string
 }
 
+const DELIMITER_LINE = /^[ \t]*([_\-=*~])\1{4,}[ \t]*$/
+
 export function parseCtaCandidates(mainCta: string | null | undefined): CtaCandidate[] {
   if (!mainCta?.trim()) return []
 
-  const sections = mainCta
-    .split(/\n[ \t]*_{5,}[ \t]*\n/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
+  const lines = mainCta.split('\n')
+  const sections: string[] = []
+  let current: string[] = []
+
+  for (const line of lines) {
+    if (DELIMITER_LINE.test(line)) {
+      const joined = current.join('\n').trim()
+      if (joined.length > 0) sections.push(joined)
+      current = []
+    } else {
+      current.push(line)
+    }
+  }
+  const finalJoined = current.join('\n').trim()
+  if (finalJoined.length > 0) sections.push(finalJoined)
 
   return sections.map((section) => {
-    const lines = section.split('\n')
-    const firstLine = lines[0].trim()
+    const sectionLines = section.split('\n')
+    const firstLine = sectionLines[0].trim()
     const isLabel =
       firstLine.length > 0 &&
       firstLine.length < 80 &&
       firstLine === firstLine.toUpperCase() &&
       /[A-Z]/.test(firstLine) &&
       !/[📞➡️🌐@]|https?:|www\./i.test(firstLine) &&
-      lines.length > 1
+      sectionLines.length > 1
 
     if (isLabel) {
       return {
         label: firstLine,
-        body: lines.slice(1).join('\n').trim(),
+        body: sectionLines.slice(1).join('\n').trim(),
       }
     }
     return { body: section }
