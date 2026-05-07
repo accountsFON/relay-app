@@ -13,6 +13,7 @@ function makeCtx(role: UserRole): OrgContext {
     plan: 'smb',
     organizationDbId: 'org_db',
     userDbId: 'user_db',
+    platformOwner: false,
     linkedClientId: null,
     permissionOverrides: null,
     roleDefaults: {},

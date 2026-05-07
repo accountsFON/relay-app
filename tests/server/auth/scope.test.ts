@@ -10,6 +10,7 @@ function makeCtx(role: UserRole, overrides: Partial<OrgContext> = {}): OrgContex
     plan: 'smb',
     organizationDbId: 'org_db',
     userDbId: 'user_db_42',
+    platformOwner: false,
     linkedClientId: null,
     permissionOverrides: null,
     roleDefaults: {},

@@ -31,6 +31,7 @@ export async function getOrgContext(): Promise<OrgContext | null> {
     plan: dbUser.organization.plan,
     organizationDbId: dbUser.organization.id,
     userDbId: dbUser.id,
+    platformOwner: dbUser.platformOwner,
     linkedClientId: dbUser.linkedClientId,
     permissionOverrides:
       (dbUser.permissionOverrides as Record<string, boolean> | null) ?? null,

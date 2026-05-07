@@ -23,6 +23,7 @@ const mockUser: User = {
   avatarUrl: null,
   linkedClientId: null,
   permissionOverrides: null,
+  platformOwner: false,
   createdAt: new Date(),
 }
 
