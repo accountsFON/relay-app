@@ -26,6 +26,14 @@ export async function completeOnboarding(formData: FormData) {
   const email = clerkUser.emailAddresses[0]?.emailAddress ?? ''
   if (!email) throw new Error('Email missing on Clerk user')
 
+  // Defense-in-depth against the page-level check: existing users cannot
+  // create additional agencies via Path 1. Multi-agency membership for
+  // regular users is gated through Path 2 (invite ticket) only.
+  const existingUser = await findUserByClerkId(userId)
+  if (existingUser && !inviteTicket) {
+    redirect('/dashboard')
+  }
+
   if (inviteTicket) {
     return await handleInviteOnboarding({
       clerkUserId: userId,
