@@ -1,24 +1,24 @@
 import Link from 'next/link'
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
-import { listUsersByOrg } from '@/server/repositories/users'
+import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { Card } from '@/components/ui/card'
 import { AssignmentSelect } from './assignment-select'
 
 export default async function AdminClientsPage() {
   const ctx = await requireAdminPortal()
 
-  const [clients, users] = await Promise.all([
+  const [clients, memberships] = await Promise.all([
     listClientsByOrgWithAssignments(ctx.organizationDbId),
-    listUsersByOrg(ctx.organizationDbId),
+    listMembershipsForOrg(ctx.organizationDbId),
   ])
 
-  const ams = users
-    .filter((u) => u.role === 'account_manager')
-    .map((u) => ({ id: u.id, name: u.name }))
-  const designers = users
-    .filter((u) => u.role === 'designer')
-    .map((u) => ({ id: u.id, name: u.name }))
+  const ams = memberships
+    .filter((m) => m.role === 'account_manager')
+    .map((m) => ({ id: m.user.id, name: m.user.name }))
+  const designers = memberships
+    .filter((m) => m.role === 'designer')
+    .map((m) => ({ id: m.user.id, name: m.user.name }))
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">

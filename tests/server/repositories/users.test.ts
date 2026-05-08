@@ -23,6 +23,7 @@ const mockUser: User = {
   avatarUrl: null,
   linkedClientId: null,
   permissionOverrides: null,
+  platformOwner: false,
   createdAt: new Date(),
 }
 
@@ -38,11 +39,6 @@ describe('findUserByClerkId', () => {
 
     expect(db.user.findUnique).toHaveBeenCalledWith({
       where: { clerkUserId: 'user_clerk_123' },
-      include: {
-        organization: {
-          include: { roleDefaults: true },
-        },
-      },
     })
     expect(result).toEqual(mockUser)
   })

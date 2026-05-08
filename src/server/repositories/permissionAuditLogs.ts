@@ -5,10 +5,12 @@ export type PermissionAuditEntry = {
   organizationId: string
   actorUserId: string
   targetUserId: string | null
+  targetMembershipId?: string | null
   targetRole: UserRole | null
   permissionKey: string
   fromValue: boolean | null
   toValue: boolean | null
+  usedPlatformOverride?: boolean
 }
 
 export async function recordPermissionAudits(entries: PermissionAuditEntry[]) {

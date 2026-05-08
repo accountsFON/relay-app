@@ -10,6 +10,7 @@ describe('OrgContext type', () => {
       plan: 'smb',
       organizationDbId: 'cluid123',
       userDbId: 'cluid456',
+      platformOwner: false,
       linkedClientId: null,
       permissionOverrides: null,
       roleDefaults: {},

@@ -4,11 +4,6 @@ import type { UserRole } from '@/lib/types'
 export async function findUserByClerkId(clerkUserId: string) {
   return db.user.findUnique({
     where: { clerkUserId },
-    include: {
-      organization: {
-        include: { roleDefaults: true },
-      },
-    },
   })
 }
 
@@ -30,51 +25,41 @@ export async function createUser(input: {
   })
 }
 
-/** Admin-only: lists all users in the org with assignment counts. */
-export async function listUsersByOrg(organizationId: string) {
-  return db.user.findMany({
-    where: { organizationId },
+/**
+ * Admin-only: fetch a single user with their Membership and client
+ * assignments scoped to the active org. Returns null if the user has
+ * no Membership in this org.
+ */
+export async function findUserWithMembershipInOrg(
+  userId: string,
+  organizationId: string,
+) {
+  return db.user.findFirst({
+    where: {
+      id: userId,
+      memberships: { some: { organizationId } },
+    },
     include: {
-      _count: {
-        select: {
-          assignedClients: true,
-          designedClients: true,
-        },
+      memberships: { where: { organizationId } },
+      assignedClients: {
+        where: { organizationId },
+        select: { id: true, name: true },
+      },
+      designedClients: {
+        where: { organizationId },
+        select: { id: true, name: true },
       },
     },
-    orderBy: [{ role: 'asc' }, { name: 'asc' }],
   })
 }
 
-/** Admin-only: fetch a single user in the org for the admin portal. */
-export async function findUserInOrg(userId: string, organizationId: string) {
-  return db.user.findFirst({
-    where: { id: userId, organizationId },
-    include: {
-      assignedClients: { select: { id: true, name: true } },
-      designedClients: { select: { id: true, name: true } },
-    },
-  })
-}
-
-export async function updateUserRole(
-  userId: string,
-  organizationId: string,
-  role: UserRole,
-) {
-  return db.user.updateMany({
-    where: { id: userId, organizationId },
-    data: { role },
-  })
-}
-
-export async function updateUserPermissionOverrides(
-  userId: string,
-  organizationId: string,
-  overrides: Record<string, boolean> | null,
-) {
-  return db.user.updateMany({
-    where: { id: userId, organizationId },
-    data: { permissionOverrides: overrides ?? undefined },
+/**
+ * Set or clear the platformOwner flag on a user. Only platform owners
+ * should be able to call this; the action that wraps it must guard.
+ */
+export async function setUserPlatformOwner(userId: string, value: boolean) {
+  return db.user.update({
+    where: { id: userId },
+    data: { platformOwner: value },
   })
 }

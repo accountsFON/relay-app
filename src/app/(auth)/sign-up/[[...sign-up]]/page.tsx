@@ -1,7 +1,20 @@
 import Image from 'next/image'
+import { redirect } from 'next/navigation'
 import { SignUp } from '@clerk/nextjs'
 
-export default function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ __clerk_ticket?: string }>
+}) {
+  const params = await searchParams
+  const hasInvite = Boolean(params.__clerk_ticket)
+  const publicAllowed = process.env.RELAY_ALLOW_PUBLIC_SIGNUP === 'true'
+
+  if (!hasInvite && !publicAllowed) {
+    redirect('/sign-in?invite_only=1')
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <Image

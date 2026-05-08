@@ -6,14 +6,17 @@ import type { Prisma } from '@prisma/client'
  * current user is allowed to see. Always combine with the org filter at
  * the call site (`{ organizationId, ...getClientScopeFilter(ctx) }`).
  *
+ *   platformOwner   → no extra filter (sees all in active org)
  *   admin           → no extra filter
  *   account_manager → only clients where they are primary AM
  *   designer        → only clients where they are primary designer
- *   client          → only the single linked client (Stage 1+ feature)
+ *   client          → only the single linked client (client-portal)
  */
 export function getClientScopeFilter(
   ctx: OrgContext,
 ): Prisma.ClientWhereInput {
+  if (ctx.platformOwner) return {}
+
   switch (ctx.role) {
     case 'admin':
       return {}
@@ -22,6 +25,8 @@ export function getClientScopeFilter(
     case 'designer':
       return { assignedDesignerId: ctx.userDbId }
     case 'client':
-      return ctx.linkedClientId ? { id: ctx.linkedClientId } : { id: '__none__' }
+      return ctx.linkedClientId
+        ? { id: ctx.linkedClientId }
+        : { id: { in: [] } }
   }
 }

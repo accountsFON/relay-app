@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { requireAdminPortal } from '@/server/middleware/permissions'
-import { listUsersByOrg } from '@/server/repositories/users'
+import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { InviteMemberButton } from './invite-modal'
 import type { UserRole } from '@/lib/types'
 
 const ROLE_ORDER: UserRole[] = ['admin', 'account_manager', 'designer', 'client']
@@ -28,15 +29,15 @@ function initials(name: string): string {
 
 export default async function AdminUsersPage() {
   const ctx = await requireAdminPortal()
-  const users = await listUsersByOrg(ctx.organizationDbId)
+  const memberships = await listMembershipsForOrg(ctx.organizationDbId)
 
-  const byRole: Record<UserRole, typeof users> = {
+  const byRole: Record<UserRole, typeof memberships> = {
     admin: [],
     account_manager: [],
     designer: [],
     client: [],
   }
-  for (const u of users) byRole[u.role].push(u)
+  for (const m of memberships) byRole[m.role].push(m)
 
   return (
     <div className="p-4 md:p-8 max-w-4xl">
@@ -44,10 +45,11 @@ export default async function AdminUsersPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground sm:text-2xl">Team</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {users.length} {users.length === 1 ? 'member' : 'members'}
+            {memberships.length}{' '}
+            {memberships.length === 1 ? 'member' : 'members'}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3 items-center">
           <Link
             href="/admin/clients"
             className="text-sm text-muted-foreground hover:text-foreground"
@@ -61,6 +63,7 @@ export default async function AdminUsersPage() {
           >
             Role defaults
           </Link>
+          <InviteMemberButton />
         </div>
       </div>
 
@@ -74,47 +77,33 @@ export default async function AdminUsersPage() {
                 {ROLE_LABELS[role]}
               </h2>
               <Card className="divide-y divide-border">
-                {list.map((u) => {
-                  const clientCount =
-                    u.role === 'designer'
-                      ? u._count.designedClients
-                      : u._count.assignedClients
-                  const showCount =
-                    u.role === 'account_manager' || u.role === 'designer'
-                  return (
-                    <Link
-                      key={u.id}
-                      href={`/admin/users/${u.id}`}
-                      className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                        {initials(u.name)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-foreground truncate">
-                          {u.name}
-                        </p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {u.email}
-                        </p>
-                      </div>
-                      <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground">
-                        {showCount && (
-                          <span>
-                            {clientCount}{' '}
-                            {clientCount === 1 ? 'client' : 'clients'}
-                          </span>
-                        )}
-                        <Badge variant="secondary">
-                          {ROLE_BADGE_LABEL[u.role]}
-                        </Badge>
-                      </div>
-                      <span className="text-muted-foreground" aria-hidden>
-                        ›
-                      </span>
-                    </Link>
-                  )
-                })}
+                {list.map((m) => (
+                  <Link
+                    key={m.id}
+                    href={`/admin/users/${m.user.id}`}
+                    className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                      {initials(m.user.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">
+                        {m.user.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {m.user.email}
+                      </p>
+                    </div>
+                    <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground">
+                      <Badge variant="secondary">
+                        {ROLE_BADGE_LABEL[m.role]}
+                      </Badge>
+                    </div>
+                    <span className="text-muted-foreground" aria-hidden>
+                      ›
+                    </span>
+                  </Link>
+                ))}
               </Card>
             </section>
           )

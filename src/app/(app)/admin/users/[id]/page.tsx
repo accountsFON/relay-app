@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminPortal } from '@/server/middleware/permissions'
-import { findUserInOrg } from '@/server/repositories/users'
+import { findUserWithMembershipInOrg } from '@/server/repositories/users'
 import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -30,30 +30,32 @@ export default async function AdminUserDetailPage({
   const ctx = await requireAdminPortal()
   const { id } = await params
 
-  const user = await findUserInOrg(id, ctx.organizationDbId)
+  const user = await findUserWithMembershipInOrg(id, ctx.organizationDbId)
   if (!user) notFound()
+
+  const membership = user.memberships[0]
+  if (!membership) notFound()
 
   const clients = await listClientsByOrgWithAssignments(ctx.organizationDbId)
 
   const editableSlot: 'am' | 'designer' | null =
-    user.role === 'account_manager'
+    membership.role === 'account_manager'
       ? 'am'
-      : user.role === 'designer'
+      : membership.role === 'designer'
         ? 'designer'
         : null
 
   const assignedCount =
-    user.role === 'designer'
+    membership.role === 'designer'
       ? user.designedClients.length
       : user.assignedClients.length
 
-  // Compute the merged (system + org role default) value for each permission
-  // — this is the "default" the editor displays alongside the override radios.
+  // Compute the merged (system + role-default) value for each permission.
   const defaultsByKey: Partial<Record<PermissionKey, boolean>> = {}
   for (const key of PERMISSION_KEYS) {
     defaultsByKey[key] = can(
       {
-        role: user.role,
+        role: membership.role,
         permissionOverrides: null,
         roleDefaults: ctx.roleDefaults,
       },
@@ -61,7 +63,9 @@ export default async function AdminUserDetailPage({
     )
   }
   const initialOverrides =
-    (user.permissionOverrides as Partial<Record<PermissionKey, boolean>>) ?? {}
+    (membership.permissionOverrides as Partial<
+      Record<PermissionKey, boolean>
+    >) ?? {}
 
   return (
     <div className="p-4 md:p-8 max-w-5xl">
@@ -81,9 +85,10 @@ export default async function AdminUserDetailPage({
         <p className="mt-1 text-sm text-muted-foreground">
           {user.email} ·{' '}
           <Badge variant="secondary" className="ml-1">
-            {ROLE_LABELS[user.role]}
+            {ROLE_LABELS[membership.role]}
           </Badge>
-          {(user.role === 'account_manager' || user.role === 'designer') && (
+          {(membership.role === 'account_manager' ||
+            membership.role === 'designer') && (
             <span className="ml-2">
               {assignedCount} {assignedCount === 1 ? 'client' : 'clients'}{' '}
               assigned
@@ -98,7 +103,7 @@ export default async function AdminUserDetailPage({
         </h2>
         <RoleChanger
           userId={user.id}
-          currentRole={user.role}
+          currentRole={membership.role}
           isSelf={user.id === ctx.userDbId}
         />
       </Card>
@@ -106,7 +111,7 @@ export default async function AdminUserDetailPage({
       {editableSlot === null ? (
         <Card className="p-6">
           <p className="text-sm text-muted-foreground">
-            {user.role === 'admin'
+            {membership.role === 'admin'
               ? 'Admins see and operate on every client. There are no per-client assignments to manage.'
               : 'This role does not use per-client assignments.'}
           </p>

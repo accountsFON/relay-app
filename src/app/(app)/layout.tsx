@@ -1,22 +1,26 @@
 import type { ReactNode } from 'react'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import { db } from '@/db/client'
 import { findUserByClerkId } from '@/server/repositories/users'
-import { AppShell } from '@/components/app-shell'
-import { Button } from '@/components/ui/button'
-import { can } from '@/server/auth/permissions'
+import { listMembershipsForUser } from '@/server/repositories/memberships'
 import { getOrgContext } from '@/server/middleware/auth'
+import { can } from '@/server/auth/permissions'
+import { AppShell } from '@/components/app-shell'
+import { MaintenanceScreen } from '@/components/maintenance-screen'
+import { Button } from '@/components/ui/button'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const { userId } = await auth()
-
-  if (!userId) {
-    redirect('/sign-in')
+  if (process.env.RELAY_MAINTENANCE_MODE === 'true') {
+    return <MaintenanceScreen />
   }
 
-  let dbUser
+  const { userId } = await auth()
+  if (!userId) redirect('/sign-in')
+
+  let ctx
   try {
-    dbUser = await findUserByClerkId(userId)
+    ctx = await getOrgContext()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown DB error'
     return (
@@ -41,15 +45,48 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!dbUser) {
-    redirect('/onboarding')
+  if (!ctx) {
+    const dbUser = await findUserByClerkId(userId)
+    if (!dbUser) redirect('/onboarding')
+    redirect('/no-access')
   }
 
-  const ctx = await getOrgContext()
-  const showAdmin = ctx ? can(ctx, 'admin.portal') : false
+  const memberships = await listMembershipsForUser(ctx.userDbId)
+  const activeMembership = memberships.find(
+    (m) => m.organizationId === ctx.organizationDbId,
+  )
+  let activeAgencyName = activeMembership?.organization.name ?? ''
+
+  // Platform owners need the full list of orgs to drive the switcher dropdown.
+  // For non-platform-owners, allAgencies stays undefined and Clerk's switcher
+  // handles their memberships.
+  let allAgencies = undefined as
+    | { id: string; name: string; clerkOrgId: string }[]
+    | undefined
+  if (ctx.platformOwner) {
+    const orgs = await db.organization.findMany({
+      select: { id: true, name: true, clerkOrgId: true },
+      orderBy: { name: 'asc' },
+    })
+    allAgencies = orgs
+    if (!activeAgencyName) {
+      const active = orgs.find((o) => o.id === ctx.organizationDbId)
+      activeAgencyName = active?.name ?? 'Platform'
+    }
+  }
+  if (!activeAgencyName) activeAgencyName = 'Platform'
+
+  const showAdmin = can(ctx, 'admin.portal')
 
   return (
-    <AppShell showAdmin={showAdmin}>
+    <AppShell
+      showAdmin={showAdmin}
+      platformOwner={ctx.platformOwner}
+      membershipCount={memberships.length}
+      activeAgencyName={activeAgencyName}
+      allAgencies={allAgencies}
+      activeClerkOrgId={ctx.orgId}
+    >
       {children}
     </AppShell>
   )

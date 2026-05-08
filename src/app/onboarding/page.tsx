@@ -7,12 +7,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ __clerk_ticket?: string }>
+}) {
   const { userId } = await auth()
   if (userId) {
     const existing = await findUserByClerkId(userId)
     if (existing) redirect('/dashboard')
   }
+
+  const params = await searchParams
+  const inviteTicket = params.__clerk_ticket ?? ''
+  const isInvite = Boolean(inviteTicket)
+
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">
       <Image
@@ -32,11 +41,14 @@ export default async function OnboardingPage() {
             Welcome to Relay.
           </h1>
           <p className="mt-3 text-[15px] text-muted-foreground">
-            Tell us your name to finish setting up.
+            {isInvite
+              ? 'You were invited to join an agency. Tell us your name to finish.'
+              : 'Tell us your name and the agency you are starting.'}
           </p>
         </div>
 
         <form action={completeOnboarding} className="space-y-5">
+          <input type="hidden" name="inviteTicket" value={inviteTicket} />
           <div className="space-y-2">
             <Label htmlFor="displayName">Your name</Label>
             <Input
@@ -47,7 +59,18 @@ export default async function OnboardingPage() {
               placeholder="e.g. Julio Aleman"
             />
           </div>
-
+          {!isInvite && (
+            <div className="space-y-2">
+              <Label htmlFor="agencyName">Agency name</Label>
+              <Input
+                id="agencyName"
+                name="agencyName"
+                type="text"
+                required
+                placeholder="e.g. Acme Marketing"
+              />
+            </div>
+          )}
           <Button type="submit" size="lg" className="w-full">
             Get started
           </Button>

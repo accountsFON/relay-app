@@ -5,8 +5,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, X } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 
 const baseNavItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -18,15 +19,34 @@ const adminNavItem = {
   href: '/admin/users',
   icon: ShieldCheck,
 }
+const platformNavItem = {
+  label: 'Platform',
+  href: '/platform',
+  icon: Globe2,
+}
 
 export function AppShell({
   children,
   showAdmin = false,
+  platformOwner = false,
+  membershipCount = 1,
+  activeAgencyName = '',
+  allAgencies,
+  activeClerkOrgId,
 }: {
   children: React.ReactNode
   showAdmin?: boolean
+  platformOwner?: boolean
+  membershipCount?: number
+  activeAgencyName?: string
+  allAgencies?: AgencyOption[]
+  activeClerkOrgId?: string
 }) {
-  const navItems = showAdmin ? [...baseNavItems, adminNavItem] : baseNavItems
+  const navItems = [
+    ...baseNavItems,
+    ...(showAdmin ? [adminNavItem] : []),
+    ...(platformOwner ? [platformNavItem] : []),
+  ]
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
 
@@ -70,6 +90,14 @@ export function AppShell({
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        <OrgSwitcher
+          membershipCount={membershipCount}
+          platformOwner={platformOwner}
+          activeAgencyName={activeAgencyName}
+          allAgencies={allAgencies}
+          activeClerkOrgId={activeClerkOrgId}
+        />
 
         <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
           {navItems.map((item) => {
