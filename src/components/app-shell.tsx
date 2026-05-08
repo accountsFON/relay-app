@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { OrgSwitcher } from '@/components/org-switcher'
+import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 
 const baseNavItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -31,12 +31,16 @@ export function AppShell({
   platformOwner = false,
   membershipCount = 1,
   activeAgencyName = '',
+  allAgencies,
+  activeClerkOrgId,
 }: {
   children: React.ReactNode
   showAdmin?: boolean
   platformOwner?: boolean
   membershipCount?: number
   activeAgencyName?: string
+  allAgencies?: AgencyOption[]
+  activeClerkOrgId?: string
 }) {
   const navItems = [
     ...baseNavItems,
@@ -91,6 +95,8 @@ export function AppShell({
           membershipCount={membershipCount}
           platformOwner={platformOwner}
           activeAgencyName={activeAgencyName}
+          allAgencies={allAgencies}
+          activeClerkOrgId={activeClerkOrgId}
         />
 
         <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">

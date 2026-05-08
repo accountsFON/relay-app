@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import { db } from '@/db/client'
 import { findUserByClerkId } from '@/server/repositories/users'
 import { listMembershipsForUser } from '@/server/repositories/memberships'
 import { getOrgContext } from '@/server/middleware/auth'
@@ -54,7 +55,26 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const activeMembership = memberships.find(
     (m) => m.organizationId === ctx.organizationDbId,
   )
-  const activeAgencyName = activeMembership?.organization.name ?? 'Platform'
+  let activeAgencyName = activeMembership?.organization.name ?? ''
+
+  // Platform owners need the full list of orgs to drive the switcher dropdown.
+  // For non-platform-owners, allAgencies stays undefined and Clerk's switcher
+  // handles their memberships.
+  let allAgencies = undefined as
+    | { id: string; name: string; clerkOrgId: string }[]
+    | undefined
+  if (ctx.platformOwner) {
+    const orgs = await db.organization.findMany({
+      select: { id: true, name: true, clerkOrgId: true },
+      orderBy: { name: 'asc' },
+    })
+    allAgencies = orgs
+    if (!activeAgencyName) {
+      const active = orgs.find((o) => o.id === ctx.organizationDbId)
+      activeAgencyName = active?.name ?? 'Platform'
+    }
+  }
+  if (!activeAgencyName) activeAgencyName = 'Platform'
 
   const showAdmin = can(ctx, 'admin.portal')
 
@@ -64,6 +84,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       platformOwner={ctx.platformOwner}
       membershipCount={memberships.length}
       activeAgencyName={activeAgencyName}
+      allAgencies={allAgencies}
+      activeClerkOrgId={ctx.orgId}
     >
       {children}
     </AppShell>
