@@ -1,8 +1,8 @@
 import type { Prisma, PrismaClient } from '@prisma/client'
-import { ActivityKind } from '@prisma/client'
+import { ActivityKind, EventVisibility } from '@prisma/client'
 import { db } from '@/db/client'
 
-export { ActivityKind }
+export { ActivityKind, EventVisibility }
 
 export type ActivityPayload = Record<string, unknown>
 
@@ -14,6 +14,13 @@ export interface RecordActivityInput {
   postId?: string | null
   actorId?: string | null
   kind: ActivityKind
+  /**
+   * Who can see this event in activity threads / search results.
+   * Defaults to `internal` (agency-only). Set explicitly for client-facing
+   * events (`public`) or sensitive audit entries (`admin_only`).
+   * Spec § Future Features § Section 2 — visibility rules.
+   */
+  visibility?: EventVisibility
   payload: ActivityPayload
   mentionedUserIds?: string[]
 }
@@ -40,6 +47,7 @@ export async function recordActivity(
         postId: input.postId ?? null,
         actorId: input.actorId ?? null,
         kind: input.kind,
+        visibility: input.visibility ?? defaultVisibilityForKind(input.kind),
         payload: (input.payload ?? {}) as Prisma.InputJsonValue,
         mentions: input.mentionedUserIds?.length
           ? {

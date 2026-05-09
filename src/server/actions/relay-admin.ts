@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { ActivityKind, RelayRole, RelayStep } from '@prisma/client'
+import { ActivityKind, EventVisibility, RelayRole, RelayStep } from '@prisma/client'
 import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
 import { recordActivity } from '@/server/services/activity'
@@ -25,6 +25,7 @@ export async function nudgeStuckBatchAction(input: { batchId: string }) {
     clientId: batch.clientId,
     actorId: ctx.userDbId,
     kind: ActivityKind.batch_step_advanced,
+    visibility: EventVisibility.internal,
     payload: {
       batchId: batch.id,
       batchLabel: batch.label,
@@ -71,12 +72,13 @@ export async function takeOverBatchAction(input: {
     clientId: batch.clientId,
     actorId: ctx.userDbId,
     kind: ActivityKind.batch_step_advanced,
+    visibility: EventVisibility.internal,
     payload: {
       batchId: batch.id,
       batchLabel: batch.label,
       step: batch.currentStep,
       fromSubState: 'previous holder',
-      toSubState: 'admin take-over',
+      toSubState: 'admin take over',
     },
     mentionedUserIds: [input.newHolderId],
   })
@@ -123,6 +125,7 @@ export async function completeOnboardingAction(input: {
           clientId: client.id,
           actorId: ctx.userDbId,
           kind: ActivityKind.batch_step_advanced,
+          visibility: EventVisibility.internal,
           payload: {
             batchId: existing.id,
             batchLabel: label,
@@ -156,6 +159,7 @@ export async function completeOnboardingAction(input: {
         clientId: client.id,
         actorId: ctx.userDbId,
         kind: ActivityKind.batch_created,
+        visibility: EventVisibility.internal,
         payload: {
           batchId: batch.id,
           label,
@@ -219,6 +223,7 @@ export async function createBatchAction(input: {
         clientId: client.id,
         actorId: ctx.userDbId,
         kind: ActivityKind.batch_created,
+        visibility: EventVisibility.internal,
         payload: { batchId: batch.id, label: input.label, startStep: RelayStep.copy },
         mentionedUserIds: holderId !== ctx.userDbId ? [holderId] : [],
       },

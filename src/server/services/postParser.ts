@@ -52,7 +52,8 @@ export async function createPostsFromCaptions(
   posts: ParsedPost[],
   contentRunId: string,
   clientId: string,
-  ctaCandidates: CtaCandidate[]
+  ctaCandidates: CtaCandidate[],
+  batchId?: string | null,
 ): Promise<number> {
   const data = posts.map((p) => {
     const idx = pickCtaIndex(p.ctaIndex, ctaCandidates.length)
@@ -61,6 +62,7 @@ export async function createPostsFromCaptions(
     return {
       contentRunId,
       clientId,
+      batchId: batchId ?? null,
       postDate: parsePostDate(p.date),
       caption: `${p.caption.trimEnd()}${ctaSuffix}`,
       hashtags: p.hashtags,

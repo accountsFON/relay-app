@@ -65,6 +65,38 @@ export async function completeRevisionItemAction(input: { itemId: string }) {
   return result
 }
 
+export async function advanceCopySubStateAction(input: {
+  batchId: string
+  toSubState: 'generating' | 'drafted' | 'approved'
+}) {
+  const ctx = await requireCan('relay.pass')
+  const batch = await db.batch.findUnique({
+    where: { id: input.batchId },
+    select: {
+      id: true,
+      currentStep: true,
+      currentSubState: true,
+      currentHolder: true,
+    },
+  })
+  if (!batch) throw new Error('Batch not found')
+  if (batch.currentStep !== 'copy') {
+    throw new Error('Sub-state advance only valid at step copy')
+  }
+  if (batch.currentHolder !== ctx.userDbId && !ctx.platformOwner) {
+    throw new Error('Only the current holder may advance sub-state')
+  }
+  if ((batch.currentSubState ?? 'generating') === input.toSubState) {
+    return { ok: true as const, changed: false }
+  }
+  await db.batch.update({
+    where: { id: batch.id },
+    data: { currentSubState: input.toSubState },
+  })
+  revalidatePath('/', 'layout')
+  return { ok: true as const, changed: true }
+}
+
 export async function tickChecklistItemAction(input: {
   itemId: string
   checked: boolean

@@ -12,9 +12,12 @@ import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
 import { RelayTrack } from '@/components/relay/relay-track'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
+import { ClientDecisionPanel } from '@/components/relay/client-decision-panel'
+import { CopySubStatePanel } from '@/components/relay/copy-substate-panel'
 import { RevisionPlanComposer } from '@/components/relay/revision-plan-composer'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { STEP_LABEL } from '@/components/relay/labels'
+import { passBaton } from '@/server/services/relay'
 
 export default async function BatchDetailPage({
   params,
@@ -27,8 +30,28 @@ export default async function BatchDetailPage({
   const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
-  const batch = await findBatch(batchId)
+  let batch = await findBatch(batchId)
   if (!batch || batch.clientId !== client.id) notFound()
+
+  // Spec § Verification step 9: client opening at sent_to_client auto-advances
+  // to client_decision. Best-effort; failure logs and renders prior step.
+  if (
+    ctx.role === 'client' &&
+    batch.currentStep === RelayStep.sent_to_client &&
+    batch.currentHolder === ctx.userDbId
+  ) {
+    try {
+      await passBaton({
+        batchId: batch.id,
+        toStep: RelayStep.client_decision,
+        actorId: ctx.userDbId,
+      })
+      const refreshed = await findBatch(batchId)
+      if (refreshed) batch = refreshed
+    } catch (err) {
+      console.error('[batch-detail] auto-advance 9→10 failed', err)
+    }
+  }
 
   const events = await listActivityForClient(client.id, { limit: 30 })
 
@@ -68,6 +91,13 @@ export default async function BatchDetailPage({
   const canAct = batch.currentHolder === ctx.userDbId || ctx.platformOwner
 
   const isRevisionsStep = batch.currentStep === RelayStep.implementing_revisions
+  const isClientDecisionView =
+    ctx.role === 'client' &&
+    batch.currentStep === RelayStep.client_decision &&
+    canAct
+  const isCopyPreApproved =
+    batch.currentStep === RelayStep.copy &&
+    (batch.currentSubState ?? 'generating') !== 'approved'
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
@@ -104,7 +134,9 @@ export default async function BatchDetailPage({
         </div>
 
         <div className="lg:sticky lg:top-4 lg:self-start space-y-4">
-          {isRevisionsStep ? (
+          {isClientDecisionView ? (
+            <ClientDecisionPanel batch={batchSummary} />
+          ) : isRevisionsStep ? (
             <RevisionPlanComposer
               batch={batchSummary}
               assignedAmId={client.assignedAmId}
@@ -112,13 +144,24 @@ export default async function BatchDetailPage({
               meId={ctx.userDbId}
             />
           ) : (
-            <ChecklistPanel
-              batch={batchSummary}
-              items={batch.checklists}
-              canAct={canAct}
-              legalSendBackTargets={sendBackTargets}
-              nextStep={nextStep}
-            />
+            <>
+              {isCopyPreApproved && (
+                <CopySubStatePanel
+                  batchId={batch.id}
+                  clientId={client.id}
+                  label={batch.label}
+                  subState={batch.currentSubState}
+                  canAct={canAct}
+                />
+              )}
+              <ChecklistPanel
+                batch={batchSummary}
+                items={batch.checklists}
+                canAct={canAct}
+                legalSendBackTargets={sendBackTargets}
+                nextStep={nextStep}
+              />
+            </>
           )}
         </div>
       </div>

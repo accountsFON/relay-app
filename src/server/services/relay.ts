@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client'
 import {
   ActivityKind,
+  EventVisibility,
   RelayEventType,
   RelayRole,
   RelayStep,
@@ -14,6 +15,18 @@ import {
   validateTransition,
 } from '@/server/lib/relay-state-machine'
 import { recordActivity } from '@/server/services/activity'
+
+/**
+ * Steps the client cares about. A pass_forward landing at one of these
+ * (or auto-advancing through one) is `public`; everything else internal.
+ * Spec § Future Features § Section 2 visibility rules.
+ */
+const CLIENT_FACING_STEPS = new Set<RelayStep>([
+  RelayStep.sent_to_client,
+  RelayStep.client_decision,
+  RelayStep.ready_to_schedule,
+  RelayStep.implementing_revisions,
+])
 
 export interface PassBatonInput {
   batchId: string
@@ -161,6 +174,9 @@ export async function passBaton(input: PassBatonInput) {
         clientId: batch.clientId,
         actorId: input.actorId,
         kind: ActivityKind.batch_passed,
+        visibility: CLIENT_FACING_STEPS.has(input.toStep)
+          ? EventVisibility.public
+          : EventVisibility.internal,
         payload: {
           batchId: batch.id,
           batchLabel: batch.label,
@@ -246,6 +262,7 @@ export async function sendBackBaton(input: SendBackBatonInput) {
         clientId: batch.clientId,
         actorId: input.actorId,
         kind: ActivityKind.batch_sent_back,
+        visibility: EventVisibility.internal,
         payload: {
           batchId: batch.id,
           batchLabel: batch.label,
@@ -322,6 +339,7 @@ export async function dispatchRevisions(input: DispatchRevisionsInput) {
           clientId: batch.clientId,
           actorId: input.actorId,
           kind: ActivityKind.batch_revision_dispatched,
+          visibility: EventVisibility.internal,
           payload: {
             batchId: batch.id,
             batchLabel: batch.label,
@@ -383,6 +401,7 @@ export async function completeRevisionItem(input: CompleteRevisionItemInput) {
         clientId: batch.clientId,
         actorId: input.actorId,
         kind: ActivityKind.batch_revision_completed,
+        visibility: EventVisibility.internal,
         payload: {
           batchId: batch.id,
           batchLabel: batch.label,
@@ -424,6 +443,7 @@ export async function completeRevisionItem(input: CompleteRevisionItemInput) {
           clientId: batch.clientId,
           actorId: input.actorId,
           kind: ActivityKind.batch_step_advanced,
+          visibility: EventVisibility.internal,
           payload: {
             batchId: batch.id,
             batchLabel: batch.label,

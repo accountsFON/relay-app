@@ -451,14 +451,15 @@ model RevisionItem {
 }
 
 model ActivityEvent {
-  id        String       @id @default(cuid())
-  clientId  String
-  runId     String?
-  postId    String?
-  actorId   String?
-  kind      ActivityKind
-  payload   Json
-  createdAt DateTime     @default(now())
+  id         String          @id @default(cuid())
+  clientId   String
+  runId      String?
+  postId     String?
+  actorId    String?
+  kind       ActivityKind
+  visibility EventVisibility @default(internal)
+  payload    Json
+  createdAt  DateTime        @default(now())
 
   client   Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
   run      ContentRun? @relation(fields: [runId], references: [id], onDelete: Cascade)
@@ -467,10 +468,24 @@ model ActivityEvent {
   mentions Mention[]
 
   @@index([clientId, createdAt(sort: Desc)])
+  @@index([clientId, visibility, createdAt(sort: Desc)])
   @@index([runId])
   @@index([postId])
   @@index([actorId])
   @@map("activity_events")
+}
+
+enum EventVisibility {
+  /// Visible to everyone with access to the client, including client-role users.
+  /// Use for: comments, run state changes the client cares about, client_decision events.
+  public
+  /// Visible to agency users (Admin / AM / Designer), hidden from client-role users.
+  /// Default. Use for: profile field edits, internal handoffs, AM/Designer baton passes,
+  /// assignment changes.
+  internal
+  /// Visible to Admin role only. Use for: permission overrides, member role changes,
+  /// archival actions, sensitive audit entries.
+  admin_only
 }
 
 model Mention {
