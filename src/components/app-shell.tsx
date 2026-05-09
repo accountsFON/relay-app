@@ -221,7 +221,11 @@ export function AppShell({
           <DateScopePill />
         </header>
 
-        <main className="flex-1 overflow-y-auto">
+        {/* tabindex="0" makes the scrollable main region keyboard navigable
+            (axe scrollable-region-focusable rule, surfaced by the audit on
+            /settings/org but applies on every route). Keyboard users can
+            now focus the scroll container and arrow / page keys move it. */}
+        <main tabIndex={0} className="flex-1 overflow-y-auto focus:outline-none">
           {children}
         </main>
       </div>
