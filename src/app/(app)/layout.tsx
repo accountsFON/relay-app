@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { db } from '@/db/client'
 import { findUserByClerkId } from '@/server/repositories/users'
+import { findOrgByClerkId } from '@/server/repositories/organizations'
 import { listMembershipsForUser } from '@/server/repositories/memberships'
 import { getOrgContext } from '@/server/middleware/auth'
 import { can } from '@/server/auth/permissions'
@@ -48,6 +49,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!ctx) {
     const dbUser = await findUserByClerkId(userId)
     if (!dbUser) redirect('/onboarding')
+
+    // Ghost-org fallback: Clerk session points at an org that has no DB
+    // counterpart (created via Clerk dashboard / API outside our flows).
+    // Show a more specific message than the generic "no access" page.
+    const { orgId: clerkActiveOrgId } = await auth()
+    if (clerkActiveOrgId) {
+      const ghost = !(await findOrgByClerkId(clerkActiveOrgId))
+      if (ghost) redirect('/no-access?reason=ghost-org')
+    }
     redirect('/no-access')
   }
 
