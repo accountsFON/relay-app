@@ -201,7 +201,7 @@ async function runVerification(db: PrismaClient): Promise<{
     { label: 'Distinct RelayStep values', actual: distinctSteps, min: 13, max: 13 },
     { label: 'Stuck batches (>48h)', actual: stuckBatchCount, min: 3, max: 3 },
     { label: 'ActivityEvents', actual: activityCount, min: 150, max: 320 },
-    { label: 'Mentions', actual: mentionCount, min: 9, max: 9 },
+    { label: 'Mentions', actual: mentionCount, min: 10, max: 10 },
     { label: 'PostVersions', actual: versionCount, min: 55, max: 80 },
   ]
 

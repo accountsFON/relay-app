@@ -319,5 +319,44 @@ export async function seedActivity(
     totalMentions += 1
   }
 
+  // Plant one mention on a batch_passed event for Morgan so the inbox deep
+  // link surface is exercisable. Without this, the inbox would only contain
+  // comment events whose payloads carry no batchId, and InboxRow's batch
+  // deep link branch would never fire in practice. Pick the first onboarded
+  // client that has at least one batch.
+  const morganBatchClient = onboarded.find((c) => {
+    const list = batchesByClient.get(c.id) ?? []
+    return list.length > 0 && c.amUserId === org.users.am1.id
+  })
+  if (morganBatchClient) {
+    const batch = (batchesByClient.get(morganBatchClient.id) ?? [])[0]
+    if (batch) {
+      const batchEvent = await db.activityEvent.create({
+        data: {
+          clientId: morganBatchClient.id,
+          actorId: org.users.admin.id,
+          kind: ActivityKind.batch_passed,
+          visibility: EventVisibility.internal,
+          payload: {
+            batchId: batch.id,
+            toStep: batch.step,
+            month: batch.month,
+            mentions: [org.users.am1.email],
+          },
+        },
+        select: { id: true },
+      })
+      await db.mention.create({
+        data: {
+          activityEventId: batchEvent.id,
+          mentionedUserId: org.users.am1.id,
+          readAt: null,
+        },
+      })
+      totalEvents += 1
+      totalMentions += 1
+    }
+  }
+
   return { totalEvents, totalMentions }
 }
