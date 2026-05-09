@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { db } from '@/db/client'
 import { findUserByClerkId } from '@/server/repositories/users'
+import { findOrgByClerkId } from '@/server/repositories/organizations'
 import { listMembershipsForUser } from '@/server/repositories/memberships'
 import { getOrgContext } from '@/server/middleware/auth'
 import { can } from '@/server/auth/permissions'
@@ -48,6 +49,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!ctx) {
     const dbUser = await findUserByClerkId(userId)
     if (!dbUser) redirect('/onboarding')
+
+    // Ghost-org fallback: Clerk session points at an org that has no DB
+    // counterpart (created via Clerk dashboard / API outside our flows).
+    // Show a more specific message than the generic "no access" page.
+    const { orgId: clerkActiveOrgId } = await auth()
+    if (clerkActiveOrgId) {
+      const ghost = !(await findOrgByClerkId(clerkActiveOrgId))
+      if (ghost) redirect('/no-access?reason=ghost-org')
+    }
     redirect('/no-access')
   }
 
@@ -57,9 +67,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   )
   let activeAgencyName = activeMembership?.organization.name ?? ''
 
-  // Platform owners need the full list of orgs to drive the switcher dropdown.
-  // For non-platform-owners, allAgencies stays undefined and Clerk's switcher
-  // handles their memberships.
+  // Platform owners need the full list of orgs to drive their dropdown.
+  // Multi-membership regular users get a dropdown of their own Memberships,
+  // mapped to the same AgencyOption shape.
   let allAgencies = undefined as
     | { id: string; name: string; clerkOrgId: string }[]
     | undefined
@@ -76,6 +86,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
   if (!activeAgencyName) activeAgencyName = 'Platform'
 
+  const userAgencies =
+    !ctx.platformOwner && memberships.length > 1
+      ? memberships.map((m) => ({
+          id: m.organization.id,
+          name: m.organization.name,
+          clerkOrgId: m.organization.clerkOrgId,
+        }))
+      : undefined
+
   const showAdmin = can(ctx, 'admin.portal')
 
   return (
@@ -85,6 +104,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       membershipCount={memberships.length}
       activeAgencyName={activeAgencyName}
       allAgencies={allAgencies}
+      userAgencies={userAgencies}
       activeClerkOrgId={ctx.orgId}
     >
       {children}

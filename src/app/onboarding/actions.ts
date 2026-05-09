@@ -26,6 +26,14 @@ export async function completeOnboarding(formData: FormData) {
   const email = clerkUser.emailAddresses[0]?.emailAddress ?? ''
   if (!email) throw new Error('Email missing on Clerk user')
 
+  // Defense-in-depth against the page-level check: existing users cannot
+  // create additional agencies via Path 1. Multi-agency membership for
+  // regular users is gated through Path 2 (invite ticket) only.
+  const existingUser = await findUserByClerkId(userId)
+  if (existingUser && !inviteTicket) {
+    redirect('/dashboard')
+  }
+
   if (inviteTicket) {
     return await handleInviteOnboarding({
       clerkUserId: userId,
@@ -36,6 +44,21 @@ export async function completeOnboarding(formData: FormData) {
 
   // Path 1: brand-new agency creation.
   if (!agencyName) throw new Error('Agency name is required')
+
+  // Final guard: only users with zero Memberships may self-serve a new
+  // agency. The redirect above should have caught non-zero counts, but
+  // enforce here in case it's bypassed (race condition, direct action
+  // call, partial state). Multi-agency membership is invite-only.
+  if (existingUser) {
+    const membershipCount = await db.membership.count({
+      where: { userId: existingUser.id },
+    })
+    if (membershipCount > 0) {
+      throw new Error(
+        'Existing users cannot self-serve a new agency. Multi-agency membership is invite-only.',
+      )
+    }
+  }
 
   const clerk = await clerkClient()
   const clerkOrg = await clerk.organizations.createOrganization({

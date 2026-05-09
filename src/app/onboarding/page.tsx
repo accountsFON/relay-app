@@ -12,15 +12,17 @@ export default async function OnboardingPage({
 }: {
   searchParams: Promise<{ __clerk_ticket?: string }>
 }) {
-  const { userId } = await auth()
-  if (userId) {
-    const existing = await findUserByClerkId(userId)
-    if (existing) redirect('/dashboard')
-  }
-
   const params = await searchParams
   const inviteTicket = params.__clerk_ticket ?? ''
   const isInvite = Boolean(inviteTicket)
+
+  const { userId } = await auth()
+  if (userId) {
+    const existing = await findUserByClerkId(userId)
+    // Existing users can flow through Path 2 (invite acceptance) but
+    // cannot self-serve a second agency via Path 1.
+    if (existing && !isInvite) redirect('/dashboard')
+  }
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">

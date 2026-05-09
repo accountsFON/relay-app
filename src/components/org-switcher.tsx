@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { OrganizationSwitcher, useOrganizationList } from '@clerk/nextjs'
+import { useOrganizationList } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Globe2, Check, ChevronDown } from 'lucide-react'
@@ -24,6 +24,13 @@ type Props = {
    * them switch into ANY agency, not just Clerk memberships.
    */
   allAgencies?: AgencyOption[]
+  /**
+   * The user's own Memberships, mapped to AgencyOption. Used for
+   * multi-membership regular users so we can render a dropdown without
+   * Clerk's <OrganizationSwitcher> (which exposes a "Create organization"
+   * button — agency creation is gated to Path 1 + platform owners).
+   */
+  userAgencies?: AgencyOption[]
   /** Active org's Clerk Org ID, used to mark the current row in the dropdown. */
   activeClerkOrgId?: string
 }
@@ -33,6 +40,7 @@ export function OrgSwitcher({
   platformOwner,
   activeAgencyName,
   allAgencies,
+  userAgencies,
   activeClerkOrgId,
 }: Props) {
   // Single-membership, non-platform-owner: no dropdown.
@@ -48,7 +56,7 @@ export function OrgSwitcher({
   if (platformOwner && allAgencies && allAgencies.length > 0) {
     return (
       <div className="px-3 py-2 space-y-2">
-        <PlatformOwnerSwitcher
+        <AgencyDropdown
           agencies={allAgencies}
           activeClerkOrgId={activeClerkOrgId}
           activeAgencyName={activeAgencyName}
@@ -64,22 +72,28 @@ export function OrgSwitcher({
     )
   }
 
-  // Multi-membership user: Clerk's switcher works (shows their memberships).
+  // Multi-membership regular user: custom dropdown of their own Memberships.
+  if (userAgencies && userAgencies.length > 1) {
+    return (
+      <div className="px-3 py-2">
+        <AgencyDropdown
+          agencies={userAgencies}
+          activeClerkOrgId={activeClerkOrgId}
+          activeAgencyName={activeAgencyName}
+        />
+      </div>
+    )
+  }
+
+  // Fallback (no agencies wired through): static name label.
   return (
-    <div className="px-3 py-2">
-      <OrganizationSwitcher
-        appearance={{
-          elements: {
-            rootBox: 'w-full',
-            organizationSwitcherTrigger: 'w-full justify-between',
-          },
-        }}
-      />
+    <div className="px-3 py-2 text-sm font-medium text-foreground">
+      {activeAgencyName}
     </div>
   )
 }
 
-function PlatformOwnerSwitcher({
+function AgencyDropdown({
   agencies,
   activeClerkOrgId,
   activeAgencyName,
@@ -100,10 +114,10 @@ function PlatformOwnerSwitcher({
       try {
         await setActive({ organization: clerkOrgId })
       } catch {
-        // Clerk rejects when the platform owner has no Clerk membership in
-        // this org. The platformOwner badge handles access via the DB
-        // fallback in getOrgContext, but the active org won't switch in
-        // Clerk's session. Navigate to /dashboard either way.
+        // Clerk rejects when the user has no Clerk membership in this org.
+        // For platform owners this is expected — the badge handles access via
+        // the DB fallback in getOrgContext. For regular users it shouldn't
+        // happen since we only show their own memberships.
       }
       router.refresh()
     })
