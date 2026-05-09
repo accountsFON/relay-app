@@ -92,6 +92,10 @@ export default defineConfig({
       name: 'shared',
       testMatch: /e2e\/shared-checks\/.*\.spec\.ts/,
       dependencies: ['setup'],
+      // Retry once locally to absorb transient Clerk dev 429s when the 5
+      // persona projects hit clerk.accounts.dev concurrently. The retry
+      // settles cleanly against a fresh session token.
+      retries: 1,
       use: {
         ...devices['Desktop Chrome'],
       },

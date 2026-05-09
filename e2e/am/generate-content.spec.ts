@@ -20,9 +20,23 @@ test('am: ?month= and ?targetMonth= both bind to the picker', async ({ page }) =
   await page.goto(`/clients/${seed.clients.cedarCreekDental.id}/generate?month=2026-06`)
   await page.waitForLoadState('networkidle')
 
-  // The picker should be present in some form (input, select, or button).
-  const picker = page.locator('input, select, button').filter({ hasText: /(month|jun|2026)/i }).first()
-  await expect(picker.or(page.locator('input[type="month"]')).first()).toBeVisible()
+  // The page must render its month-pre-filled form. Scope under <main> so we
+  // do not collide with the AppShell DateScope pill ("This month") which
+  // matches the same loose locator at the document root.
+  const main = page.locator('main').first()
+  const picker = main
+    .locator('input[type="month"], input[name="month"], input[name="targetMonth"], select')
+    .first()
+  if ((await picker.count()) === 0) {
+    // Some builds render the picker as a date input or button-with-text.
+    const buttonPicker = main
+      .locator('button')
+      .filter({ hasText: /(jun|2026-06|june)/i })
+      .first()
+    await expect(buttonPicker).toBeVisible()
+    return
+  }
+  await expect(picker).toBeVisible()
 })
 
 test('am: real-pipeline generate runs end to end', async ({ page }) => {

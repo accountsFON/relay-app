@@ -37,6 +37,13 @@ export const CONSOLE_ALLOWLIST: RegExp[] = [
   // deprecation warning" item, surfaces via Turbopack's dev console proxy.
   /SECURITY WARNING: The SSL modes 'prefer'/i,
   /pg-connection-string/i,
+  // Clerk dev tier 429 rate limits when 5 personas hit clerk.accounts.dev
+  // concurrently. The console "Failed to load resource: status 429" comes
+  // from clerk-js's session refresh; the response listener captures the
+  // underlying URL which is also filtered below. External Clerk infra,
+  // not a Relay App bug.
+  /Failed to load resource:.*status.*429/i,
+  /clerk\.accounts\.dev.*429/i,
 ]
 
 export interface PageMonitor {
@@ -67,6 +74,9 @@ export function watchPage(page: Page): PageMonitor {
     if (status === 401 || status === 403) return // auth flows expected to bounce
     const url = res.url()
     if (/_next\/static|favicon\.ico|\.map$/.test(url)) return
+    // Clerk dev tier 429s when 5 personas exercise the dev instance in
+    // parallel. External infra; not a Relay App bug.
+    if (status === 429 && /clerk\.accounts\.dev/.test(url)) return
     failedResponses.push({ url, status })
   }
 
