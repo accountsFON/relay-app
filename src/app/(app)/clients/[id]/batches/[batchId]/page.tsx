@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
 import { RelayTrack } from '@/components/relay/relay-track'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
+import { RevisionPlanComposer } from '@/components/relay/revision-plan-composer'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { STEP_LABEL } from '@/components/relay/labels'
 
@@ -78,7 +79,10 @@ export default async function BatchDetailPage({
       />
 
       <div className="mt-8">
-        <RelayTrack batch={batchSummary} />
+        <RelayTrack
+          batch={batchSummary}
+          audience={ctx.role === 'client' ? 'client' : 'internal'}
+        />
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
@@ -101,11 +105,12 @@ export default async function BatchDetailPage({
 
         <div className="lg:sticky lg:top-4 lg:self-start space-y-4">
           {isRevisionsStep ? (
-            <PageSection title="Revision plan">
-              <p className="text-sm text-muted-foreground">
-                Revision plan composer goes here (RevisionPlanComposer).
-              </p>
-            </PageSection>
+            <RevisionPlanComposer
+              batch={batchSummary}
+              assignedAmId={client.assignedAmId}
+              assignedDesignerId={client.assignedDesignerId}
+              meId={ctx.userDbId}
+            />
           ) : (
             <ChecklistPanel
               batch={batchSummary}
