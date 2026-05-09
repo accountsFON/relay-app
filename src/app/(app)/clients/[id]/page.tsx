@@ -76,9 +76,6 @@ export default async function ClientDetailPage({
               <Link href={`/clients/${client.id}/generate`}>
                 <Button variant="accent">Generate content</Button>
               </Link>
-              <Link href={`/clients/${client.id}/edit`}>
-                <Button variant="outline">Edit profile</Button>
-              </Link>
               <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
             </>
           ) : (

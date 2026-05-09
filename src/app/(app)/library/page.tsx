@@ -66,11 +66,8 @@ export default async function LibraryPage() {
         { href: '/clients/new', label: '/clients/new', description: 'New client form' },
         { href: '/clients/import', label: '/clients/import', description: 'CSV bulk import' },
         client
-          ? { href: `/clients/${client.id}`, label: `/clients/[id]`, description: `${client.name} (sample)` }
+          ? { href: `/clients/${client.id}`, label: `/clients/[id]`, description: `${client.name} (sample, inline-editable profile)` }
           : { href: null, label: '/clients/[id]', description: 'no clients yet' },
-        client
-          ? { href: `/clients/${client.id}/edit`, label: '/clients/[id]/edit', description: `Edit ${client.name}` }
-          : { href: null, label: '/clients/[id]/edit', description: 'no clients yet' },
         client
           ? { href: `/clients/${client.id}/generate`, label: '/clients/[id]/generate', description: `Generate run for ${client.name}` }
           : { href: null, label: '/clients/[id]/generate', description: 'no clients yet' },
