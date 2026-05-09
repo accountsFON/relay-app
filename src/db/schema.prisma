@@ -160,6 +160,7 @@ model User {
   heldBatches       Batch[]              @relation("BatchHolder")
   firedActivity     ActivityEvent[]      @relation("ActivityActor")
   mentions          Mention[]
+  postVersions      PostVersion[]        @relation("PostVersionAuthor")
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -263,11 +264,31 @@ model Post {
   client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   batch          Batch?          @relation(fields: [batchId], references: [id], onDelete: SetNull)
   activityEvents ActivityEvent[]
+  versions       PostVersion[]
 
   @@index([contentRunId])
   @@index([clientId])
   @@index([batchId])
   @@map("posts")
+}
+
+/// Snapshot of a Post body taken on every save (cap 50 per post via the
+/// PostVersion service). Powers diff and restore. Spec § Future Features § 2.
+model PostVersion {
+  id            String   @id @default(cuid())
+  postId        String
+  authorId      String?
+  caption       String   @db.Text
+  hashtags      String[]
+  graphicHook   String?
+  designerNotes String?
+  createdAt     DateTime @default(now())
+
+  post   Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User? @relation("PostVersionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([postId, createdAt])
+  @@map("post_versions")
 }
 
 model RoleDefault {

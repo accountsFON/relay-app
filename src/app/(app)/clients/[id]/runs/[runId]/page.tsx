@@ -6,6 +6,8 @@ import { findContentRun } from '@/server/repositories/contentRuns'
 import { PostCard } from './post-card'
 import { ExportButton } from './export-button'
 import { CostBreakdown } from './cost-breakdown'
+import { PostVersionHistory } from './post-version-history'
+import { listVersionsForPost } from '@/server/services/postVersions'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 
@@ -78,9 +80,24 @@ export default async function RunDetailPage({
       </div>
 
       <div className="mt-8 space-y-4">
-        {run.posts.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
+        {await Promise.all(
+          run.posts.map(async (post) => {
+            const versions = await listVersionsForPost(post.id)
+            const versionRows = versions.map((v) => ({
+              id: v.id,
+              caption: v.caption,
+              hashtagCount: v.hashtags.length,
+              createdAt: v.createdAt,
+              authorName: v.author?.name ?? null,
+            }))
+            return (
+              <div key={post.id} className="space-y-2">
+                <PostCard post={post} />
+                <PostVersionHistory postId={post.id} versions={versionRows} />
+              </div>
+            )
+          }),
+        )}
       </div>
     </div>
   )
