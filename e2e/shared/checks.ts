@@ -32,6 +32,11 @@ export const CONSOLE_ALLOWLIST: RegExp[] = [
   /Failed to load resource.*\.map/i,
   // Webpack dev-only deprecation noises
   /Warning: ReactDOM\.render is no longer supported/i,
+  // Node SECURITY WARNING about pg-connection-string SSL mode aliases. Pre
+  // existing infra noise tracked in backlog "pg-connection-string SSL mode
+  // deprecation warning" item, surfaces via Turbopack's dev console proxy.
+  /SECURITY WARNING: The SSL modes 'prefer'/i,
+  /pg-connection-string/i,
 ]
 
 export interface PageMonitor {

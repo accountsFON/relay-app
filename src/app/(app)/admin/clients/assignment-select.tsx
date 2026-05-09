@@ -7,6 +7,7 @@ type Option = { id: string; name: string }
 
 type Props = {
   clientId: string
+  clientName: string
   slot: 'am' | 'designer'
   currentUserId: string | null
   options: Option[]
@@ -14,6 +15,7 @@ type Props = {
 
 export function AssignmentSelect({
   clientId,
+  clientName,
   slot,
   currentUserId,
   options,
@@ -35,8 +37,11 @@ export function AssignmentSelect({
     })
   }
 
+  const label = `Assign ${slot === 'am' ? 'account manager' : 'designer'} for ${clientName}`
+
   return (
     <select
+      aria-label={label}
       value={currentUserId ?? ''}
       onChange={onChange}
       disabled={isPending}

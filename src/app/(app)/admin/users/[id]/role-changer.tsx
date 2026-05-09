@@ -38,6 +38,7 @@ export function RoleChanger({ userId, currentRole, isSelf }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <select
+        aria-label="Change role"
         value={selected}
         onChange={(e) => setSelected(e.target.value as UserRole)}
         disabled={isPending}

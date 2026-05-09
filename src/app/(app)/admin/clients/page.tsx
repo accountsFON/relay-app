@@ -55,6 +55,7 @@ export default async function AdminClientsPage() {
                   <td className="px-4 py-3">
                     <AssignmentSelect
                       clientId={c.id}
+                      clientName={c.name}
                       slot="am"
                       currentUserId={c.assignedAm?.id ?? null}
                       options={ams}
@@ -63,6 +64,7 @@ export default async function AdminClientsPage() {
                   <td className="px-4 py-3">
                     <AssignmentSelect
                       clientId={c.id}
+                      clientName={c.name}
                       slot="designer"
                       currentUserId={c.assignedDesigner?.id ?? null}
                       options={designers}
