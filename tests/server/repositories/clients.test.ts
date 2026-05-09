@@ -49,6 +49,7 @@ const mockClient: Client = {
   crawledData: null,
   crawledDataAt: null,
   status: 'active',
+  onboardingCompletedAt: null,
   createdAt: new Date(),
 }
 
