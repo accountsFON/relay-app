@@ -20,8 +20,12 @@ const baseNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Clients', href: '/clients', icon: Users },
   { label: 'Inbox', href: '/inbox', icon: Inbox, badgeKey: 'unreadMentions' },
-  { label: 'Settings', href: '/settings/org', icon: Settings },
 ]
+const settingsNavItem: NavItem = {
+  label: 'Settings',
+  href: '/settings/org',
+  icon: Settings,
+}
 const adminNavItem: NavItem = {
   label: 'Admin',
   href: '/admin',
@@ -143,7 +147,28 @@ export function AppShell({
           })}
         </nav>
 
-        <div className="px-5 py-4 flex items-center gap-3">
+        <div className="px-3 pb-2 pt-1">
+          {(() => {
+            const Icon = settingsNavItem.icon
+            const isActive = pathname.startsWith(settingsNavItem.href)
+            return (
+              <Link
+                href={settingsNavItem.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-full px-3 py-2.5 text-[14px] font-medium transition-colors',
+                  isActive
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-ink-50 hover:bg-cream-80 hover:text-foreground'
+                )}
+              >
+                <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-foreground')} />
+                {settingsNavItem.label}
+              </Link>
+            )
+          })()}
+        </div>
+
+        <div className="px-5 py-4 flex items-center gap-3 border-t border-cream-80">
           <UserButton />
           <span className="text-[12px] text-muted-foreground italic" style={{ fontFamily: 'var(--font-serif)' }}>
             beta

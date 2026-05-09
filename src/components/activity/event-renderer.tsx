@@ -170,11 +170,11 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
 function toneClasses(tone: Tone): string {
   switch (tone) {
     case 'success':
-      return 'text-green-900 bg-green-50/60'
+      return 'text-foreground bg-cream-warm'
     case 'warning':
-      return 'text-amber-900 bg-amber-50/60'
+      return 'text-ink-80 bg-cream-warm'
     case 'destructive':
-      return 'text-red-900 bg-red-50/60'
+      return 'text-destructive bg-destructive/10'
     default:
       return 'text-muted-foreground'
   }

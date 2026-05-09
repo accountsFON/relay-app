@@ -19,8 +19,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { STEP_LABEL, ROLE_COLOR } from './labels'
+import { RelayRole } from '@prisma/client'
+import { STEP_LABEL } from './labels'
 import type { BatchSummary } from './types'
+
+const ROLE_LABEL: Record<RelayRole, string> = {
+  [RelayRole.admin]: 'Admin',
+  [RelayRole.am]: 'AM',
+  [RelayRole.designer]: 'Designer',
+  [RelayRole.client]: 'Client',
+}
 
 export interface BatchCardSubStatus {
   /** "3 revisions in progress" / "5 posts have client comments" / etc. */
@@ -46,7 +54,6 @@ export function BatchCard({
   href,
   className,
 }: BatchCardProps) {
-  const colors = ROLE_COLOR[batch.currentRole]
   const stuckTone =
     batch.daysOnCurrentStep >= 4
       ? 'destructive'
@@ -72,9 +79,16 @@ export function BatchCard({
             <p className="truncate text-[13px] font-semibold text-foreground">
               {batch.label}
             </p>
-            <p className={cn('truncate text-[11px] uppercase tracking-wide', colors.text)}>
-              {STEP_LABEL[batch.currentStep]}
-              {batch.currentSubState && ` · ${batch.currentSubState}`}
+            <p className="truncate text-[11px] text-muted-foreground">
+              <span className="font-semibold uppercase tracking-[0.06em] text-ink-80">
+                {STEP_LABEL[batch.currentStep]}
+              </span>
+              {batch.currentSubState && (
+                <span className="ml-1 lowercase">· {batch.currentSubState}</span>
+              )}
+              <span className="ml-1.5 text-[10px] uppercase tracking-[0.08em]">
+                · {ROLE_LABEL[batch.currentRole]}
+              </span>
             </p>
           </div>
           <Avatar size="sm" title={batch.holder.name}>

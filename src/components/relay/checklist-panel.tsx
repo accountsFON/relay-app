@@ -162,7 +162,7 @@ export function ChecklistPanel({
       {canAct && (
         <div className="space-y-2 pt-3">
           {error && (
-            <p className="text-[11px] text-red-700">{error}</p>
+            <p className="text-[11px] text-destructive">{error}</p>
           )}
           <Button
             type="button"

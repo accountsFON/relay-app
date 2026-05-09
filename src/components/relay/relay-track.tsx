@@ -1,23 +1,24 @@
 /**
- * RelayTrack — hero horizontal timeline for the batch detail page.
+ * RelayTrack: hero horizontal timeline for the batch detail page.
  *
  * Spec: projects/relay-app/2026-05-09-relay-workflow-design.md § UI Direction
  *
  * Behavior (V1):
- * - Horizontal stepper, role-color-coded nodes (Admin gray, AM blue, Designer purple, Client green).
- * - Animated TORCH icon on the current leg (lit, slight pulse).
- * - Send-back arcs: small downward arc above the track for each historical send_back event.
- * - Mobile (< md): flips to vertical stack with the same color coding.
+ * - Header row carries holder identity, step counter, and role chip; never per node.
+ * - Track shows 13 nodes connected by a progress line. Past portion is ink, future is cream-80.
+ * - Active node: ink-filled circle, white torch, larger. Past: cream-warm + check. Future: cream-80 + number.
+ * - Role identity as small uppercase label below each step (not via stock pastel circle backgrounds).
+ * - Horizontal scroll with fade-gradient mask on the right edge for overflow.
+ * - Mobile (< md): vertical stack with left rail (line + circle) and right pane (label).
  * - Client view: pass `audience="client"` to abstract to 3 nodes
  *   (Awaiting Your Approval -> In Production -> Done).
  *
- * Phase: shell now. Phase 3 fills in the SVG arcs + animation.
  * Schema dep: BatchSummary (placeholder), RelayEvent[] for arcs (Rails-owned).
  */
-import { Flame } from 'lucide-react'
-import { RelayStep } from '@prisma/client'
+import { Flame, Check } from 'lucide-react'
+import { RelayStep, RelayRole } from '@prisma/client'
 import { cn } from '@/lib/utils'
-import { STEP_LABEL, STEP_ROLE, ROLE_COLOR } from './labels'
+import { STEP_LABEL, STEP_ROLE } from './labels'
 import type { BatchSummary, SendBackArc } from './types'
 
 const FULL_TRACK: RelayStep[] = [
@@ -36,6 +37,13 @@ const FULL_TRACK: RelayStep[] = [
   RelayStep.final_qa_schedule,
 ]
 
+const ROLE_LABEL: Record<RelayRole, string> = {
+  [RelayRole.admin]: 'Admin',
+  [RelayRole.am]: 'AM',
+  [RelayRole.designer]: 'Designer',
+  [RelayRole.client]: 'Client',
+}
+
 export interface RelayTrackProps {
   batch: BatchSummary
   /** Historical send-back events for arcs. Empty for V1 placeholder render. */
@@ -53,80 +61,283 @@ export function RelayTrack({
 }: RelayTrackProps) {
   const steps = audience === 'client' ? CLIENT_TRACK_VIEW : FULL_TRACK
   const currentIndex = steps.indexOf(batch.currentStep)
+  const totalSteps = steps.length
+
+  const currentRole = STEP_ROLE[batch.currentStep]
+  const currentLabel = STEP_LABEL[batch.currentStep]
 
   return (
-    <div
+    <section
       data-component="relay-track"
       data-audience={audience}
       className={cn(
-        'relative w-full overflow-x-auto rounded-2xl bg-card p-4 md:p-6',
+        'relative overflow-hidden rounded-2xl bg-card',
         className
       )}
     >
-      {/* TODO Phase 3: render send-back arcs as SVG above this row */}
-      <ol className="flex flex-col gap-3 md:flex-row md:items-center md:gap-2">
+      <RelayTrackHeader
+        batch={batch}
+        currentRole={currentRole}
+        currentLabel={currentLabel}
+        currentIndex={currentIndex}
+        totalSteps={totalSteps}
+        sendBackCount={sendBacks.length}
+      />
+
+      <RelayTrackDesktop steps={steps} currentIndex={currentIndex} />
+      <RelayTrackMobile steps={steps} currentIndex={currentIndex} />
+    </section>
+  )
+}
+
+function RelayTrackHeader({
+  batch,
+  currentRole,
+  currentLabel,
+  currentIndex,
+  totalSteps,
+  sendBackCount,
+}: {
+  batch: BatchSummary
+  currentRole: RelayRole
+  currentLabel: string
+  currentIndex: number
+  totalSteps: number
+  sendBackCount: number
+}) {
+  return (
+    <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b border-border px-5 py-4 md:px-6 md:py-5">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Step {currentIndex + 1} of {totalSteps}
+        </p>
+        <h2 className="mt-0.5 truncate text-[17px] font-semibold text-foreground sm:text-[19px]">
+          {currentLabel}
+        </h2>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-2.5 py-1 text-[11px] font-medium text-foreground">
+          <span className="size-1.5 rounded-full bg-foreground" aria-hidden />
+          Holder: {batch.holder.name}
+        </span>
+        <span className="inline-flex items-center rounded-full bg-cream-warm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {ROLE_LABEL[currentRole]}
+        </span>
+        {batch.daysOnCurrentStep > 0 && (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]',
+              batch.daysOnCurrentStep > 5
+                ? 'bg-destructive/10 text-destructive'
+                : batch.daysOnCurrentStep > 2
+                ? 'bg-cream-warm text-ink-80'
+                : 'bg-cream-warm text-muted-foreground'
+            )}
+          >
+            {batch.daysOnCurrentStep}d on step
+          </span>
+        )}
+        {sendBackCount > 0 && (
+          <span className="inline-flex items-center rounded-full bg-cream-warm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {sendBackCount} send back{sendBackCount === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
+    </header>
+  )
+}
+
+/**
+ * Desktop track: horizontal scroll with right-edge fade.
+ * Each step has a minimum width so the line + label can breathe.
+ * Connecting line is rendered behind the circles via absolute positioning per segment.
+ */
+function RelayTrackDesktop({
+  steps,
+  currentIndex,
+}: {
+  steps: RelayStep[]
+  currentIndex: number
+}) {
+  return (
+    <div className="relative hidden md:block">
+      {/* Right edge fade hint when content overflows */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-card to-transparent"
+      />
+      <ol className="flex items-start gap-0 overflow-x-auto px-2 py-6">
         {steps.map((step, i) => {
-          const role = STEP_ROLE[step]
-          const colors = ROLE_COLOR[role]
           const isCurrent = i === currentIndex
           const isPast = i < currentIndex
-
+          const isLast = i === steps.length - 1
           return (
             <li
               key={step}
-              className={cn(
-                'flex items-center gap-2 md:flex-1 md:flex-col md:items-stretch',
-                isPast && 'opacity-60'
-              )}
+              className="flex min-w-[100px] flex-col items-center first:pl-3 last:pr-3"
             >
-              <div
-                className={cn(
-                  'flex size-8 shrink-0 items-center justify-center rounded-full',
-                  colors.bg,
-                  colors.text,
-                  isCurrent && `ring-2 ring-offset-2 ${colors.ring}`
+              <div className="relative flex w-full items-center">
+                {/* line segment to the right of this circle (skipped on last) */}
+                {!isLast && (
+                  <div
+                    aria-hidden
+                    className={cn(
+                      'absolute left-1/2 top-1/2 h-px w-full -translate-y-1/2',
+                      i < currentIndex ? 'bg-foreground' : 'bg-cream-80'
+                    )}
+                  />
                 )}
-              >
-                {isCurrent ? (
-                  // TODO Phase 3: animate this torch (pulse / soft glow)
-                  <Flame className="size-4" aria-label="Current holder" />
-                ) : (
-                  <span className="text-[11px] font-semibold">{i + 1}</span>
-                )}
+                <div className="relative z-10 mx-auto">
+                  <RelayNodeCircle index={i} isCurrent={isCurrent} isPast={isPast} />
+                </div>
               </div>
-              <div className="min-w-0">
-                <p
-                  className={cn(
-                    'truncate text-[12px] font-medium',
-                    isCurrent ? 'text-foreground' : 'text-muted-foreground'
-                  )}
-                >
-                  {STEP_LABEL[step]}
-                </p>
-                {isCurrent && (
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    Holder: {batch.holder.name}
-                  </p>
-                )}
-              </div>
+              <RelayNodeLabel step={step} isCurrent={isCurrent} isPast={isPast} />
             </li>
           )
         })}
       </ol>
-      {sendBacks.length > 0 && (
-        // TODO Phase 3: replace stub list with SVG arcs above the track
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          {sendBacks.length} send-back{sendBacks.length === 1 ? '' : 's'} on this batch
-        </p>
-      )}
+    </div>
+  )
+}
+
+/**
+ * Mobile track: vertical stack. Left rail = connecting line + circle, right pane = label.
+ * Designed for narrow viewports; up to 13 rows is acceptable on a scrollable mobile screen.
+ */
+function RelayTrackMobile({
+  steps,
+  currentIndex,
+}: {
+  steps: RelayStep[]
+  currentIndex: number
+}) {
+  return (
+    <ol className="flex flex-col md:hidden">
+      {steps.map((step, i) => {
+        const isCurrent = i === currentIndex
+        const isPast = i < currentIndex
+        const isFirst = i === 0
+        const isLast = i === steps.length - 1
+        return (
+          <li key={step} className="flex items-stretch gap-3 px-5 first:pt-5 last:pb-5">
+            <div className="relative flex w-8 flex-col items-center">
+              {/* line above circle (skipped on first) */}
+              <div
+                aria-hidden
+                className={cn(
+                  'w-px flex-1',
+                  isFirst ? 'invisible' : i <= currentIndex ? 'bg-foreground' : 'bg-cream-80'
+                )}
+              />
+              <div className="my-1">
+                <RelayNodeCircle index={i} isCurrent={isCurrent} isPast={isPast} />
+              </div>
+              {/* line below circle (skipped on last) */}
+              <div
+                aria-hidden
+                className={cn(
+                  'w-px flex-1',
+                  isLast ? 'invisible' : i < currentIndex ? 'bg-foreground' : 'bg-cream-80'
+                )}
+              />
+            </div>
+            <div className="flex-1 py-3">
+              <p
+                className={cn(
+                  'text-[14px] font-medium',
+                  isCurrent
+                    ? 'text-foreground'
+                    : isPast
+                    ? 'text-ink-50'
+                    : 'text-muted-foreground'
+                )}
+              >
+                {STEP_LABEL[step]}
+              </p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                {ROLE_LABEL[STEP_ROLE[step]]}
+              </p>
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+function RelayNodeCircle({
+  index,
+  isCurrent,
+  isPast,
+}: {
+  index: number
+  isCurrent: boolean
+  isPast: boolean
+}) {
+  if (isCurrent) {
+    return (
+      <div
+        className="flex size-10 items-center justify-center rounded-full bg-foreground text-cream shadow-[0_0_0_4px_var(--card),0_0_0_5px_var(--ink)] transition-all"
+        aria-current="step"
+        aria-label="Current step"
+      >
+        <Flame className="size-4" />
+      </div>
+    )
+  }
+  if (isPast) {
+    return (
+      <div
+        className="flex size-8 items-center justify-center rounded-full bg-cream-warm text-foreground transition-colors"
+        aria-label="Completed step"
+      >
+        <Check className="size-3.5" strokeWidth={2.5} />
+      </div>
+    )
+  }
+  return (
+    <div
+      className="flex size-8 items-center justify-center rounded-full bg-cream-80 text-ink-50 transition-colors"
+      aria-label={`Step ${index + 1}, not yet started`}
+    >
+      <span className="text-[11px] font-semibold tabular-nums">{index + 1}</span>
+    </div>
+  )
+}
+
+function RelayNodeLabel({
+  step,
+  isCurrent,
+  isPast,
+}: {
+  step: RelayStep
+  isCurrent: boolean
+  isPast: boolean
+}) {
+  return (
+    <div className="mt-3 w-full text-center">
+      <p
+        className={cn(
+          'truncate text-[12px] font-medium leading-tight',
+          isCurrent
+            ? 'text-foreground'
+            : isPast
+            ? 'text-ink-50'
+            : 'text-muted-foreground'
+        )}
+      >
+        {STEP_LABEL[step]}
+      </p>
+      <p className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {ROLE_LABEL[STEP_ROLE[step]]}
+      </p>
     </div>
   )
 }
 
 /**
  * Client view abstracts the 13 internal steps to 3 user-facing buckets.
- * Mapping is rendered virtually — the underlying batch.currentStep is unchanged.
- * TODO Phase 3: implement bucket inference helper instead of this duplicate enum.
+ * Mapping is rendered virtually; the underlying batch.currentStep is unchanged.
  */
 const CLIENT_TRACK_VIEW: RelayStep[] = [
   RelayStep.sent_to_client,

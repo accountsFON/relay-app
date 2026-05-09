@@ -170,28 +170,39 @@ export function CommentComposer({
       />
 
       {activeQuery !== null && filteredTargets.length > 0 && (
-        <ul className="absolute bottom-full left-2 mb-1 w-72 max-w-[calc(100%-1rem)] overflow-hidden rounded-md border border-border bg-popover shadow-md">
-          {filteredTargets.map((target, i) => (
-            <li key={target.id}>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  insertHandle(target.handle)
-                }}
-                onMouseEnter={() => setHighlightIndex(i)}
-                className={cn(
-                  'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px]',
-                  i === highlightIndex ? 'bg-accent' : 'bg-popover',
-                )}
-              >
-                <span className="font-medium text-foreground">{target.name}</span>
-                <span className="text-[11px] text-muted-foreground">
-                  @{target.handle}
-                </span>
-              </button>
-            </li>
-          ))}
+        <ul
+          role="listbox"
+          aria-label="Mention suggestions"
+          className="absolute bottom-full left-2 mb-1 w-72 max-w-[calc(100%-1rem)] overflow-hidden rounded-xl bg-popover shadow-md ring-1 ring-foreground/10"
+        >
+          {filteredTargets.map((target, i) => {
+            const isHighlighted = i === highlightIndex
+            return (
+              <li key={target.id}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isHighlighted}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    insertHandle(target.handle)
+                  }}
+                  onMouseEnter={() => setHighlightIndex(i)}
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] transition-colors',
+                    isHighlighted ? 'bg-cream-warm' : 'bg-popover hover:bg-cream-80',
+                  )}
+                >
+                  <span className="truncate font-medium text-foreground">
+                    {target.name}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    @{target.handle}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
 

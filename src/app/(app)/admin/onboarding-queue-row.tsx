@@ -48,7 +48,7 @@ export function OnboardingQueueRow({ client }: { client: OnboardingClient }) {
           {missingDesigner ? '⚠️ no designer · ' : ''}
           imported {formatRelative(client.createdAt)}
         </p>
-        {error && <p className="mt-1 text-[11px] text-red-700">{error}</p>}
+        {error && <p className="mt-1 text-[11px] text-destructive">{error}</p>}
       </div>
       <Button
         size="sm"

@@ -15,9 +15,12 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
 import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
-import { Badge, StatusDot } from '@/components/ui/badge'
+import { StatusDot } from '@/components/ui/badge'
 import { Calendar } from 'lucide-react'
 import { DeleteRunButton, RegenRunButton } from './run-management'
+import { RunStatusPoller } from './run-status-poller'
+import { ClientStatusBadge } from '@/components/clients/client-status-badge'
+import { ClientQuickAccess } from '@/components/clients/client-quick-access'
 
 export default async function ClientDetailPage({
   params,
@@ -37,6 +40,9 @@ export default async function ClientDetailPage({
   ])
   const canEdit = canEditClients(ctx)
   const mentionTargets = buildMentionRoster(memberships)
+  const hasActiveRun = runs.some(
+    (r) => r.status === 'running' || r.status === 'queued'
+  )
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
@@ -57,25 +63,27 @@ export default async function ClientDetailPage({
               <Link href={`/clients/${client.id}/edit`}>
                 <Button variant="outline">Edit profile</Button>
               </Link>
-              <Badge variant={client.status === 'active' ? 'primary' : 'secondary'}>
-                <StatusDot status={client.status === 'active' ? 'active' : 'inactive'} />
-                {client.status}
-              </Badge>
+              <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
             </>
           ) : (
-            <Badge variant={client.status === 'active' ? 'primary' : 'secondary'}>
-              <StatusDot status={client.status === 'active' ? 'active' : 'inactive'} />
-              {client.status}
-            </Badge>
+            <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
           )
         }
       />
 
+      <div className="mt-6">
+        <ClientQuickAccess urls={client.urls} assetsFolderUrl={client.assetsFolderUrl} />
+      </div>
+
       {runs.length > 0 && (
         <div className="mt-10">
+          {hasActiveRun && <RunStatusPoller />}
           <PageSection title="Content runs">
             <DataRowGroup className="-mx-1">
-              {runs.map((run) => (
+              {runs.map((run) => {
+                const isRunning = run.status === 'running'
+                const isQueued = run.status === 'queued'
+                return (
                 <DataRow
                   key={run.id}
                   href={
@@ -92,7 +100,13 @@ export default async function ClientDetailPage({
                   }
                   subtitle={
                     <span>
-                      {run.createdAt.toLocaleDateString()}
+                      {isRunning ? (
+                        <span className="text-foreground">Generating content…</span>
+                      ) : isQueued ? (
+                        <span className="text-ink-50">Queued, waiting to start…</span>
+                      ) : (
+                        run.createdAt.toLocaleDateString()
+                      )}
                       {run._count.posts > 0 && ` · ${run._count.posts} posts`}
                       {run.totalCostUsd && ` · $${Number(run.totalCostUsd).toFixed(2)}`}
                       {run.status === 'failed' && run.errorMessage && (
@@ -109,7 +123,8 @@ export default async function ClientDetailPage({
                     ) : undefined
                   }
                 />
-              ))}
+                )
+              })}
             </DataRowGroup>
           </PageSection>
         </div>

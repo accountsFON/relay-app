@@ -48,11 +48,11 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
 function toneClass(tone: 'neutral' | 'progress' | 'attention' | 'success'): string {
   switch (tone) {
     case 'success':
-      return 'bg-green-100 text-green-900'
+      return 'bg-cream-warm text-foreground'
     case 'attention':
-      return 'bg-amber-100 text-amber-900'
+      return 'bg-cream-warm text-ink-80'
     case 'progress':
-      return 'bg-blue-100 text-blue-900'
+      return 'bg-cream-80 text-ink-80'
     default:
       return 'bg-muted text-muted-foreground'
   }
