@@ -15,17 +15,54 @@
  * Callers MUST verify client visibility before calling listActivityForClient.
  * This repo does not re-check org/scope; it queries by clientId directly.
  */
+import { EventVisibility } from '@prisma/client'
 import { db } from '@/db/client'
 import type {
   ActivityEventView,
   ActivityPayload,
   MentionInboxRow,
 } from '@/components/activity/types'
+import type { OrgContext } from '@/lib/types'
+
+/**
+ * Resolve the EventVisibility values a viewer is allowed to see.
+ *
+ * Spec § Future Features § Section 2 visibility rules:
+ *   - client role               → public only
+ *   - admin role / platform owner → public + internal + admin_only
+ *   - everyone else (AM, designer) → public + internal
+ *
+ * Page level callers should compute this and pass the result as
+ * `opts.visibilityFilter` to listActivityForClient / listMentionsForUser /
+ * unreadMentionCount. Without the filter the queries return ALL
+ * visibilities (backwards compatible default), which is wrong for
+ * client-role viewers.
+ */
+export function visibilityForViewer(ctx: OrgContext): EventVisibility[] {
+  if (ctx.platformOwner) {
+    return [EventVisibility.public, EventVisibility.internal, EventVisibility.admin_only]
+  }
+  switch (ctx.role) {
+    case 'admin':
+      return [EventVisibility.public, EventVisibility.internal, EventVisibility.admin_only]
+    case 'client':
+      return [EventVisibility.public]
+    case 'account_manager':
+    case 'designer':
+      return [EventVisibility.public, EventVisibility.internal]
+  }
+}
 
 export interface ListActivityOptions {
   limit?: number
   /** Cursor: only return events with createdAt < this. */
   before?: Date
+  /**
+   * Visibility values the viewer is allowed to see. Compute via
+   * `visibilityForViewer(ctx)` at the call site. Required for any read
+   * surface that may be hit by a client-role user.
+   */
+  visibilityFilter?: EventVisibility[]
 }
 
 export async function listActivityForClient(
@@ -36,6 +73,7 @@ export async function listActivityForClient(
     where: {
       clientId,
       ...(opts.before && { createdAt: { lt: opts.before } }),
+      ...(opts.visibilityFilter && { visibility: { in: opts.visibilityFilter } }),
     },
     orderBy: { createdAt: 'desc' },
     take: opts.limit ?? 50,
@@ -63,6 +101,12 @@ export async function listActivityForClient(
 export interface ListMentionsOptions {
   unreadOnly?: boolean
   limit?: number
+  /**
+   * Visibility filter for the underlying ActivityEvent. Defense in depth:
+   * a client-role user should never see a mention on an internal event,
+   * even if a server bug somehow created one.
+   */
+  visibilityFilter?: EventVisibility[]
 }
 
 export async function listMentionsForUser(
@@ -73,6 +117,9 @@ export async function listMentionsForUser(
     where: {
       mentionedUserId: userId,
       ...(opts.unreadOnly && { readAt: null }),
+      ...(opts.visibilityFilter && {
+        event: { visibility: { in: opts.visibilityFilter } },
+      }),
     },
     orderBy: { createdAt: 'desc' },
     take: opts.limit ?? 50,
@@ -110,9 +157,18 @@ export async function listMentionsForUser(
   }))
 }
 
-export async function unreadMentionCount(userId: string): Promise<number> {
+export async function unreadMentionCount(
+  userId: string,
+  visibilityFilter?: EventVisibility[],
+): Promise<number> {
   return db.mention.count({
-    where: { mentionedUserId: userId, readAt: null },
+    where: {
+      mentionedUserId: userId,
+      readAt: null,
+      ...(visibilityFilter && {
+        event: { visibility: { in: visibilityFilter } },
+      }),
+    },
   })
 }
 
