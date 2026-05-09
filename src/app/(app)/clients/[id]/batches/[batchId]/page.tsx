@@ -4,7 +4,10 @@ import { RelayStep } from '@prisma/client'
 import { requireClientViewer } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
-import { listActivityForClient } from '@/server/repositories/activityEvents'
+import {
+  listActivityForClient,
+  visibilityForViewer,
+} from '@/server/repositories/activityEvents'
 import { db } from '@/db/client'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -57,7 +60,10 @@ export default async function BatchDetailPage({
   }
 
   const [events, posts] = await Promise.all([
-    listActivityForClient(client.id, { limit: 30 }),
+    listActivityForClient(client.id, {
+      limit: 30,
+      visibilityFilter: visibilityForViewer(ctx),
+    }),
     db.post.findMany({
       where: { batchId: batch.id },
       orderBy: { postDate: 'asc' },

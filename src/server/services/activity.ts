@@ -78,24 +78,22 @@ function dedupe<T>(arr: T[]): T[] {
  * Default ActivityEvent visibility when the caller doesn't pass one.
  * Spec § Future Features § Section 2 — visibility rules.
  *
- * - `comment`: public (clients can read agency comments on their thread).
- * - `batch_passed` / `batch_sent_back` / `batch_revision_*`: public when
- *   the next holder is the client (so they see the handoff). For now we
- *   keep them public; per-kind callers can override to `internal` for
- *   transitions the client shouldn't see.
- * - `batch_step_advanced` and admin actions (nudge, take-over): internal.
- * - Everything else: internal (agency-only).
+ * Conservative default: only `comment` is public, sensitive admin actions
+ * are `admin_only`, everything else is `internal`. Call sites that want a
+ * client-facing batch transition (e.g. `batch_passed` when the next holder
+ * is the client) MUST pass `visibility: EventVisibility.public` explicitly.
  *
- * Callers MAY pass `visibility` explicitly to override.
+ * Rationale: prevents accidental client exposure when a new emit site is
+ * added without considering visibility. Matches the original Phase A draft.
  */
 function defaultVisibilityForKind(kind: ActivityKind): EventVisibility {
   switch (kind) {
     case ActivityKind.comment:
-    case ActivityKind.batch_passed:
-    case ActivityKind.batch_sent_back:
-    case ActivityKind.batch_revision_dispatched:
-    case ActivityKind.batch_revision_completed:
       return EventVisibility.public
+    case ActivityKind.member_role_changed:
+    case ActivityKind.member_removed:
+    case ActivityKind.client_archived:
+      return EventVisibility.admin_only
     default:
       return EventVisibility.internal
   }

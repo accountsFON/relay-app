@@ -6,7 +6,10 @@ import {
 } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { listRunsByClient } from '@/server/repositories/contentRuns'
-import { listActivityForClient } from '@/server/repositories/activityEvents'
+import {
+  listActivityForClient,
+  visibilityForViewer,
+} from '@/server/repositories/activityEvents'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { ActivityThread } from '@/components/activity/activity-thread'
@@ -35,7 +38,10 @@ export default async function ClientDetailPage({
 
   const [runs, activity, memberships] = await Promise.all([
     listRunsByClient(id),
-    listActivityForClient(client.id, { limit: 30 }),
+    listActivityForClient(client.id, {
+      limit: 30,
+      visibilityFilter: visibilityForViewer(ctx),
+    }),
     listMembershipsForOrg(ctx.organizationDbId),
   ])
   const canEdit = canEditClients(ctx)

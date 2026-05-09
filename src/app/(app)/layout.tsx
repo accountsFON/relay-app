@@ -5,7 +5,10 @@ import { db } from '@/db/client'
 import { findUserByClerkId } from '@/server/repositories/users'
 import { findOrgByClerkId } from '@/server/repositories/organizations'
 import { listMembershipsForUser } from '@/server/repositories/memberships'
-import { unreadMentionCount } from '@/server/repositories/activityEvents'
+import {
+  unreadMentionCount,
+  visibilityForViewer,
+} from '@/server/repositories/activityEvents'
 import { getOrgContext } from '@/server/middleware/auth'
 import { can } from '@/server/auth/permissions'
 import { AppShell } from '@/components/app-shell'
@@ -97,7 +100,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       : undefined
 
   const showAdmin = can(ctx, 'admin.portal')
-  const unreadMentions = await unreadMentionCount(ctx.userDbId).catch(() => 0)
+  const unreadMentions = await unreadMentionCount(
+    ctx.userDbId,
+    visibilityForViewer(ctx),
+  ).catch(() => 0)
 
   return (
     <AppShell

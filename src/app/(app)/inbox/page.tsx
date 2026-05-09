@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { requireOrgContext } from '@/server/middleware/auth'
-import { listMentionsForUser } from '@/server/repositories/activityEvents'
+import {
+  listMentionsForUser,
+  visibilityForViewer,
+} from '@/server/repositories/activityEvents'
 import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
@@ -9,7 +12,10 @@ import { InboxRow } from './inbox-row'
 
 export default async function InboxPage() {
   const ctx = await requireOrgContext()
-  const mentions = await listMentionsForUser(ctx.userDbId, { limit: 100 })
+  const mentions = await listMentionsForUser(ctx.userDbId, {
+    limit: 100,
+    visibilityFilter: visibilityForViewer(ctx),
+  })
 
   // Group by client.
   const byClient = new Map<
