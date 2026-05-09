@@ -1,9 +1,12 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { RelayStep } from '@prisma/client'
 import { requireClientViewer } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { listActivityForClient } from '@/server/repositories/activityEvents'
+import { db } from '@/db/client'
+import { Badge } from '@/components/ui/badge'
 import {
   legalNextSteps,
   legalSendBackTargets,
@@ -53,7 +56,22 @@ export default async function BatchDetailPage({
     }
   }
 
-  const events = await listActivityForClient(client.id, { limit: 30 })
+  const [events, posts] = await Promise.all([
+    listActivityForClient(client.id, { limit: 30 }),
+    db.post.findMany({
+      where: { batchId: batch.id },
+      orderBy: { postDate: 'asc' },
+      select: {
+        id: true,
+        postDate: true,
+        caption: true,
+        hashtags: true,
+        graphicHook: true,
+        contentRunId: true,
+        approvalStatus: true,
+      },
+    }),
+  ])
 
   const sendBackTargets = legalSendBackTargets(batch.currentStep).map((step) => ({
     step,
@@ -117,11 +135,43 @@ export default async function BatchDetailPage({
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          <PageSection title="Posts">
-            <p className="text-sm text-muted-foreground">
-              Posts grid will render here. Run-aware view migrating from
-              ContentRun in a follow-up.
-            </p>
+          <PageSection title={`Posts (${posts.length})`}>
+            {posts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No posts attached to this batch yet. Generated posts attach
+                automatically once a content run finishes for this month.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border rounded-md border border-border bg-card">
+                {posts.map((post) => (
+                  <li key={post.id} className="px-4 py-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="text-[12px] font-mono text-muted-foreground">
+                        {formatPostDate(post.postDate)}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline">{post.approvalStatus}</Badge>
+                        <Link
+                          href={`/clients/${client.id}/runs/${post.contentRunId}`}
+                          className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          edit →
+                        </Link>
+                      </div>
+                    </div>
+                    <p className="mt-1.5 text-[13px] text-foreground line-clamp-3 whitespace-pre-wrap">
+                      {post.caption}
+                    </p>
+                    {post.hashtags.length > 0 && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {post.hashtags.slice(0, 8).map((h) => `#${h}`).join(' ')}
+                        {post.hashtags.length > 8 && ` +${post.hashtags.length - 8} more`}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </PageSection>
 
           <PageSection title="Activity">
@@ -167,4 +217,12 @@ export default async function BatchDetailPage({
       </div>
     </div>
   )
+}
+
+function formatPostDate(d: Date): string {
+  return new Date(d).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
 }

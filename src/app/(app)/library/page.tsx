@@ -199,9 +199,11 @@ export default async function LibraryPage() {
                     {item.href ? (
                       <Link
                         href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-[14px] font-mono text-foreground hover:underline"
                       >
-                        {item.label}
+                        {item.label} ↗
                       </Link>
                     ) : (
                       <span className="text-[14px] font-mono text-muted-foreground">
