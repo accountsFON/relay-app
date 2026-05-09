@@ -17,7 +17,7 @@
  */
 import { CommentComposer } from './comment-composer'
 import { EventRenderer } from './event-renderer'
-import type { ActivityEventView } from './_placeholder-types'
+import type { ActivityEventView } from './types'
 
 export interface ActivityThreadProps {
   clientId: string

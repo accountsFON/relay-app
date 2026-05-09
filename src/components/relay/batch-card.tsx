@@ -19,12 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import {
-  type BatchSummary,
-  STEP_LABEL,
-  STEP_TO_ROLE,
-  ROLE_COLOR,
-} from './_placeholder-types'
+import { STEP_LABEL, ROLE_COLOR } from './labels'
+import type { BatchSummary } from './types'
 
 export interface BatchCardSubStatus {
   /** "3 revisions in progress" / "5 posts have client comments" / etc. */
@@ -50,8 +46,7 @@ export function BatchCard({
   href,
   className,
 }: BatchCardProps) {
-  const role = STEP_TO_ROLE[batch.currentStep]
-  const colors = ROLE_COLOR[role]
+  const colors = ROLE_COLOR[batch.currentRole]
   const stuckTone =
     batch.daysOnCurrentStep >= 4
       ? 'destructive'

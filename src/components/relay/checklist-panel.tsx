@@ -22,15 +22,13 @@
 'use client'
 
 import { useState } from 'react'
+import type { RelayStep } from '@prisma/client'
 import { ArrowRight, ChevronDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import {
-  type BatchSummary,
-  type ChecklistItem,
-  STEP_LABEL,
-} from './_placeholder-types'
+import { STEP_LABEL } from './labels'
+import type { BatchSummary, ChecklistItem } from './types'
 
 export interface ChecklistPanelProps {
   batch: BatchSummary
@@ -38,9 +36,9 @@ export interface ChecklistPanelProps {
   /** True only for the user who matches batch.holder.id. */
   canAct: boolean
   /** Computed by the page from validateTransition. Empty array for shell. */
-  legalSendBackTargets?: { step: BatchSummary['currentStep']; label: string }[]
+  legalSendBackTargets?: { step: RelayStep; label: string }[]
   /** Computed next forward step from validateTransition. */
-  nextStep?: BatchSummary['currentStep']
+  nextStep?: RelayStep
 }
 
 export function ChecklistPanel({

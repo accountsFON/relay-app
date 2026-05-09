@@ -17,12 +17,13 @@
 'use client'
 
 import { useState } from 'react'
+import { RevisionItemType } from '@prisma/client'
 import { Plus, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import type { RevisionItemType, BatchSummary } from './_placeholder-types'
+import type { BatchSummary } from './types'
 
 interface DraftRevisionItem {
   /** Local UI key. Server assigns the real id on dispatch. */
@@ -34,9 +35,9 @@ interface DraftRevisionItem {
 }
 
 const TYPE_OPTIONS: { value: RevisionItemType; label: string; routesTo: string }[] = [
-  { value: 'copy', label: 'Copy', routesTo: 'AM (step 1)' },
-  { value: 'design', label: 'Design', routesTo: 'Designer (step 7)' },
-  { value: 'am_inline', label: 'AM-inline', routesTo: 'You (no handoff)' },
+  { value: RevisionItemType.copy, label: 'Copy', routesTo: 'AM (step 1)' },
+  { value: RevisionItemType.design, label: 'Design', routesTo: 'Designer (step 7)' },
+  { value: RevisionItemType.am_inline, label: 'AM-inline', routesTo: 'You (no handoff)' },
 ]
 
 export interface RevisionPlanComposerProps {
@@ -56,7 +57,7 @@ export function RevisionPlanComposer({
       ...prev,
       {
         draftId: crypto.randomUUID(),
-        type: 'copy',
+        type: RevisionItemType.copy,
         description: '',
         assignedTo: '',
       },
@@ -126,7 +127,7 @@ export function RevisionPlanComposer({
               onChange={(e) => updateItem(item.draftId, { description: e.target.value })}
             />
             {/* TODO Phase 3: assignee select for am_inline overrides */}
-            {item.type === 'am_inline' && assignees.length > 0 && (
+            {item.type === RevisionItemType.am_inline && assignees.length > 0 && (
               <p className="text-[11px] text-muted-foreground">
                 TODO: assignee picker (am_inline)
               </p>

@@ -18,6 +18,7 @@
  *
  * Schema dep: ActivityKind enum stable, payload shapes follow the spec.
  */
+import type { ActivityKind } from '@prisma/client'
 import {
   ArrowRight,
   ArrowLeft,
@@ -28,10 +29,7 @@ import {
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
-import {
-  type ActivityEventView,
-  type ActivityKind,
-} from './_placeholder-types'
+import type { ActivityEventView } from './types'
 
 export interface EventRendererProps {
   event: ActivityEventView

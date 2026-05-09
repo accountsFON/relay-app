@@ -15,37 +15,26 @@
  * Schema dep: BatchSummary (placeholder), RelayEvent[] for arcs (Rails-owned).
  */
 import { Flame } from 'lucide-react'
+import { RelayStep } from '@prisma/client'
 import { cn } from '@/lib/utils'
-import {
-  type BatchSummary,
-  type RelayStep,
-  STEP_LABEL,
-  STEP_TO_ROLE,
-  ROLE_COLOR,
-} from './_placeholder-types'
+import { STEP_LABEL, STEP_ROLE, ROLE_COLOR } from './labels'
+import type { BatchSummary, SendBackArc } from './types'
 
 const FULL_TRACK: RelayStep[] = [
-  'onboarding_gate',
-  'copy',
-  'in_design',
-  'designs_completed',
-  'am_review_design',
-  'design_revisions',
-  'am_qa_pre_client',
-  'sent_to_client',
-  'client_decision',
-  'ready_to_schedule',
-  'implementing_revisions',
-  'revisions_complete',
-  'final_qa_schedule',
+  RelayStep.onboarding_gate,
+  RelayStep.copy,
+  RelayStep.in_design,
+  RelayStep.designs_completed,
+  RelayStep.am_review_design,
+  RelayStep.design_revisions,
+  RelayStep.am_qa_pre_client,
+  RelayStep.sent_to_client,
+  RelayStep.client_decision,
+  RelayStep.ready_to_schedule,
+  RelayStep.implementing_revisions,
+  RelayStep.revisions_complete,
+  RelayStep.final_qa_schedule,
 ]
-
-export interface SendBackArc {
-  fromStep: RelayStep
-  toStep: RelayStep
-  reason: string
-  at: Date
-}
 
 export interface RelayTrackProps {
   batch: BatchSummary
@@ -77,7 +66,7 @@ export function RelayTrack({
       {/* TODO Phase 3: render send-back arcs as SVG above this row */}
       <ol className="flex flex-col gap-3 md:flex-row md:items-center md:gap-2">
         {steps.map((step, i) => {
-          const role = STEP_TO_ROLE[step]
+          const role = STEP_ROLE[step]
           const colors = ROLE_COLOR[role]
           const isCurrent = i === currentIndex
           const isPast = i < currentIndex
@@ -140,7 +129,7 @@ export function RelayTrack({
  * TODO Phase 3: implement bucket inference helper instead of this duplicate enum.
  */
 const CLIENT_TRACK_VIEW: RelayStep[] = [
-  'sent_to_client',
-  'client_decision',
-  'final_qa_schedule',
+  RelayStep.sent_to_client,
+  RelayStep.client_decision,
+  RelayStep.final_qa_schedule,
 ]

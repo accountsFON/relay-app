@@ -6,7 +6,9 @@ import {
 } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { listRunsByClient } from '@/server/repositories/contentRuns'
+import { listActivityForClient } from '@/server/repositories/activityEvents'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
+import { ActivityThread } from '@/components/activity/activity-thread'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
@@ -26,7 +28,10 @@ export default async function ClientDetailPage({
   const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
-  const runs = await listRunsByClient(id)
+  const [runs, activity] = await Promise.all([
+    listRunsByClient(id),
+    listActivityForClient(client.id, { limit: 30 }),
+  ])
   const canEdit = canEditClients(ctx)
 
   return (
@@ -108,6 +113,15 @@ export default async function ClientDetailPage({
 
       <div className="mt-10">
         <ClientProfileView client={client} canEdit={canEdit} />
+      </div>
+
+      <div className="mt-10">
+        <PageSection
+          title="Activity"
+          description="Comments and system events for this client. Composer wires up in Phase 2."
+        >
+          <ActivityThread clientId={client.id} events={activity} hideComposer />
+        </PageSection>
       </div>
     </div>
   )
