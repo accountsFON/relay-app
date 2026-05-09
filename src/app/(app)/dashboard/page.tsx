@@ -18,6 +18,7 @@ import {
   type ClientKanbanColumn,
 } from '@/lib/batch-sub-status'
 import { KanbanCard } from '@/components/relay/kanban-card'
+import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 
 const AM_COLUMNS: AmKanbanColumn[] = [
   'Copy',
@@ -37,8 +38,18 @@ const CLIENT_COLUMNS: ClientKanbanColumn[] = [
   'In Production',
 ]
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const ctx = await requireOrgContext()
+  const sp = await searchParams
+  const dateScope = parseDateScope({
+    scope: typeof sp.scope === 'string' ? sp.scope : null,
+    from: typeof sp.from === 'string' ? sp.from : null,
+    to: typeof sp.to === 'string' ? sp.to : null,
+  })
 
   if (ctx.role === 'account_manager' || ctx.role === 'admin') {
     return <AmDashboard ctx={ctx} />
@@ -49,7 +60,7 @@ export default async function DashboardPage() {
   if (ctx.role === 'client' && ctx.linkedClientId) {
     return <ClientDashboard linkedClientId={ctx.linkedClientId} />
   }
-  return <CostFallback ctx={ctx} />
+  return <CostFallback ctx={ctx} dateScope={dateScope} />
 }
 
 async function AmDashboard({
@@ -244,8 +255,10 @@ function KanbanColumn({
 
 async function CostFallback({
   ctx,
+  dateScope,
 }: {
   ctx: { organizationDbId: string }
+  dateScope: ReturnType<typeof parseDateScope>
 }) {
   let costSummary = {
     totalCostUsd: 0,
@@ -253,15 +266,12 @@ async function CostFallback({
     byClient: [] as { name: string; cost: number; runs: number }[],
   }
   try {
-    costSummary = await getMonthlyCostSummary(ctx.organizationDbId)
+    costSummary = await getMonthlyCostSummary(ctx.organizationDbId, { dateScope })
   } catch {
     // ignore
   }
 
-  const monthLabel = new Date().toLocaleString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  })
+  const scopeLabel = dateScopeLabel(dateScope)
   const avgCost =
     costSummary.totalRuns > 0
       ? costSummary.totalCostUsd / costSummary.totalRuns
@@ -269,14 +279,14 @@ async function CostFallback({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
-      <PageHeader title="Dashboard" description={`Activity for ${monthLabel}.`} />
+      <PageHeader title="Dashboard" description={`Activity for ${scopeLabel.toLowerCase()}.`} />
       <div className="mt-10 grid gap-4 sm:grid-cols-3">
         <StatCard
-          label={`${monthLabel} cost`}
+          label={`${scopeLabel} cost`}
           value={`$${costSummary.totalCostUsd.toFixed(2)}`}
         />
         <StatCard
-          label={`${monthLabel} runs`}
+          label={`${scopeLabel} runs`}
           value={costSummary.totalRuns.toLocaleString()}
         />
         <StatCard label="Avg cost / run" value={`$${avgCost.toFixed(2)}`} />

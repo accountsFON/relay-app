@@ -1,5 +1,7 @@
 import { db } from '@/db/client'
 import { Prisma } from '@prisma/client'
+import type { DateScope } from '@/lib/date-scope'
+import { dateScopeIncludesMonth } from '@/lib/date-scope'
 
 export async function createContentRun(input: {
   clientId: string
@@ -33,8 +35,11 @@ export async function findExistingRun(clientId: string, targetMonth: string) {
   })
 }
 
-export async function listRunsByClient(clientId: string) {
-  return db.contentRun.findMany({
+export async function listRunsByClient(
+  clientId: string,
+  opts: { dateScope?: DateScope } = {},
+) {
+  const runs = await db.contentRun.findMany({
     where: { clientId },
     orderBy: { createdAt: 'desc' },
     select: {
@@ -49,18 +54,34 @@ export async function listRunsByClient(clientId: string) {
       _count: { select: { posts: true } },
     },
   })
+  if (!opts.dateScope) return runs
+  // Runs are month-keyed (targetMonth = "YYYY-MM"), not timestamp-keyed.
+  // Filter by month overlap with the scope range per spec edge case.
+  return runs.filter((r) => dateScopeIncludesMonth(opts.dateScope!, r.targetMonth))
 }
 
-export async function getMonthlyCostSummary(organizationId: string) {
-  const startOfMonth = new Date()
-  startOfMonth.setDate(1)
-  startOfMonth.setHours(0, 0, 0, 0)
+export async function getMonthlyCostSummary(
+  organizationId: string,
+  opts: { dateScope?: DateScope } = {},
+) {
+  const fallbackStart = new Date()
+  fallbackStart.setDate(1)
+  fallbackStart.setHours(0, 0, 0, 0)
+
+  const range = opts.dateScope ?? null
+  const completedAtFilter: Prisma.DateTimeFilter | undefined =
+    range
+      ? {
+          ...(range.from && { gte: range.from }),
+          ...(range.to && { lt: range.to }),
+        }
+      : { gte: fallbackStart }
 
   const runs = await db.contentRun.findMany({
     where: {
       client: { organizationId },
       status: 'complete',
-      completedAt: { gte: startOfMonth },
+      ...(completedAtFilter && { completedAt: completedAtFilter }),
     },
     select: {
       totalCostUsd: true,

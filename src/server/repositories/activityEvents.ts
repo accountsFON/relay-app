@@ -63,16 +63,30 @@ export interface ListActivityOptions {
    * surface that may be hit by a client-role user.
    */
   visibilityFilter?: EventVisibility[]
+  /**
+   * Optional date range to scope results to (e.g., from a global DateScope).
+   * `from` is inclusive, `to` is exclusive. Either bound may be null.
+   */
+  dateRange?: { from: Date | null; to: Date | null }
 }
 
 export async function listActivityForClient(
   clientId: string,
   opts: ListActivityOptions = {}
 ): Promise<ActivityEventView[]> {
+  const createdAt: { lt?: Date; gte?: Date } = {}
+  if (opts.before) createdAt.lt = opts.before
+  if (opts.dateRange?.from) createdAt.gte = opts.dateRange.from
+  if (opts.dateRange?.to) {
+    // If both `before` and dateRange.to are set, take the tighter bound.
+    createdAt.lt = createdAt.lt && createdAt.lt < opts.dateRange.to
+      ? createdAt.lt
+      : opts.dateRange.to
+  }
   const events = await db.activityEvent.findMany({
     where: {
       clientId,
-      ...(opts.before && { createdAt: { lt: opts.before } }),
+      ...(Object.keys(createdAt).length > 0 && { createdAt }),
       ...(opts.visibilityFilter && { visibility: { in: opts.visibilityFilter } }),
     },
     orderBy: { createdAt: 'desc' },

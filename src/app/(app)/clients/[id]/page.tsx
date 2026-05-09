@@ -24,23 +24,33 @@ import { DeleteRunButton, RegenRunButton } from './run-management'
 import { RunStatusPoller } from './run-status-poller'
 import { ClientStatusBadge } from '@/components/clients/client-status-badge'
 import { ClientQuickAccess } from '@/components/clients/client-quick-access'
+import { parseDateScope } from '@/lib/date-scope'
 
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const ctx = await requireClientViewer()
   const { id } = await params
+  const sp = await searchParams
+  const dateScope = parseDateScope({
+    scope: typeof sp.scope === 'string' ? sp.scope : null,
+    from: typeof sp.from === 'string' ? sp.from : null,
+    to: typeof sp.to === 'string' ? sp.to : null,
+  })
 
   const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
   const [runs, activity, memberships] = await Promise.all([
-    listRunsByClient(id),
+    listRunsByClient(id, { dateScope }),
     listActivityForClient(client.id, {
       limit: 30,
       visibilityFilter: visibilityForViewer(ctx),
+      dateRange: { from: dateScope.from, to: dateScope.to },
     }),
     listMembershipsForOrg(ctx.organizationDbId),
   ])

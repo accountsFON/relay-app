@@ -24,14 +24,23 @@ import { RevisionPlanComposer } from '@/components/relay/revision-plan-composer'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { STEP_LABEL } from '@/components/relay/labels'
 import { passBaton } from '@/server/services/relay'
+import { parseDateScope } from '@/lib/date-scope'
 
 export default async function BatchDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; batchId: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const ctx = await requireClientViewer()
   const { id, batchId } = await params
+  const sp = await searchParams
+  const dateScope = parseDateScope({
+    scope: typeof sp.scope === 'string' ? sp.scope : null,
+    from: typeof sp.from === 'string' ? sp.from : null,
+    to: typeof sp.to === 'string' ? sp.to : null,
+  })
 
   const client = await findClientForUser(ctx, id)
   if (!client) notFound()
@@ -63,6 +72,7 @@ export default async function BatchDetailPage({
     listActivityForClient(client.id, {
       limit: 30,
       visibilityFilter: visibilityForViewer(ctx),
+      dateRange: { from: dateScope.from, to: dateScope.to },
     }),
     db.post.findMany({
       where: { batchId: batch.id },
