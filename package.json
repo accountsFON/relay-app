@@ -15,7 +15,11 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",
     "db:migrate-multi-tenant": "tsx scripts/migrate-to-multi-tenant.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "e2e:setup": "playwright test --project=setup",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report",
+    "e2e:visual:update": "playwright test --project=visual --update-snapshots"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
