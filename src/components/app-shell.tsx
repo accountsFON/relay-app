@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 
@@ -36,6 +36,12 @@ const platformNavItem: NavItem = {
   href: '/platform',
   icon: Globe2,
 }
+/** Beta QA index — temporary surface, drop after the beta cycle. */
+const libraryNavItem: NavItem = {
+  label: 'Library',
+  href: '/library',
+  icon: BookOpen,
+}
 
 export function AppShell({
   children,
@@ -62,6 +68,7 @@ export function AppShell({
     ...baseNavItems,
     ...(showAdmin ? [adminNavItem] : []),
     ...(platformOwner ? [platformNavItem] : []),
+    libraryNavItem,
   ]
   const badgeMap: Record<BadgeKey, number> = {
     unreadMentions: unreadMentions,
