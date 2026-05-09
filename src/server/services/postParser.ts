@@ -68,7 +68,6 @@ export async function createPostsFromCaptions(
       hashtags: p.hashtags,
       graphicHook: p.graphicHook || null,
       designerNotes: p.designerNotes || null,
-      approvalStatus: 'draft' as const,
       mediaUrls: [],
     }
   })

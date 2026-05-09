@@ -1,5 +1,4 @@
 import { db } from '@/db/client'
-import type { ApprovalStatus } from '@/lib/types'
 
 export async function findPostsByRun(contentRunId: string) {
   return db.post.findMany({
@@ -19,25 +18,7 @@ export async function updatePost(
     hashtags?: string[]
     graphicHook?: string | null
     designerNotes?: string | null
-    approvalStatus?: ApprovalStatus
   }
 ) {
   return db.post.update({ where: { id }, data })
-}
-
-export async function updatePostStatus(id: string, status: ApprovalStatus) {
-  return db.post.update({
-    where: { id },
-    data: { approvalStatus: status },
-  })
-}
-
-export async function bulkUpdateStatus(
-  contentRunId: string,
-  status: ApprovalStatus
-) {
-  return db.post.updateMany({
-    where: { contentRunId },
-    data: { approvalStatus: status },
-  })
 }

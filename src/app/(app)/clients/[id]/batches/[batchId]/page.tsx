@@ -68,7 +68,6 @@ export default async function BatchDetailPage({
         hashtags: true,
         graphicHook: true,
         contentRunId: true,
-        approvalStatus: true,
       },
     }),
   ])
@@ -149,15 +148,12 @@ export default async function BatchDetailPage({
                       <p className="text-[12px] font-mono text-muted-foreground">
                         {formatPostDate(post.postDate)}
                       </p>
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="outline">{post.approvalStatus}</Badge>
-                        <Link
-                          href={`/clients/${client.id}/runs/${post.contentRunId}`}
-                          className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
-                        >
-                          edit →
-                        </Link>
-                      </div>
+                      <Link
+                        href={`/clients/${client.id}/runs/${post.contentRunId}`}
+                        className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                      >
+                        edit →
+                      </Link>
                     </div>
                     <p className="mt-1.5 text-[13px] text-foreground line-clamp-3 whitespace-pre-wrap">
                       {post.caption}

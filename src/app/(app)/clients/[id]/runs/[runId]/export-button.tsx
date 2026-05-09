@@ -8,7 +8,6 @@ type ExportPost = {
   hashtags: string
   graphicHook: string
   designerNotes: string
-  status: string
 }
 
 export function ExportButton({
@@ -19,14 +18,13 @@ export function ExportButton({
   filename: string
 }) {
   const handleExport = () => {
-    const headers = ['Date', 'Caption', 'Hashtags', 'Graphic Hook', 'Designer Notes', 'Status']
+    const headers = ['Date', 'Caption', 'Hashtags', 'Graphic Hook', 'Designer Notes']
     const rows = posts.map((p) => [
       p.date,
       escapeCsv(p.caption),
       escapeCsv(p.hashtags),
       escapeCsv(p.graphicHook),
       escapeCsv(p.designerNotes),
-      p.status,
     ])
 
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')

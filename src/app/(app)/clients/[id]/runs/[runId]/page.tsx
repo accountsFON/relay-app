@@ -48,7 +48,6 @@ export default async function RunDetailPage({
                 hashtags: p.hashtags.join(' '),
                 graphicHook: p.graphicHook ?? '',
                 designerNotes: p.designerNotes ?? '',
-                status: p.approvalStatus,
               }))}
               filename={`${client.name}-${run.targetMonth}`}
             />

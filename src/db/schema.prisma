@@ -33,28 +33,6 @@ enum RunStatus {
   failed
 }
 
-enum ApprovalStatus {
-  draft
-  am_review
-  design_review
-  client_review
-  approved
-  scheduled
-}
-
-enum ApprovalAction {
-  approved
-  rejected
-  commented
-  edited
-}
-
-enum ApprovalStage {
-  am
-  design
-  client
-}
-
 enum RelayStep {
   onboarding_gate
   copy
@@ -176,7 +154,6 @@ model User {
   designedClients   Client[]             @relation("AssignedDesigner")
   linkedClient      Client?              @relation("LinkedClient", fields: [linkedClientId], references: [id])
   triggeredRuns     ContentRun[]         @relation("TriggeredBy")
-  approvalEvents    ApprovalEvent[]
   auditLogsAsActor  PermissionAuditLog[] @relation("AuditActor")
   auditLogsAsTarget PermissionAuditLog[] @relation("AuditTarget")
   memberships       Membership[]
@@ -277,7 +254,6 @@ model Post {
   hashtags       String[]
   graphicHook    String?
   designerNotes  String?
-  approvalStatus ApprovalStatus @default(draft)
   mediaUrls      String[]
   scheduledAt    DateTime?
   createdAt      DateTime       @default(now())
@@ -286,30 +262,12 @@ model Post {
   contentRun     ContentRun      @relation(fields: [contentRunId], references: [id], onDelete: Cascade)
   client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   batch          Batch?          @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  approvalEvents ApprovalEvent[]
   activityEvents ActivityEvent[]
 
   @@index([contentRunId])
   @@index([clientId])
   @@index([batchId])
-  @@index([approvalStatus])
   @@map("posts")
-}
-
-model ApprovalEvent {
-  id        String         @id @default(cuid())
-  postId    String
-  userId    String?
-  action    ApprovalAction
-  stage     ApprovalStage
-  comment   String?
-  createdAt DateTime       @default(now())
-
-  post Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([postId])
-  @@map("approval_events")
 }
 
 model RoleDefault {

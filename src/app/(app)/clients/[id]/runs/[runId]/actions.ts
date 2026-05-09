@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireClientEditor } from '@/server/middleware/permissions'
-import { updatePost, updatePostStatus } from '@/server/repositories/posts'
-import type { ApprovalStatus } from '@/lib/types'
+import { updatePost } from '@/server/repositories/posts'
 
 export async function updatePostAction(
   postId: string,
@@ -16,14 +15,5 @@ export async function updatePostAction(
 ) {
   await requireClientEditor()
   await updatePost(postId, data)
-  revalidatePath('/', 'layout')
-}
-
-export async function updatePostStatusAction(
-  postId: string,
-  status: string
-) {
-  await requireClientEditor()
-  await updatePostStatus(postId, status as ApprovalStatus)
   revalidatePath('/', 'layout')
 }

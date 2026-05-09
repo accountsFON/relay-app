@@ -6,18 +6,6 @@ export type ClientStatus = 'active' | 'paused' | 'archived'
 
 export type RunStatus = 'queued' | 'running' | 'complete' | 'failed'
 
-export type ApprovalStatus =
-  | 'draft'
-  | 'am_review'
-  | 'design_review'
-  | 'client_review'
-  | 'approved'
-  | 'scheduled'
-
-export type ApprovalAction = 'approved' | 'rejected' | 'commented' | 'edited'
-
-export type ApprovalStage = 'am' | 'design' | 'client'
-
 /** Resolved org + user context attached to every authenticated request. */
 export type OrgContext = {
   userId: string           // Clerk user ID

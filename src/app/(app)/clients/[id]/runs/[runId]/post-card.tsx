@@ -3,11 +3,10 @@
 import { useState, useTransition } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge, StatusDot } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { updatePostAction, updatePostStatusAction } from './actions'
+import { updatePostAction } from './actions'
 
 type Post = {
   id: string
@@ -16,16 +15,6 @@ type Post = {
   hashtags: string[]
   graphicHook: string | null
   designerNotes: string | null
-  approvalStatus: string
-}
-
-const STATUS_OPTIONS = ['draft', 'approved', 'scheduled'] as const
-
-const STATUS_VARIANT: Record<string, 'default' | 'primary' | 'accent' | 'secondary'> = {
-  draft: 'secondary',
-  am_review: 'default',
-  approved: 'primary',
-  scheduled: 'accent',
 }
 
 export function PostCard({ post }: { post: Post }) {
@@ -34,7 +23,6 @@ export function PostCard({ post }: { post: Post }) {
   const [hashtags, setHashtags] = useState(post.hashtags.join(' '))
   const [graphicHook, setGraphicHook] = useState(post.graphicHook ?? '')
   const [designerNotes, setDesignerNotes] = useState(post.designerNotes ?? '')
-  const [status, setStatus] = useState(post.approvalStatus)
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -56,13 +44,6 @@ export function PostCard({ post }: { post: Post }) {
     })
   }
 
-  const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus)
-    startTransition(async () => {
-      await updatePostStatusAction(post.id, newStatus)
-    })
-  }
-
   const handleCopy = () => {
     const text = `${caption}\n\n${hashtags}`
     navigator.clipboard.writeText(text)
@@ -75,23 +56,8 @@ export function PostCard({ post }: { post: Post }) {
       <div className="px-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <span className="text-[15px] font-semibold text-foreground">{dateLabel}</span>
-          <Badge variant={STATUS_VARIANT[status] ?? 'secondary'}>
-            <StatusDot status={status === 'approved' ? 'complete' : status === 'scheduled' ? 'active' : 'queued'} />
-            {status}
-          </Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="h-8 rounded-full border border-input bg-card px-3 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
-          >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
           <Button variant="ghost" size="sm" onClick={handleCopy}>
             {copied ? 'Copied' : 'Copy'}
           </Button>
