@@ -14,7 +14,8 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",
-    "db:migrate-multi-tenant": "tsx scripts/migrate-to-multi-tenant.ts"
+    "db:migrate-multi-tenant": "tsx scripts/migrate-to-multi-tenant.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

@@ -103,12 +103,47 @@ export async function ensureClerkOrg(
  * Add a user to the demo org. Skips silently if the membership already exists.
  * `role` is the Clerk side role: `org:admin` for staff, `org:member` for clients.
  */
+function clerkErrorHas(err: unknown, code: string): boolean {
+  if (!err || typeof err !== 'object') return false
+  const candidate = err as {
+    errors?: { code?: string; message?: string }[]
+  }
+  for (const e of candidate.errors ?? []) {
+    if (e.code === code) return true
+  }
+  return false
+}
+
+function isAlreadyMemberError(err: unknown): boolean {
+  if (clerkErrorHas(err, 'already_a_member_in_organization')) return true
+  if (!err || typeof err !== 'object') return false
+  const candidate = err as {
+    message?: unknown
+    errors?: { message?: string }[]
+  }
+  const top = String(candidate.message ?? '').toLowerCase()
+  if (top.includes('already')) return true
+  for (const e of candidate.errors ?? []) {
+    if (String(e.message ?? '').toLowerCase().includes('already')) return true
+  }
+  return false
+}
+
+function isQuotaExceededError(err: unknown): boolean {
+  return clerkErrorHas(err, 'organization_membership_quota_exceeded')
+}
+
+export interface EnsureMembershipResult {
+  created: boolean
+  skippedReason?: 'already_member' | 'quota_exceeded'
+}
+
 export async function ensureClerkMembership(
   clerk: ClerkClient,
   organizationId: string,
   userId: string,
   role: 'org:admin' | 'org:member',
-): Promise<{ created: boolean }> {
+): Promise<EnsureMembershipResult> {
   try {
     await clerk.organizations.createOrganizationMembership({
       organizationId,
@@ -117,8 +152,15 @@ export async function ensureClerkMembership(
     })
     return { created: true }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (msg.toLowerCase().includes('already')) return { created: false }
+    if (isAlreadyMemberError(err)) {
+      return { created: false, skippedReason: 'already_member' }
+    }
+    if (isQuotaExceededError(err)) {
+      console.warn(
+        `  warn: Clerk membership quota exceeded for user ${userId}; user exists in Clerk and the DB but is not a Clerk org member. Upgrade the dev tier to seat all 9.`,
+      )
+      return { created: false, skippedReason: 'quota_exceeded' }
+    }
     throw err
   }
 }

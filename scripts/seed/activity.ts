@@ -104,6 +104,9 @@ export async function seedActivity(
   const clientIds = clients.map((c) => c.id)
   await db.activityEvent.deleteMany({ where: { clientId: { in: clientIds } } })
 
+  const record = (input: Parameters<typeof recordActivity>[0]) =>
+    recordActivity(input, db)
+
   let totalEvents = 0
   let totalMentions = 0
   let mentionCursor = 0
@@ -125,7 +128,7 @@ export async function seedActivity(
   for (const client of clients) {
     const triggerActor = client.amUserId ?? org.users.admin.id
 
-    await recordActivity({
+    await record({
       clientId: client.id,
       actorId: org.users.admin.id,
       kind: ActivityKind.client_created,
@@ -135,7 +138,7 @@ export async function seedActivity(
     totalEvents += 1
 
     if (client.amUserId) {
-      await recordActivity({
+      await record({
         clientId: client.id,
         actorId: org.users.admin.id,
         kind: ActivityKind.client_am_assigned,
@@ -145,7 +148,7 @@ export async function seedActivity(
       totalEvents += 1
     }
     if (client.designerUserId) {
-      await recordActivity({
+      await record({
         clientId: client.id,
         actorId: org.users.admin.id,
         kind: ActivityKind.client_designer_assigned,
@@ -156,7 +159,7 @@ export async function seedActivity(
     }
 
     if (client.onboarded) {
-      await recordActivity({
+      await record({
         clientId: client.id,
         actorId: triggerActor,
         kind: ActivityKind.client_profile_edited,
@@ -174,7 +177,7 @@ export async function seedActivity(
     const runsForClient = runsByClient.get(client.id) ?? []
 
     for (const run of runsForClient) {
-      await recordActivity({
+      await record({
         clientId: client.id,
         runId: run.id,
         actorId: triggerActor,
@@ -182,7 +185,7 @@ export async function seedActivity(
         visibility: EventVisibility.internal,
         payload: { targetMonth: run.targetMonth },
       })
-      await recordActivity({
+      await record({
         clientId: client.id,
         runId: run.id,
         actorId: triggerActor,
@@ -196,7 +199,7 @@ export async function seedActivity(
     const batchesForClient = batchesByClient.get(client.id) ?? []
     for (const batch of batchesForClient) {
       if (batch.month) {
-        await recordActivity({
+        await record({
           clientId: client.id,
           actorId: triggerActor,
           kind: ActivityKind.batch_passed,
@@ -212,7 +215,7 @@ export async function seedActivity(
     }
 
     if (client.idx === 5) {
-      await recordActivity({
+      await record({
         clientId: client.id,
         actorId: triggerActor,
         kind: ActivityKind.batch_sent_back,
@@ -231,14 +234,14 @@ export async function seedActivity(
         b.step === 'design_revisions' || b.step === 'implementing_revisions',
     )
     if (revisionBatch) {
-      await recordActivity({
+      await record({
         clientId: client.id,
         actorId: triggerActor,
         kind: ActivityKind.batch_revision_dispatched,
         visibility: EventVisibility.internal,
         payload: { batchId: revisionBatch.id, items: 3 },
       })
-      await recordActivity({
+      await record({
         clientId: client.id,
         actorId: triggerActor,
         kind: ActivityKind.batch_revision_completed,
@@ -250,7 +253,7 @@ export async function seedActivity(
 
     for (let i = 0; i < 2; i += 1) {
       const isPublic = i % 2 === 0
-      await recordActivity({
+      await record({
         clientId: client.id,
         actorId: i % 2 === 0 ? triggerActor : org.users.designer1.id,
         kind: ActivityKind.comment,
@@ -261,7 +264,7 @@ export async function seedActivity(
     }
   }
 
-  await recordActivity({
+  await record({
     clientId: onboarded[2].id,
     actorId: org.users.admin.id,
     kind: ActivityKind.run_failed,
@@ -273,7 +276,7 @@ export async function seedActivity(
   })
   totalEvents += 1
 
-  await recordActivity({
+  await record({
     clientId: onboarded[0].id,
     actorId: org.users.admin.id,
     kind: ActivityKind.member_role_changed,

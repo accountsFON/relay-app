@@ -43,7 +43,7 @@ export interface DemoUser {
 export const DEMO_USERS: DemoUser[] = [
   {
     key: 'admin',
-    email: 'alex.admin@relaydemo.test',
+    email: 'alex.admin@relaydemo.app',
     firstName: 'Alex',
     lastName: 'Brooks',
     role: UserRole.admin,
@@ -52,7 +52,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     key: 'am1',
-    email: 'morgan.am@relaydemo.test',
+    email: 'morgan.am@relaydemo.app',
     firstName: 'Morgan',
     lastName: 'Reyes',
     role: UserRole.account_manager,
@@ -61,7 +61,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     key: 'am2',
-    email: 'sam.am@relaydemo.test',
+    email: 'sam.am@relaydemo.app',
     firstName: 'Sam',
     lastName: 'Patel',
     role: UserRole.account_manager,
@@ -70,7 +70,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     key: 'designer1',
-    email: 'riley.designer@relaydemo.test',
+    email: 'riley.designer@relaydemo.app',
     firstName: 'Riley',
     lastName: 'Chen',
     role: UserRole.designer,
@@ -79,7 +79,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     key: 'designer2',
-    email: 'jordan.designer@relaydemo.test',
+    email: 'jordan.designer@relaydemo.app',
     firstName: 'Jordan',
     lastName: 'Kim',
     role: UserRole.designer,
@@ -88,7 +88,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     key: 'client1',
-    email: 'casey.client@relaydemo.test',
+    email: 'casey.client@relaydemo.app',
     firstName: 'Casey',
     lastName: 'Cedar Creek',
     role: UserRole.client,
@@ -97,7 +97,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     key: 'client2',
-    email: 'taylor.client@relaydemo.test',
+    email: 'taylor.client@relaydemo.app',
     firstName: 'Taylor',
     lastName: 'Apex',
     role: UserRole.client,
@@ -106,7 +106,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     key: 'client3',
-    email: 'dakota.client@relaydemo.test',
+    email: 'dakota.client@relaydemo.app',
     firstName: 'Dakota',
     lastName: 'Sunrise Yoga',
     role: UserRole.client,
@@ -115,7 +115,7 @@ export const DEMO_USERS: DemoUser[] = [
   },
   {
     key: 'platform',
-    email: 'pat.platform@relaydemo.test',
+    email: 'pat.platform@relaydemo.app',
     firstName: 'Pat',
     lastName: 'Owner',
     role: UserRole.admin,
