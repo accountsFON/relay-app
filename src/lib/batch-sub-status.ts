@@ -1,0 +1,177 @@
+import { RelayStep, RevisionItemStatus } from '@prisma/client'
+
+export interface BatchForSubStatus {
+  currentStep: RelayStep
+  currentSubState: string | null
+  createdAt: Date
+  revisionPlan?: {
+    items: { status: RevisionItemStatus }[]
+  } | null
+}
+
+export interface SubStatus {
+  /** Short label for chip rendering on the batch card. */
+  label: string
+  /** UI tone hint. */
+  tone: 'neutral' | 'progress' | 'attention' | 'success'
+  /** Days the batch has been on the current step (rough). */
+  daysHere: number
+}
+
+/**
+ * Derive a per-batch sub-status chip for kanban cards. Pure function;
+ * UI maps `tone` to color tokens.
+ */
+export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
+  const daysHere = Math.max(
+    0,
+    Math.floor((Date.now() - batch.createdAt.getTime()) / (24 * 60 * 60 * 1000)),
+  )
+
+  switch (batch.currentStep) {
+    case RelayStep.copy: {
+      const sub = batch.currentSubState ?? 'generating'
+      const map: Record<string, SubStatus['tone']> = {
+        generating: 'progress',
+        drafted: 'attention',
+        approved: 'success',
+      }
+      return {
+        label: humanizeSubState(sub),
+        tone: map[sub] ?? 'neutral',
+        daysHere,
+      }
+    }
+
+    case RelayStep.implementing_revisions: {
+      const items = batch.revisionPlan?.items ?? []
+      const total = items.length
+      const remaining = items.filter(
+        (i) => i.status !== RevisionItemStatus.complete,
+      ).length
+      if (total === 0) {
+        return { label: 'Plan not yet composed', tone: 'attention', daysHere }
+      }
+      if (remaining === 0) {
+        return { label: 'All revisions complete', tone: 'success', daysHere }
+      }
+      return {
+        label: `${remaining} of ${total} revisions in progress`,
+        tone: 'progress',
+        daysHere,
+      }
+    }
+
+    case RelayStep.am_review_design:
+      return { label: 'Ready for review', tone: 'attention', daysHere }
+
+    case RelayStep.am_qa_pre_client:
+      return { label: 'In pre-client QA', tone: 'progress', daysHere }
+
+    case RelayStep.sent_to_client:
+      return { label: 'Awaiting client open', tone: 'attention', daysHere }
+
+    case RelayStep.client_decision:
+      return { label: 'Client deciding', tone: 'attention', daysHere }
+
+    case RelayStep.designs_completed:
+      return { label: 'Designer marked done', tone: 'success', daysHere }
+
+    case RelayStep.design_revisions:
+      return { label: 'Designer revising', tone: 'progress', daysHere }
+
+    case RelayStep.in_design:
+      return { label: 'Designing', tone: 'progress', daysHere }
+
+    case RelayStep.ready_to_schedule:
+      return { label: 'Approved for schedule', tone: 'success', daysHere }
+
+    case RelayStep.revisions_complete:
+      return { label: 'Revisions complete (router)', tone: 'attention', daysHere }
+
+    case RelayStep.final_qa_schedule:
+      return { label: 'Scheduling', tone: 'progress', daysHere }
+
+    case RelayStep.onboarding_gate:
+      return { label: 'Awaiting onboarding', tone: 'attention', daysHere }
+  }
+}
+
+/**
+ * Map any RelayStep to the kanban column it belongs to in the AM view.
+ * Per spec § UI Direction: AM 6 columns.
+ */
+export type AmKanbanColumn =
+  | 'Copy'
+  | 'Design'
+  | 'Pre-Client QA'
+  | 'With Client'
+  | 'Revisions'
+  | 'Schedule'
+
+export function amKanbanColumn(step: RelayStep): AmKanbanColumn | null {
+  switch (step) {
+    case RelayStep.copy:
+      return 'Copy'
+    case RelayStep.in_design:
+    case RelayStep.designs_completed:
+    case RelayStep.am_review_design:
+    case RelayStep.design_revisions:
+      return 'Design'
+    case RelayStep.am_qa_pre_client:
+      return 'Pre-Client QA'
+    case RelayStep.sent_to_client:
+    case RelayStep.client_decision:
+      return 'With Client'
+    case RelayStep.implementing_revisions:
+    case RelayStep.revisions_complete:
+      return 'Revisions'
+    case RelayStep.ready_to_schedule:
+    case RelayStep.final_qa_schedule:
+      return 'Schedule'
+    case RelayStep.onboarding_gate:
+      return null
+  }
+}
+
+export type DesignerKanbanColumn = 'In Design' | 'Awaiting QA' | 'Revisions'
+
+export function designerKanbanColumn(step: RelayStep): DesignerKanbanColumn | null {
+  switch (step) {
+    case RelayStep.in_design:
+      return 'In Design'
+    case RelayStep.designs_completed:
+      return 'Awaiting QA'
+    case RelayStep.design_revisions:
+      return 'Revisions'
+    default:
+      return null
+  }
+}
+
+export type ClientKanbanColumn = 'Awaiting Your Approval' | 'In Production'
+
+export function clientKanbanColumn(step: RelayStep): ClientKanbanColumn | null {
+  switch (step) {
+    case RelayStep.sent_to_client:
+    case RelayStep.client_decision:
+      return 'Awaiting Your Approval'
+    case RelayStep.copy:
+    case RelayStep.in_design:
+    case RelayStep.designs_completed:
+    case RelayStep.am_review_design:
+    case RelayStep.design_revisions:
+    case RelayStep.am_qa_pre_client:
+    case RelayStep.ready_to_schedule:
+    case RelayStep.implementing_revisions:
+    case RelayStep.revisions_complete:
+    case RelayStep.final_qa_schedule:
+      return 'In Production'
+    case RelayStep.onboarding_gate:
+      return null
+  }
+}
+
+function humanizeSubState(sub: string): string {
+  return sub.charAt(0).toUpperCase() + sub.slice(1).replace(/_/g, ' ')
+}

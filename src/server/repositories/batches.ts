@@ -112,3 +112,63 @@ export async function listOnboardingQueue(orgId: string) {
     orderBy: { createdAt: 'asc' },
   })
 }
+
+/**
+ * All batches for an org. Used by the AM kanban (filter client-side
+ * to assignedAmId === userId) and admin dashboards.
+ */
+export async function listBatchesForOrg(orgId: string) {
+  return db.batch.findMany({
+    where: { client: { organizationId: orgId } },
+    include: {
+      client: {
+        select: {
+          id: true,
+          name: true,
+          assignedAmId: true,
+          assignedDesignerId: true,
+        },
+      },
+      holder: { select: { id: true, name: true, role: true } },
+      revisionPlan: {
+        include: {
+          items: { select: { id: true, status: true, type: true } },
+        },
+      },
+      _count: { select: { posts: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+}
+
+/**
+ * Pipeline view for a Client-role user (their linked client only).
+ * Returns the batches the client should see in their pipeline view.
+ */
+export async function listClientPipelineBatches(linkedClientId: string) {
+  return db.batch.findMany({
+    where: {
+      clientId: linkedClientId,
+      currentStep: {
+        in: [
+          'sent_to_client',
+          'client_decision',
+          'in_design',
+          'designs_completed',
+          'am_review_design',
+          'design_revisions',
+          'am_qa_pre_client',
+          'ready_to_schedule',
+          'implementing_revisions',
+          'revisions_complete',
+          'final_qa_schedule',
+          'copy',
+        ],
+      },
+    },
+    include: {
+      _count: { select: { posts: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+}
