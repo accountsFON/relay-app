@@ -182,12 +182,11 @@ export function ChecklistPanel({
           {legalSendBackTargets.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
-                render={
-                  <Button type="button" variant="outline" className="w-full" />
-                }
+                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-cream-warm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+                aria-label="Send back"
               >
                 Send back
-                <ChevronDown />
+                <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-[12rem]">
                 {legalSendBackTargets.map((target) => (
