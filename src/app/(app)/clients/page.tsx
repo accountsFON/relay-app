@@ -22,9 +22,14 @@ export default async function ClientsPage() {
         description={`${clients.length} ${clients.length === 1 ? 'client' : 'clients'} in this workspace.`}
         actions={
           canCreate && (
-            <Link href="/clients/new">
-              <Button variant="accent">New client</Button>
-            </Link>
+            <>
+              <Link href="/clients/new">
+                <Button variant="accent">New client</Button>
+              </Link>
+              <Link href="/clients/import">
+                <Button variant="outline">Import CSV</Button>
+              </Link>
+            </>
           )
         }
       />

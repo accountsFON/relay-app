@@ -100,6 +100,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       : undefined
 
   const showAdmin = can(ctx, 'admin.portal')
+  const showLibrary = ctx.role !== 'client' // Beta QA index is agency-internal
   const unreadMentions = await unreadMentionCount(
     ctx.userDbId,
     visibilityForViewer(ctx),
@@ -109,6 +110,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <AppShell
       showAdmin={showAdmin}
       platformOwner={ctx.platformOwner}
+      showLibrary={showLibrary}
       membershipCount={memberships.length}
       activeAgencyName={activeAgencyName}
       allAgencies={allAgencies}

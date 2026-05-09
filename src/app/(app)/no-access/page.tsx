@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { SignOutButton } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 
 export default async function NoAccessPage({
@@ -23,9 +23,9 @@ export default async function NoAccessPage({
             ? 'This organization exists in your Clerk account but has not been set up in Relay yet. Contact an admin to finish onboarding it.'
             : 'You are not a member of this agency. If you should have access, ask the agency admin to invite you.'}
         </p>
-        <Link href="/sign-out">
+        <SignOutButton redirectUrl="/sign-in">
           <Button variant="outline">Sign out</Button>
-        </Link>
+        </SignOutButton>
       </div>
     </div>
   )

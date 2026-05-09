@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox, BookOpen } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox, BookOpen, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 import { DateScopePill } from '@/components/date-scope-pill'
@@ -49,6 +49,7 @@ export function AppShell({
   children,
   showAdmin = false,
   platformOwner = false,
+  showLibrary = false,
   membershipCount = 1,
   activeAgencyName = '',
   allAgencies,
@@ -59,6 +60,7 @@ export function AppShell({
   children: React.ReactNode
   showAdmin?: boolean
   platformOwner?: boolean
+  showLibrary?: boolean
   membershipCount?: number
   activeAgencyName?: string
   allAgencies?: AgencyOption[]
@@ -70,7 +72,7 @@ export function AppShell({
     ...baseNavItems,
     ...(showAdmin ? [adminNavItem] : []),
     ...(platformOwner ? [platformNavItem] : []),
-    libraryNavItem,
+    ...(showLibrary ? [libraryNavItem] : []),
   ]
   const badgeMap: Record<BadgeKey, number> = {
     unreadMentions: unreadMentions,
@@ -202,7 +204,14 @@ export function AppShell({
             priority
             className="h-6 w-auto"
           />
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/search"
+              className="rounded-full bg-card p-1.5 text-muted-foreground hover:text-foreground hover:bg-cream-80"
+              aria-label="Search"
+            >
+              <Search className="h-4 w-4" />
+            </Link>
             <DateScopePill />
           </div>
         </header>
