@@ -24,11 +24,18 @@ export async function inviteMember(input: {
 
   // Build an absolute redirect URL so the invitation email links land on
   // OUR /sign-up page (which handles __clerk_ticket and routes to onboarding
-  // Path 2) instead of Clerk's hosted UI. Vercel auto-injects VERCEL_URL
-  // per-deployment; local dev falls back to localhost:3000. When a real
-  // domain is wired up, set NEXT_PUBLIC_APP_URL to override.
+  // Path 2) instead of Clerk's hosted UI.
+  //
+  // Prefer VERCEL_PROJECT_PRODUCTION_URL (the friendly prod alias, e.g.
+  // relay-app-xi.vercel.app — publicly accessible) over VERCEL_URL (the
+  // per-deployment URL like relay-71xmnxl3x-...vercel.app, which is gated
+  // by Vercel SSO on Hobby plans). Local dev falls back to localhost.
+  // Set NEXT_PUBLIC_APP_URL when a real custom domain is wired up.
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : null) ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
   const clerk = await clerkClient()
