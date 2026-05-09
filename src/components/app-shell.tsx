@@ -9,6 +9,7 @@ import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox, 
 import { cn } from '@/lib/utils'
 import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 import { DateScopePill } from '@/components/date-scope-pill'
+import { SearchBar } from '@/components/search-bar'
 
 type BadgeKey = 'unreadMentions'
 type NavItem = {
@@ -207,6 +208,7 @@ export function AppShell({
         </header>
 
         <header className="hidden h-12 shrink-0 items-center justify-end gap-3 border-b border-cream-80 bg-cream-warm/40 px-6 md:flex">
+          <SearchBar />
           <DateScopePill />
         </header>
 

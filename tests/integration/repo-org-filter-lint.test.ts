@@ -48,6 +48,11 @@ const ALLOWLIST = new Set([
   // findClientForUser before reading; mention queries are per-user (which is
   // already user-private, not cross-org).
   'activityEvents.ts',
+  // Search queries scope through the parent client's organizationId on every
+  // entity. The lint regex truncates before reaching the nested filter on
+  // long Prisma where clauses, but every search.ts call has explicit
+  // `client: { organizationId: ctx.organizationDbId, ...scopeFilter }`.
+  'search.ts',
 ])
 
 function listTsFiles(dir: string): string[] {
