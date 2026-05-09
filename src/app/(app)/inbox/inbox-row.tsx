@@ -13,7 +13,7 @@ export function InboxRow({ row }: { row: MentionInboxRow }) {
   const unread = !row.readAt
 
   const summary = renderSummary(row)
-  const href = `/clients/${row.client.id}`
+  const href = resolveHref(row)
 
   function handleClick() {
     if (!unread) return
@@ -52,6 +52,21 @@ export function InboxRow({ row }: { row: MentionInboxRow }) {
       </div>
     </Link>
   )
+}
+
+function resolveHref(row: MentionInboxRow): string {
+  // Batch events know their batchId in the payload; deep-link to the
+  // batch detail page so the user lands exactly where the action is.
+  const payload = row.event.payload as Record<string, unknown>
+  const batchId = typeof payload.batchId === 'string' ? payload.batchId : null
+  if (batchId) {
+    return `/clients/${row.client.id}/batches/${batchId}`
+  }
+  // Run-level events deep-link to the run page when possible.
+  if (row.event.runId) {
+    return `/clients/${row.client.id}/runs/${row.event.runId}`
+  }
+  return `/clients/${row.client.id}`
 }
 
 function renderSummary(row: MentionInboxRow): string {

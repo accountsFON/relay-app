@@ -9,7 +9,6 @@ import {
   visibilityForViewer,
 } from '@/server/repositories/activityEvents'
 import { db } from '@/db/client'
-import { Badge } from '@/components/ui/badge'
 import {
   legalNextSteps,
   legalSendBackTargets,

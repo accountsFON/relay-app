@@ -10,6 +10,7 @@
  * yet, the link reads "(no sample data — create one first)".
  */
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { db } from '@/db/client'
 import { PageHeader } from '@/components/page-header'
@@ -26,6 +27,8 @@ interface RouteLink {
 
 export default async function LibraryPage() {
   const ctx = await requireOrgContext()
+  // Beta QA index is agency-internal — bounce client-role users.
+  if (ctx.role === 'client') redirect('/dashboard')
 
   // Fetch one of each entity to seed dynamic-route links.
   const [client, batch, run, member] = await Promise.all([

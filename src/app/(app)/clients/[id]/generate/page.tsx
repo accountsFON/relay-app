@@ -45,7 +45,12 @@ const STEP_INSIGHTS = [
 export default function GeneratePage() {
   const { id: clientId } = useParams<{ id: string }>()
   const searchParams = useSearchParams()
-  const [targetMonth, setTargetMonth] = useState(searchParams.get('month') ?? getNextMonth())
+  // Accept both ?month= and ?targetMonth= for consistency with the other
+  // surfaces that link here (bulk-generate uses targetMonth, run-management
+  // uses month). Either is valid; first match wins.
+  const [targetMonth, setTargetMonth] = useState(
+    searchParams.get('targetMonth') ?? searchParams.get('month') ?? getNextMonth(),
+  )
   const [progress, setProgress] = useState<RunProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
