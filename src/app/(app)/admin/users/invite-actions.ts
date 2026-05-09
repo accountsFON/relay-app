@@ -22,12 +22,22 @@ export async function inviteMember(input: {
 
   const clerkRole = input.role === 'admin' ? 'org:admin' : 'org:member'
 
+  // Build an absolute redirect URL so the invitation email links land on
+  // OUR /sign-up page (which handles __clerk_ticket and routes to onboarding
+  // Path 2) instead of Clerk's hosted UI. Vercel auto-injects VERCEL_URL
+  // per-deployment; local dev falls back to localhost:3000. When a real
+  // domain is wired up, set NEXT_PUBLIC_APP_URL to override.
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
   const clerk = await clerkClient()
   await clerk.organizations.createOrganizationInvitation({
     organizationId: ctx.orgId,
     inviterUserId: ctx.userId,
     emailAddress: email,
     role: clerkRole,
+    redirectUrl: `${appUrl}/sign-up`,
   })
 
   revalidatePath('/admin/users')
