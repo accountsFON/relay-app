@@ -3,6 +3,8 @@ import { requireAdminPortal } from '@/server/middleware/permissions'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/page-header'
+import { AdminTabs } from '../admin-tabs'
 import { InviteMemberButton } from './invite-modal'
 import type { UserRole } from '@/lib/types'
 
@@ -40,34 +42,18 @@ export default async function AdminUsersPage() {
   for (const m of memberships) byRole[m.role].push(m)
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl">
-      <div className="mb-6 sm:mb-8 flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-foreground sm:text-2xl">Team</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {memberships.length}{' '}
-            {memberships.length === 1 ? 'member' : 'members'}
-          </p>
-        </div>
-        <div className="flex gap-3 items-center">
-          <Link
-            href="/admin/clients"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Clients view
-          </Link>
-          <span className="text-muted-foreground">·</span>
-          <Link
-            href="/admin/roles"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Role defaults
-          </Link>
-          <InviteMemberButton />
-        </div>
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+      <PageHeader
+        title="Team"
+        description={`${memberships.length} ${memberships.length === 1 ? 'member' : 'members'} across this agency.`}
+        actions={<InviteMemberButton />}
+      />
+
+      <div className="mt-6">
+        <AdminTabs />
       </div>
 
-      <div className="space-y-8">
+      <div className="mt-10 space-y-8">
         {ROLE_ORDER.map((role) => {
           const list = byRole[role]
           if (list.length === 0) return null

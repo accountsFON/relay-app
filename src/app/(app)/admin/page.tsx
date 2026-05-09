@@ -9,6 +9,7 @@ import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
+import { AdminTabs } from './admin-tabs'
 import { OnboardingQueueRow } from './onboarding-queue-row'
 import { StuckBatchRow } from './stuck-batch-row'
 
@@ -35,6 +36,10 @@ export default async function AdminDashboardPage() {
         title="Admin"
         description="Onboarding queue + stuck batch watchlist."
       />
+
+      <div className="mt-6">
+        <AdminTabs />
+      </div>
 
       <div className="mt-10 space-y-8">
         <PageSection

@@ -1,7 +1,8 @@
-import Link from 'next/link'
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import { listRoleDefaults } from '@/server/repositories/roleDefaults'
 import { Card } from '@/components/ui/card'
+import { PageHeader } from '@/components/page-header'
+import { AdminTabs } from '../admin-tabs'
 import { RoleDefaultsEditor } from './role-defaults-editor'
 import type { UserRole } from '@/lib/types'
 import type { PermissionKey } from '@/server/auth/permissions'
@@ -23,33 +24,20 @@ export default async function AdminRolesPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl">
-      <div className="mb-4">
-        <Link
-          href="/admin/users"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          &larr; Back to team
-        </Link>
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+      <PageHeader
+        title="Role defaults"
+        description="Org-wide defaults per role. Individual users can still be overridden on their detail page."
+      />
+
+      <div className="mt-6">
+        <AdminTabs />
       </div>
 
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl font-bold text-foreground sm:text-2xl">
-          Role defaults
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Org-wide defaults per role. Individual users can still be overridden
-          on their detail page.
-        </p>
-      </div>
-
-      <div className="space-y-6">
+      <div className="mt-10 space-y-6">
         {ROLES.map((role) => (
           <Card key={role}>
-            <RoleDefaultsEditor
-              role={role}
-              initialOverrides={byRole[role]}
-            />
+            <RoleDefaultsEditor role={role} initialOverrides={byRole[role]} />
           </Card>
         ))}
       </div>

@@ -1,10 +1,10 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import { findUserWithMembershipInOrg } from '@/server/repositories/users'
 import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/page-header'
 import { AssignmentToggle } from './assignment-toggle'
 import { PermissionEditor } from './permission-editor'
 import { RoleChanger } from './role-changer'
@@ -68,36 +68,29 @@ export default async function AdminUserDetailPage({
     >) ?? {}
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl">
-      <div className="mb-4">
-        <Link
-          href="/admin/users"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          &larr; Back to team
-        </Link>
-      </div>
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+      <PageHeader
+        title={user.name}
+        description={
+          <span>
+            {user.email} ·{' '}
+            <Badge variant="secondary" className="ml-1">
+              {ROLE_LABELS[membership.role]}
+            </Badge>
+            {(membership.role === 'account_manager' ||
+              membership.role === 'designer') && (
+              <span className="ml-2">
+                {assignedCount} {assignedCount === 1 ? 'client' : 'clients'}{' '}
+                assigned
+              </span>
+            )}
+          </span>
+        }
+        backHref="/admin/users"
+        backLabel="Back to team"
+      />
 
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl font-bold text-foreground sm:text-2xl">
-          {user.name}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {user.email} ·{' '}
-          <Badge variant="secondary" className="ml-1">
-            {ROLE_LABELS[membership.role]}
-          </Badge>
-          {(membership.role === 'account_manager' ||
-            membership.role === 'designer') && (
-            <span className="ml-2">
-              {assignedCount} {assignedCount === 1 ? 'client' : 'clients'}{' '}
-              assigned
-            </span>
-          )}
-        </p>
-      </div>
-
-      <Card className="mb-6 p-4">
+      <Card className="mt-10 mb-6 p-4">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
           Role
         </h2>

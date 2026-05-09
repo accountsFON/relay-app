@@ -1,8 +1,9 @@
-import Link from 'next/link'
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { Card } from '@/components/ui/card'
+import { PageHeader } from '@/components/page-header'
+import { AdminTabs } from '../admin-tabs'
 import { AssignmentSelect } from './assignment-select'
 
 export default async function AdminClientsPage() {
@@ -21,27 +22,17 @@ export default async function AdminClientsPage() {
     .map((m) => ({ id: m.user.id, name: m.user.name }))
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl">
-      <div className="mb-4">
-        <Link
-          href="/admin/users"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          &larr; Back to team
-        </Link>
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+      <PageHeader
+        title="Client assignments"
+        description={`${clients.length} ${clients.length === 1 ? 'client' : 'clients'}. Reassign AM and Designer per client below.`}
+      />
+
+      <div className="mt-6">
+        <AdminTabs />
       </div>
 
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl font-bold text-foreground sm:text-2xl">
-          Clients
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {clients.length} {clients.length === 1 ? 'client' : 'clients'}. Reassign
-          AM and Designer per client below.
-        </p>
-      </div>
-
-      <Card>
+      <Card className="mt-10">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
