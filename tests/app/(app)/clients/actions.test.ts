@@ -9,6 +9,17 @@ vi.mock('@/server/repositories/clients', () => ({
   updateClient: vi.fn(),
   archiveClient: vi.fn(),
   findClientById: vi.fn(),
+  findClientForUser: vi.fn(),
+}))
+
+vi.mock('@/server/services/activity', () => ({
+  recordActivity: vi.fn(),
+  ActivityKind: {
+    client_created: 'client_created',
+    client_profile_edited: 'client_profile_edited',
+    client_archived: 'client_archived',
+  },
+  EventVisibility: { public: 'public', internal: 'internal', admin_only: 'admin_only' },
 }))
 
 vi.mock('next/navigation', () => ({

@@ -8,6 +8,7 @@ import { generateCaptions } from '@/server/services/captionGenerator'
 import { createPostsFromCaptions, parseCtaCandidates } from '@/server/services/postParser'
 import { sumCosts, costToCredits, buildCostBreakdown } from '@/server/services/costTracker'
 import type { CostResult, RunCostBreakdown } from '@/server/services/costTracker'
+import { recordActivity, ActivityKind, EventVisibility } from '@/server/services/activity'
 
 type TokenUsageLog = Record<string, { input: number; output: number }>
 
@@ -41,6 +42,13 @@ export const generateContentTask = task({
       await db.contentRun.update({
         where: { id: contentRunId },
         data: { status: 'running', startedAt: new Date() },
+      })
+
+      await recordActivity({
+        clientId: client.id,
+        runId: contentRunId,
+        kind: ActivityKind.run_started,
+        payload: { targetMonth: contentRun.targetMonth },
       })
 
       // Step 1: Calculate posting dates
@@ -186,6 +194,19 @@ export const generateContentTask = task({
         },
       })
 
+      await recordActivity({
+        clientId: client.id,
+        runId: contentRunId,
+        kind: ActivityKind.run_completed,
+        // Public so the client thread shows the handoff.
+        visibility: EventVisibility.public,
+        payload: {
+          targetMonth: contentRun.targetMonth,
+          postCount,
+          totalCostUsd: breakdown.total,
+        },
+      })
+
       return { postCount, totalCostUsd: breakdown.total, breakdown }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -215,6 +236,16 @@ export const generateContentTask = task({
                 pipelineDurationSeconds,
               }
             : undefined,
+        },
+      })
+
+      await recordActivity({
+        clientId: client.id,
+        runId: contentRunId,
+        kind: ActivityKind.run_failed,
+        payload: {
+          targetMonth: contentRun.targetMonth,
+          errorMessage: message,
         },
       })
 

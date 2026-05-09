@@ -17,6 +17,8 @@ import {
   type PermissionKey,
 } from '@/server/auth/permissions'
 import type { UserRole } from '@/lib/types'
+import { recordActivity, ActivityKind } from '@/server/services/activity'
+import { db } from '@/db/client'
 
 export async function setClientAssignment(input: {
   userId: string
@@ -37,6 +39,26 @@ export async function setClientAssignment(input: {
     await assignClientDesigner(input.clientId, ctx.organizationDbId, newValue)
   }
 
+  const targetUser = await db.user.findUnique({
+    where: { id: input.userId },
+    select: { name: true },
+  })
+  const kind = input.assigned
+    ? input.slot === 'am'
+      ? ActivityKind.client_am_assigned
+      : ActivityKind.client_designer_assigned
+    : input.slot === 'am'
+      ? ActivityKind.client_am_unassigned
+      : ActivityKind.client_designer_unassigned
+  await recordActivity({
+    clientId: input.clientId,
+    actorId: ctx.userDbId,
+    kind,
+    payload: input.assigned
+      ? { assignedToId: input.userId, assignedToName: targetUser?.name ?? null }
+      : { unassignedFromId: input.userId, unassignedFromName: targetUser?.name ?? null },
+  })
+
   revalidatePath(`/admin/users/${input.userId}`)
   revalidatePath('/admin/users')
   revalidatePath('/admin/clients')
@@ -52,8 +74,37 @@ export async function changeMembershipRole(userId: string, role: UserRole) {
   const membership = await findMembership(userId, ctx.organizationDbId)
   if (!membership) throw new Error('User is not a member of this agency')
 
+  const priorRole = membership.role
   // Repo enforces the at-least-one-admin invariant.
   await updateMembershipRole(membership.id, role)
+
+  // Membership changes aren't scoped to one client; emit the event on every
+  // client this user is touching (assigned AM or designer) so admins see it
+  // in the relevant threads. If they have no client assignments, skip.
+  const touchingClients = await db.client.findMany({
+    where: {
+      organizationId: ctx.organizationDbId,
+      OR: [{ assignedAmId: userId }, { assignedDesignerId: userId }],
+    },
+    select: { id: true },
+  })
+  const targetUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  })
+  for (const c of touchingClients) {
+    await recordActivity({
+      clientId: c.id,
+      actorId: ctx.userDbId,
+      kind: ActivityKind.member_role_changed,
+      payload: {
+        targetUserId: userId,
+        targetUserName: targetUser?.name ?? null,
+        fromRole: priorRole,
+        toRole: role,
+      },
+    })
+  }
 
   revalidatePath(`/admin/users/${userId}`)
   revalidatePath('/admin/users')

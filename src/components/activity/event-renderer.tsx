@@ -26,6 +26,15 @@ import {
   CircleDot,
   MessageCircle,
   Sparkles,
+  Pencil,
+  Plus,
+  Archive,
+  UserPlus,
+  UserMinus,
+  ShieldCheck,
+  PlayCircle,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -158,6 +167,106 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         tone: 'default',
         message: `advanced ${p.batchLabel}: ${p.fromSubState} → ${p.toSubState}`,
       }
+    case 'client_created': {
+      const name = stringField(p, 'clientName')
+      return {
+        icon: Plus,
+        tone: 'success',
+        message: name ? `created client ${name}` : 'created this client',
+      }
+    }
+    case 'client_profile_edited': {
+      const fields = stringArrayField(p, 'fieldsChanged')
+      return {
+        icon: Pencil,
+        tone: 'default',
+        message: fields.length
+          ? `edited profile: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? ` +${fields.length - 3} more` : ''}`
+          : 'edited profile',
+      }
+    }
+    case 'client_archived':
+      return { icon: Archive, tone: 'warning', message: 'archived this client' }
+    case 'client_am_assigned': {
+      const name = stringField(p, 'assignedToName')
+      return {
+        icon: UserPlus,
+        tone: 'default',
+        message: name ? `assigned ${name} as AM` : 'assigned an AM',
+      }
+    }
+    case 'client_am_unassigned': {
+      const name = stringField(p, 'unassignedFromName')
+      return {
+        icon: UserMinus,
+        tone: 'default',
+        message: name ? `unassigned ${name} from AM slot` : 'unassigned the AM',
+      }
+    }
+    case 'client_designer_assigned': {
+      const name = stringField(p, 'assignedToName')
+      return {
+        icon: UserPlus,
+        tone: 'default',
+        message: name ? `assigned ${name} as designer` : 'assigned a designer',
+      }
+    }
+    case 'client_designer_unassigned': {
+      const name = stringField(p, 'unassignedFromName')
+      return {
+        icon: UserMinus,
+        tone: 'default',
+        message: name ? `unassigned ${name} from designer slot` : 'unassigned the designer',
+      }
+    }
+    case 'member_role_changed': {
+      const name = stringField(p, 'targetUserName')
+      const fromRole = stringField(p, 'fromRole')
+      const toRole = stringField(p, 'toRole')
+      return {
+        icon: ShieldCheck,
+        tone: 'default',
+        message: `changed ${name ?? 'a member'}'s role: ${fromRole ?? '?'} → ${toRole ?? '?'}`,
+      }
+    }
+    case 'post_edited': {
+      const fields = stringArrayField(p, 'fieldsChanged')
+      return {
+        icon: Pencil,
+        tone: 'default',
+        message: fields.length
+          ? `edited post: ${fields.slice(0, 3).join(', ')}`
+          : 'edited a post',
+      }
+    }
+    case 'run_started': {
+      const month = stringField(p, 'targetMonth')
+      return {
+        icon: PlayCircle,
+        tone: 'default',
+        message: month ? `started run for ${month}` : 'started a content run',
+      }
+    }
+    case 'run_completed': {
+      const month = stringField(p, 'targetMonth')
+      const postCount = numberField(p, 'postCount')
+      return {
+        icon: CheckCircle2,
+        tone: 'success',
+        message:
+          month && postCount !== null
+            ? `${month} run complete — ${postCount} posts ready`
+            : 'content run complete',
+      }
+    }
+    case 'run_failed': {
+      const month = stringField(p, 'targetMonth')
+      return {
+        icon: AlertTriangle,
+        tone: 'destructive',
+        message: month ? `${month} run failed` : 'content run failed',
+      }
+    }
   }
   // Fallback for not-yet-modeled kinds.
   return {
@@ -165,6 +274,22 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
     tone: 'default',
     message: humanizeKind(event.kind),
   }
+}
+
+function stringField(payload: unknown, key: string): string | null {
+  if (!payload || typeof payload !== 'object') return null
+  const v = (payload as Record<string, unknown>)[key]
+  return typeof v === 'string' && v.length > 0 ? v : null
+}
+function stringArrayField(payload: unknown, key: string): string[] {
+  if (!payload || typeof payload !== 'object') return []
+  const v = (payload as Record<string, unknown>)[key]
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+}
+function numberField(payload: unknown, key: string): number | null {
+  if (!payload || typeof payload !== 'object') return null
+  const v = (payload as Record<string, unknown>)[key]
+  return typeof v === 'number' ? v : null
 }
 
 function toneClasses(tone: Tone): string {
