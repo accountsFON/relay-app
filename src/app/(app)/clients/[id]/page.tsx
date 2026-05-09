@@ -7,8 +7,10 @@ import {
 import { findClientForUser } from '@/server/repositories/clients'
 import { listRunsByClient } from '@/server/repositories/contentRuns'
 import { listActivityForClient } from '@/server/repositories/activityEvents'
+import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { ActivityThread } from '@/components/activity/activity-thread'
+import { buildMentionRoster } from '@/lib/mentions'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
@@ -28,11 +30,13 @@ export default async function ClientDetailPage({
   const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
-  const [runs, activity] = await Promise.all([
+  const [runs, activity, memberships] = await Promise.all([
     listRunsByClient(id),
     listActivityForClient(client.id, { limit: 30 }),
+    listMembershipsForOrg(ctx.organizationDbId),
   ])
   const canEdit = canEditClients(ctx)
+  const mentionTargets = buildMentionRoster(memberships)
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
@@ -120,7 +124,12 @@ export default async function ClientDetailPage({
           title="Activity"
           description="Comments and system events for this client. Composer wires up in Phase 2."
         >
-          <ActivityThread clientId={client.id} events={activity} hideComposer />
+          <ActivityThread
+            clientId={client.id}
+            events={activity}
+            mentionTargets={mentionTargets}
+            hideComposer={!canEdit}
+          />
         </PageSection>
       </div>
     </div>

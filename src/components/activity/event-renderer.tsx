@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { tokenizeBody } from '@/lib/mentions'
 import type { ActivityEventView } from './types'
 
 export interface EventRendererProps {
@@ -68,9 +69,19 @@ function CommentRow({ event, className }: EventRendererProps) {
             {formatRelative(event.createdAt)}
           </p>
         </div>
-        {/* TODO Phase 2: parse @handles, render styled chips */}
         <p className="text-[14px] leading-snug text-foreground whitespace-pre-wrap">
-          {event.payload.body}
+          {tokenizeBody(event.payload.body).map((tok, i) =>
+            tok.type === 'mention' ? (
+              <span
+                key={i}
+                className="rounded bg-cream-warm px-1 py-0.5 text-[13px] font-medium text-foreground"
+              >
+                @{tok.handle}
+              </span>
+            ) : (
+              <span key={i}>{tok.value}</span>
+            ),
+          )}
         </p>
       </div>
     </div>

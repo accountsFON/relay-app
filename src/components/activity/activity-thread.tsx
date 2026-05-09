@@ -18,13 +18,14 @@
 import { CommentComposer } from './comment-composer'
 import { EventRenderer } from './event-renderer'
 import type { ActivityEventView } from './types'
+import type { MentionTarget } from '@/lib/mentions'
 
 export interface ActivityThreadProps {
   clientId: string
   /** Pre-loaded events. Empty array renders the empty state. */
   events: ActivityEventView[]
   /** Members of the current org for @mention autocomplete. */
-  mentionTargets?: { id: string; handle: string; name: string }[]
+  mentionTargets?: MentionTarget[]
   /** Hide the composer (e.g., on inbox preview). */
   hideComposer?: boolean
 }
