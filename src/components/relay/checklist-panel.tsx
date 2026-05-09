@@ -27,6 +27,12 @@ import type { RelayStep } from '@prisma/client'
 import { ArrowRight, ChevronDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { STEP_LABEL } from './labels'
 import type { BatchSummary, ChecklistItem } from './types'
@@ -57,7 +63,6 @@ export function ChecklistPanel({
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(items.map((i) => [i.id, i.checked]))
   )
-  const [showSendBack, setShowSendBack] = useState(false)
   const [sendBackTarget, setSendBackTarget] = useState<RelayStep | null>(null)
   const [reasonText, setReasonText] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -175,34 +180,26 @@ export function ChecklistPanel({
           </Button>
 
           {legalSendBackTargets.length > 0 && (
-            <div className="relative">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowSendBack((v) => !v)}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button type="button" variant="outline" className="w-full" />
+                }
               >
                 Send back
                 <ChevronDown />
-              </Button>
-              {showSendBack && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover p-1 shadow-md">
-                  {legalSendBackTargets.map((target) => (
-                    <button
-                      key={target.step}
-                      type="button"
-                      className="block w-full rounded px-2 py-1.5 text-left text-[13px] hover:bg-accent"
-                      onClick={() => {
-                        setShowSendBack(false)
-                        setSendBackTarget(target.step)
-                      }}
-                    >
-                      {target.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[12rem]">
+                {legalSendBackTargets.map((target) => (
+                  <DropdownMenuItem
+                    key={target.step}
+                    onClick={() => setSendBackTarget(target.step)}
+                  >
+                    {target.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {sendBackTarget && (
