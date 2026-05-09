@@ -32,6 +32,7 @@ export function AppShell({
   membershipCount = 1,
   activeAgencyName = '',
   allAgencies,
+  userAgencies,
   activeClerkOrgId,
 }: {
   children: React.ReactNode
@@ -40,6 +41,7 @@ export function AppShell({
   membershipCount?: number
   activeAgencyName?: string
   allAgencies?: AgencyOption[]
+  userAgencies?: AgencyOption[]
   activeClerkOrgId?: string
 }) {
   const navItems = [
@@ -96,6 +98,7 @@ export function AppShell({
           platformOwner={platformOwner}
           activeAgencyName={activeAgencyName}
           allAgencies={allAgencies}
+          userAgencies={userAgencies}
           activeClerkOrgId={activeClerkOrgId}
         />
 

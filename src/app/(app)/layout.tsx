@@ -57,9 +57,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   )
   let activeAgencyName = activeMembership?.organization.name ?? ''
 
-  // Platform owners need the full list of orgs to drive the switcher dropdown.
-  // For non-platform-owners, allAgencies stays undefined and Clerk's switcher
-  // handles their memberships.
+  // Platform owners need the full list of orgs to drive their dropdown.
+  // Multi-membership regular users get a dropdown of their own Memberships,
+  // mapped to the same AgencyOption shape.
   let allAgencies = undefined as
     | { id: string; name: string; clerkOrgId: string }[]
     | undefined
@@ -76,6 +76,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
   if (!activeAgencyName) activeAgencyName = 'Platform'
 
+  const userAgencies =
+    !ctx.platformOwner && memberships.length > 1
+      ? memberships.map((m) => ({
+          id: m.organization.id,
+          name: m.organization.name,
+          clerkOrgId: m.organization.clerkOrgId,
+        }))
+      : undefined
+
   const showAdmin = can(ctx, 'admin.portal')
 
   return (
@@ -85,6 +94,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       membershipCount={memberships.length}
       activeAgencyName={activeAgencyName}
       allAgencies={allAgencies}
+      userAgencies={userAgencies}
       activeClerkOrgId={ctx.orgId}
     >
       {children}
