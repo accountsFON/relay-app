@@ -45,6 +45,21 @@ export async function completeOnboarding(formData: FormData) {
   // Path 1: brand-new agency creation.
   if (!agencyName) throw new Error('Agency name is required')
 
+  // Final guard: only users with zero Memberships may self-serve a new
+  // agency. The redirect above should have caught non-zero counts, but
+  // enforce here in case it's bypassed (race condition, direct action
+  // call, partial state). Multi-agency membership is invite-only.
+  if (existingUser) {
+    const membershipCount = await db.membership.count({
+      where: { userId: existingUser.id },
+    })
+    if (membershipCount > 0) {
+      throw new Error(
+        'Existing users cannot self-serve a new agency. Multi-agency membership is invite-only.',
+      )
+    }
+  }
+
   const clerk = await clerkClient()
   const clerkOrg = await clerk.organizations.createOrganization({
     name: agencyName,
