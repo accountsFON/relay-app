@@ -15,32 +15,42 @@ import { resolveSeedData } from './fixtures/data'
 
 const AUTH_DIR = path.join(process.cwd(), '.auth')
 
-setup.beforeAll(async () => {
-  fs.mkdirSync(AUTH_DIR, { recursive: true })
-  await clerkSetup({
-    publishableKey:
-      process.env.CLERK_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+// Setup runs serially: Clerk's testing helpers race when multiple workers all
+// hit clerkSetup and create tickets against the same dev instance.
+setup.describe.configure({ mode: 'serial' })
+
+setup.describe('clerk auth bootstrap', () => {
+  setup.beforeAll(async () => {
+    fs.mkdirSync(AUTH_DIR, { recursive: true })
+    await clerkSetup({
+      publishableKey:
+        process.env.CLERK_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    })
   })
-})
 
-setup('resolve seed data', async () => {
-  const data = await resolveSeedData()
-  console.log(`[setup] resolved seed: org=${data.org.id} batches across ${Object.keys(data.batchByStep).length} steps`)
-})
-
-for (const persona of PERSONAS) {
-  setup(`auth ${persona.name}`, async ({ page }) => {
-    await setupClerkTestingToken({ page })
-    await page.goto('/sign-in')
-    await page.waitForLoadState('networkidle')
-
-    // Email based sign in uses Clerk's backend API to mint a one time ticket,
-    // bypassing the password breach check that fires on the password strategy.
-    await clerk.signIn({ page, emailAddress: persona.email })
-
-    await page.goto('/dashboard')
-    await expect(page).toHaveURL(/\/dashboard|\/no-access|\/onboarding|\/pending/, { timeout: 15_000 })
-
-    await page.context().storageState({ path: path.join(AUTH_DIR, `${persona.name}.json`) })
+  setup('resolve seed data', async () => {
+    const data = await resolveSeedData()
+    console.log(
+      `[setup] resolved seed: org=${data.org.id} batches across ${Object.keys(data.batchByStep).length} steps`,
+    )
   })
-}
+
+  for (const persona of PERSONAS) {
+    setup(`auth ${persona.name}`, async ({ page }) => {
+      await setupClerkTestingToken({ page })
+      await page.goto('/sign-in')
+      await page.waitForLoadState('networkidle')
+
+      // Email based sign in uses Clerk's backend API to mint a one time ticket,
+      // bypassing the password breach check that fires on the password strategy.
+      await clerk.signIn({ page, emailAddress: persona.email })
+
+      await page.goto('/dashboard')
+      await expect(page).toHaveURL(/\/dashboard|\/no-access|\/onboarding|\/pending/, { timeout: 15_000 })
+
+      await page
+        .context()
+        .storageState({ path: path.join(AUTH_DIR, `${persona.name}.json`) })
+    })
+  }
+})
