@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import type { RelayStep, RevisionItemType } from '@prisma/client'
+import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
 import {
   completeRevisionItem,
@@ -62,4 +63,33 @@ export async function completeRevisionItemAction(input: { itemId: string }) {
   })
   revalidatePath('/', 'layout')
   return result
+}
+
+export async function tickChecklistItemAction(input: {
+  itemId: string
+  checked: boolean
+}) {
+  const ctx = await requireCan('relay.pass')
+  const item = await db.checklistItem.findUnique({
+    where: { id: input.itemId },
+    select: { id: true, batchId: true },
+  })
+  if (!item) throw new Error('Checklist item not found')
+  const batch = await db.batch.findUnique({
+    where: { id: item.batchId },
+    select: { currentHolder: true, clientId: true },
+  })
+  if (!batch) throw new Error('Batch not found')
+  if (batch.currentHolder !== ctx.userDbId && !ctx.platformOwner) {
+    throw new Error('Only the current holder may tick checklist items')
+  }
+
+  await db.checklistItem.update({
+    where: { id: item.id },
+    data: input.checked
+      ? { checked: true, checkedBy: ctx.userDbId, checkedAt: new Date() }
+      : { checked: false, checkedBy: null, checkedAt: null },
+  })
+  revalidatePath(`/clients/${batch.clientId}/batches/${item.batchId}`)
+  return { ok: true as const }
 }

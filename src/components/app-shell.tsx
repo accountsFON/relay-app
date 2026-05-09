@@ -5,21 +5,29 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 
-const baseNavItems = [
+type BadgeKey = 'unreadMentions'
+type NavItem = {
+  label: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  badgeKey?: BadgeKey
+}
+const baseNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Clients', href: '/clients', icon: Users },
+  { label: 'Inbox', href: '/inbox', icon: Inbox, badgeKey: 'unreadMentions' },
   { label: 'Settings', href: '/settings/org', icon: Settings },
 ]
-const adminNavItem = {
+const adminNavItem: NavItem = {
   label: 'Admin',
-  href: '/admin/users',
+  href: '/admin',
   icon: ShieldCheck,
 }
-const platformNavItem = {
+const platformNavItem: NavItem = {
   label: 'Platform',
   href: '/platform',
   icon: Globe2,
@@ -34,6 +42,7 @@ export function AppShell({
   allAgencies,
   userAgencies,
   activeClerkOrgId,
+  unreadMentions = 0,
 }: {
   children: React.ReactNode
   showAdmin?: boolean
@@ -43,12 +52,16 @@ export function AppShell({
   allAgencies?: AgencyOption[]
   userAgencies?: AgencyOption[]
   activeClerkOrgId?: string
+  unreadMentions?: number
 }) {
   const navItems = [
     ...baseNavItems,
     ...(showAdmin ? [adminNavItem] : []),
     ...(platformOwner ? [platformNavItem] : []),
   ]
+  const badgeMap: Record<BadgeKey, number> = {
+    unreadMentions: unreadMentions,
+  }
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
 
@@ -106,6 +119,7 @@ export function AppShell({
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname.startsWith(item.href)
+            const badgeCount = item.badgeKey ? badgeMap[item.badgeKey] : 0
             return (
               <Link
                 key={item.href}
@@ -118,7 +132,12 @@ export function AppShell({
                 )}
               >
                 <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-foreground')} />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {badgeCount > 0 && (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1.5 text-[11px] font-medium text-background">
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </span>
+                )}
               </Link>
             )
           })}

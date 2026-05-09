@@ -47,6 +47,21 @@ function makeTx(): { tx: AnyMock; calls: Calls } {
         }
       }),
     },
+    user: {
+      findUnique: vi.fn(async (args: unknown) => {
+        calls['batch.findUnique'].push([args])
+        const where = (args as { where?: { id?: string } } | undefined)?.where
+        const id = where?.id
+        const map: Record<string, string> = {
+          user_am: 'AM Person',
+          user_designer: 'Designer Person',
+          user_client: 'Client Person',
+          u_am: 'AM Acting',
+          u1: 'User One',
+        }
+        return { name: map[id ?? ''] ?? 'Test User' }
+      }),
+    },
     relayEvent: {
       create: vi.fn(async (args: unknown) => {
         calls['relayEvent.create'].push([args])
@@ -150,6 +165,7 @@ describe('passBaton', () => {
       clientId: 'c1',
       currentStep: RelayStep.copy,
       currentHolder: 'u1',
+      label: '2026-05',
     })
     await expect(
       passBaton({
@@ -166,6 +182,7 @@ describe('passBaton', () => {
       clientId: 'c1',
       currentStep: RelayStep.am_review_design,
       currentHolder: 'u1',
+      label: '2026-05',
     })
     await expect(
       passBaton({
@@ -182,6 +199,7 @@ describe('passBaton', () => {
       clientId: 'c1',
       currentStep: RelayStep.copy,
       currentHolder: 'u_am',
+      label: '2026-05',
     })
     const result = await passBaton({
       batchId: 'b1',
@@ -203,6 +221,7 @@ describe('passBaton', () => {
       clientId: 'c1',
       currentStep: RelayStep.copy,
       currentHolder: 'u_am',
+      label: '2026-05',
     })
     await passBaton({
       batchId: 'b1',
@@ -234,6 +253,7 @@ describe('sendBackBaton', () => {
       clientId: 'c1',
       currentStep: RelayStep.copy,
       currentHolder: 'u1',
+      label: '2026-05',
     })
     await expect(
       sendBackBaton({
@@ -251,6 +271,7 @@ describe('sendBackBaton', () => {
       clientId: 'c1',
       currentStep: RelayStep.am_qa_pre_client,
       currentHolder: 'u_am',
+      label: '2026-05',
     })
     const result = await sendBackBaton({
       batchId: 'b1',
@@ -299,6 +320,7 @@ describe('dispatchRevisions', () => {
       id: 'b1',
       clientId: 'c1',
       currentStep: RelayStep.implementing_revisions,
+      label: '2026-05',
     })
     const result = await dispatchRevisions({
       batchId: 'b1',
@@ -355,6 +377,7 @@ describe('completeRevisionItem', () => {
       id: 'b1',
       clientId: 'c1',
       currentStep: RelayStep.implementing_revisions,
+      label: '2026-05',
     })
     currentTx.tx.revisionItem.count.mockResolvedValueOnce(1)
     const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u_am' })
@@ -373,6 +396,7 @@ describe('completeRevisionItem', () => {
       id: 'b1',
       clientId: 'c1',
       currentStep: RelayStep.implementing_revisions,
+      label: '2026-05',
     })
     currentTx.tx.revisionItem.count.mockResolvedValueOnce(0)
     const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u_am' })

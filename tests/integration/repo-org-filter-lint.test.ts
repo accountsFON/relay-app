@@ -43,6 +43,11 @@ const ALLOWLIST = new Set([
   // listStuckBatches takes orgId explicitly; every other caller resolves the
   // batch through findClientForUser first.
   'batches.ts',
+  // ActivityEvent + Mention queries scope by clientId or mentionedUserId.
+  // Per-spec note in activityEvents.ts: callers verify client visibility via
+  // findClientForUser before reading; mention queries are per-user (which is
+  // already user-private, not cross-org).
+  'activityEvents.ts',
 ])
 
 function listTsFiles(dir: string): string[] {

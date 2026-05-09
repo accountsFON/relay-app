@@ -20,10 +20,12 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { postCommentAction } from '@/app/(app)/clients/[id]/activity/actions'
 
 export interface CommentComposerProps {
   clientId: string
@@ -37,18 +39,24 @@ export function CommentComposer({
   className,
 }: CommentComposerProps) {
   const [body, setBody] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   const canSubmit = body.trim().length > 0 && !isPending
 
   function submit() {
     if (!canSubmit) return
+    const text = body
+    setError(null)
     startTransition(async () => {
-      // TODO Phase 2: parse @handles -> userIds via mentionTargets, then:
-      // await postCommentAction({ clientId, body, mentionedUserIds })
-      // router.refresh()
-      console.log('TODO: postCommentAction', { clientId, body, mentionTargets })
-      setBody('')
+      try {
+        await postCommentAction({ clientId, body: text })
+        setBody('')
+        router.refresh()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to send')
+      }
     })
   }
 
@@ -74,14 +82,14 @@ export function CommentComposer({
           }
         }}
       />
-      {/* TODO Phase 2: @mention autocomplete dropdown anchored to textarea */}
+      {/* TODO Phase 2 polish: @mention autocomplete dropdown anchored to textarea */}
       <div className="flex items-center justify-between">
         <p className="text-[11px] text-muted-foreground">
-          ⌘↵ to send · @ to mention
+          {error ?? '⌘↵ to send · @firstname.lastname to mention'}
         </p>
         <Button type="submit" size="xs" disabled={!canSubmit}>
           <Send />
-          Send
+          {isPending ? 'Sending…' : 'Send'}
         </Button>
       </div>
     </form>

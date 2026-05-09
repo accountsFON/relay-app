@@ -11,7 +11,13 @@ export async function nudgeStuckBatchAction(input: { batchId: string }) {
   const ctx = await requireCan('relay.takeOver')
   const batch = await db.batch.findUnique({
     where: { id: input.batchId },
-    select: { id: true, clientId: true, currentHolder: true, currentStep: true },
+    select: {
+      id: true,
+      clientId: true,
+      currentHolder: true,
+      currentStep: true,
+      label: true,
+    },
   })
   if (!batch) throw new Error('Batch not found')
 
@@ -21,8 +27,10 @@ export async function nudgeStuckBatchAction(input: { batchId: string }) {
     kind: ActivityKind.batch_step_advanced,
     payload: {
       batchId: batch.id,
-      reason: 'admin nudge',
-      currentStep: batch.currentStep,
+      batchLabel: batch.label,
+      step: batch.currentStep,
+      fromSubState: 'idle',
+      toSubState: 'admin nudge sent',
     },
     mentionedUserIds:
       batch.currentHolder !== ctx.userDbId ? [batch.currentHolder] : [],
@@ -46,6 +54,7 @@ export async function takeOverBatchAction(input: {
       currentHolder: true,
       currentRole: true,
       currentStep: true,
+      label: true,
     },
   })
   if (!batch) throw new Error('Batch not found')
@@ -64,10 +73,10 @@ export async function takeOverBatchAction(input: {
     kind: ActivityKind.batch_step_advanced,
     payload: {
       batchId: batch.id,
-      reason: 'admin take-over',
-      currentStep: batch.currentStep,
-      previousHolder: batch.currentHolder,
-      newHolder: input.newHolderId,
+      batchLabel: batch.label,
+      step: batch.currentStep,
+      fromSubState: 'previous holder',
+      toSubState: 'admin take-over',
     },
     mentionedUserIds: [input.newHolderId],
   })
@@ -115,8 +124,11 @@ export async function completeOnboardingAction(input: {
           actorId: ctx.userDbId,
           kind: ActivityKind.batch_step_advanced,
           payload: {
-            reason: 'onboarding completed (batch already existed)',
             batchId: existing.id,
+            batchLabel: label,
+            step: RelayStep.copy,
+            fromSubState: 'onboarding',
+            toSubState: 'onboarding complete (batch existed)',
           },
         },
         tx,

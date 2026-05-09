@@ -1,49 +1,86 @@
-/**
- * /inbox — mentions grouped by client.
- *
- * Spec: projects/relay-app/2026-05-09-activity-thread-plan.md § Inbox surfaces
- *       projects/relay-app/2026-05-09-relay-workflow-design.md § Phase 1b, 2
- *
- * Behavior (V1):
- * - Lists unread + recently-read mentions for the current user.
- * - Each row deep-links to /clients/[id]/batches/[batchId] (or client thread)
- *   anchored on the mentioned event.
- * - Mark-all-read button at top.
- *
- * Phase: skeleton now. Phase 1b adds the layout shell + empty state.
- *        Phase 2 wires:
- *          - listMentionsForUser (Caleb-owned read repo)
- *          - markMentionReadAction (Caleb-owned)
- *
- * Schema dep: Mention model (Rails-owned). Page renders empty state until then.
- */
+import Link from 'next/link'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { listMentionsForUser } from '@/server/repositories/activityEvents'
 import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Button } from '@/components/ui/button'
+import { markAllMentionsReadAction } from '@/app/(app)/clients/[id]/activity/actions'
+import { InboxRow } from './inbox-row'
 
 export default async function InboxPage() {
-  await requireOrgContext()
+  const ctx = await requireOrgContext()
+  const mentions = await listMentionsForUser(ctx.userDbId, { limit: 100 })
 
-  // TODO Phase 2: replace with real fetch
-  // const mentions = await listMentionsForUser(ctx.userId, { unreadOnly: false, limit: 50 })
-  const mentions: never[] = []
+  // Group by client.
+  const byClient = new Map<
+    string,
+    { name: string; rows: typeof mentions }
+  >()
+  for (const m of mentions) {
+    const bucket = byClient.get(m.client.id) ?? {
+      name: m.client.name,
+      rows: [],
+    }
+    bucket.rows.push(m)
+    byClient.set(m.client.id, bucket)
+  }
+
+  const unreadCount = mentions.filter((m) => !m.readAt).length
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-4xl">
       <PageHeader
         title="Inbox"
-        description="Mentions and replies, grouped by client. Click any row to jump to the thread."
+        description={
+          unreadCount > 0
+            ? `${unreadCount} unread mention${unreadCount === 1 ? '' : 's'}.`
+            : 'Mentions and replies, grouped by client.'
+        }
       />
 
-      <div className="mt-10">
+      {mentions.length > 0 && unreadCount > 0 && (
+        <form
+          action={async () => {
+            'use server'
+            await markAllMentionsReadAction()
+          }}
+          className="mt-4"
+        >
+          <Button type="submit" variant="outline" size="sm">
+            Mark all read
+          </Button>
+        </form>
+      )}
+
+      <div className="mt-8 space-y-8">
         {mentions.length === 0 ? (
           <EmptyState
             title="No mentions yet"
-            description="When someone @-mentions you in an activity thread, it shows up here. Replies to your comments do too."
+            description="When someone @-mentions you in an activity thread, it shows up here."
           />
         ) : (
-          // TODO Phase 2: render grouped MentionInboxRow list
-          <p className="text-sm text-muted-foreground">TODO: mention list</p>
+          Array.from(byClient.entries()).map(([clientId, group]) => (
+            <section key={clientId} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.name}
+                </h2>
+                <Link
+                  href={`/clients/${clientId}`}
+                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                >
+                  Open thread
+                </Link>
+              </div>
+              <ul className="divide-y divide-border rounded-md border border-border bg-background">
+                {group.rows.map((row) => (
+                  <li key={row.mentionId}>
+                    <InboxRow row={row} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
         )}
       </div>
     </div>

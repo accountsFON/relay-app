@@ -1,36 +1,24 @@
-/**
- * /admin — Admin two-stack dashboard.
- *
- * Spec: projects/relay-app/2026-05-09-relay-workflow-design.md § UI Direction
- *       (Admin: two-stack dashboard with Onboarding Queue + Stuck Watchlist)
- *
- * Behavior (V1):
- * - Stack 1: Onboarding Queue. Clients where Client.onboardingCompletedAt is null.
- * - Stack 2: Stuck Watchlist. Batches idle > 48h on their current step.
- * - Each row: client + batch label + holder + days-stuck + Nudge / Take-over buttons.
- *
- * Phase: skeleton now. Phase 3 wires:
- *   - listOnboardingQueue (Rails or Caleb repo)
- *   - listStuckBatches (Rails repo, with > 48h cutoff)
- *   - nudgeAction / takeOverAction (Rails-owned)
- *
- * Schema dep: Batch.daysOnCurrentStep computed field, Client.onboardingCompletedAt.
- */
-import { requireAdminPortal } from '@/server/middleware/permissions'
+import { redirect } from 'next/navigation'
+import { getOrgContext } from '@/server/middleware/auth'
+import { can } from '@/server/auth/permissions'
+import {
+  listOnboardingQueue,
+  listStuckBatches,
+} from '@/server/repositories/batches'
 import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
+import { OnboardingQueueRow } from './onboarding-queue-row'
+import { StuckBatchRow } from './stuck-batch-row'
 
 export default async function AdminDashboardPage() {
-  await requireAdminPortal()
+  const ctx = await getOrgContext()
+  if (!ctx || !can(ctx, 'admin.portal')) redirect('/no-access')
 
-  // TODO Phase 3:
-  // const [onboardingQueue, stuckBatches] = await Promise.all([
-  //   listOnboardingQueue(ctx.organizationDbId),
-  //   listStuckBatches(ctx.organizationDbId, { hoursIdle: 48 }),
-  // ])
-  const onboardingQueue: never[] = []
-  const stuckBatches: never[] = []
+  const [onboardingQueue, stuckBatches] = await Promise.all([
+    listOnboardingQueue(ctx.organizationDbId),
+    listStuckBatches(ctx.organizationDbId, 48),
+  ])
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
@@ -47,26 +35,36 @@ export default async function AdminDashboardPage() {
           {onboardingQueue.length === 0 ? (
             <EmptyState
               title="Queue is clear"
-              description="Every client has finished onboarding. New imports show up here."
+              description="Every client has finished onboarding."
             />
           ) : (
-            // TODO Phase 3: render queue rows
-            <p className="text-sm text-muted-foreground">TODO: queue rows</p>
+            <ul className="divide-y divide-border rounded-md border border-border bg-background">
+              {onboardingQueue.map((row) => (
+                <li key={row.id}>
+                  <OnboardingQueueRow client={row} />
+                </li>
+              ))}
+            </ul>
           )}
         </PageSection>
 
         <PageSection
           title={`Stuck watchlist · ${stuckBatches.length}`}
-          description="Batches idle on the same step for more than 48 hours. Nudge the holder, or take over."
+          description="Batches idle on the same step for more than 48 hours."
         >
           {stuckBatches.length === 0 ? (
             <EmptyState
               title="Nothing's stuck"
-              description="Every active batch is moving. Anything idle 48+ hours surfaces here automatically."
+              description="Every active batch is moving."
             />
           ) : (
-            // TODO Phase 3: render stuck rows with Nudge / Take-over actions
-            <p className="text-sm text-muted-foreground">TODO: stuck rows</p>
+            <ul className="divide-y divide-border rounded-md border border-border bg-background">
+              {stuckBatches.map((batch) => (
+                <li key={batch.id}>
+                  <StuckBatchRow batch={batch} />
+                </li>
+              ))}
+            </ul>
           )}
         </PageSection>
       </div>

@@ -1,67 +1,76 @@
-/**
- * Activity server actions — Caleb-owned write surface for the comms layer.
- *
- * Spec: projects/relay-app/2026-05-09-activity-thread-plan.md § API surface
- *       projects/relay-app/2026-05-09-relay-workflow-design.md § Phase 2
- *
- * Behavior (V1):
- * - postCommentAction: writes one ActivityEvent (kind=comment) plus N Mention
- *   rows. Calls Rails's recordActivity() helper so the same code path that
- *   relay state events use also serves comments.
- * - markMentionReadAction / markAllMentionsReadAction: simple Mention.readAt
- *   updates scoped to the current user.
- *
- * Phase: signatures only now. Phase 2 wires:
- *   - import { recordActivity } from '@/server/services/activity' (Rails-owned)
- *   - import { markMentionRead } from '@/server/repositories/activityEvents'
- *   - parse @handles from body, resolve to userIds via Memberships
- *
- * Schema dep: ActivityEvent + Mention (Rails-owned). All bodies throw until
- *             Phase 0 schema lands and Phase 2 wires the helpers.
- */
 'use server'
+
+import { revalidatePath } from 'next/cache'
+import { ActivityKind } from '@prisma/client'
+import { db } from '@/db/client'
+import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireOrgContext } from '@/server/middleware/auth'
+import { recordActivity } from '@/server/services/activity'
+import {
+  markMentionRead as markMentionReadRepo,
+} from '@/server/repositories/activityEvents'
+import { extractHandles, userNameToHandle } from '@/lib/mention-parser'
 
 export interface PostCommentInput {
   clientId: string
   body: string
-  /** Inferred server-side from @handles in body. Phase 2 fills this. */
-  mentionedUserIds: string[]
+  /** Optional override; if omitted, server parses @handles from body. */
+  mentionedUserIds?: string[]
 }
 
 export async function postCommentAction(
-  _input: PostCommentInput
-): Promise<{ id: string }> {
-  // TODO Phase 2:
-  //   const ctx = await requireClientEditor()
-  //   const event = await recordActivity({
-  //     clientId: input.clientId,
-  //     actorId: ctx.userId,
-  //     kind: 'comment',
-  //     payload: { kind: 'comment', body: input.body, mentionedUserIds: input.mentionedUserIds },
-  //   })
-  //   for (const userId of input.mentionedUserIds) {
-  //     await prisma.mention.create({ data: { activityEventId: event.id, mentionedUserId: userId } })
-  //   }
-  //   revalidatePath(`/clients/${input.clientId}`)
-  //   return { id: event.id }
-  throw new Error('postCommentAction: not implemented — waiting on Rails Phase 0 schema and Caleb Phase 2.')
+  input: PostCommentInput,
+): Promise<{ id: string | null }> {
+  if (!input.body || input.body.trim().length === 0) {
+    throw new Error('Comment body cannot be empty')
+  }
+  const ctx = await requireClientEditor()
+
+  // Resolve @handles from body unless caller passed them in.
+  let mentionedUserIds = input.mentionedUserIds ?? []
+  if (mentionedUserIds.length === 0) {
+    const handles = extractHandles(input.body)
+    if (handles.length > 0) {
+      const memberships = await db.membership.findMany({
+        where: { organizationId: ctx.organizationDbId },
+        include: { user: { select: { id: true, name: true } } },
+      })
+      const byHandle = new Map<string, string>()
+      for (const m of memberships) {
+        byHandle.set(userNameToHandle(m.user.name), m.user.id)
+      }
+      mentionedUserIds = handles
+        .map((h) => byHandle.get(h))
+        .filter((u): u is string => Boolean(u))
+    }
+  }
+
+  const result = await recordActivity({
+    clientId: input.clientId,
+    actorId: ctx.userDbId,
+    kind: ActivityKind.comment,
+    payload: {
+      body: input.body,
+      mentionedUserIds,
+    },
+    mentionedUserIds,
+  })
+
+  revalidatePath(`/clients/${input.clientId}`)
+  return { id: result?.id ?? null }
 }
 
-export async function markMentionReadAction(_mentionId: string): Promise<void> {
-  // TODO Phase 2:
-  //   const ctx = await requireOrgContext()
-  //   await markMentionRead(input.mentionId, ctx.userId)
-  //   revalidatePath('/inbox')
-  throw new Error('markMentionReadAction: not implemented — waiting on Rails Phase 0 schema and Caleb Phase 2.')
+export async function markMentionReadAction(mentionId: string): Promise<void> {
+  const ctx = await requireOrgContext()
+  await markMentionReadRepo(mentionId, ctx.userDbId)
+  revalidatePath('/inbox')
 }
 
 export async function markAllMentionsReadAction(): Promise<void> {
-  // TODO Phase 2:
-  //   const ctx = await requireOrgContext()
-  //   await prisma.mention.updateMany({
-  //     where: { mentionedUserId: ctx.userId, readAt: null },
-  //     data: { readAt: new Date() },
-  //   })
-  //   revalidatePath('/inbox')
-  throw new Error('markAllMentionsReadAction: not implemented — waiting on Rails Phase 0 schema and Caleb Phase 2.')
+  const ctx = await requireOrgContext()
+  await db.mention.updateMany({
+    where: { mentionedUserId: ctx.userDbId, readAt: null },
+    data: { readAt: new Date() },
+  })
+  revalidatePath('/inbox')
 }

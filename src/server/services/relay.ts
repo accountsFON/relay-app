@@ -89,6 +89,17 @@ async function resolveHolderForStep(
   }
 }
 
+async function loadUserName(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<string> {
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  })
+  return user?.name ?? 'Unknown'
+}
+
 export async function passBaton(input: PassBatonInput) {
   return db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
@@ -98,6 +109,7 @@ export async function passBaton(input: PassBatonInput) {
         clientId: true,
         currentStep: true,
         currentHolder: true,
+        label: true,
       },
     })
     if (!batch) throw new RelayServiceError('Batch not found')
@@ -116,6 +128,10 @@ export async function passBaton(input: PassBatonInput) {
       input.toStep,
       input.actorId,
     )
+    const [fromUserName, toUserName] = await Promise.all([
+      loadUserName(tx, input.actorId),
+      loadUserName(tx, next.userId),
+    ])
 
     await tx.batch.update({
       where: { id: batch.id },
@@ -147,8 +163,11 @@ export async function passBaton(input: PassBatonInput) {
         kind: ActivityKind.batch_passed,
         payload: {
           batchId: batch.id,
+          batchLabel: batch.label,
           fromStep: batch.currentStep,
           toStep: input.toStep,
+          fromUserName,
+          toUserName,
           newHolderId: next.userId,
           newHolderRole: next.role,
         },
@@ -174,6 +193,7 @@ export async function sendBackBaton(input: SendBackBatonInput) {
         clientId: true,
         currentStep: true,
         currentHolder: true,
+        label: true,
       },
     })
     if (!batch) throw new RelayServiceError('Batch not found')
@@ -192,6 +212,10 @@ export async function sendBackBaton(input: SendBackBatonInput) {
       input.toStep,
       input.actorId,
     )
+    const [fromUserName, toUserName] = await Promise.all([
+      loadUserName(tx, input.actorId),
+      loadUserName(tx, next.userId),
+    ])
 
     await tx.batch.update({
       where: { id: batch.id },
@@ -224,8 +248,11 @@ export async function sendBackBaton(input: SendBackBatonInput) {
         kind: ActivityKind.batch_sent_back,
         payload: {
           batchId: batch.id,
+          batchLabel: batch.label,
           fromStep: batch.currentStep,
           toStep: input.toStep,
+          fromUserName,
+          toUserName,
           reason: input.reason,
           newHolderId: next.userId,
         },
@@ -246,7 +273,7 @@ export async function dispatchRevisions(input: DispatchRevisionsInput) {
   return db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
       where: { id: input.batchId },
-      select: { id: true, clientId: true, currentStep: true },
+      select: { id: true, clientId: true, currentStep: true, label: true },
     })
     if (!batch) throw new RelayServiceError('Batch not found')
     if (batch.currentStep !== RelayStep.implementing_revisions) {
@@ -273,6 +300,7 @@ export async function dispatchRevisions(input: DispatchRevisionsInput) {
 
     for (const item of plan.items) {
       const targetStep = mapRevisionTypeToStep(item.type)
+      const assignedToName = await loadUserName(tx, item.assignedTo)
       await tx.relayEvent.create({
         data: {
           batchId: batch.id,
@@ -296,9 +324,11 @@ export async function dispatchRevisions(input: DispatchRevisionsInput) {
           kind: ActivityKind.batch_revision_dispatched,
           payload: {
             batchId: batch.id,
+            batchLabel: batch.label,
             itemId: item.id,
-            type: item.type,
-            description: item.description,
+            itemType: item.type,
+            itemDescription: item.description,
+            assignedToName,
             assignedTo: item.assignedTo,
           },
           mentionedUserIds:
@@ -330,9 +360,11 @@ export async function completeRevisionItem(input: CompleteRevisionItemInput) {
 
     const batch = await tx.batch.findUnique({
       where: { id: item.plan.batchId },
-      select: { id: true, clientId: true, currentStep: true },
+      select: { id: true, clientId: true, currentStep: true, label: true },
     })
     if (!batch) throw new RelayServiceError('Batch not found')
+
+    const completedByName = await loadUserName(tx, input.actorId)
 
     await tx.relayEvent.create({
       data: {
@@ -351,7 +383,14 @@ export async function completeRevisionItem(input: CompleteRevisionItemInput) {
         clientId: batch.clientId,
         actorId: input.actorId,
         kind: ActivityKind.batch_revision_completed,
-        payload: { batchId: batch.id, itemId: item.id, type: item.type },
+        payload: {
+          batchId: batch.id,
+          batchLabel: batch.label,
+          itemId: item.id,
+          itemType: item.type,
+          itemDescription: item.description,
+          completedByName,
+        },
       },
       tx,
     )
@@ -387,9 +426,10 @@ export async function completeRevisionItem(input: CompleteRevisionItemInput) {
           kind: ActivityKind.batch_step_advanced,
           payload: {
             batchId: batch.id,
-            fromStep: RelayStep.implementing_revisions,
-            toStep: RelayStep.revisions_complete,
-            reason: 'all revisions complete',
+            batchLabel: batch.label,
+            step: RelayStep.revisions_complete,
+            fromSubState: 'in progress',
+            toSubState: 'all revisions complete',
           },
         },
         tx,
