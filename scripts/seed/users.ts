@@ -40,6 +40,19 @@ export interface DemoUser {
   clerkRole: 'org:admin' | 'org:member'
 }
 
+/**
+ * IMPORTANT: order matters. The free Clerk dev tier caps an org at 5
+ * memberships. The first 5 entries here win the Clerk org seats, the
+ * remaining 4 get created as Clerk users + DB users + DB Memberships
+ * but no Clerk org membership (seat denied with a logged warning).
+ *
+ * Audit personas the Playwright suite signs in as: Alex, Morgan,
+ * Riley, Casey, Pat. Those 5 occupy the first 5 entries so they get
+ * Clerk org membership and a working sign in. Sam, Jordan, Taylor,
+ * Dakota stay DB only so two AM and three linked client scenarios
+ * still appear in queries and kanbans, but those four cannot sign
+ * in via the standard org switcher until the Clerk plan upgrades.
+ */
 export const DEMO_USERS: DemoUser[] = [
   {
     key: 'admin',
@@ -60,28 +73,10 @@ export const DEMO_USERS: DemoUser[] = [
     clerkRole: 'org:admin',
   },
   {
-    key: 'am2',
-    email: 'sam.am@relaydemo.app',
-    firstName: 'Sam',
-    lastName: 'Patel',
-    role: UserRole.account_manager,
-    platformOwner: false,
-    clerkRole: 'org:admin',
-  },
-  {
     key: 'designer1',
     email: 'riley.designer@relaydemo.app',
     firstName: 'Riley',
     lastName: 'Chen',
-    role: UserRole.designer,
-    platformOwner: false,
-    clerkRole: 'org:admin',
-  },
-  {
-    key: 'designer2',
-    email: 'jordan.designer@relaydemo.app',
-    firstName: 'Jordan',
-    lastName: 'Kim',
     role: UserRole.designer,
     platformOwner: false,
     clerkRole: 'org:admin',
@@ -94,6 +89,33 @@ export const DEMO_USERS: DemoUser[] = [
     role: UserRole.client,
     platformOwner: false,
     clerkRole: 'org:member',
+  },
+  {
+    key: 'platform',
+    email: 'pat.platform@relaydemo.app',
+    firstName: 'Pat',
+    lastName: 'Owner',
+    role: UserRole.admin,
+    platformOwner: true,
+    clerkRole: 'org:admin',
+  },
+  {
+    key: 'am2',
+    email: 'sam.am@relaydemo.app',
+    firstName: 'Sam',
+    lastName: 'Patel',
+    role: UserRole.account_manager,
+    platformOwner: false,
+    clerkRole: 'org:admin',
+  },
+  {
+    key: 'designer2',
+    email: 'jordan.designer@relaydemo.app',
+    firstName: 'Jordan',
+    lastName: 'Kim',
+    role: UserRole.designer,
+    platformOwner: false,
+    clerkRole: 'org:admin',
   },
   {
     key: 'client2',
@@ -112,15 +134,6 @@ export const DEMO_USERS: DemoUser[] = [
     role: UserRole.client,
     platformOwner: false,
     clerkRole: 'org:member',
-  },
-  {
-    key: 'platform',
-    email: 'pat.platform@relaydemo.app',
-    firstName: 'Pat',
-    lastName: 'Owner',
-    role: UserRole.admin,
-    platformOwner: true,
-    clerkRole: 'org:admin',
   },
 ]
 
