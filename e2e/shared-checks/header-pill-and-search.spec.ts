@@ -21,15 +21,16 @@ test('header: selecting "Last month" updates the URL', async ({ page }) => {
   const pill = page.getByRole('button', { name: /this month/i }).first()
   await pill.click()
 
-  // Pick "Last month" from the dropdown.
   const lastMonth = page.getByRole('menuitem', { name: /last month/i }).first()
-  if ((await lastMonth.count()) > 0) {
-    await lastMonth.click()
-    await page.waitForLoadState('networkidle')
-    expect(page.url()).toMatch(/scope=last_month/)
-  } else {
+  if ((await lastMonth.count()) === 0) {
     test.skip(true, 'DateScope pill has no Last month option exposed')
   }
+  await lastMonth.click()
+
+  // router.push for a same-route URL change does no network roundtrip, so
+  // waitForLoadState('networkidle') would race; explicitly wait on the URL.
+  await page.waitForURL(/scope=last_month/, { timeout: 5000 })
+  expect(page.url()).toMatch(/scope=last_month/)
 })
 
 test('header: pressing "/" focuses the search input on desktop', async ({ page }) => {

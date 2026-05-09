@@ -1,6 +1,5 @@
 'use client'
 
-import { useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Calendar, ChevronDown } from 'lucide-react'
 import {
@@ -20,15 +19,14 @@ import {
 import { cn } from '@/lib/utils'
 
 /**
- * Global date scope selector — desktop top bar pill.
- * Reads/writes URL search params (`scope`, `from`, `to`).
+ * Global date scope selector, desktop top bar pill.
+ * Reads / writes URL search params (`scope`, `from`, `to`).
  * Spec: projects/relay-app/2026-05-09-future-features-exploration.md § 1.
  */
 export function DateScopePill() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [isPending, startTransition] = useTransition()
 
   const scope = parseDateScope(searchParams)
   const presets = listDateScopePresets()
@@ -45,18 +43,17 @@ export function DateScopePill() {
       params.set(key, value)
     }
     const qs = params.toString()
-    startTransition(() => {
-      router.push(qs ? `${pathname}?${qs}` : pathname)
-    })
+    // Direct router.push (no startTransition): the menu item unmounts
+    // synchronously after onSelect, which cancels the suspended transition
+    // before the navigation commits. Without the wrapper the navigation
+    // commits cleanly even though the menu tears down.
+    router.push(qs ? `${pathname}?${qs}` : pathname)
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={cn(
-          'inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-cream-warm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30',
-          isPending && 'opacity-60',
-        )}
+        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-cream-warm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
         aria-label={`Date scope: ${dateScopeLabel(scope)}`}
       >
         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -69,7 +66,7 @@ export function DateScopePill() {
           return (
             <DropdownMenuItem
               key={preset}
-              onSelect={() => setPreset(preset)}
+              onClick={() => setPreset(preset)}
               className={cn(
                 scope.preset === preset && 'bg-cream-warm font-medium',
               )}
