@@ -16,6 +16,12 @@ export const PERMISSION_KEYS = [
   'admin.portal',
   'team.manage',
   'team.editPermissions',
+  'relay.pass',
+  'relay.sendBack',
+  'relay.composeRevisionPlan',
+  'relay.completeRevisionItem',
+  'relay.takeOver',
+  'relay.completeOnboarding',
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
@@ -36,6 +42,12 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'admin.portal': 'Access admin portal',
   'team.manage': 'Manage team (roles, assignments)',
   'team.editPermissions': 'Edit role and user permissions',
+  'relay.pass': 'Pass the baton (forward) on a batch',
+  'relay.sendBack': 'Send a batch back to a previous step',
+  'relay.composeRevisionPlan': 'Compose a revision plan (step 11b)',
+  'relay.completeRevisionItem': 'Mark a revision item complete',
+  'relay.takeOver': 'Take over a stuck batch from another holder',
+  'relay.completeOnboarding': 'Mark a client onboarding gate complete',
 }
 
 type PermissionMatrix = Record<UserRole, Record<PermissionKey, boolean>>
@@ -57,6 +69,12 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'admin.portal': true,
     'team.manage': true,
     'team.editPermissions': true,
+    'relay.pass': true,
+    'relay.sendBack': true,
+    'relay.composeRevisionPlan': true,
+    'relay.completeRevisionItem': true,
+    'relay.takeOver': true,
+    'relay.completeOnboarding': true,
   },
   account_manager: {
     'client.view': true,
@@ -74,6 +92,12 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'admin.portal': false,
     'team.manage': false,
     'team.editPermissions': false,
+    'relay.pass': true,
+    'relay.sendBack': true,
+    'relay.composeRevisionPlan': true,
+    'relay.completeRevisionItem': true,
+    'relay.takeOver': false,
+    'relay.completeOnboarding': false,
   },
   designer: {
     'client.view': true,
@@ -91,6 +115,12 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'admin.portal': false,
     'team.manage': false,
     'team.editPermissions': false,
+    'relay.pass': true,
+    'relay.sendBack': false,
+    'relay.composeRevisionPlan': false,
+    'relay.completeRevisionItem': true,
+    'relay.takeOver': false,
+    'relay.completeOnboarding': false,
   },
   client: {
     'client.view': true,
@@ -108,6 +138,12 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'admin.portal': false,
     'team.manage': false,
     'team.editPermissions': false,
+    'relay.pass': true,
+    'relay.sendBack': false,
+    'relay.composeRevisionPlan': false,
+    'relay.completeRevisionItem': false,
+    'relay.takeOver': false,
+    'relay.completeOnboarding': false,
   },
 }
 

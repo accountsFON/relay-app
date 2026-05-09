@@ -39,6 +39,10 @@ const ALLOWLIST = new Set([
   // Posts are scoped indirectly via ContentRun -> Client.organizationId.
   // Same pattern as ContentRuns.
   'posts.ts',
+  // Batches are scoped indirectly via Batch.clientId -> Client.organizationId.
+  // listStuckBatches takes orgId explicitly; every other caller resolves the
+  // batch through findClientForUser first.
+  'batches.ts',
 ])
 
 function listTsFiles(dir: string): string[] {

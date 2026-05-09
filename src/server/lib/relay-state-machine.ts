@@ -1,6 +1,10 @@
+import type { Prisma, PrismaClient } from '@prisma/client'
 import { RelayStep, RelayRole } from '@prisma/client'
+import { CHECKLIST_SEED } from '@/lib/relay-checklists'
 
 export { RelayStep, RelayRole }
+
+type DbOrTx = PrismaClient | Prisma.TransactionClient
 
 export const HOLDER_ROLE: Record<RelayStep, RelayRole> = {
   [RelayStep.onboarding_gate]: RelayRole.admin,
@@ -91,4 +95,57 @@ export function legalSendBackTargets(from: RelayStep): RelayStep[] {
 
 export function holderRoleForStep(step: RelayStep): RelayRole {
   return HOLDER_ROLE[step]
+}
+
+/**
+ * Wipe + reseed a batch's checklist for the given step. Used on every
+ * Pass and Send-Back so the destination starts fresh ("reset always",
+ * locked decision #11). Caller must run inside a transaction.
+ */
+export async function reseedChecklistForStep(
+  tx: DbOrTx,
+  batchId: string,
+  step: RelayStep,
+): Promise<void> {
+  await tx.checklistItem.deleteMany({ where: { batchId } })
+  const seed = CHECKLIST_SEED[step] ?? []
+  if (seed.length === 0) return
+  await tx.checklistItem.createMany({
+    data: seed.map((item) => ({
+      batchId,
+      step,
+      label: item.label,
+      required: item.required ?? true,
+    })),
+  })
+}
+
+export async function seedChecklistForStep(
+  tx: DbOrTx,
+  batchId: string,
+  step: RelayStep,
+): Promise<void> {
+  const seed = CHECKLIST_SEED[step] ?? []
+  if (seed.length === 0) return
+  await tx.checklistItem.createMany({
+    data: seed.map((item) => ({
+      batchId,
+      step,
+      label: item.label,
+      required: item.required ?? true,
+    })),
+  })
+}
+
+export async function wipeChecklistForBatch(
+  tx: DbOrTx,
+  batchId: string,
+): Promise<void> {
+  await tx.checklistItem.deleteMany({ where: { batchId } })
+}
+
+export function isChecklistComplete(
+  items: { required: boolean; checked: boolean }[],
+): boolean {
+  return items.filter((i) => i.required).every((i) => i.checked)
 }
