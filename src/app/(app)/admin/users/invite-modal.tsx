@@ -4,6 +4,15 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { inviteMember } from './invite-actions'
 import type { UserRole } from '@/lib/types'
 
@@ -37,57 +46,54 @@ export function InviteMemberButton() {
   }
 
   return (
-    <>
-      <Button onClick={() => setOpen(true)}>Invite member</Button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-          <div className="bg-card rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Invite team member</h2>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="invite-email">Email</Label>
-                <Input
-                  id="invite-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="invite-role">Role</Label>
-                <select
-                  id="invite-role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {(Object.keys(ROLE_LABELS) as UserRole[]).map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              {success && (
-                <p className="text-sm text-green-600">Invite sent.</p>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  Close
-                </Button>
-                <Button
-                  onClick={onSubmit}
-                  disabled={isPending || !email.trim()}
-                >
-                  {isPending ? 'Sending...' : 'Send invite'}
-                </Button>
-              </div>
-            </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button />}>Invite member</DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Invite team member</DialogTitle>
+          <DialogDescription>
+            They will get an email invite and be added to this agency on first sign-in.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="invite-email">Email</Label>
+            <Input
+              id="invite-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
+              autoFocus
+            />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="invite-role">Role</Label>
+            <select
+              id="invite-role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {(Object.keys(ROLE_LABELS) as UserRole[]).map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          {success && <p className="text-sm text-green-600">Invite sent.</p>}
         </div>
-      )}
-    </>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Close
+          </Button>
+          <Button onClick={onSubmit} disabled={isPending || !email.trim()}>
+            {isPending ? 'Sending…' : 'Send invite'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
