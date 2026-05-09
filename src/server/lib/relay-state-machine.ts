@@ -1,0 +1,94 @@
+import { RelayStep, RelayRole } from '@prisma/client'
+
+export { RelayStep, RelayRole }
+
+export const HOLDER_ROLE: Record<RelayStep, RelayRole> = {
+  [RelayStep.onboarding_gate]: RelayRole.admin,
+  [RelayStep.copy]: RelayRole.am,
+  [RelayStep.in_design]: RelayRole.designer,
+  [RelayStep.designs_completed]: RelayRole.designer,
+  [RelayStep.am_review_design]: RelayRole.am,
+  [RelayStep.design_revisions]: RelayRole.designer,
+  [RelayStep.am_qa_pre_client]: RelayRole.am,
+  [RelayStep.sent_to_client]: RelayRole.client,
+  [RelayStep.client_decision]: RelayRole.client,
+  [RelayStep.ready_to_schedule]: RelayRole.am,
+  [RelayStep.implementing_revisions]: RelayRole.am,
+  [RelayStep.revisions_complete]: RelayRole.am,
+  [RelayStep.final_qa_schedule]: RelayRole.am,
+}
+
+export type TransitionDirection = 'forward' | 'send_back' | 'revision' | 'auto'
+
+export interface LegalTransition {
+  from: RelayStep
+  to: RelayStep
+  direction: TransitionDirection
+}
+
+export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
+  { from: RelayStep.onboarding_gate, to: RelayStep.copy, direction: 'forward' },
+
+  { from: RelayStep.copy, to: RelayStep.in_design, direction: 'forward' },
+
+  { from: RelayStep.in_design, to: RelayStep.designs_completed, direction: 'forward' },
+
+  { from: RelayStep.designs_completed, to: RelayStep.am_review_design, direction: 'forward' },
+  { from: RelayStep.designs_completed, to: RelayStep.in_design, direction: 'send_back' },
+
+  { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
+  { from: RelayStep.am_review_design, to: RelayStep.design_revisions, direction: 'send_back' },
+
+  { from: RelayStep.design_revisions, to: RelayStep.am_review_design, direction: 'forward' },
+
+  { from: RelayStep.am_qa_pre_client, to: RelayStep.sent_to_client, direction: 'forward' },
+  { from: RelayStep.am_qa_pre_client, to: RelayStep.design_revisions, direction: 'send_back' },
+
+  { from: RelayStep.sent_to_client, to: RelayStep.client_decision, direction: 'auto' },
+
+  { from: RelayStep.client_decision, to: RelayStep.ready_to_schedule, direction: 'forward' },
+  { from: RelayStep.client_decision, to: RelayStep.implementing_revisions, direction: 'forward' },
+
+  { from: RelayStep.ready_to_schedule, to: RelayStep.final_qa_schedule, direction: 'forward' },
+
+  { from: RelayStep.implementing_revisions, to: RelayStep.copy, direction: 'revision' },
+  { from: RelayStep.implementing_revisions, to: RelayStep.design_revisions, direction: 'revision' },
+  { from: RelayStep.implementing_revisions, to: RelayStep.revisions_complete, direction: 'auto' },
+
+  { from: RelayStep.revisions_complete, to: RelayStep.sent_to_client, direction: 'forward' },
+  { from: RelayStep.revisions_complete, to: RelayStep.final_qa_schedule, direction: 'forward' },
+] as const
+
+export interface ValidateTransitionResult {
+  ok: boolean
+  direction?: TransitionDirection
+  reason?: string
+}
+
+export function validateTransition(
+  from: RelayStep,
+  to: RelayStep,
+): ValidateTransitionResult {
+  const match = LEGAL_TRANSITIONS.find((t) => t.from === from && t.to === to)
+  if (!match) {
+    return {
+      ok: false,
+      reason: `Illegal transition: ${from} → ${to}`,
+    }
+  }
+  return { ok: true, direction: match.direction }
+}
+
+export function legalNextSteps(from: RelayStep): LegalTransition[] {
+  return LEGAL_TRANSITIONS.filter((t) => t.from === from)
+}
+
+export function legalSendBackTargets(from: RelayStep): RelayStep[] {
+  return LEGAL_TRANSITIONS.filter(
+    (t) => t.from === from && t.direction === 'send_back',
+  ).map((t) => t.to)
+}
+
+export function holderRoleForStep(step: RelayStep): RelayRole {
+  return HOLDER_ROLE[step]
+}

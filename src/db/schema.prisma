@@ -55,6 +55,89 @@ enum ApprovalStage {
   client
 }
 
+enum RelayStep {
+  onboarding_gate
+  copy
+  in_design
+  designs_completed
+  am_review_design
+  design_revisions
+  am_qa_pre_client
+  sent_to_client
+  client_decision
+  ready_to_schedule
+  implementing_revisions
+  revisions_complete
+  final_qa_schedule
+}
+
+enum RelayRole {
+  admin
+  am
+  designer
+  client
+}
+
+enum RelayEventType {
+  pass_forward
+  send_back
+  revision_dispatched
+  revision_completed
+}
+
+enum RevisionItemType {
+  copy
+  design
+  am_inline
+}
+
+enum RevisionItemStatus {
+  pending
+  in_progress
+  complete
+}
+
+enum ActivityKind {
+  comment
+
+  client_created
+  client_profile_edited
+  client_archived
+  client_imported
+
+  client_am_assigned
+  client_am_unassigned
+  client_designer_assigned
+  client_designer_unassigned
+
+  run_created
+  run_queued
+  run_started
+  run_brief_ready
+  run_facts_ready
+  run_copy_ready
+  run_completed
+  run_failed
+  run_deleted
+  run_due_date_changed
+
+  posts_created
+  post_edited
+  post_status_changed
+
+  member_invited
+  member_joined
+  member_role_changed
+  member_removed
+
+  batch_created
+  batch_passed
+  batch_sent_back
+  batch_revision_dispatched
+  batch_revision_completed
+  batch_step_advanced
+}
+
 model Organization {
   id                   String   @id @default(cuid())
   name                 String
@@ -97,6 +180,9 @@ model User {
   auditLogsAsActor  PermissionAuditLog[] @relation("AuditActor")
   auditLogsAsTarget PermissionAuditLog[] @relation("AuditTarget")
   memberships       Membership[]
+  heldBatches       Batch[]              @relation("BatchHolder")
+  firedActivity     ActivityEvent[]      @relation("ActivityActor")
+  mentions          Mention[]
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -136,9 +222,12 @@ model Client {
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assignedAm        User?        @relation("AssignedAM", fields: [assignedAmId], references: [id])
   assignedDesigner  User?        @relation("AssignedDesigner", fields: [assignedDesignerId], references: [id])
-  linkedClientUsers User[]       @relation("LinkedClient")
-  contentRuns       ContentRun[]
-  posts             Post[]
+  linkedClientUsers      User[]          @relation("LinkedClient")
+  contentRuns            ContentRun[]
+  posts                  Post[]
+  batches                Batch[]
+  activityEvents         ActivityEvent[]
+  onboardingCompletedAt  DateTime?
 
   @@index([organizationId])
   @@index([assignedAmId])
@@ -169,9 +258,10 @@ model ContentRun {
   completedAt      DateTime?
   createdAt        DateTime  @default(now())
 
-  client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  triggeredBy User   @relation("TriggeredBy", fields: [triggeredById], references: [id])
-  posts       Post[]
+  client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  triggeredBy    User            @relation("TriggeredBy", fields: [triggeredById], references: [id])
+  posts          Post[]
+  activityEvents ActivityEvent[]
 
   @@index([clientId])
   @@map("content_runs")
@@ -181,6 +271,7 @@ model Post {
   id             String         @id @default(cuid())
   contentRunId   String
   clientId       String
+  batchId        String?
   postDate       DateTime
   caption        String         @db.Text
   hashtags       String[]
@@ -194,10 +285,13 @@ model Post {
 
   contentRun     ContentRun      @relation(fields: [contentRunId], references: [id], onDelete: Cascade)
   client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  batch          Batch?          @relation(fields: [batchId], references: [id], onDelete: SetNull)
   approvalEvents ApprovalEvent[]
+  activityEvents ActivityEvent[]
 
   @@index([contentRunId])
   @@index([clientId])
+  @@index([batchId])
   @@index([approvalStatus])
   @@map("posts")
 }
@@ -271,4 +365,125 @@ model Membership {
   @@index([userId])
   @@index([organizationId])
   @@map("memberships")
+}
+
+model Batch {
+  id              String    @id @default(cuid())
+  clientId        String
+  label           String
+  currentStep     RelayStep
+  currentSubState String?
+  currentHolder   String
+  currentRole     RelayRole
+  scheduledAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  client       Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  holder       User            @relation("BatchHolder", fields: [currentHolder], references: [id])
+  posts        Post[]
+  checklists   ChecklistItem[]
+  relayEvents  RelayEvent[]
+  revisionPlan RevisionPlan?
+
+  @@index([clientId, currentStep])
+  @@index([currentHolder, currentStep])
+  @@map("batches")
+}
+
+model RelayEvent {
+  id        String         @id @default(cuid())
+  batchId   String
+  type      RelayEventType
+  fromStep  RelayStep
+  toStep    RelayStep
+  fromUser  String
+  toUser    String
+  reason    String?        @db.Text
+  payload   Json?
+  createdAt DateTime       @default(now())
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, createdAt])
+  @@map("relay_events")
+}
+
+model ChecklistItem {
+  id        String    @id @default(cuid())
+  batchId   String
+  step      RelayStep
+  label     String
+  required  Boolean   @default(true)
+  checked   Boolean   @default(false)
+  checkedBy String?
+  checkedAt DateTime?
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, step])
+  @@map("checklist_items")
+}
+
+model RevisionPlan {
+  id        String   @id @default(cuid())
+  batchId   String   @unique
+  createdAt DateTime @default(now())
+
+  batch Batch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  items RevisionItem[]
+
+  @@map("revision_plans")
+}
+
+model RevisionItem {
+  id             String             @id @default(cuid())
+  revisionPlanId String
+  type           RevisionItemType
+  description    String             @db.Text
+  status         RevisionItemStatus @default(pending)
+  assignedTo     String
+  completedAt    DateTime?
+
+  plan RevisionPlan @relation(fields: [revisionPlanId], references: [id], onDelete: Cascade)
+
+  @@index([revisionPlanId, status])
+  @@map("revision_items")
+}
+
+model ActivityEvent {
+  id        String       @id @default(cuid())
+  clientId  String
+  runId     String?
+  postId    String?
+  actorId   String?
+  kind      ActivityKind
+  payload   Json
+  createdAt DateTime     @default(now())
+
+  client   Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  run      ContentRun? @relation(fields: [runId], references: [id], onDelete: Cascade)
+  post     Post?       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  actor    User?       @relation("ActivityActor", fields: [actorId], references: [id], onDelete: SetNull)
+  mentions Mention[]
+
+  @@index([clientId, createdAt(sort: Desc)])
+  @@index([runId])
+  @@index([postId])
+  @@index([actorId])
+  @@map("activity_events")
+}
+
+model Mention {
+  id              String    @id @default(cuid())
+  activityEventId String
+  mentionedUserId String
+  readAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  event ActivityEvent @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
+  user  User          @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([activityEventId, mentionedUserId])
+  @@index([mentionedUserId, readAt])
+  @@map("mentions")
 }
