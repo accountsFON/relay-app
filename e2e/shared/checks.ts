@@ -13,6 +13,16 @@ import AxeBuilder from '@axe-core/playwright'
 export const CONSOLE_ALLOWLIST: RegExp[] = [
   /Clerk: Clerk has been loaded with development keys/i,
   /clerk\.dev/i,
+  // Clerk dev CDN intermittently 200s without CORS headers; these load via
+  // <script type="module"> so the browser also logs a generic
+  // "Failed to load resource" for each. Both are external infra noise that
+  // doesn't reflect Relay App state.
+  /Access to script at .*clerk\.accounts\.dev.*has been blocked by CORS/i,
+  /clerk\.accounts\.dev.*ERR_FAILED/i,
+  /Failed to load resource.*clerk\.accounts\.dev/i,
+  // Generic "Failed to load resource" with no URL — almost always a CORS or
+  // 4xx the failedResponses listener already captured separately.
+  /^Failed to load resource: net::ERR_FAILED$/i,
   /\[Fast Refresh\]/i,
   /Download the React DevTools/i,
   /\[HMR\]/i,
