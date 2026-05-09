@@ -14,15 +14,20 @@ export default async function OnboardingPage({
 }) {
   const params = await searchParams
   const inviteTicket = params.__clerk_ticket ?? ''
-  const isInvite = Boolean(inviteTicket)
 
-  const { userId } = await auth()
-  if (userId) {
-    const existing = await findUserByClerkId(userId)
-    // Existing users can flow through Path 2 (invite acceptance) but
-    // cannot self-serve a second agency via Path 1.
-    if (existing && !isInvite) redirect('/dashboard')
-  }
+  const { userId, orgId: clerkActiveOrgId } = await auth()
+  const existing = userId ? await findUserByClerkId(userId) : null
+
+  // Detect invite acceptance: explicit ticket in URL, OR a brand-new user
+  // (no DB row yet) who already has a Clerk active org. Clerk consumes
+  // the ticket during signup and sets the active org, but drops the URL
+  // query param on its post-signup redirect — so for first-time invitees
+  // the active-org-but-no-User signal is the only one we have left.
+  const isInvite =
+    Boolean(inviteTicket) || (!existing && Boolean(clerkActiveOrgId))
+
+  // Existing users with Memberships cannot self-serve a second agency.
+  if (existing && !isInvite) redirect('/dashboard')
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">

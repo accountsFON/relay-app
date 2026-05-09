@@ -13,7 +13,7 @@ import { isPlatformOwnerEmail } from '@/server/auth/platformOwner'
 import type { UserRole } from '@/lib/types'
 
 export async function completeOnboarding(formData: FormData) {
-  const { userId } = await auth()
+  const { userId, orgId: clerkActiveOrgId } = await auth()
   const clerkUser = await currentUser()
   if (!userId || !clerkUser) throw new Error('Not authenticated')
 
@@ -28,13 +28,21 @@ export async function completeOnboarding(formData: FormData) {
 
   // Defense-in-depth against the page-level check: existing users cannot
   // create additional agencies via Path 1. Multi-agency membership for
-  // regular users is gated through Path 2 (invite ticket) only.
+  // regular users is gated through Path 2 (invite acceptance) only.
   const existingUser = await findUserByClerkId(userId)
-  if (existingUser && !inviteTicket) {
+
+  // Detect invite acceptance: explicit ticket in form, OR a brand-new user
+  // (no DB row yet) who already has a Clerk active org. The latter handles
+  // the case where Clerk's post-signup redirect drops the ticket query
+  // param after consuming it.
+  const isInvite =
+    Boolean(inviteTicket) || (!existingUser && Boolean(clerkActiveOrgId))
+
+  if (existingUser && !isInvite) {
     redirect('/dashboard')
   }
 
-  if (inviteTicket) {
+  if (isInvite) {
     return await handleInviteOnboarding({
       clerkUserId: userId,
       email,
