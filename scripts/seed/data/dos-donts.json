@@ -1,0 +1,38 @@
+{
+  "default": {
+    "dos": "Use plain, friendly language. Lead with the value to the reader. Include a specific call to action. Use real names and dates when relevant. Keep sentences short.",
+    "donts": "Do not use slang or trend speak that will date the post. Do not make claims you cannot back up. Do not over use exclamation points. Do not insert emojis unless the brand voice calls for them. Do not name competitors."
+  },
+  "dental": {
+    "dos": "Lead with prevention or cost savings. Mention specific procedures by name when explaining them. Use friendly, low pressure tone.",
+    "donts": "Never claim a procedure is painless. Never compare to other practices by name. Avoid scare tactics about consequences."
+  },
+  "plumbing": {
+    "dos": "Be specific about response times. Explain the why behind a recommendation. Show before and after when possible.",
+    "donts": "Avoid jargon that confuses homeowners. Never bash a previous plumber's work. Never push unnecessary upgrades."
+  },
+  "fitness": {
+    "dos": "Highlight community and consistency. Use member milestones with permission. Encourage progress over perfection.",
+    "donts": "No body shaming, no extreme transformation copy. Never promote crash diets. Avoid before and after photos as the main hook."
+  },
+  "real_estate": {
+    "dos": "Quote real local market stats. Include neighborhood specifics. Be transparent about market shifts.",
+    "donts": "Never disparage another agent. Avoid market predictions you cannot back up. No fair housing violations."
+  },
+  "legal": {
+    "dos": "Explain process clearly. Note that every situation is unique and consultation is free. Keep tone respectful and professional.",
+    "donts": "Never give specific legal advice in a post. Never disclose client details. Avoid promising outcomes."
+  },
+  "veterinary": {
+    "dos": "Lead with prevention and the human animal bond. Use approachable language for medical concepts. Spotlight staff and clinic personality.",
+    "donts": "No graphic medical imagery without warnings. Avoid scaring owners about routine issues. Never name a competitor clinic."
+  },
+  "restaurant": {
+    "dos": "Highlight chef stories, sourcing, and seasonality. Tag local farms and partners. Use evocative food language.",
+    "donts": "Avoid fad diet language unless it fits the brand. Do not over promise or oversell. Skip anything that risks looking inauthentic."
+  },
+  "beauty": {
+    "dos": "Spotlight stylists and their craft. Use real client work with permission. Educate without lecturing.",
+    "donts": "Avoid claims about products that are not approved by manufacturer. No pricing promises in stories that may expire. No gossip."
+  }
+}
