@@ -1,9 +1,12 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
+import { cookies } from 'next/headers'
 import { db } from '@/db/client'
 import { findUserByClerkId } from '@/server/repositories/users'
 import { findOrgByClerkId } from '@/server/repositories/organizations'
 import { findMembership } from '@/server/repositories/memberships'
 import type { OrgContext, UserRole } from '@/lib/types'
+
+export const STEP_INTO_COOKIE = 'relay_step_into_org'
 
 /**
  * Resolves the current Clerk session to a full OrgContext.
@@ -26,8 +29,28 @@ export async function getOrgContext(): Promise<OrgContext | null> {
   const dbUser = await findUserByClerkId(userId)
   if (!dbUser) return null
 
-  // 1. Try Clerk's active org first
-  let org = clerkActiveOrgId ? await findOrgByClerkId(clerkActiveOrgId) : null
+  // 0. Platform-owner step-into override. The agency switcher sets a
+  // cookie when a platform owner clicks an agency. Lets us route to that
+  // org regardless of Clerk's active-org state, which can be stuck when
+  // Clerk's setActive rejects (rate limit, missing Clerk-side membership,
+  // stale session). The badge alone wasn't enough — once Clerk's session
+  // had an active org, the badge sat idle and the cascade resolved to
+  // the previous org. The cookie is the explicit "use this org" signal.
+  let org = null
+  if (dbUser.platformOwner) {
+    const cookieStore = await cookies()
+    const stepIntoOrgId = cookieStore.get(STEP_INTO_COOKIE)?.value
+    if (stepIntoOrgId) {
+      org = await db.organization.findUnique({
+        where: { id: stepIntoOrgId },
+      })
+    }
+  }
+
+  // 1. Try Clerk's active org next
+  if (!org && clerkActiveOrgId) {
+    org = await findOrgByClerkId(clerkActiveOrgId)
+  }
 
   // 2. Fall back to the user's first Membership
   if (!org) {

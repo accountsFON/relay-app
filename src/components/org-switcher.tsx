@@ -5,6 +5,7 @@ import { useOrganizationList } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Globe2, Check, ChevronDown } from 'lucide-react'
+import { setStepIntoOrgCookie } from './org-switcher-actions'
 
 export type AgencyOption = {
   id: string
@@ -107,17 +108,25 @@ function AgencyDropdown({
   const router = useRouter()
   const { setActive, isLoaded } = useOrganizationList()
 
-  const stepInto = (clerkOrgId: string) => {
+  const stepInto = (clerkOrgId: string, dbOrgId: string) => {
     if (!isLoaded || !setActive) return
     setOpen(false)
+
     startTransition(async () => {
+      // Persist the platform-owner choice via HttpOnly cookie. getOrgContext
+      // reads it to override Clerk's active-org lookup, enabling step-into
+      // for orgs the user doesn't have Clerk-side membership in OR when
+      // Clerk's setActive silently fails. Regular users have a Clerk
+      // membership in every agency in their dropdown, so the cookie is
+      // essentially a no-op for them.
+      await setStepIntoOrgCookie(dbOrgId)
       try {
         await setActive({ organization: clerkOrgId })
       } catch {
         // Clerk rejects when the user has no Clerk membership in this org.
-        // For platform owners this is expected — the badge handles access via
-        // the DB fallback in getOrgContext. For regular users it shouldn't
-        // happen since we only show their own memberships.
+        // For platform owners this is expected — the cookie above carries
+        // the choice through. For regular users it shouldn't happen since
+        // we only show their own memberships.
       }
       router.refresh()
     })
@@ -150,7 +159,7 @@ function AgencyDropdown({
                 <button
                   type="button"
                   key={agency.id}
-                  onClick={() => stepInto(agency.clerkOrgId)}
+                  onClick={() => stepInto(agency.clerkOrgId, agency.id)}
                   className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-muted/40"
                 >
                   <span className="truncate">{agency.name}</span>
