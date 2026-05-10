@@ -53,15 +53,30 @@ export function OrgSwitcher({
     )
   }
 
-  // Platform owner: custom dropdown listing every agency.
-  if (platformOwner && allAgencies && allAgencies.length > 0) {
-    return (
-      <div className="px-3 py-2 space-y-2">
+  // Platform owners get the platform wide list; regular multi-membership
+  // users get their own Memberships. Either way the dropdown sits above the
+  // platform owner pin link below.
+  const dropdownAgencies = platformOwner ? allAgencies : userAgencies
+
+  return (
+    <div className="px-3 py-2 space-y-2">
+      {dropdownAgencies && dropdownAgencies.length > 0 ? (
         <AgencyDropdown
-          agencies={allAgencies}
+          agencies={dropdownAgencies}
           activeClerkOrgId={activeClerkOrgId}
           activeAgencyName={activeAgencyName}
         />
+      ) : (
+        <div className="text-sm font-medium text-foreground">
+          {activeAgencyName}
+        </div>
+      )}
+      {/* Platform owners always see this pin even if allAgencies came back
+          empty. Pinning by `platformOwner` alone (rather than the previous
+          `platformOwner && allAgencies.length > 0` guard) prevents the
+          affordance from disappearing on routes that happen to short circuit
+          the org load. */}
+      {platformOwner && (
         <Link
           href="/platform"
           className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
@@ -69,27 +84,7 @@ export function OrgSwitcher({
           <Globe2 className="h-3.5 w-3.5" />
           Manage all agencies
         </Link>
-      </div>
-    )
-  }
-
-  // Multi-membership regular user: custom dropdown of their own Memberships.
-  if (userAgencies && userAgencies.length > 1) {
-    return (
-      <div className="px-3 py-2">
-        <AgencyDropdown
-          agencies={userAgencies}
-          activeClerkOrgId={activeClerkOrgId}
-          activeAgencyName={activeAgencyName}
-        />
-      </div>
-    )
-  }
-
-  // Fallback (no agencies wired through): static name label.
-  return (
-    <div className="px-3 py-2 text-sm font-medium text-foreground">
-      {activeAgencyName}
+      )}
     </div>
   )
 }
