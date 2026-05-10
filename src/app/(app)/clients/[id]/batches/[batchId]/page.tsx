@@ -152,8 +152,10 @@ export default async function BatchDetailPage({
           <PageSection title={`Posts (${posts.length})`}>
             {posts.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No posts attached to this batch yet. Generated posts attach
-                automatically once a content run finishes for this month.
+                {batchSummary.currentStep === 'onboarding_gate' ||
+                batchSummary.currentStep === 'copy'
+                  ? 'No posts attached to this batch yet. Generated posts attach automatically once a content run finishes for this month.'
+                  : 'No posts on this batch. The batch may pre-date the content run, or posts may have been moved to a different batch.'}
               </p>
             ) : (
               <ul className="divide-y divide-border rounded-md border border-border bg-card">
