@@ -106,7 +106,10 @@ export default async function SearchPage({
                         </p>
                         {p.hashtags.length > 0 && (
                           <p className="mt-1 text-[11px] text-muted-foreground">
-                            {p.hashtags.slice(0, 8).map((h) => `#${h}`).join(' ')}
+                            {p.hashtags
+                              .slice(0, 8)
+                              .map((h) => (h.startsWith('#') ? h : `#${h}`))
+                              .join(' ')}
                           </p>
                         )}
                       </Link>

@@ -26,10 +26,11 @@ export default async function RunDetailPage({
   if (!run || run.clientId !== id) notFound()
 
   const monthLabel = formatMonth(run.targetMonth)
+  const credits = run.creditsConsumed ?? 0
   const description = [
     `${run.posts.length} posts`,
-    run.totalCostUsd && `$${Number(run.totalCostUsd).toFixed(4)} cost`,
-    run.creditsConsumed && `${run.creditsConsumed} credits`,
+    run.totalCostUsd && `$${Number(run.totalCostUsd).toFixed(2)} cost`,
+    credits > 0 && `${credits} ${credits === 1 ? 'credit' : 'credits'}`,
   ]
     .filter(Boolean)
     .join(' · ')

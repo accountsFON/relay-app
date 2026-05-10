@@ -175,7 +175,10 @@ export default async function BatchDetailPage({
                     </p>
                     {post.hashtags.length > 0 && (
                       <p className="mt-1 text-[11px] text-muted-foreground">
-                        {post.hashtags.slice(0, 8).map((h) => `#${h}`).join(' ')}
+                        {post.hashtags
+                          .slice(0, 8)
+                          .map((h) => (h.startsWith('#') ? h : `#${h}`))
+                          .join(' ')}
                         {post.hashtags.length > 8 && ` +${post.hashtags.length - 8} more`}
                       </p>
                     )}
