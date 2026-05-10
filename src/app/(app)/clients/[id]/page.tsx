@@ -24,7 +24,8 @@ import { DeleteRunButton, RegenRunButton } from './run-management'
 import { RunStatusPoller } from './run-status-poller'
 import { ClientStatusBadge } from '@/components/clients/client-status-badge'
 import { ClientQuickAccess } from '@/components/clients/client-quick-access'
-import { parseDateScope } from '@/lib/date-scope'
+import { EmptyState } from '@/components/ui/empty-state'
+import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 
 export default async function ClientDetailPage({
   params,
@@ -88,60 +89,65 @@ export default async function ClientDetailPage({
         <ClientQuickAccess urls={client.urls} assetsFolderUrl={client.assetsFolderUrl} />
       </div>
 
-      {runs.length > 0 && (
-        <div className="mt-10">
-          {hasActiveRun && <RunStatusPoller />}
-          <PageSection title="Content runs">
+      <div className="mt-10">
+        {hasActiveRun && <RunStatusPoller />}
+        <PageSection title="Content runs">
+          {runs.length === 0 ? (
+            <EmptyState
+              title="No runs in this scope"
+              description={`Showing ${dateScopeLabel(dateScope).toLowerCase()}. Change the date scope at the top of the page to see runs from a wider window.`}
+            />
+          ) : (
             <DataRowGroup className="-mx-1">
               {runs.map((run) => {
                 const isRunning = run.status === 'running'
                 const isQueued = run.status === 'queued'
                 return (
-                <DataRow
-                  key={run.id}
-                  href={
-                    run.status === 'complete' && run._count.posts > 0
-                      ? `/clients/${client.id}/runs/${run.id}`
-                      : undefined
-                  }
-                  leading={<RowAvatar icon={<Calendar className="size-5 text-ink-50" />} />}
-                  title={
-                    <span className="flex items-center gap-2">
-                      <StatusDot status={run.status} />
-                      {formatMonth(run.targetMonth)}
-                    </span>
-                  }
-                  subtitle={
-                    <span>
-                      {isRunning ? (
-                        <span className="text-foreground">Generating content…</span>
-                      ) : isQueued ? (
-                        <span className="text-ink-50">Queued, waiting to start…</span>
-                      ) : (
-                        run.createdAt.toLocaleDateString()
-                      )}
-                      {run._count.posts > 0 && ` · ${run._count.posts} posts`}
-                      {run.totalCostUsd && ` · $${Number(run.totalCostUsd).toFixed(2)}`}
-                      {run.status === 'failed' && run.errorMessage && (
-                        <span className="ml-2 text-destructive">{run.errorMessage}</span>
-                      )}
-                    </span>
-                  }
-                  trailing={
-                    canEdit ? (
-                      <div className="flex items-center gap-1">
-                        <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} status={run.status} />
-                        <DeleteRunButton runId={run.id} status={run.status} />
-                      </div>
-                    ) : undefined
-                  }
-                />
+                  <DataRow
+                    key={run.id}
+                    href={
+                      run.status === 'complete' && run._count.posts > 0
+                        ? `/clients/${client.id}/runs/${run.id}`
+                        : undefined
+                    }
+                    leading={<RowAvatar icon={<Calendar className="size-5 text-ink-50" />} />}
+                    title={
+                      <span className="flex items-center gap-2">
+                        <StatusDot status={run.status} />
+                        {formatMonth(run.targetMonth)}
+                      </span>
+                    }
+                    subtitle={
+                      <span>
+                        {isRunning ? (
+                          <span className="text-foreground">Generating content…</span>
+                        ) : isQueued ? (
+                          <span className="text-ink-50">Queued, waiting to start…</span>
+                        ) : (
+                          run.createdAt.toLocaleDateString()
+                        )}
+                        {run._count.posts > 0 && ` · ${run._count.posts} posts`}
+                        {run.totalCostUsd && ` · $${Number(run.totalCostUsd).toFixed(2)}`}
+                        {run.status === 'failed' && run.errorMessage && (
+                          <span className="ml-2 text-destructive">{run.errorMessage}</span>
+                        )}
+                      </span>
+                    }
+                    trailing={
+                      canEdit ? (
+                        <div className="flex items-center gap-1">
+                          <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} status={run.status} />
+                          <DeleteRunButton runId={run.id} status={run.status} />
+                        </div>
+                      ) : undefined
+                    }
+                  />
                 )
               })}
             </DataRowGroup>
-          </PageSection>
-        </div>
-      )}
+          )}
+        </PageSection>
+      </div>
 
       <div className="mt-10">
         <ClientProfileView client={client} canEdit={canEdit} />
