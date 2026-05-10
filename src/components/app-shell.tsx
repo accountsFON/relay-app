@@ -102,7 +102,7 @@ export function AppShell({
         )}
       >
         <div className="flex h-16 items-center justify-between px-5">
-          <Link href="/dashboard" className="flex items-center" aria-label="Relay home">
+          <Link href="/dashboard" className="flex items-center pl-1" aria-label="Relay home">
             <Image
               src="/brand/logo-no-padding-dark-text.svg"
               alt="Relay"
