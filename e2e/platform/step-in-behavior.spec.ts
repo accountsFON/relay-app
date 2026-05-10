@@ -54,10 +54,18 @@ test('platform: Step in switches sidebar org chip + scopes data to the target or
   }
 
   const stepIn = northwindCard.getByRole('button', { name: /Step in/i })
-  await stepIn.click()
+  // The Step in button waits for Clerk's useOrganizationList to load
+  // before doing anything (`if (!isLoaded || !setActive) return`). Clicking
+  // before Clerk's client provider hydrates makes the click a no op and
+  // the test stalls on waitForURL. Wait for enabled state first.
+  await expect(stepIn).toBeEnabled({ timeout: 10_000 })
 
-  // Land on /dashboard.
-  await page.waitForURL(/\/dashboard$/, { timeout: 10_000 })
+  // Race the click with the navigation so we do not lose the URL change
+  // to a fast push.
+  await Promise.all([
+    page.waitForURL(/\/dashboard$/, { timeout: 15_000 }),
+    stepIn.click(),
+  ])
 
   // Sidebar org chip reflects the new org. The OrgSwitcher dropdown
   // button renders activeAgencyName; the platform owner branch always
