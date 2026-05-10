@@ -20,6 +20,7 @@ import { RelayStep, RelayRole } from '@prisma/client'
 import { cn } from '@/lib/utils'
 import { STEP_LABEL, STEP_ROLE } from './labels'
 import type { BatchSummary, SendBackArc } from './types'
+import { ScrollCurrentIntoView } from './scroll-current-into-view'
 
 const FULL_TRACK: RelayStep[] = [
   RelayStep.onboarding_gate,
@@ -86,6 +87,7 @@ export function RelayTrack({
 
       <RelayTrackDesktop steps={steps} currentIndex={currentIndex} />
       <RelayTrackMobile steps={steps} currentIndex={currentIndex} />
+      <ScrollCurrentIntoView />
     </section>
   )
 }
@@ -151,6 +153,14 @@ function RelayTrackHeader({
  * Desktop track: horizontal scroll with right-edge fade.
  * Each step has a minimum width so the line + label can breathe.
  * Connecting line is rendered behind the circles via absolute positioning per segment.
+ *
+ * Min width was tightened from 100px to 84px so all 13 steps fit within the
+ * batch detail card at typical desktop widths (1024+) without horizontal
+ * scroll, fixing the truncation of the last 2 steps that hid Final QA from
+ * view. On narrower viewports, fade hints + scroll still apply.
+ *
+ * The ScrollCurrentIntoView client component below brings the active step
+ * into view on mount when the user lands on a batch already past mid relay.
  */
 function RelayTrackDesktop({
   steps,
@@ -166,7 +176,15 @@ function RelayTrackDesktop({
         aria-hidden
         className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-card to-transparent"
       />
-      <ol className="flex items-start gap-0 overflow-x-auto px-2 py-6">
+      {/* Left edge fade hint when scrolled past the first step */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-card to-transparent"
+      />
+      <ol
+        data-relay-track
+        className="flex items-start gap-0 overflow-x-auto px-2 py-6 scroll-smooth"
+      >
         {steps.map((step, i) => {
           const isCurrent = i === currentIndex
           const isPast = i < currentIndex
@@ -174,7 +192,8 @@ function RelayTrackDesktop({
           return (
             <li
               key={step}
-              className="flex min-w-[100px] flex-col items-center first:pl-3 last:pr-3"
+              data-current={isCurrent || undefined}
+              className="flex min-w-[84px] flex-col items-center first:pl-3 last:pr-3"
             >
               <div className="relative flex w-full items-center">
                 {/* line segment to the right of this circle (skipped on last) */}
