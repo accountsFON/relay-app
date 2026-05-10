@@ -38,6 +38,19 @@ export const generateContentTask = task({
     let captionsCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
     let crawlCostDetail = { credits: 0, usd: 0, urlsCrawled: 0 }
 
+    // Tracks which named pipeline step is currently running. The catch
+    // block reads this back into errorContext so the FailedRunBanner can
+    // show the actual failure point instead of inferring from data shape.
+    // Names mirror the comment headers below so they stay in sync.
+    let currentStep:
+      | 'run_init'
+      | 'date_calculation'
+      | 'brief_generation'
+      | 'website_crawl'
+      | 'facts_extraction'
+      | 'caption_generation'
+      | 'post_finalization' = 'run_init'
+
     try {
       await db.contentRun.update({
         where: { id: contentRunId },
@@ -52,6 +65,7 @@ export const generateContentTask = task({
       })
 
       // Step 1: Calculate posting dates
+      currentStep = 'date_calculation'
       const { postingDates, holidaysInMonth, holidayTags } = calculatePostingDates(
         contentRun.targetMonth,
         client.postingDays,
@@ -65,6 +79,7 @@ export const generateContentTask = task({
       })
 
       // Step 2: Generate brief
+      currentStep = 'brief_generation'
       const briefResult = await generateBrief(
         client,
         postingDates,
@@ -85,6 +100,7 @@ export const generateContentTask = task({
       })
 
       // Step 3: Crawl websites (or use cached data)
+      currentStep = 'website_crawl'
       let crawledContent = ''
 
       if (reCrawl || !client.crawledData) {
@@ -116,6 +132,7 @@ export const generateContentTask = task({
       })
 
       // Step 4: Extract facts
+      currentStep = 'facts_extraction'
       const factsResult = await extractFacts(crawledContent)
 
       factsCost = factsResult.cost
@@ -131,6 +148,7 @@ export const generateContentTask = task({
       })
 
       // Step 5: Generate captions — parse CTA candidates once, share between prompt + parser
+      currentStep = 'caption_generation'
       const ctaCandidates = parseCtaCandidates(client.mainCta)
 
       const captionResult = await generateCaptions(
@@ -151,6 +169,7 @@ export const generateContentTask = task({
       // Step 6: Create Post records. Posts attach to matchingBatch if one
       // exists (so the Batch detail page's posts grid resolves cleanly), and
       // the Batch's copy sub-state advances generating → drafted.
+      currentStep = 'post_finalization'
       const postCount = await createPostsFromCaptions(
         captionResult.posts,
         contentRunId,
@@ -223,6 +242,9 @@ export const generateContentTask = task({
       // Capture enough error context to render a useful failed run detail
       // page later. We keep the raw stack (truncated) under tokenUsage rather
       // than introducing a new column; the run detail page reads it back.
+      // `failedStep` is the named pipeline step that was in flight when the
+      // throw happened; the FailedRunBanner prefers it over data shape
+      // inference so partial writes do not mislabel the failure point.
       const errorContext = {
         name: error instanceof Error ? error.name : 'UnknownError',
         message,
@@ -231,6 +253,7 @@ export const generateContentTask = task({
             ? error.stack.slice(0, 8000)
             : null,
         capturedAt: new Date().toISOString(),
+        failedStep: currentStep,
       }
 
       const tokenUsageForFailed = {
@@ -238,6 +261,7 @@ export const generateContentTask = task({
         breakdown: JSON.parse(JSON.stringify(partialBreakdown)),
         pipelineDurationSeconds,
         errorContext,
+        failedStep: currentStep,
       }
 
       await db.contentRun.update({

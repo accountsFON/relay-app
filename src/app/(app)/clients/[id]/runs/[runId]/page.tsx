@@ -60,6 +60,7 @@ export default async function RunDetailPage({
           message?: string
           stack?: string | null
           capturedAt?: string
+          failedStep?: string
         })
       : null
 
@@ -98,7 +99,11 @@ export default async function RunDetailPage({
           <FailedRunBanner
             errorMessage={run.errorMessage}
             errorContext={errorContext}
-            failedStep={inferFailedStep(run)}
+            failedStep={
+              errorContext?.failedStep
+                ? humanizeFailedStep(errorContext.failedStep)
+                : inferFailedStep(run)
+            }
             pipelineDurationSeconds={
               Number.isFinite(pipelineDurationSeconds) ? pipelineDurationSeconds : null
             }
@@ -155,10 +160,38 @@ function formatMonth(ym: string): string {
 }
 
 /**
- * Best effort inference of which pipeline step blew up, based on which
- * intermediate fields the run did and didn't manage to populate. The pipeline
- * writes each step's output back to the ContentRun row before moving on, so
- * the last populated field tells us where progress halted.
+ * Convert the snake_case failedStep name persisted by the pipeline catch
+ * block into a human readable phrase the banner can render directly.
+ * The names are stable; new steps added to the pipeline should be added
+ * here too. Unknown values fall through to a humanized snake_case.
+ */
+function humanizeFailedStep(step: string): string {
+  switch (step) {
+    case 'run_init':
+      return 'run initialization'
+    case 'date_calculation':
+      return 'date calculation'
+    case 'brief_generation':
+      return 'brief generation'
+    case 'website_crawl':
+      return 'website crawl'
+    case 'facts_extraction':
+      return 'facts extraction'
+    case 'caption_generation':
+      return 'caption generation'
+    case 'post_finalization':
+      return 'post finalization'
+    default:
+      return step.replace(/_/g, ' ')
+  }
+}
+
+/**
+ * Fallback inference for runs that predate the explicit failedStep capture
+ * in tokenUsage.errorContext. Reads which intermediate fields the run did
+ * and didn't manage to populate. The pipeline writes each step's output
+ * back to the ContentRun row before moving on, so the last populated field
+ * tells us where progress halted.
  *
  * Source of truth for step order: src/server/jobs/generateContent.ts.
  *   1. posting dates  -> postingDates array

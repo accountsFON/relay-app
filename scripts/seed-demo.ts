@@ -24,7 +24,7 @@ import {
   makeClerkClient,
   type ClerkClient,
 } from './seed/clerk'
-import { seedUsers, linkClientUsers, DEMO_USERS } from './seed/users'
+import { seedUsers, seedSecondaryOrg, linkClientUsers, DEMO_USERS } from './seed/users'
 import { seedClients, CLIENT_DEFS } from './seed/clients'
 import { seedContentRuns } from './seed/content-runs'
 import { seedBatches } from './seed/batches'
@@ -244,6 +244,9 @@ async function main(): Promise<void> {
     const userMap = await seedUsers(db, clerk, { skipClerk: flags.skipClerk })
     console.log(`  org id = ${userMap.organizationId}`)
     console.log(`  ${Object.keys(userMap.users).length} users seeded`)
+
+    const secondary = await seedSecondaryOrg(db, userMap.users.platform.id)
+    console.log(`  secondary org id = ${secondary.organizationId}`)
 
     console.log('--- Step 2: clients ---')
     const clients = await seedClients(db, userMap)

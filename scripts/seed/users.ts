@@ -285,6 +285,60 @@ export async function seedUsers(
   }
 }
 
+export const SECONDARY_DEMO_ORG_NAME = 'Northwind Studio'
+const SECONDARY_DEMO_CLERK_ORG_ID = 'org_relay_demo_secondary'
+
+/**
+ * Idempotently upsert a second tiny Organization on the platform so the
+ * demo's /platform view shows more than one agency and the Playwright
+ * audit's Platform "Step in" behavioral spec has a non-active org to step
+ * into. The platform owner (`pat.platform`) gets a Membership here so the
+ * sidebar org switcher dropdown also surfaces the option without going
+ * through the platform-owner-only badge path.
+ *
+ * The org has no clients, runs, batches, or activity. It exists purely to
+ * provide a second org context that scopes cleanly to "no data" so the
+ * cross org leak audit can assert that no Relay Demo Agency rows leak
+ * across when the platform owner is stepped into Northwind.
+ *
+ * `clerkOrgId` is a synthetic string. The platform owner's setActive call
+ * will fail (no matching Clerk org) but the cookie path in
+ * setStepIntoOrgCookie + getOrgContext catches the resolution.
+ */
+export async function seedSecondaryOrg(
+  db: PrismaClient,
+  platformUserId: string,
+): Promise<{ organizationId: string; clerkOrgId: string }> {
+  const org = await db.organization.upsert({
+    where: { clerkOrgId: SECONDARY_DEMO_CLERK_ORG_ID },
+    update: { name: SECONDARY_DEMO_ORG_NAME },
+    create: {
+      name: SECONDARY_DEMO_ORG_NAME,
+      clerkOrgId: SECONDARY_DEMO_CLERK_ORG_ID,
+      plan: 'smb',
+      runCredits: 25,
+    },
+    select: { id: true, clerkOrgId: true },
+  })
+
+  await db.membership.upsert({
+    where: {
+      userId_organizationId: {
+        userId: platformUserId,
+        organizationId: org.id,
+      },
+    },
+    update: { role: UserRole.admin },
+    create: {
+      userId: platformUserId,
+      organizationId: org.id,
+      role: UserRole.admin,
+    },
+  })
+
+  return { organizationId: org.id, clerkOrgId: org.clerkOrgId }
+}
+
 /**
  * Patch the three client-role users with their linkedClientId. Called from
  * the seed entry point after clients are written.
