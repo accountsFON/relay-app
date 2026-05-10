@@ -121,19 +121,29 @@ export interface ListMentionsOptions {
    * even if a server bug somehow created one.
    */
   visibilityFilter?: EventVisibility[]
+  /**
+   * Active organization context. Required to scope inbox results to the
+   * agency the viewer is currently in. Without it, multi-org users (platform
+   * owners, members of two agencies) leak mentions across orgs.
+   */
+  organizationId: string
 }
 
 export async function listMentionsForUser(
   userId: string,
-  opts: ListMentionsOptions = {}
+  opts: ListMentionsOptions
 ): Promise<MentionInboxRow[]> {
+  const eventScope: Record<string, unknown> = {
+    client: { organizationId: opts.organizationId },
+  }
+  if (opts.visibilityFilter) {
+    eventScope.visibility = { in: opts.visibilityFilter }
+  }
   const mentions = await db.mention.findMany({
     where: {
       mentionedUserId: userId,
       ...(opts.unreadOnly && { readAt: null }),
-      ...(opts.visibilityFilter && {
-        event: { visibility: { in: opts.visibilityFilter } },
-      }),
+      event: eventScope,
     },
     orderBy: { createdAt: 'desc' },
     take: opts.limit ?? 50,
@@ -173,15 +183,20 @@ export async function listMentionsForUser(
 
 export async function unreadMentionCount(
   userId: string,
+  organizationId: string,
   visibilityFilter?: EventVisibility[],
 ): Promise<number> {
+  const eventScope: Record<string, unknown> = {
+    client: { organizationId },
+  }
+  if (visibilityFilter) {
+    eventScope.visibility = { in: visibilityFilter }
+  }
   return db.mention.count({
     where: {
       mentionedUserId: userId,
       readAt: null,
-      ...(visibilityFilter && {
-        event: { visibility: { in: visibilityFilter } },
-      }),
+      event: eventScope,
     },
   })
 }

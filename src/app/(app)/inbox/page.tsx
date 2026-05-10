@@ -13,6 +13,7 @@ import { InboxRow } from './inbox-row'
 export default async function InboxPage() {
   const ctx = await requireOrgContext()
   const mentions = await listMentionsForUser(ctx.userDbId, {
+    organizationId: ctx.organizationDbId,
     limit: 100,
     visibilityFilter: visibilityForViewer(ctx),
   })

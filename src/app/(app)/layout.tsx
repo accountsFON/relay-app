@@ -103,6 +103,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const showLibrary = ctx.role !== 'client' // Beta QA index is agency-internal
   const unreadMentions = await unreadMentionCount(
     ctx.userDbId,
+    ctx.organizationDbId,
     visibilityForViewer(ctx),
   ).catch(() => 0)
 
