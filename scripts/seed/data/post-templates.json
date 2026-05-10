@@ -1,0 +1,1137 @@
+{
+  "_comment": "Demo seed post templates per industry. Each entry mirrors the captionPrompt output shape so demo posts read like real Bekah AI output. Caption is body only, no CTA (the seed appends client.mainCta after). No em or en dashes, vary openings, vary lengths.",
+
+  "dental": [
+    {
+      "caption": "A six month checkup is the cheapest dental work you will ever do.\n\nWe spot the small stuff before it turns into a crown, a root canal, or a multi visit treatment plan. Most cleanings take less than an hour, and your insurance probably covers it twice a year already.\n\nIf it has been a while, that is fine. We are not going to lecture you. We are going to take a look, walk you through what we see, and put together a plan that fits your life.",
+      "hashtags": ["#FamilyDentist", "#DentalCheckup", "#PreventiveCare", "#HealthySmile", "#OralHealth"],
+      "graphicHook": "Six months. One visit. Zero surprises.",
+      "designerNotes": "Calm clinic environment with a smiling hygienist. Soft warm lighting, brand color accent on the headline word."
+    },
+    {
+      "caption": "We just brought our digital impression scanner online and our patients are noticing the difference.\n\nNo more goopy putty trays sitting in your mouth for five minutes. No more retakes when something shifts. The scanner runs over your teeth in about ninety seconds and the lab gets a precise 3D file the same day.\n\nCrowns fit better. Aligners track better. And nobody has to gag through a tray of impression material to get there.",
+      "hashtags": ["#DigitalDentistry", "#ModernDental", "#Crowns", "#NoMoreImpressions", "#DentalTech"],
+      "graphicHook": "Goodbye trays. Hello scans.",
+      "designerNotes": "Close up of the scanner wand with a soft blur background. Highlight the digital model on screen."
+    },
+    {
+      "caption": "Whitening that does not leave your teeth aching for two days afterward.\n\nThe at home strips you grabbed at the drugstore work in volume, but they sit on your enamel for hours and they do not respect the sensitive spots. Our in office treatment is faster, more even, and gentler on the parts of your mouth that do not need to be whitened.\n\nMost of our patients see two to four shades of difference in a single visit. We start with a quick consult to make sure your enamel is up for it.",
+      "hashtags": ["#TeethWhitening", "#CosmeticDentistry", "#BrightSmile", "#WhiteningDoneRight", "#SmileGoals"],
+      "graphicHook": "Whiter teeth. Happier enamel.",
+      "designerNotes": "Before and after smile crop side by side. Subtle color shift, not gimmicky bright."
+    },
+    {
+      "caption": "First dental visit on the calendar?\n\nBring a stuffed animal. We will check the stuffed animal's teeth too.\n\nWe save the chairs at the end of the hall for our youngest patients. The lights are softer. The TV plays whatever they want. And we let them sit on a parent's lap for the first cleaning if that is what makes them feel safe.\n\nA good first visit is the difference between a kid who looks forward to the dentist and a grown adult who has been avoiding it for fifteen years.",
+      "hashtags": ["#KidsDentist", "#PediatricDentistry", "#FirstDentalVisit", "#FamilyDentist", "#GentleDentistry"],
+      "graphicHook": "Their first visit. Done right.",
+      "designerNotes": "Child sized dental chair with a stuffed animal next to it. Bright but not clinical."
+    },
+    {
+      "caption": "If you wake up with a sore jaw, you are probably grinding at night.\n\nMost people do not realize they grind until a partner mentions it or until the pain settles in. Over time grinding wears down enamel, cracks fillings, and shifts the alignment of your bite.\n\nA custom night guard is the cheapest fix in dentistry. We take a quick scan, the lab makes one to your bite, and a week later you sleep without doing damage.",
+      "hashtags": ["#NightGuard", "#TMJ", "#TeethGrinding", "#DentalCare", "#JawPain"],
+      "graphicHook": "Stop grinding. Start sleeping.",
+      "designerNotes": "Clean product shot of a fitted night guard with a soft pillow background."
+    },
+    {
+      "caption": "Lost a tooth and put off dealing with it?\n\nYou are not alone. The longer the gap stays, the more the surrounding teeth shift, and the more complicated the eventual fix gets.\n\nImplants are the closest thing to growing a tooth back. Two visits, a healing period in between, and you walk out with a tooth that bites and chews like the original. Most of our implant patients tell us it feels boring after a week, which is exactly the point.",
+      "hashtags": ["#DentalImplants", "#RestorativeDentistry", "#ToothReplacement", "#ImplantDentistry", "#SmileRestoration"],
+      "graphicHook": "Replace it. Forget it.",
+      "designerNotes": "Cross section illustration of an implant alongside a confident patient portrait."
+    },
+    {
+      "caption": "Insurance benefits expire at the end of the year and most people leave money on the table.\n\nIf you have been putting off a cleaning, a crown, or a treatment plan we walked you through earlier this year, this is your reminder.\n\nWe block extra appointment times in November and December specifically so we can get patients in before the calendar resets. Call the front desk and Maria can pull up exactly what you have left.",
+      "hashtags": ["#DentalBenefits", "#YearEndCare", "#UseItOrLoseIt", "#DentalInsurance", "#PreventiveCare"],
+      "graphicHook": "Your benefits reset Jan 1.",
+      "designerNotes": "Calendar with December circled and a soft warning glow on the year end. Brand color highlight."
+    },
+    {
+      "caption": "Sensitivity that started out of nowhere usually has a cause we can fix.\n\nA receding gum line, a hairline crack in a filling, an exposed root, even a worn down enamel patch from years of acidic drinks. The right fix depends on the source, and we figure that out at a fifteen minute consult before we suggest anything.\n\nDo not assume sensitive teeth are something you have to live with. Most of the time they are not.",
+      "hashtags": ["#SensitiveTeeth", "#DentalCare", "#GumHealth", "#DentalConsult", "#OralHealth"],
+      "graphicHook": "Sensitivity has a source.",
+      "designerNotes": "A patient sipping iced coffee with a slight wince, then transitioning to a relieved smile in a second frame."
+    },
+    {
+      "caption": "Brushing for two minutes is the floor, not the goal.\n\nMost people brush for forty seconds and call it good. The plaque between your teeth and along the gum line needs the full two minutes to actually break up.\n\nA decent electric brush with a built in timer takes the guesswork out of it. We sell them at cost because we would rather you brush correctly than do anything fancy in our chair.",
+      "hashtags": ["#OralHygiene", "#BrushingTips", "#DentalCare", "#HealthySmile", "#PreventiveCare"],
+      "graphicHook": "Two minutes. Every time.",
+      "designerNotes": "Top down shot of an electric brush with timer visible. Clean cream background."
+    },
+    {
+      "caption": "Invisalign is not just for teenagers anymore.\n\nMore than half of the cases we start now are adults who had braces in middle school and watched their teeth shift back over twenty years. The trays are clearer than they used to be, the treatment time is shorter, and you can take them out for a meeting or a meal.\n\nIf you have been thinking about it, we offer a free scan and a treatment preview so you can see what your finished smile would look like before you commit.",
+      "hashtags": ["#Invisalign", "#ClearAligners", "#AdultOrthodontics", "#StraightTeeth", "#SmileTransformation"],
+      "graphicHook": "Clear aligners. Adult schedule.",
+      "designerNotes": "Hand holding a clear aligner with a confident professional in the background."
+    }
+  ],
+
+  "plumbing": [
+    {
+      "caption": "Your water heater is the hardest working appliance in your house and you probably have not thought about it once this year.\n\nMost residential tanks last eight to twelve years. After that the inside corrodes, the heating element struggles, and you start losing hot water mid shower without knowing why.\n\nWe will flush the tank, check the anode rod, and tell you straight whether it has another year in it or whether you should plan the replacement on your timeline instead of on the day it floods the basement.",
+      "hashtags": ["#WaterHeater", "#PlumbingMaintenance", "#HomeMaintenance", "#TanklessVsTank", "#TrustedPlumber"],
+      "graphicHook": "Inspect before it fails.",
+      "designerNotes": "Side angle of a residential water heater with the access panel open and a technician's hand on the valve."
+    },
+    {
+      "caption": "Slow drain in the master bath. Three rooms over, the kitchen sink is gurgling.\n\nThat is not a clog. That is your main line telling you something is wrong further down.\n\nWe run a sewer scope camera through the cleanout and pull up a live video on a tablet you can hold. Most of the time we find roots, scale buildup, or a sag in an older clay line. Once we know what we are dealing with we give you two or three options at different price points and you pick.",
+      "hashtags": ["#SewerScope", "#MainLine", "#DrainService", "#PlumbingDiagnostic", "#NoMoreClogs"],
+      "graphicHook": "See the line. Skip the guessing.",
+      "designerNotes": "Tech holding the camera tablet with the live feed visible. Outdoor cleanout in the foreground."
+    },
+    {
+      "caption": "If your water bill jumped this month and nothing in your usage changed, you almost certainly have a leak.\n\nThe most common culprits are a flapper valve that is no longer sealing, a slab leak under the foundation, or a pinhole leak in copper supply somewhere behind drywall.\n\nWe carry acoustic detection equipment that lets us narrow it down without cutting into anything. Smaller fix, faster turnaround, less drywall to patch. Worth the call before another billing cycle.",
+      "hashtags": ["#LeakDetection", "#WaterBill", "#SlabLeak", "#PlumbingExperts", "#FixALeak"],
+      "graphicHook": "The leak is hiding. We find it.",
+      "designerNotes": "Stethoscope style acoustic tool against a wall. Subtle ripple graphic suggesting hidden water."
+    },
+    {
+      "caption": "Tankless water heaters are the upgrade most people delay one year too long.\n\nEndless hot water, lower energy bills, and a unit roughly the size of a carry on bag mounted on the wall. The install costs more up front and the savings show up over five to seven years, but if you are already replacing a failed tank the math gets close to even.\n\nWe install three brands and we will tell you which one fits your usage instead of just selling you whatever is on the truck.",
+      "hashtags": ["#TanklessWaterHeater", "#EnergyEfficient", "#HomeUpgrade", "#PlumbingService", "#HotWaterOnDemand"],
+      "graphicHook": "Endless hot water. Half the closet.",
+      "designerNotes": "Tankless unit mounted on a clean utility room wall. Show the size relative to a person."
+    },
+    {
+      "caption": "Garbage disposals are not designed to grind everything you can fit down them.\n\nFibrous vegetables, eggshells, coffee grounds, and starch heavy peels are the four things that will eventually seize a unit. Run plenty of cold water before, during, and after, and avoid the four foods above.\n\nIf yours is humming but not turning, do not stick a hand in there. There is a hex key port on the bottom that resets it. Call us if that does not solve it.",
+      "hashtags": ["#GarbageDisposal", "#KitchenPlumbing", "#PlumbingTips", "#HomeMaintenance", "#LocalPlumber"],
+      "graphicHook": "Four foods. Skip them.",
+      "designerNotes": "Top down shot under a sink with a labeled disposal unit. Crossed out icons for the bad foods."
+    },
+    {
+      "caption": "Hard water is more than a cosmetic problem.\n\nIt scales up the inside of your fixtures, shortens water heater life, and leaves a white film on every glass that comes out of your dishwasher. Over the long run it costs you in repairs, replacements, and detergent.\n\nA water softener pays for itself in five to seven years on average. We can run a quick test on your tap and tell you exactly what you are dealing with before you decide.",
+      "hashtags": ["#WaterSoftener", "#HardWater", "#WaterQuality", "#HomeUpgrade", "#PlumbingExperts"],
+      "graphicHook": "Hard water. Soft fix.",
+      "designerNotes": "Two glass panels side by side. One spotted, one clear. Brand color frame on the clean side."
+    },
+    {
+      "caption": "Frozen pipes do not always burst on the coldest night.\n\nThey burst on the warm up morning when the ice expands as it thaws and the weakened section gives way. By then you have water in your walls and an insurance claim instead of a quick fix.\n\nIf you are going out of town in winter, leave the heat at sixty, open the cabinet doors under the sinks on exterior walls, and let the faucet farthest from the main line drip. Or call us and we will winterize the place properly.",
+      "hashtags": ["#FrozenPipes", "#WinterPlumbing", "#BurstPipe", "#EmergencyPlumbing", "#SeasonalTips"],
+      "graphicHook": "The thaw is the danger.",
+      "designerNotes": "Frosted exterior pipe with a small drip from the indoor faucet visible through a window."
+    },
+    {
+      "caption": "Rerouting an old galvanized supply line is one of the highest return projects you can do on an older house.\n\nGalvanized steel rusts from the inside out. By the time you notice low pressure or rust colored water, the inside diameter is already a fraction of what it should be. Rerouting to copper or PEX restores the pressure and removes the rust source for good.\n\nWe do most of these in two to three days with minimal drywall damage. We pull permits, schedule the inspection, and patch what we open before we leave.",
+      "hashtags": ["#GalvanizedReplacement", "#OldHouseFix", "#WaterPressure", "#PlumbingUpgrade", "#TrustedPlumber"],
+      "graphicHook": "Old pipes. Fresh pressure.",
+      "designerNotes": "Cross section of corroded galvanized next to clean copper. Side by side, dramatic contrast."
+    },
+    {
+      "caption": "Toilet running on and off through the night?\n\nIt is almost always the flapper, and it is almost always a fix you can do yourself for under fifteen dollars at the hardware store. We made a quick video walkthrough on the website if you want to handle it.\n\nIf the flapper is fine and the toilet is still running, the fill valve is usually the next suspect. We are happy to come out for that one. The water you are wasting can add up to a real bill if you let it run for a month.",
+      "hashtags": ["#ToiletRepair", "#PlumbingTips", "#DIYPlumbing", "#WaterWaste", "#PlumbingFix"],
+      "graphicHook": "Running toilet. Quick fix.",
+      "designerNotes": "Inside of a toilet tank with the flapper highlighted. Clean diagram style."
+    },
+    {
+      "caption": "Sump pumps fail quietly and you only find out when the basement is wet.\n\nMost residential pumps have a five to seven year service life. Test yours by lifting the float manually and listening for the pump to engage. If it is sluggish or silent, replace it before the next storm cycle.\n\nWe also install battery backups that kick in during a power outage, which is when sump pumps tend to be needed most. One time install, peace of mind every storm.",
+      "hashtags": ["#SumpPump", "#BasementProtection", "#StormPrep", "#HomeMaintenance", "#EmergencyPlumbing"],
+      "graphicHook": "Test it before the storm.",
+      "designerNotes": "Sump pit with a clean working pump in foreground and a battery backup unit visible behind."
+    }
+  ],
+
+  "fitness": [
+    {
+      "caption": "The first month of training is mostly about showing up.\n\nNothing else matters as much as walking through the door three times a week. Not the program, not the macros, not the supplements. Show up, do the work, leave. The strength comes after.\n\nWe build the first six weeks around two things: making the hour the best part of your day, and helping you stop overthinking it.",
+      "hashtags": ["#StrengthTraining", "#GymLife", "#FitnessJourney", "#StartStrong", "#TrainSmart"],
+      "graphicHook": "Show up first. Strong follows.",
+      "designerNotes": "Wide shot of a member walking into the studio at sunrise. Empty rack, ready bar, soft warm light."
+    },
+    {
+      "caption": "Strength training is the highest leverage hour of exercise you can do.\n\nAn hour of lifting two to three times a week builds bone density, raises resting metabolism, and protects your joints in ways that cardio alone does not. The research is overwhelming and the time investment is small.\n\nIf you have never lifted before, start with a coached intro session. We will teach you how to brace, how to hinge, and how to read your own body. After that, the rest is consistency.",
+      "hashtags": ["#StrengthTraining", "#LiftHeavy", "#FitnessOver40", "#FunctionalFitness", "#TrainSmart"],
+      "graphicHook": "Strength is the long game.",
+      "designerNotes": "Hands on a barbell at the bottom of a deadlift, blurred chalk dust. Tight crop, low angle."
+    },
+    {
+      "caption": "If your goal is to feel better in your sixties, the work starts in your thirties.\n\nMuscle mass declines about one percent per year after thirty unless you train for it. Bone density follows a similar curve. The cheapest health insurance is two strength sessions a week, every week, for the rest of your life.\n\nThis is the message we wish more of our parents had heard at our age. So we are passing it forward.",
+      "hashtags": ["#LongevityFitness", "#StrengthForLife", "#HealthSpan", "#TrainSmart", "#FitnessFundamentals"],
+      "graphicHook": "Train for the long version.",
+      "designerNotes": "Three generation portrait. Grandparent, parent, kid. All in workout clothes, smiling."
+    },
+    {
+      "caption": "Recovery is part of the training, not a break from it.\n\nSleep, hydration, and protein intake do more for your progress than any extra rep on a Friday night. We program a deload week every six to eight weeks for a reason. Your body adapts during rest, not during the work itself.\n\nIf you are training hard six days a week and not seeing results, it is almost always a recovery problem, not an effort problem.",
+      "hashtags": ["#Recovery", "#RestDay", "#TrainSmart", "#FitnessRecovery", "#PerformanceNutrition"],
+      "graphicHook": "Rest is part of the program.",
+      "designerNotes": "Empty studio at golden hour. Foam roller and water bottle on a bench. Quiet, calm composition."
+    },
+    {
+      "caption": "We program around the lifts, not around the trends.\n\nSquat, bench, deadlift, press, row, and one cardio piece. Repeat for ninety percent of your training career. The accessory work changes, the rep schemes change, the loading changes. The lifts do not.\n\nIf a coach is talking you into a tenth weekly novelty exercise, ask them why. Most of the time the honest answer is that they are bored, not that you need it.",
+      "hashtags": ["#StrengthBasics", "#CompoundLifts", "#NoFluff", "#TrainSmart", "#FunctionalFitness"],
+      "graphicHook": "Same five lifts. Forever.",
+      "designerNotes": "Five icon style illustrations of the main lifts in a horizontal row, brand color accents."
+    },
+    {
+      "caption": "Beginners do not need fancy programs. They need a barbell, a coach for the first month, and a calendar.\n\nWe see new lifters add fifty pounds to their squat in their first eight weeks just from learning the basics correctly. After that the gains slow but they keep coming for years.\n\nIf you have never lifted, our intro block is four sessions over two weeks. By the end you will know how to walk into any gym in the world and run yourself through a session.",
+      "hashtags": ["#BeginnerLifting", "#StartHere", "#NewToTheGym", "#StrengthBasics", "#TrainSmart"],
+      "graphicHook": "Day one. Coach beside you.",
+      "designerNotes": "Coach demonstrating a hip hinge to a new member at a barbell. Both smiling, learning posture."
+    },
+    {
+      "caption": "Strong is a style choice.\n\nYou will not bulk up by accident. Most women lift for two years before they notice meaningful muscle, and the result is leaner, more defined, and more athletic. Not bigger.\n\nThe bodies you see on social media are mostly genetics, posing, and lighting. The body you build in a gym over years is yours, and it is honest.",
+      "hashtags": ["#WomenWhoLift", "#StrengthTraining", "#FitnessForWomen", "#NoFluff", "#TrainSmart"],
+      "graphicHook": "Lean. Strong. Unbothered.",
+      "designerNotes": "Athletic woman mid set, focused expression. Honest crop, no overdone gym aesthetic."
+    },
+    {
+      "caption": "Class size matters more than equipment quality.\n\nA coach watching six lifters can correct form in real time. A coach with twenty four cannot. We cap our group classes at six on purpose, even if it means turning people away on a Saturday morning.\n\nThe small ratio is the reason our members get strong. It is also the reason we have a wait list.",
+      "hashtags": ["#GroupClasses", "#SmallGroupTraining", "#PersonalTraining", "#CoachingMatters", "#TrainSmart"],
+      "graphicHook": "Six lifters. One coach. Always.",
+      "designerNotes": "Coach making a small adjustment to a member's setup. Other members visible but not crowded."
+    },
+    {
+      "caption": "Cardio gets a bad rap and it does not deserve it.\n\nTwenty to thirty minutes of zone two work, two or three times a week, builds the engine that makes everything else easier. Your lifts feel lighter. Your recovery between sets gets shorter. Your sleep gets better.\n\nWe do not believe in punishing cardio. We believe in cardio that fits into a long training career without burning you out.",
+      "hashtags": ["#CardioBalance", "#ZoneTwo", "#Endurance", "#FitnessFundamentals", "#TrainSmart"],
+      "graphicHook": "The engine matters too.",
+      "designerNotes": "Member on a rowing machine at moderate effort, sweat but not strained. Wide shot."
+    },
+    {
+      "caption": "Goals work better when you write them down.\n\nNot a vague want like get in shape. A specific number, a specific lift, a specific outcome you can check off in eight weeks.\n\nWe sit down with new members in their first session and pick one. Then we build the program backward from it. The members who hit their goals are not the most genetically gifted. They are the ones who decided what they were chasing.",
+      "hashtags": ["#GoalSetting", "#FitnessGoals", "#TrainSmart", "#StrengthTraining", "#StartStrong"],
+      "graphicHook": "Pick one. Chase it.",
+      "designerNotes": "Open notebook with a single goal written, pencil resting beside. Warm background."
+    }
+  ],
+
+  "real_estate": [
+    {
+      "caption": "Most buyers lose the house they wanted at one of three points: the offer, the inspection, or the appraisal.\n\nThe offer is the only one you control before you write it. Get pre approved before you tour, know what your monthly payment looks like at three different rate scenarios, and have a clear walk away number on every house you fall for.\n\nThe rest of the process is a lot easier when the offer is built right from the start.",
+      "hashtags": ["#HomeBuying", "#FirstTimeBuyer", "#RealEstate", "#PreApproval", "#HouseHunting"],
+      "graphicHook": "Offer day. Done right.",
+      "designerNotes": "Hand placing keys on a clean countertop with a contract folder visible behind. Warm tone."
+    },
+    {
+      "caption": "List photos sell the showing. Showings sell the house.\n\nIf you are listing this season, the single highest return investment is professional photography. We pay for it on every listing because the difference between phone shots and a properly lit set is usually fifteen percent more showings in the first week.\n\nMore showings mean more offers. More offers mean better terms. Photography is not a marketing line item. It is the offer engine.",
+      "hashtags": ["#HomeSelling", "#ListingPhotos", "#RealEstate", "#SellSmart", "#NewListing"],
+      "graphicHook": "Photos sell the showing.",
+      "designerNotes": "Side by side. Phone shot of a kitchen versus a properly lit professional shot of the same room."
+    },
+    {
+      "caption": "The price you list at is more important than the price you accept.\n\nBuyers shop in price brackets. List ten thousand too high and you skip the bracket where your house actually fits. The wrong bracket means lower traffic, longer days on market, and eventually a price drop that signals weakness.\n\nWe pull comps from the last ninety days, not the last twelve months, because the market shifts faster than annual data can keep up. Pricing strategy is half the listing decision.",
+      "hashtags": ["#PricingStrategy", "#HomeSelling", "#ListingPrice", "#RealEstateAgent", "#MarketSmart"],
+      "graphicHook": "Price brackets matter.",
+      "designerNotes": "Stack of price tags at different levels. Clean infographic style with brand color highlights."
+    },
+    {
+      "caption": "Open houses still work, but they work differently than they used to.\n\nMost serious buyers preview online before they show up. By the time they walk in the door they already know the floor plan and the price. Your open house is the smell test. Is it as good in person as it looked online?\n\nWe stage every open house with that question in mind. Coffee on. Lights on. Doors open. Story of the house in plain sight.",
+      "hashtags": ["#OpenHouse", "#HomeSelling", "#Staging", "#RealEstate", "#NewListing"],
+      "graphicHook": "Open. Bright. Honest.",
+      "designerNotes": "Staged living room with morning light streaming in. Coffee on the table, fresh flowers."
+    },
+    {
+      "caption": "A home inspection is not a list of demands. It is a list of conversations.\n\nMost houses turn up something. The roof has another two years on it. The water heater is at the end of its life. A few outlets are not grounded. Almost none of these things should kill a deal.\n\nWe walk our clients through the report, identify what actually matters, and bring a contractor's perspective to the price negotiation. Inspections are about information. Information is leverage.",
+      "hashtags": ["#HomeInspection", "#RealEstateProcess", "#BuyerTips", "#HomeBuying", "#RealEstateAgent"],
+      "graphicHook": "Inspection. Translated.",
+      "designerNotes": "Inspector clipboard with checked items. Clean overhead. Brand color accent on key items."
+    },
+    {
+      "caption": "Investment property returns come from three places: cash flow, appreciation, and tax treatment.\n\nNew investors anchor on cash flow because it is the only number they can see month one. Experienced investors weigh all three.\n\nIf you are looking at your first rental this year, we will run the full math with you before you make an offer. The deals that pencil at month one are not always the deals that pencil over a ten year hold.",
+      "hashtags": ["#InvestmentProperty", "#RealEstateInvesting", "#RentalProperty", "#PassiveIncome", "#RealEstate"],
+      "graphicHook": "Three numbers. One decision.",
+      "designerNotes": "Three column infographic with cash flow, appreciation, tax. Clean grid layout, brand colors."
+    },
+    {
+      "caption": "Relocation is a different game than a local move.\n\nYou are buying a neighborhood you have never lived in, often after a single weekend visit. The school catchments, the commute corridors, the noise patterns at night. None of that is on Zillow.\n\nWe specialize in walking relocation clients through the local layer that matters. Sometimes that means saying no to the house with the better photos because the street has a freight rail line two blocks east.",
+      "hashtags": ["#Relocation", "#MovingTips", "#NeighborhoodGuide", "#RealEstate", "#LocalExpert"],
+      "graphicHook": "The neighborhood. Then the house.",
+      "designerNotes": "Map illustration with key neighborhood features marked. Schools, parks, commute routes."
+    },
+    {
+      "caption": "Sellers ask us how to prep before we list. Here is the short version.\n\nDeclutter every horizontal surface. Repaint anything bold in a neutral. Wash the windows inside and out. Put the dog at a friend's place during showings.\n\nDo those four things and you are ahead of ninety percent of the inventory in your bracket. The bigger projects, the kitchen, the bath, the floors, almost never return what they cost when you are selling within sixty days.",
+      "hashtags": ["#SellingTips", "#HomeStaging", "#RealEstate", "#PrepToList", "#HomeSelling"],
+      "graphicHook": "Four moves. Bigger offers.",
+      "designerNotes": "Checklist style graphic with four items, each illustrated minimally. Clean typography."
+    },
+    {
+      "caption": "First time buyers ask the same question on the first call.\n\nWhat does the down payment have to be? The honest answer is less than you think, and the less honest answer is whatever your specific loan program requires.\n\nFHA can go as low as three and a half percent. Conventional has three percent first time programs. VA is zero down for those who qualify. We work with three local lenders and we will introduce you before you tour your first house so you have a real number to plan around.",
+      "hashtags": ["#FirstTimeBuyer", "#DownPayment", "#HomeBuying", "#MortgageTips", "#RealEstate"],
+      "graphicHook": "Down payment. Demystified.",
+      "designerNotes": "House icon with three percentage labels orbiting around it. Clean infographic style."
+    },
+    {
+      "caption": "Market reports are useful in aggregate and useless in specifics.\n\nA national headline that says home prices are up four percent does not tell you anything about your block. The neighborhood next to yours might be flat. The street you are eyeing might be up nine. We pull hyperlocal comps before we recommend anything.\n\nIf you want to know what your house would actually sell for, send us the address. We will run real numbers, not headline numbers.",
+      "hashtags": ["#MarketReport", "#HomeValues", "#RealEstateMarket", "#LocalExpert", "#RealEstate"],
+      "graphicHook": "Your block. Real numbers.",
+      "designerNotes": "Map zoomed to a single street with comp prices floating above each house. Clean cartography style."
+    }
+  ],
+
+  "auto": [
+    {
+      "caption": "Most check engine lights are not emergencies. But they are also not nothing.\n\nThe modern car has more sensors than the moon lander. When one of them flags a code, we plug in, read the actual fault, and tell you whether it is a five minute fix or a real conversation.\n\nWe never charge for the diagnostic when we end up doing the work. Drop in any morning and we will have an answer before lunch.",
+      "hashtags": ["#CheckEngine", "#AutoDiagnostic", "#CarMaintenance", "#TrustedMechanic", "#AutoRepair"],
+      "graphicHook": "Light on. Answer fast.",
+      "designerNotes": "Diagnostic scanner connected to a car with the dashboard light visible. Tight crop, clean."
+    },
+    {
+      "caption": "Brake pads cost less than rotors. Rotors cost less than calipers.\n\nThe order matters because brake systems wear progressively. Catch the pads early and you replace pads. Wait too long and the worn pads grind into the rotors. Wait longer and the heat warps the calipers.\n\nIf you hear a squeal at low speed, we will get you in this week. The fix gets more expensive every month you ignore it.",
+      "hashtags": ["#BrakeService", "#AutoMaintenance", "#CarCare", "#PreventativeMaintenance", "#AutoShop"],
+      "graphicHook": "Pads now. Or rotors later.",
+      "designerNotes": "Cross section of a brake setup with wear levels labeled in three stages. Clean technical illustration."
+    },
+    {
+      "caption": "Oil changes are the cheapest insurance you buy on your car.\n\nMost manufacturers spec a full synthetic interval at seven thousand five hundred miles. Some shops will tell you to come in at three thousand because they make their margin on volume. Read the manual, then decide.\n\nWe stock four oil weights and use whichever your engine actually wants. We also rotate tires and check fluids while you wait. One stop, no upsells.",
+      "hashtags": ["#OilChange", "#AutoMaintenance", "#PreventativeMaintenance", "#CarCare", "#AutoShop"],
+      "graphicHook": "Same oil. Better service.",
+      "designerNotes": "Drain plug close up with golden oil flowing into a clean catch basin. Side view, clinical lighting."
+    },
+    {
+      "caption": "Diesel trucks need a different relationship with their owner.\n\nThe maintenance intervals are more frequent. The fluids are more specific. The diagnostics are more sensitive. And when you skip a service, the consequences are more expensive.\n\nWe specialize in the major diesel platforms and we run the same diagnostic equipment the dealer does, without the dealer prices. Bring the truck in, we will set up a maintenance schedule that matches how you actually use it.",
+      "hashtags": ["#DieselTruck", "#DieselRepair", "#TruckMaintenance", "#TrustedMechanic", "#AutoShop"],
+      "graphicHook": "Diesel needs a specialist.",
+      "designerNotes": "Lifted diesel truck on a shop lift. Clean shop background, technician underneath."
+    },
+    {
+      "caption": "European imports run on tighter tolerances than American or Japanese platforms.\n\nThat means they reward the right oil, the right coolant, the right brake fluid, and the right service interval. Skip any of those and the small problems compound.\n\nOur shop is set up specifically for German and Swedish makes. We carry OEM equivalent parts when it matters and we have the diagnostic tools to read every system in the car. Same quality as the dealer, half the wait.",
+      "hashtags": ["#EuropeanCars", "#GermanAutoRepair", "#ImportSpecialist", "#TrustedMechanic", "#AutoRepair"],
+      "graphicHook": "European. Specialist.",
+      "designerNotes": "Engine bay of a clean European sedan with a torque wrench resting on the strut tower."
+    },
+    {
+      "caption": "Tires are the most underestimated safety feature on your vehicle.\n\nFour palm sized contact patches are everything between you and the road. Worn tires lose grip in rain at half the rate new ones do. They also blow out at highway speed when sidewalls go bad.\n\nWe rotate every six thousand miles, balance whenever you replace, and replace when tread depth hits four thirty seconds. Quick to check, quick to fix, big consequences if you skip it.",
+      "hashtags": ["#TireService", "#TireRotation", "#CarSafety", "#AutoMaintenance", "#TrustedMechanic"],
+      "graphicHook": "Four contact patches. Everything.",
+      "designerNotes": "Top down of four tire treads side by side at varying wear stages. Clean studio shot."
+    },
+    {
+      "caption": "Transmissions do not give you many warning signs before they fail.\n\nA slip between gears, a delayed engagement when you put it in drive, a faint burning smell from under the hood. By the time you notice these, the internal damage is usually well underway.\n\nWe service transmissions at the manufacturer interval whether you have noticed anything or not. Fluid swap, filter change, magnet inspection. Cheap insurance against a four thousand dollar replacement.",
+      "hashtags": ["#TransmissionService", "#AutoMaintenance", "#PreventativeMaintenance", "#CarCare", "#AutoShop"],
+      "graphicHook": "Service the transmission. Not later.",
+      "designerNotes": "Transmission pan removed with magnet visible. Hands of a tech inspecting fluid color."
+    },
+    {
+      "caption": "If your battery is more than four years old, it owes you nothing.\n\nMost lead acid batteries last three to five years depending on climate. Hot summers shorten the life. Short trips and electronics drain it faster. The day it fails is almost always a cold morning when you are already running late.\n\nWe test batteries free with any visit. If yours is on the edge we will tell you so you can plan the swap on your timeline instead of in the parking lot at six in the morning.",
+      "hashtags": ["#CarBattery", "#AutoMaintenance", "#PreventativeMaintenance", "#CarCare", "#AutoShop"],
+      "graphicHook": "Test now. Drive later.",
+      "designerNotes": "Hand holding a battery tester clamped to a battery. Reading visible on the tester display."
+    },
+    {
+      "caption": "Honest estimates are not a marketing line for us. They are how we stay in business.\n\nWe call before we add a labor line. We send photos when we find something. We use OEM equivalent parts unless you ask for the cheaper option, and we tell you the tradeoff if you do.\n\nThe shops that survive twenty years are the ones their customers refer to friends. We are at year fourteen and that is how we plan to make it to thirty.",
+      "hashtags": ["#HonestMechanic", "#TrustedMechanic", "#AutoRepair", "#TransparentPricing", "#AutoShop"],
+      "graphicHook": "Phone before the wrench.",
+      "designerNotes": "Tech holding a phone with photos of a found issue, parts spread on a clean shop counter."
+    },
+    {
+      "caption": "Pre purchase inspections save buyers from very expensive surprises.\n\nA used car listed at fair market value is one thing. A used car with a slipping transmission, a leaking head gasket, and frame damage hiding behind fresh paint is a different car at the same price.\n\nWe charge a flat fee for a full inspection on any used vehicle you are considering. Bring the car or the listing in. We will tell you what it really is before you write the check.",
+      "hashtags": ["#PrePurchaseInspection", "#UsedCarInspection", "#TrustedMechanic", "#CarBuying", "#AutoShop"],
+      "graphicHook": "Inspect before the check.",
+      "designerNotes": "Tech with a flashlight under a used car on a lift. Pen and clipboard visible in foreground."
+    }
+  ],
+
+  "legal": [
+    {
+      "caption": "Most family law cases settle. The ones that go to trial are usually the ones nobody prepared for settlement.\n\nA mediation focused approach saves money, time, and the long term relationship between parents who will still be co parenting after the case is closed. We start every case asking what a workable end looks like, then we build backward from it.\n\nIf trial is necessary we are ready. But we are not chasing it as the default.",
+      "hashtags": ["#FamilyLaw", "#Mediation", "#DivorceLawyer", "#FamilyAttorney", "#LegalCounsel"],
+      "graphicHook": "Settle smart. Trial when needed.",
+      "designerNotes": "Two parents at a mediation table with a calm advisor present. Warm professional tone."
+    },
+    {
+      "caption": "Wills are the cheapest legal work you will ever do, and the most expensive thing you can leave undone.\n\nWithout a will, your state decides who inherits, who manages the estate, and who raises your minor children. The default outcome is rarely the one you would have chosen if you had been asked.\n\nWe handle a basic will and trust package in two appointments. The first to gather information, the second to sign. Most people walk out wondering why they waited.",
+      "hashtags": ["#EstatePlanning", "#WillsAndTrusts", "#Probate", "#FamilyLaw", "#PlanAhead"],
+      "graphicHook": "Will. While you can.",
+      "designerNotes": "Open notebook with a pen and a wedding photo nearby. Soft natural light, intimate."
+    },
+    {
+      "caption": "A custody modification is not a do over. It is a remedy for a real change in circumstances.\n\nNew job, relocation, change in the child's needs, a parent's documented behavior. Courts want to see why this case is back on the docket and what the child gains from the change.\n\nWe build modification cases around evidence and what the court actually wants to hear. The strongest cases are the ones where the underlying change is clearly documented before we walk in.",
+      "hashtags": ["#CustodyModification", "#FamilyLaw", "#CoParenting", "#FamilyCourt", "#LegalCounsel"],
+      "graphicHook": "Modify. With evidence.",
+      "designerNotes": "Calendar pages flipping with notes and timestamps. Soft hand drawn marks layered on top."
+    },
+    {
+      "caption": "Prenuptial agreements are not pessimistic. They are a financial planning tool.\n\nThe couples who handle theirs well treat it the way they treat any other prep before a long term commitment. They both have counsel, they both disclose, and they both walk into the marriage with the rules spelled out.\n\nThe ones that get challenged are usually the ones where one side rushed the process or hid something. Done correctly, a prenup is rarely litigated and almost always upheld.",
+      "hashtags": ["#Prenup", "#PrenuptialAgreement", "#FamilyLaw", "#FinancialPlanning", "#LegalCounsel"],
+      "graphicHook": "Spell it out. Together.",
+      "designerNotes": "Two pens crossed on a clean document with rings nearby. Honest, not theatrical."
+    },
+    {
+      "caption": "Probate is the legal process of moving assets from the deceased to the heirs.\n\nIt is not necessarily complicated, and it is not necessarily expensive. Most of the time it is paperwork and patience. But the longer you delay starting it, the more issues compound. Bills go unpaid. Beneficiaries grow impatient. Property values shift.\n\nWe handle probate cases at a fixed fee whenever the estate qualifies. No surprises and a clear timeline before you sign on.",
+      "hashtags": ["#Probate", "#EstateAdministration", "#WillsAndTrusts", "#FamilyLaw", "#LegalCounsel"],
+      "graphicHook": "Estate. Settled. Calmly.",
+      "designerNotes": "Stack of documents with one labeled Probate, a quiet office desk in soft light."
+    },
+    {
+      "caption": "If you are recently divorced, your estate plan needs an update before the year ends.\n\nBeneficiary designations, retirement accounts, life insurance policies, the deed on the house. Each of those moves on its own clock and they almost never update themselves.\n\nWe offer a post divorce planning review for past clients at a reduced fee. One hour, one document review, a clear list of what to update and where.",
+      "hashtags": ["#PostDivorcePlanning", "#EstatePlanning", "#FamilyLaw", "#FinancialPlanning", "#LegalCounsel"],
+      "graphicHook": "Update what is left.",
+      "designerNotes": "Pen striking through old beneficiary lines, a fresh page underneath. Clean overhead shot."
+    },
+    {
+      "caption": "Free consultations are not a sales pitch.\n\nWe spend the first thirty minutes listening. We will tell you whether you have a case, whether you need our help or someone else's, and what a realistic process looks like. If you do not need an attorney we will say that.\n\nThe consult is free because the right fit matters more than the upfront fee. Hire the lawyer who walks you through what they cannot do as clearly as what they can.",
+      "hashtags": ["#FreeConsultation", "#LegalAdvice", "#FamilyLaw", "#KnowYourRights", "#LegalCounsel"],
+      "graphicHook": "Thirty minutes. Honest answers.",
+      "designerNotes": "Two chairs at a quiet conference table, coffee on the table. Warm professional setting."
+    },
+    {
+      "caption": "Co parenting agreements work best when they are specific.\n\nVague language about reasonable visitation almost always becomes a fight later. Specific schedules, specific holidays, specific exchange points. They feel rigid in the moment and they save the relationship over time.\n\nWe walk new clients through the most common friction points before they show up in real life. Half the work of a good agreement is anticipating where it will be tested.",
+      "hashtags": ["#CoParenting", "#FamilyLaw", "#CustodySchedule", "#ParentingPlan", "#FamilyAttorney"],
+      "graphicHook": "Specific saves stress.",
+      "designerNotes": "Calendar with color coded weeks for two parents. Clear, organized, low contrast."
+    },
+    {
+      "caption": "Power of attorney is the document nobody wants to need until they need it.\n\nA durable power of attorney lets a person you trust make financial decisions for you if you are unable to. A medical power of attorney does the same on the health side. Both should be in place before any health crisis, not after.\n\nIf you are over forty and you do not have these documents, we can prepare both in a single appointment. It is a small step that prevents large problems.",
+      "hashtags": ["#PowerOfAttorney", "#EstatePlanning", "#FamilyLaw", "#PlanAhead", "#LegalCounsel"],
+      "graphicHook": "Sign now. Not in crisis.",
+      "designerNotes": "Two signatures on a single document, generations of hands visible. Warm understated."
+    },
+    {
+      "caption": "Trusts are not just for high net worth families.\n\nA properly funded revocable trust avoids probate, keeps the estate private, and gives the trustee a clear playbook for distributing assets. The cost to set one up is modest. The probate it prevents can run twenty times that.\n\nWe explain the difference between a will only plan and a trust based plan in plain language at the first meeting. You decide what fits, not us.",
+      "hashtags": ["#RevocableTrust", "#EstatePlanning", "#WillsAndTrusts", "#AssetProtection", "#LegalCounsel"],
+      "graphicHook": "Trust over probate.",
+      "designerNotes": "Two file folders side by side, one labeled Will, one labeled Trust. Clean overhead."
+    }
+  ],
+
+  "accounting": [
+    {
+      "caption": "The biggest tax savings happen in October, not in April.\n\nQuarterly tax planning is where the meaningful moves get made. Retirement contributions, equipment purchases, entity structure adjustments, S corp elections. By the time tax filing season arrives most of the optimization windows are already closed.\n\nIf you are running a small business and your CPA only calls you once a year, you are leaving real money on the table.",
+      "hashtags": ["#TaxPlanning", "#SmallBusinessAccounting", "#CPA", "#QuarterlyTaxes", "#TaxSeason"],
+      "graphicHook": "October moves. April savings.",
+      "designerNotes": "Calendar with quarterly markers and a small briefcase. Soft warm lighting."
+    },
+    {
+      "caption": "S corp elections save self employed professionals real money once you cross a profit threshold.\n\nThe trade is more paperwork in exchange for lower self employment tax on a portion of your income. Whether the math works depends on your industry, your profit, and how you compensate yourself.\n\nWe run the analysis as part of every new business client engagement. If the election is right for you we file it. If it is not we tell you why and revisit next year.",
+      "hashtags": ["#SCorp", "#SelfEmployed", "#TaxStrategy", "#SmallBusinessAccounting", "#CPA"],
+      "graphicHook": "S corp. When the math works.",
+      "designerNotes": "Side by side comparison: sole prop versus S corp tax breakdown. Clean infographic."
+    },
+    {
+      "caption": "Bookkeeping clean up is the unfun part of accounting that almost everyone needs.\n\nIf your QuickBooks file has uncategorized transactions, balance sheets that do not balance, or owner draws and personal expenses mixed in with business spending, the rest of your tax planning is built on sand.\n\nWe offer a one time clean up package that gets your books to a clean baseline. After that monthly bookkeeping is straightforward. Most clients tell us they sleep better after we finish.",
+      "hashtags": ["#Bookkeeping", "#QuickBooks", "#SmallBusinessAccounting", "#CleanBooks", "#CPA"],
+      "graphicHook": "Books cleaned. Mind clear.",
+      "designerNotes": "Before and after of a messy spreadsheet versus a clean ledger. Subtle gradient transition."
+    },
+    {
+      "caption": "Receipt management is a solved problem and most small business owners do not know it.\n\nA phone scanner app, a connected QuickBooks file, and a five minute habit. That is the whole system. The shoebox of receipts in the corner of your office is doing nothing for you and probably costing you deductions.\n\nWe set new clients up with a working receipt workflow in the first month. After that the year end becomes a one hour conversation instead of a three week scramble.",
+      "hashtags": ["#ReceiptManagement", "#SmallBusinessAccounting", "#Bookkeeping", "#TaxPrep", "#CPA"],
+      "graphicHook": "Scan. Tag. Done.",
+      "designerNotes": "Phone over a receipt with a green check icon, clean desk in soft natural light."
+    },
+    {
+      "caption": "Quarterly estimates are not optional and the IRS keeps track.\n\nIf you owe more than one thousand dollars when you file and you have not paid quarterly, you owe a penalty. The penalty itself is small. The problem is that most self employed professionals do not realize the rule applies to them until they receive the notice.\n\nWe calculate quarterly estimates for every business client and send a reminder before each due date. Simple system, no surprises.",
+      "hashtags": ["#QuarterlyTaxes", "#EstimatedTaxes", "#SelfEmployed", "#SmallBusinessAccounting", "#CPA"],
+      "graphicHook": "Four payments. No penalties.",
+      "designerNotes": "Calendar with four quarterly stamps in brand color. Clean grid layout."
+    },
+    {
+      "caption": "Audit representation is the service most accountants quietly hope they never have to provide.\n\nWe prepare every return with the assumption that someone might ask us to defend it. That means clean records, clear documentation, and notes on the judgment calls we made on your behalf.\n\nIf an audit notice arrives, we step in and handle the correspondence. You stay out of the loop while we work it. Most issues get resolved without you ever speaking to the IRS directly.",
+      "hashtags": ["#AuditRepresentation", "#TaxResolution", "#IRSAudit", "#CPA", "#SmallBusinessAccounting"],
+      "graphicHook": "Notice arrives. We answer.",
+      "designerNotes": "Sealed letter on a desk, slightly opened, professional papers stacked nearby."
+    },
+    {
+      "caption": "Year end is the wrong time to think about retirement contributions.\n\nSep IRAs, Solo 401ks, and defined benefit plans all have different deadlines, contribution limits, and setup requirements. Some of them have to be opened by December 31 even if the contribution itself can be made later.\n\nWe walk every business owner through their retirement plan options in October. Setting one up before the calendar resets gives you the full window for contributions when you file.",
+      "hashtags": ["#RetirementPlanning", "#SEPIRAs", "#Solo401k", "#TaxPlanning", "#CPA"],
+      "graphicHook": "Open the door before December 31.",
+      "designerNotes": "Calendar pages flipping toward year end with a 401k document underneath."
+    },
+    {
+      "caption": "Contractor classification is one of the most expensive mistakes a small business can make.\n\nIf the IRS reclassifies a contractor as an employee, the back taxes, penalties, and interest can be ruinous. The rules are not always intuitive and the criteria favor employee status when there is doubt.\n\nWe review contractor relationships as part of every new business engagement. If we see risk we flag it before it becomes a problem.",
+      "hashtags": ["#ContractorClassification", "#1099vsW2", "#SmallBusinessAccounting", "#TaxRisk", "#CPA"],
+      "graphicHook": "Contractor or employee.",
+      "designerNotes": "Two file folders labeled 1099 and W2 with a magnifying glass between them."
+    },
+    {
+      "caption": "Year round client relationships beat one and done tax prep every time.\n\nA tax preparer who only sees you in March can only react to what you already did. A CPA who knows your business in real time can shape what you do.\n\nWe work on a flat monthly retainer for most small business clients. Includes bookkeeping, quarterly planning, year end strategy, and tax filing. One predictable number, no clock watching.",
+      "hashtags": ["#YearRoundCPA", "#SmallBusinessAccounting", "#FlatFeeAccounting", "#TaxPlanning", "#CPA"],
+      "graphicHook": "Year round beats March.",
+      "designerNotes": "Twelve calendar months in a circle, each lightly highlighted. Subtle, professional."
+    },
+    {
+      "caption": "Most small business owners do not actually know what their margins are.\n\nNot revenue. Not profit and loss at the bottom line. Margins per service, per client, per project. Without that visibility you do not know which work to do more of and which work is quietly losing you money.\n\nWe set up margin reporting for every business client in the first ninety days. After that you stop guessing and start choosing.",
+      "hashtags": ["#ProfitMargins", "#BusinessFinances", "#SmallBusinessAccounting", "#FinancialClarity", "#CPA"],
+      "graphicHook": "Margins. Per job.",
+      "designerNotes": "Bar chart with multiple service lines at different heights. Clean clinical visualization."
+    }
+  ],
+
+  "landscaping": [
+    {
+      "caption": "The best time to think about your spring landscape is the fall before.\n\nFall is when we plant trees, redesign beds, and install hardscape. Roots get established through the cooler months. Beds get amended before winter. By the time spring arrives the foundation work is already done and the season starts ahead instead of behind.\n\nIf you have ever felt like your yard never quite catches up to summer, the timing is the answer.",
+      "hashtags": ["#FallLandscaping", "#LawnCare", "#GardenDesign", "#OutdoorLiving", "#CurbAppeal"],
+      "graphicHook": "Fall now. Spring later.",
+      "designerNotes": "Side by side seasonal comparison of the same yard. Bare fall versus full spring."
+    },
+    {
+      "caption": "Native plants are not a compromise. They are an upgrade.\n\nNative species evolved for your soil, your rainfall, and your local insects. They use less water than ornamentals once established. They support pollinators in numbers nonnatives cannot match. And they look the way the region is supposed to look.\n\nWe design every project with a native first plant palette. The result is a yard that looks like it belongs in your neighborhood, because it does.",
+      "hashtags": ["#NativePlants", "#LandscapeDesign", "#PollinatorGarden", "#WaterWise", "#GardenDesign"],
+      "graphicHook": "Native. By design.",
+      "designerNotes": "Wildflower meadow with a single ornamental in contrast. Educational visual cue."
+    },
+    {
+      "caption": "Irrigation systems pay for themselves and most homeowners install them too late.\n\nA proper drip system uses about a third of the water that a hose and sprinkler combo uses, and it puts the water where the roots actually are. Lawns stay greener with less effort. Bedding plants survive vacations.\n\nWe design every irrigation install around your specific yard. No cookie cutter zones, no overspray onto the driveway, no wet feet at the front door.",
+      "hashtags": ["#Irrigation", "#DripSystem", "#WaterEfficient", "#LandscapeDesign", "#YardCare"],
+      "graphicHook": "Water where it works.",
+      "designerNotes": "Cross section of a drip line at root level. Educational diagram with brand color accents."
+    },
+    {
+      "caption": "Hardscape sets the bones of a yard. Plants fill in around it.\n\nWalls, walkways, patios, and edges decide where you stand, where you sit, and how the eye moves through the space. Done well, you barely notice them. Done poorly, no amount of planting fixes the layout.\n\nWe design hardscape first on every project. The garden is built on top of the geometry. That order matters more than most clients realize at the start.",
+      "hashtags": ["#Hardscape", "#PatioDesign", "#LandscapeDesign", "#OutdoorLiving", "#StoneWork"],
+      "graphicHook": "Bones first. Plants after.",
+      "designerNotes": "Stone walkway curving through a garden bed. Wide angle, natural lighting."
+    },
+    {
+      "caption": "Mulch is not just decoration. It is your soil's insurance policy.\n\nA two to three inch layer holds moisture, regulates temperature, suppresses weeds, and slowly breaks down to feed the soil. Skip it and your beds work twice as hard for half the result.\n\nWe refresh mulch twice a year for our maintenance clients, once after the spring planting cycle and once before winter. The plants tell us when it has been long enough.",
+      "hashtags": ["#Mulching", "#SoilHealth", "#YardCare", "#GardenMaintenance", "#OutdoorLiving"],
+      "graphicHook": "Two inches. Big difference.",
+      "designerNotes": "Top down of a freshly mulched bed beside an unmulched one. Visual contrast in soil texture."
+    },
+    {
+      "caption": "Tree pruning is one of the most damaging things a homeowner can do without training.\n\nWrong cuts at the wrong time can stress a tree for years. Topped trees almost never recover their natural shape. Improper crown thinning invites disease and pest entry through every open wound.\n\nWe prune at the right season for the species, with proper cuts at proper angles. The investment shows up over decades.",
+      "hashtags": ["#TreePruning", "#TreeService", "#ArboristCare", "#LandscapeMaintenance", "#YardCare"],
+      "graphicHook": "Prune right. Or skip it.",
+      "designerNotes": "Close up of a clean angled cut on a healthy branch versus a topped stub for contrast."
+    },
+    {
+      "caption": "Outdoor lighting changes how you use a yard after sunset.\n\nA path light on a walkway, a downlight in a tree canopy, an uplight on the front of the house. Each adds hours to how the space functions. Done well, lighting feels invisible. You notice the effect, not the fixtures.\n\nWe design lighting plans alongside every hardscape project so the conduit goes in once. Retrofitting later costs more and looks like an afterthought.",
+      "hashtags": ["#OutdoorLighting", "#LandscapeLighting", "#OutdoorLiving", "#YardDesign", "#NightYard"],
+      "graphicHook": "Hours after sunset.",
+      "designerNotes": "Front of a home at dusk with subtle lighting on path and architecture. No glare, soft warmth."
+    },
+    {
+      "caption": "Seasonal cleanups are not a luxury. They are how a yard stays healthy.\n\nLeaves left on a lawn block sun and trap moisture, breeding fungal disease. Beds left full of dead annuals invite pests over winter. Pruning skipped in fall sets the stage for damage at the first heavy snow.\n\nWe handle spring and fall cleanups for our maintenance clients on a fixed schedule. Two visits a year, the rest of the season looks like itself.",
+      "hashtags": ["#SeasonalCleanup", "#YardMaintenance", "#LawnCare", "#FallLandscaping", "#SpringCleanup"],
+      "graphicHook": "Two cleanups. Whole year.",
+      "designerNotes": "Rake leaning against a wheelbarrow, autumn leaves swept into neat piles."
+    },
+    {
+      "caption": "Curb appeal is a return on investment, not a vanity project.\n\nA well kept front yard adds measurable value at sale and buyers form a first impression in less than thirty seconds. Even if you are not selling soon, curb appeal is a daily return every time you pull into the driveway.\n\nWe focus on the front yard early in our master plans. The work compounds and so does the impression.",
+      "hashtags": ["#CurbAppeal", "#FrontYardDesign", "#LandscapeDesign", "#HomeValue", "#OutdoorLiving"],
+      "graphicHook": "Thirty seconds. Lasting impression.",
+      "designerNotes": "Front yard at the curb angle, professionally landscaped, late afternoon light."
+    },
+    {
+      "caption": "Lawn care is part watering, part mowing, part patience.\n\nMost homeowners mow too short. Three inches is the sweet spot for cool season grass. The longer blade shades the soil, holds moisture, and crowds out weeds without herbicide.\n\nWe maintain lawns at the right height, sharpen mower blades regularly, and avoid the common mistakes that thin a lawn over time. Steady habits beat aggressive interventions every season.",
+      "hashtags": ["#LawnCare", "#GrassMaintenance", "#YardCare", "#LandscapeMaintenance", "#OutdoorLiving"],
+      "graphicHook": "Mow tall. Stay green.",
+      "designerNotes": "Lawn mower with deck height labeled, blade detail in foreground. Clean technical visual."
+    }
+  ],
+
+  "restaurant": [
+    {
+      "caption": "The new menu drops Tuesday and a few of you are going to fall in love with the heirloom tomato salad.\n\nWe built it around the second harvest from our farm partner about an hour north of here. Three varieties, basil and mint from the garden out back, a torn sourdough crouton tossed in brown butter, and a cracked pepper finish.\n\nIt will be on the menu through the season. After that we let the tomatoes go and pick whatever the next harvest gives us.",
+      "hashtags": ["#NewMenu", "#FarmToTable", "#SeasonalMenu", "#LocalRestaurant", "#ChefSpecial"],
+      "graphicHook": "Tomatoes. While they last.",
+      "designerNotes": "Overhead plated salad with vibrant tomato varieties. Natural light, ceramic plate."
+    },
+    {
+      "caption": "Our private dining room seats twenty four for full buyout and twelve for partial.\n\nWe handle the menu, the wine pairing, and the timing. You bring the people. We have hosted rehearsal dinners, milestone birthdays, executive offsites, and one very memorable retirement party that ran past midnight.\n\nIf you are planning something for next quarter, we are taking inquiries now. The fall calendar fills up fast.",
+      "hashtags": ["#PrivateDining", "#EventVenue", "#RestaurantEvents", "#SpecialOccasion", "#LocalRestaurant"],
+      "graphicHook": "Your night. Our room.",
+      "designerNotes": "Long table set for a private dinner with candles and wine glasses. Warm, intimate."
+    },
+    {
+      "caption": "Wine list update lands this week.\n\nThree new natural wines from a small producer in the Loire we have been waiting two years to import. A few familiar bottles aging out. And one extremely good rosé that will feel just right by the time the patio opens.\n\nIf you are a regular, our sommelier remembers what you drink. If you are new, ask. We are happy to pour a taste before you commit to a glass.",
+      "hashtags": ["#WineList", "#NaturalWine", "#Sommelier", "#LocalRestaurant", "#WineLovers"],
+      "graphicHook": "New pours. Thoughtfully chosen.",
+      "designerNotes": "Three wine bottles in soft afternoon light, label details visible. Editorial composition."
+    },
+    {
+      "caption": "Brunch on weekends has the line down the block by ten and we love it.\n\nA few practical tips. Reservations open at seven a m the day before for our regulars. The patio fills first. Our biscuits with whipped honey butter sell out every Sunday by noon, so do not wait.\n\nIf you are a first time guest, the chilaquiles verdes are the move. If you are a regular, we already know what you want.",
+      "hashtags": ["#Brunch", "#WeekendVibes", "#LocalRestaurant", "#FoodieLife", "#BrunchGoals"],
+      "graphicHook": "Brunch. Worth the line.",
+      "designerNotes": "Brunch spread top down with biscuits and a sunny brunch dish in the center. Warm energetic palette."
+    },
+    {
+      "caption": "Catering is part of how we serve our community and we keep it close to the kitchen.\n\nWe handle drop offs for offices and small events, and full service for weddings up to one hundred and twenty. The menu is the same quality as in house dining because we are not running a separate catering kitchen. Same chef, same suppliers, same standards.\n\nIf you have a date and a head count we will send a tasting invitation.",
+      "hashtags": ["#Catering", "#EventCatering", "#WeddingCatering", "#LocalRestaurant", "#FoodieLife"],
+      "graphicHook": "Same kitchen. Off site.",
+      "designerNotes": "Catering setup with chafing dishes and elegant serveware in a clean event setting."
+    },
+    {
+      "caption": "Happy hour starts at four and runs through six on weekdays.\n\nFive dollar oysters from our raw bar partner, a rotating cocktail of the week, and select bottles of natural wine at twenty percent off. The bar fills first so come a few minutes early.\n\nThis is the best window in our day. Lower volume, slightly more attention from the bartender, and the same kitchen running our happy hour menu of small plates.",
+      "hashtags": ["#HappyHour", "#OysterHappyHour", "#CraftCocktails", "#LocalRestaurant", "#AfterWork"],
+      "graphicHook": "Four. Six. Best window.",
+      "designerNotes": "Bar at four with light streaming in, oysters and a cocktail glass on the bar top."
+    },
+    {
+      "caption": "Date night is in our DNA and the corner two top is our quietest table.\n\nThe one by the window in the back. We hold it for reservations of two on Friday and Saturday nights as long as we can. If you book early enough we will get you that spot.\n\nThe full tasting menu pairs nicely with a couple of glasses each. If you tell us it is a special occasion we will make sure it feels like one.",
+      "hashtags": ["#DateNight", "#TastingMenu", "#LocalRestaurant", "#AnniversaryDinner", "#RomanticDining"],
+      "graphicHook": "Quiet corner. Slow night.",
+      "designerNotes": "Two top table by a window, candle lit, rain on the window optional. Cinematic warmth."
+    },
+    {
+      "caption": "We build our menus around what arrived from our farm partners that week.\n\nIt means a few items rotate without warning. The kale dish you loved last month might not be on the menu this month because the kale is not at its best right now. We will not serve it just to keep a name on the page.\n\nIf you ask about something that is gone, we will tell you what it became and recommend the closest match. The honesty is part of the relationship.",
+      "hashtags": ["#FarmToTable", "#SeasonalCooking", "#LocalRestaurant", "#ChefDriven", "#WhatsInSeason"],
+      "graphicHook": "Seasonal. By choice.",
+      "designerNotes": "Crates of fresh produce arriving at the back door. Chef's hands inspecting a bunch of greens."
+    },
+    {
+      "caption": "Reservations for special holidays open thirty days out and they go fast.\n\nValentine's Day, Mother's Day, Father's Day, and Restaurant Week tend to fill in the first forty eight hours. If a date matters to you, set a calendar reminder and book the morning the calendar opens.\n\nIf you missed it, we always hold a few walk in seats at the bar. Show up early, put your name down, and have a glass of wine while you wait.",
+      "hashtags": ["#HolidayDining", "#Reservations", "#LocalRestaurant", "#SpecialOccasion", "#DateNight"],
+      "graphicHook": "Book early. Eat well.",
+      "designerNotes": "Reservation book or app with date highlighted. Soft natural light, candle in foreground."
+    },
+    {
+      "caption": "Off menu specials are a small thank you to our regulars.\n\nIf you sit at the chef's counter and ask what is special tonight, you will hear about a dish that does not appear on any printed menu. Sometimes it is a new technique we are testing. Sometimes it is the last of an ingredient that the regular menu cannot accommodate.\n\nIt is one of our favorite parts of the job. The dialogue across the pass is what keeps cooking interesting.",
+      "hashtags": ["#OffMenu", "#ChefsCounter", "#ChefSpecial", "#LocalRestaurant", "#FoodieLife"],
+      "graphicHook": "Ask the chef.",
+      "designerNotes": "Chef plating an off menu dish at the pass with the kitchen line in soft focus behind."
+    }
+  ],
+
+  "veterinary": [
+    {
+      "caption": "Annual exams catch the things your pet cannot tell you about.\n\nDogs and cats are practiced at hiding pain. By the time you notice a problem, it has often been quietly developing for weeks or months. A thorough annual exam, with bloodwork on senior pets, surfaces issues early when treatment options are still inexpensive and effective.\n\nWe time the exam with vaccines so it is one visit, one bill, less stress on you and the patient.",
+      "hashtags": ["#VetCare", "#AnnualExam", "#PetWellness", "#PreventiveCare", "#PetParents"],
+      "graphicHook": "Annual exam. Quiet wins.",
+      "designerNotes": "Vet kneeling at eye level with a calm pet, soft natural light in the exam room."
+    },
+    {
+      "caption": "Dental disease is the most underdiagnosed problem we see in pets.\n\nMore than seventy percent of dogs and cats over three have some form of periodontal disease. The early signs are subtle. Bad breath, slightly inflamed gums, a small tartar buildup. Untreated, the bacteria spread through the bloodstream and affect heart, kidneys, and liver function over time.\n\nWe perform a full anesthesia dental cleaning when the disease warrants it. A short procedure, a much longer healthy life.",
+      "hashtags": ["#PetDental", "#DentalHealth", "#VetCare", "#PetWellness", "#HealthyPet"],
+      "graphicHook": "Their teeth. Their lifespan.",
+      "designerNotes": "Veterinary technician inspecting a dog's teeth gently. Educational tone."
+    },
+    {
+      "caption": "Senior pet wellness is a different protocol than annual care for a younger animal.\n\nWe screen for kidney function, thyroid changes, joint health, and cognitive shifts. The interventions that extend a senior pet's quality of life are subtle but they compound. A joint supplement here, a diet adjustment there, a routine bloodwork panel twice a year.\n\nIf your pet is over seven, we have a senior wellness program that adds maybe six visits a year and shifts how the next three to five years feel.",
+      "hashtags": ["#SeniorPet", "#PetWellness", "#VetCare", "#GeriatricVet", "#PetCare"],
+      "graphicHook": "Senior years. Lived well.",
+      "designerNotes": "Older dog with their human at home, calm and attentive. Soft warmth, lived in setting."
+    },
+    {
+      "caption": "End of life support is one of the hardest parts of this profession and we do not take it lightly.\n\nWe offer at home euthanasia when families prefer that option. We talk through pain management, quality of life signs, and what to expect in the days leading up. There is no pressure on the timeline.\n\nThe goal is always to keep the pet comfortable and the family informed, then to let the pet go on their own terms.",
+      "hashtags": ["#PetCare", "#EndOfLifeCare", "#VetSupport", "#PetLove", "#GeriatricVet"],
+      "graphicHook": "Compassion. Their last gift.",
+      "designerNotes": "Hands holding a paw, soft focus, quiet emotional weight. Honest, not theatrical."
+    },
+    {
+      "caption": "Behavior consults solve problems most people think are personality.\n\nA dog who panics at the door is not stubborn. A cat who pees outside the box is not spiteful. Most behavior issues have a medical or environmental cause that responds to treatment.\n\nWe offer behavior consults as part of our practice. The first visit is mostly listening and observation. The plan that comes out is specific, achievable, and often surprisingly effective in a few weeks.",
+      "hashtags": ["#PetBehavior", "#BehaviorConsult", "#PetTraining", "#VetCare", "#PetWellness"],
+      "graphicHook": "Behavior. Solvable.",
+      "designerNotes": "Calm dog working through a behavior exercise with a trainer or vet. Patient, focused."
+    },
+    {
+      "caption": "Puppy and kitten visits set the foundation for the entire life ahead.\n\nVaccines on schedule, deworming, microchip, spay or neuter timing, nutrition guidance, early socialization recommendations. We use these visits to answer the questions you did not realize you had.\n\nFirst time pet parents leave the puppy or kitten visit with a written care plan, a recommended food brand list, and our direct line. Bring the questions. There are no bad ones.",
+      "hashtags": ["#NewPuppy", "#NewKitten", "#PetParents", "#VetCare", "#PetWellness"],
+      "graphicHook": "Day one. Set up right.",
+      "designerNotes": "New puppy on an exam table with a bright eyed expression. Owner's hand visible offering reassurance."
+    },
+    {
+      "caption": "Heartworm and flea protection sound like extras until they are not.\n\nHeartworm treatment costs roughly thirty times more than prevention and the disease causes irreversible damage along the way. Flea infestations spread through the home in days and take weeks to clear once established.\n\nMonthly preventive is the smallest cost we ask of any patient owner. We carry the brand we trust at fair prices and ship it directly to your home if that is easier.",
+      "hashtags": ["#HeartwormPrevention", "#FleaProtection", "#PetWellness", "#VetCare", "#PreventiveCare"],
+      "graphicHook": "Prevention now. Costs less.",
+      "designerNotes": "Monthly preventive box arriving in the mail beside a happy dog. Subtle, informative."
+    },
+    {
+      "caption": "Nutrition is the most underrated lever in pet health.\n\nThe food bowl is the daily medical decision most pets never see a vet about. We help match diet to life stage, breed, and any medical conditions. Sometimes the recommendation is the bag you are already buying. Sometimes it is a switch that resolves a chronic skin condition in six weeks.\n\nWe walk through nutrition at every annual exam. No commission, no upsell. Just what works for your specific pet.",
+      "hashtags": ["#PetNutrition", "#PetFood", "#VetCare", "#PetWellness", "#HealthyPet"],
+      "graphicHook": "The bowl matters.",
+      "designerNotes": "Top down of a dog or cat at their bowl with a measuring cup beside. Warm domestic feel."
+    },
+    {
+      "caption": "Spay and neuter timing is more nuanced than the old advice you may have heard.\n\nFor large breed dogs, hormone exposure during early growth supports joint development and reduces certain cancer risks. For some breeds we now recommend later sterilization than was standard a decade ago. The right timing depends on breed, sex, and lifestyle.\n\nWe walk through current research with every new puppy parent. The decision should be specific to your pet, not a generic age threshold.",
+      "hashtags": ["#SpayNeuter", "#VetCare", "#PuppyHealth", "#BreedSpecific", "#PetWellness"],
+      "graphicHook": "Timing. Specific to them.",
+      "designerNotes": "Breed silhouettes with timing recommendations. Modern, educational, not preachy."
+    },
+    {
+      "caption": "Urgent care versus emergency care is a distinction worth knowing before you need it.\n\nWe handle urgent same day issues during business hours. Allergic reactions, minor wounds, sudden GI episodes. The kind of thing that cannot wait until next week but is not life threatening tonight.\n\nFor true emergencies we have a relationship with the after hours specialty hospital nearby. Save both numbers in your phone before something happens. The five minutes you save in a real emergency matters.",
+      "hashtags": ["#UrgentCare", "#PetEmergency", "#VetCare", "#PetSafety", "#PetParents"],
+      "graphicHook": "Save the number. Now.",
+      "designerNotes": "Phone with vet contact saved, calm pet beside it. Reassuring not alarming."
+    }
+  ],
+
+  "contracting": [
+    {
+      "caption": "Kitchen remodels go best when the homeowner has lived with the layout for at least a year before tearing it out.\n\nWe see clients try to rebuild around what looks good in a magazine. The remodels that work are the ones built around how the family actually cooks, where the natural light hits, where the kids do homework, and what the existing footprint can support.\n\nBefore we draft a single plan we walk through the space at three different times of day with you. The right design starts with the right questions.",
+      "hashtags": ["#KitchenRemodel", "#HomeRenovation", "#GeneralContracting", "#KitchenDesign", "#HomeImprovement"],
+      "graphicHook": "Live first. Remodel second.",
+      "designerNotes": "Existing kitchen with morning light, blueprints on the counter. Honest pre-remodel snapshot."
+    },
+    {
+      "caption": "Permits are not a delay. They are protection for the homeowner.\n\nA permitted job has city inspections at every critical phase. Foundation, framing, electrical, plumbing, final. Each inspection is a third party check that the work meets code. Unpermitted work shows up on title searches at sale and complicates insurance claims after damage.\n\nWe pull permits on every project where they apply. The price line is small. The risk it removes is large.",
+      "hashtags": ["#PermittedWork", "#GeneralContracting", "#HomeRenovation", "#ConstructionStandards", "#LicensedContractor"],
+      "graphicHook": "Permits. Protection.",
+      "designerNotes": "Permit posted on a job site fence with a city inspector at the door. Clean documentary feel."
+    },
+    {
+      "caption": "Detailed timelines are not just for planning. They are how trust gets built.\n\nA real construction timeline includes phase milestones, materials lead times, subcontractor schedules, and inspection windows. We share ours in writing on every project. When something shifts, you hear about it from us before it affects you.\n\nMost construction stress comes from not knowing what is happening when. We solve that with calendar transparency and weekly progress photos delivered on Fridays.",
+      "hashtags": ["#ConstructionTimeline", "#HomeRenovation", "#GeneralContracting", "#ProjectManagement", "#HomeImprovement"],
+      "graphicHook": "Timeline. In writing.",
+      "designerNotes": "Gantt style chart printed on construction paper, pinned to a job site wall. Honest, used."
+    },
+    {
+      "caption": "Bathroom remodels are the highest return small project most homeowners can do.\n\nA refreshed primary bath updates the daily experience and supports resale value disproportionate to the budget. The sweet spot is a fixture refresh, tile update, vanity replacement, and lighting overhaul without moving plumbing locations.\n\nMoving plumbing is where bathroom budgets explode. We design around the existing layout when we can and only relocate when the existing footprint truly does not work.",
+      "hashtags": ["#BathroomRemodel", "#HomeRenovation", "#GeneralContracting", "#BathroomDesign", "#HomeImprovement"],
+      "graphicHook": "Stay in the footprint.",
+      "designerNotes": "Refreshed bathroom with original tile pattern visible faintly underneath. Then and now feel."
+    },
+    {
+      "caption": "Additions add square footage and structural questions in equal measure.\n\nLoad bearing walls, foundation extension, roofline integration, mechanical capacity. Each one is a decision point that affects budget and timeline. We bring a structural engineer into the conversation early on every addition project.\n\nAn addition done right looks like it was always part of the house. An addition done wrong looks like a house with a sticker on it.",
+      "hashtags": ["#HomeAddition", "#StructuralWork", "#GeneralContracting", "#HomeRenovation", "#HomeExpansion"],
+      "graphicHook": "Adds. Looks original.",
+      "designerNotes": "Exterior of a home with a tasteful addition that integrates seamlessly. Wide angle, honest light."
+    },
+    {
+      "caption": "Transparent pricing is not a marketing claim. It is a line item philosophy.\n\nWe break out labor, materials, subcontractor costs, and contingency separately on every quote. You see what each phase costs and where the money goes. Change orders are itemized in real time so the budget conversation is never a year end surprise.\n\nThe pricing model means we cannot hide a markup. It also means clients trust us with their second and third projects.",
+      "hashtags": ["#TransparentPricing", "#GeneralContracting", "#HonestContractor", "#HomeRenovation", "#FairPricing"],
+      "graphicHook": "Itemized. Always.",
+      "designerNotes": "Itemized estimate on a clipboard with line items clearly visible. Hands signing at the bottom."
+    },
+    {
+      "caption": "Subcontractor relationships are the quiet engine of any general contractor.\n\nWe work with the same electricians, plumbers, drywall crews, and tile setters on every project. They know our standards. We know their schedules. The result is a job site where the trades hand off cleanly and the timeline holds.\n\nOpen call subs charge less per job and cost more in delays and rework. The math favors steady relationships every time.",
+      "hashtags": ["#TradesPeople", "#SkilledTrades", "#GeneralContracting", "#TeamWork", "#HomeRenovation"],
+      "graphicHook": "Same crew. Every project.",
+      "designerNotes": "Wide shot of a coordinated job site with multiple trades working in their lanes. Active but organized."
+    },
+    {
+      "caption": "Open concept renovations are not always the answer.\n\nThe trend ran for fifteen years and we have watched plenty of homeowners regret tearing out walls that were doing real work. Acoustic separation, smell containment from the kitchen, defined zones for kids and adults. Some of these matter more once you live without them.\n\nWe walk through the trade offs before we recommend any wall removal. The right plan respects how the house is actually used.",
+      "hashtags": ["#OpenConcept", "#FloorPlanDesign", "#HomeRenovation", "#GeneralContracting", "#KitchenDesign"],
+      "graphicHook": "Wall stays. Or wall goes.",
+      "designerNotes": "Two side by side floor plans with and without a key wall. Clean architectural illustration."
+    },
+    {
+      "caption": "Whole home renovations come together in phases and the sequencing matters.\n\nMechanicals first. Then framing changes. Then drywall and trim. Then finishes. Skipping ahead saves a week and costs a month later. We sequence every renovation with the same discipline because it is what keeps the project moving.\n\nFor whole home jobs we typically recommend living offsite for the most disruptive eight to twelve weeks. The math on temporary housing usually beats the friction of living through it.",
+      "hashtags": ["#WholeHomeRenovation", "#GeneralContracting", "#HomeRenovation", "#ConstructionPhases", "#HomeImprovement"],
+      "graphicHook": "Sequence saves weeks.",
+      "designerNotes": "Project phasing diagram with house silhouette evolving through stages. Clean infographic style."
+    },
+    {
+      "caption": "Licensed, bonded, and insured is the floor of working with a contractor, not the ceiling.\n\nLicense means the state has verified credentials. Bonded means there is recourse if work is incomplete. Insured means workers compensation and liability coverage protect you and the workers on your property. Three different protections, all baseline.\n\nIf a bid comes in significantly below market and the contractor is missing one of the three, the math on the bid usually does not survive a closer look.",
+      "hashtags": ["#LicensedContractor", "#BondedAndInsured", "#GeneralContracting", "#HomeRenovation", "#TrustedContractor"],
+      "graphicHook": "Three checks. Floor.",
+      "designerNotes": "Three icons representing the three credentials in a row. Clean professional palette."
+    }
+  ],
+
+  "photography": [
+    {
+      "caption": "Wedding day timelines are the difference between a stressed couple and a calm couple.\n\nWe build a custom timeline with every wedding client about six weeks out. Hair and makeup buffer, first look window, family portraits in batched groups, sunset window for the couple, reception entrance, all locked in.\n\nThe day still has surprises. The timeline gives them somewhere to land without throwing everything off.",
+      "hashtags": ["#WeddingPhotography", "#WeddingPlanning", "#WeddingDay", "#WeddingTimeline", "#WeddingPhotographer"],
+      "graphicHook": "Timeline. Day flows.",
+      "designerNotes": "Hand drawn wedding timeline on heavy stock paper, ring in the corner. Editorial styling."
+    },
+    {
+      "caption": "Family sessions look effortless when they are over and they take real prep to get there.\n\nWe send a guide ahead of every session covering location options, what light works at what time, and how to dress without matching too hard. Most clients tell us the prep guide answered questions they did not know they had.\n\nThe session itself is then about play, not posing. We capture the way the family actually is, not the way they think they are supposed to look.",
+      "hashtags": ["#FamilyPhotography", "#FamilySession", "#FamilyPortraits", "#LifestylePhotography", "#FamilyPhotos"],
+      "graphicHook": "Prep first. Play second.",
+      "designerNotes": "Family running through a meadow at golden hour, candid expressions. Light, joyful."
+    },
+    {
+      "caption": "Branding photos work harder than people expect them to.\n\nA cohesive set of brand images runs across your website, social, press kit, ads, and onboarding materials for years. The shoot is one day. The output runs for a season or longer.\n\nWe scope branding sessions around what your brand actually needs. A coach needs different shots than a product founder. The brief gets specific before the camera comes out.",
+      "hashtags": ["#BrandPhotography", "#BrandingShoot", "#PersonalBrand", "#SmallBusiness", "#ContentCreation"],
+      "graphicHook": "One day. One year of assets.",
+      "designerNotes": "Founder portrait with brand color accents, on location at their workspace. Editorial polish."
+    },
+    {
+      "caption": "Headshots are not a passport photo. They are a positioning statement.\n\nThe right headshot signals what you do, who you do it for, and what kind of professional you are. A coach in soft natural light reads differently than a litigator in a styled office. Both can be excellent. Neither is interchangeable.\n\nWe scope headshot sessions around the role and the audience. The result is a photo that does work for you on every platform that needs one.",
+      "hashtags": ["#Headshots", "#ProfessionalHeadshots", "#PersonalBrand", "#LinkedInPhoto", "#PortraitPhotography"],
+      "graphicHook": "Your photo. On strategy.",
+      "designerNotes": "Clean headshot, considered lighting, brand color in the wardrobe. Direct gaze."
+    },
+    {
+      "caption": "Behind the scenes content is some of our highest performing client work.\n\nA single day on set produces enough vertical and horizontal cuts to keep a brand's social calendar fed for two months. The footage shows the work, the team, and the texture of how things actually get made. Audiences engage with that more than they engage with finished product shots alone.\n\nWe shoot BTS on most of our projects now. It is a low cost addition and it almost always pays for itself.",
+      "hashtags": ["#BehindTheScenes", "#BTSFootage", "#ContentCreation", "#VideoProduction", "#BrandStorytelling"],
+      "graphicHook": "BTS. Two months of content.",
+      "designerNotes": "On set candid with crew, lights, and talent in motion. Energy, not stillness."
+    },
+    {
+      "caption": "Editorial photography gives a story shape that text alone cannot reach.\n\nA story we shot last quarter for a small business client ran on three different publications and brought in fourteen new client inquiries within the month. Good editorial work travels.\n\nThe approach is research heavy on the front end, light handed on the day of. We come with a shot list and we leave room for what actually shows up. Both halves matter.",
+      "hashtags": ["#EditorialPhotography", "#StoryDriven", "#BrandStorytelling", "#MagazineStyle", "#EditorialShoot"],
+      "graphicHook": "Editorial. Travels.",
+      "designerNotes": "Editorial style spread mockup with hero image and pull quote. Clean editorial design."
+    },
+    {
+      "caption": "Engagement sessions are the warm up for a wedding day.\n\nThe couple gets used to being in front of the lens. We get a feel for how they interact, what makes them laugh, where the easy expressions live. The wedding day then runs smoother because we are not meeting on the day of.\n\nIf you are booking a wedding with us, the engagement session is included for that reason.",
+      "hashtags": ["#EngagementPhotos", "#EngagementSession", "#WeddingPhotography", "#CouplesPhotography", "#WeddingPlanning"],
+      "graphicHook": "Engagement. Warm up.",
+      "designerNotes": "Couple laughing in soft afternoon light, candid, hand in hand. Romantic but unposed."
+    },
+    {
+      "caption": "Studio sessions and on location sessions are different tools for different jobs.\n\nStudio gives you full control over light, background, and pace. On location gives you the texture of real space and natural light. Neither is better. They serve different ends.\n\nWe walk every client through the choice during the discovery call. The right answer comes from the use case, not from a default preference on either side.",
+      "hashtags": ["#StudioPhotography", "#OnLocation", "#PortraitSession", "#PhotographyTips", "#Photographer"],
+      "graphicHook": "Studio. Or location. Pick.",
+      "designerNotes": "Diptych of a clean studio backdrop and an on location outdoor shoot. Side by side comparison."
+    },
+    {
+      "caption": "Print products are one of the few ways photos still last.\n\nPhones break. Cloud accounts get lost. Hard drives fail. A printed album sits on a shelf in your living room for forty years and outlives every digital storage method you used in the meantime.\n\nWe include a printed album in our wedding packages and we offer print upgrades on every family session. The medium matters and the print holds.",
+      "hashtags": ["#PrintedPhotos", "#WeddingAlbum", "#PrintLasts", "#FamilyAlbum", "#PhotoBooks"],
+      "graphicHook": "Print. Outlives the cloud.",
+      "designerNotes": "Wedding album open on a coffee table with matte finish prints inside. Tactile, warm."
+    },
+    {
+      "caption": "Lighting is the single most important variable on any shoot.\n\nA mediocre composition in beautiful light beats a perfect composition in flat light every time. We schedule sessions around the light first, then around the calendar. Golden hour is golden hour for a reason and we will move heaven and earth to honor it.\n\nIf you are scheduling around our timeline, trust the time we suggest. The light is doing half the work.",
+      "hashtags": ["#GoldenHour", "#NaturalLight", "#PhotographyLighting", "#LightingMatters", "#Photographer"],
+      "graphicHook": "Light. Then everything else.",
+      "designerNotes": "Wide angle landscape with dramatic golden hour light streaming across the frame."
+    }
+  ],
+
+  "hvac": [
+    {
+      "caption": "Heat pumps are the upgrade most homeowners delay because they do not understand the math.\n\nA modern cold climate heat pump runs more efficiently than a gas furnace through most of the heating season, and it doubles as your air conditioner in summer. The install replaces two systems with one and the energy bills usually drop the first month.\n\nWe size every heat pump install with a manual J load calculation. Oversized units short cycle. Undersized units run all night. Right sized units do their job quietly for fifteen years.",
+      "hashtags": ["#HeatPump", "#EnergyEfficient", "#HVACUpgrade", "#HomeComfort", "#HVACService"],
+      "graphicHook": "One system. Both seasons.",
+      "designerNotes": "Modern outdoor heat pump unit beside a clean home exterior. Professional documentary style."
+    },
+    {
+      "caption": "Indoor air quality is something most homeowners do not think about until allergies hit.\n\nA decent filter with a high MERV rating, an annual duct inspection, and a humidity setpoint that fits your climate. Three small habits that change how your house feels every day.\n\nWe carry whole home air purifiers as well, but we usually start with the basics. Most homes do not need a hospital grade solution if the fundamentals are working.",
+      "hashtags": ["#IndoorAirQuality", "#IAQ", "#HVACService", "#AllergyRelief", "#HealthyHome"],
+      "graphicHook": "Air. Worth checking.",
+      "designerNotes": "Clean filter being installed in a furnace, brand color accent on the new filter face."
+    },
+    {
+      "caption": "HVAC maintenance plans pay for themselves in three places.\n\nFirst, scheduled tune ups catch small problems before they fail. Second, the priority service tier gets you to the front of the line during a heat wave or cold snap. Third, manufacturer warranties typically require documented annual service.\n\nWe offer a maintenance plan that covers two visits a year, priority dispatch, and a discount on any parts. Most clients break even by year two.",
+      "hashtags": ["#HVACMaintenance", "#PriorityService", "#HVACTuneUp", "#HomeMaintenance", "#HVACService"],
+      "graphicHook": "Plan. Then forget it.",
+      "designerNotes": "Tech servicing a furnace with a checklist on a clipboard. Late afternoon light."
+    },
+    {
+      "caption": "Ductless mini splits solve the problem of one room that the rest of the house ignores.\n\nFinished basements, sunrooms, attic conversions, and garage workshops are the classic candidates. A single zone mini split adds heating and cooling without extending the duct system, and it operates independently of the rest of the house.\n\nWe install three brands and we will tell you which one fits your specific install. The size of the room and how it is insulated matter more than the badge on the unit.",
+      "hashtags": ["#MiniSplit", "#DuctlessHVAC", "#HVACInstall", "#HomeUpgrade", "#HVACService"],
+      "graphicHook": "One room. One unit.",
+      "designerNotes": "Wall mounted mini split head in a clean finished space with the outdoor unit visible through a window."
+    },
+    {
+      "caption": "Furnace replacements done in summer cost less than emergency replacements done in February.\n\nThe demand curve in the trade is steep. From November through March the same install costs more, takes longer, and gives you fewer choices on the unit because suppliers ration inventory.\n\nIf your furnace is at or past the end of its expected life, we offer summer install pricing through August. The unit goes in on a schedule that works for you, not on the day of the first cold snap.",
+      "hashtags": ["#FurnaceReplacement", "#HVACInstall", "#PreventiveMaintenance", "#HomeMaintenance", "#HVACService"],
+      "graphicHook": "Replace warm. Save cold.",
+      "designerNotes": "Clean new furnace install in a basement utility room with morning light through a small window."
+    },
+    {
+      "caption": "Smart thermostats are not just a gadget. They are an energy saver that pays for itself in a year or two.\n\nThe scheduling, the geofencing, the learning algorithms, the remote control. Each one shaves a percentage off the bill. Together they typically reduce heating and cooling cost by ten to fifteen percent.\n\nWe install and configure them as part of any service visit. Five minutes of setup, years of savings.",
+      "hashtags": ["#SmartThermostat", "#EnergyEfficient", "#HVACUpgrade", "#HomeAutomation", "#HVACService"],
+      "graphicHook": "Smart thermostat. Quiet savings.",
+      "designerNotes": "Smart thermostat on a wall with a soft glow, family in the background going about life."
+    },
+    {
+      "caption": "Air conditioner short cycling is the symptom most homeowners ignore until something fails.\n\nIf your AC is kicking on and off every few minutes, it is fighting you. The unit may be oversized for the space. The refrigerant charge may be off. A sensor may be miscalibrated. Each cause is fixable but they get harder the longer the cycling continues.\n\nWe diagnose short cycling on the first visit. Usually the fix is straightforward. The cost of ignoring it is a compressor replacement at year ten instead of year fifteen.",
+      "hashtags": ["#ACRepair", "#ShortCycling", "#HVACDiagnostic", "#HomeMaintenance", "#HVACService"],
+      "graphicHook": "Cycling. Diagnose now.",
+      "designerNotes": "Tech with a manifold gauge set on an outdoor unit, focused expression."
+    },
+    {
+      "caption": "Whole home humidification is a quiet upgrade that most people only notice when they remove it.\n\nWinter humidity in tight modern homes drops well below the comfort range. Skin dries out. Wood floors split. Static electricity ramps up. A whole home humidifier integrated into the furnace solves all of it without thinking.\n\nWe install a few different models depending on your duct layout and water source. The unit runs in the background and you barely notice it doing its job.",
+      "hashtags": ["#Humidifier", "#WinterComfort", "#HVACUpgrade", "#HomeComfort", "#HVACService"],
+      "graphicHook": "Humidity. Set it and forget it.",
+      "designerNotes": "Bypass humidifier installed on a furnace duct, clean utility room."
+    },
+    {
+      "caption": "Refrigerant changes have shifted the install math for new systems.\n\nThe industry is transitioning to lower global warming potential refrigerants. Older systems running R 22 are increasingly expensive to service because the refrigerant itself is restricted. We help homeowners decide whether to repair or replace based on the unit's age, refrigerant type, and condition.\n\nIf your system is fifteen plus years old and using older refrigerant, the replacement math usually wins.",
+      "hashtags": ["#RefrigerantTransition", "#HVACReplacement", "#R22", "#A2L", "#HVACService"],
+      "graphicHook": "Refrigerant. Time to replace.",
+      "designerNotes": "Outdoor unit nameplate close up with refrigerant label visible. Educational tone."
+    },
+    {
+      "caption": "Annual fall tune ups catch furnace issues before the first cold night reveals them.\n\nThe checklist is the same every year. Inspect the heat exchanger, clean the burners, check the inducer, test the safety controls, replace the filter, calibrate the thermostat. An hour or so per visit and the system runs predictably for the season.\n\nWe schedule fall tune ups starting in September. If you book early you get the morning window of your choice.",
+      "hashtags": ["#FallTuneUp", "#FurnaceService", "#HVACMaintenance", "#PreventiveCare", "#HVACService"],
+      "graphicHook": "Tune up before the cold.",
+      "designerNotes": "Tech kneeling at an open furnace cabinet with tools laid out, autumn light through the window."
+    }
+  ],
+
+  "education": [
+    {
+      "caption": "Tutoring is most effective when it is consistent and short.\n\nForty five minutes once or twice a week beats two hour weekend marathons every time. Your brain consolidates between sessions. Confidence builds in small increments. The student stops dreading the work because the work is shorter and more predictable.\n\nWe schedule sessions in the same time slot every week so the routine becomes a part of life rather than a calendar negotiation.",
+      "hashtags": ["#Tutoring", "#AcademicCoaching", "#StudySkills", "#EducationMatters", "#StudentSuccess"],
+      "graphicHook": "Short. Consistent. Compounds.",
+      "designerNotes": "Student and tutor at a clean desk with a single textbook open. Calm focused environment."
+    },
+    {
+      "caption": "Test prep is a skill before it is a content review.\n\nTime management, question triage, eliminating answer choices, knowing when to skip. These transferable skills move scores more reliably than memorizing one more list of vocab words. We teach the test taking layer alongside the content.\n\nMost students see meaningful score improvements within four to six sessions when both are addressed together. Content alone is the slow path.",
+      "hashtags": ["#TestPrep", "#SATPrep", "#ACTPrep", "#StudySkills", "#TestStrategy"],
+      "graphicHook": "Strategy first. Content second.",
+      "designerNotes": "Practice test on a desk with key strategies highlighted in the margins. Pencil and stopwatch nearby."
+    },
+    {
+      "caption": "Executive function coaching helps middle and high school students manage the work, not just do it.\n\nPlanning a long term project. Breaking down a syllabus. Tracking deadlines across six classes. Knowing when to ask for help. These are the skills schools assume students arrive with and rarely teach explicitly.\n\nWe coach executive function as a stand alone service. Often the academic grades follow once the systems are in place.",
+      "hashtags": ["#ExecutiveFunction", "#StudySkills", "#AcademicCoaching", "#StudentSupport", "#OrganizationSkills"],
+      "graphicHook": "Manage the work. Then do it.",
+      "designerNotes": "Planner open on a desk with clear weekly structure. Color coded subjects, organized."
+    },
+    {
+      "caption": "One on one tutoring works because the pace adjusts to the learner.\n\nClassroom instruction is built around an average. A capable student gets bored. A struggling student gets left behind. One on one work meets the learner where they actually are and moves at their actual pace, and the learning sticks more reliably as a result.\n\nThe model is more expensive per hour and more efficient per learning unit. Most parents calculate it as cheaper in the end.",
+      "hashtags": ["#OneOnOneTutoring", "#PersonalizedLearning", "#AcademicCoaching", "#PrivateTutor", "#EducationMatters"],
+      "graphicHook": "Their pace. Their progress.",
+      "designerNotes": "Tutor and student in a quiet room, leaning over the same paper. Eye contact, engaged."
+    },
+    {
+      "caption": "Math anxiety is a real obstacle and it is solvable.\n\nMost students who struggle with math do not lack capability. They lack confidence. The first time they got a wrong answer in front of a class set the pattern. From there every wrong answer reinforced the story.\n\nWe rebuild the foundation in low stakes settings. Wrong answers are part of the process. The goal is to get the brain comfortable with productive struggle again.",
+      "hashtags": ["#MathTutoring", "#MathAnxiety", "#StudentSupport", "#AcademicCoaching", "#EducationMatters"],
+      "graphicHook": "Confidence. Then math.",
+      "designerNotes": "Student smiling at a math problem, working through it patiently. Warm relatable scene."
+    },
+    {
+      "caption": "Reading and writing tutoring rarely starts with reading and writing.\n\nIt starts with vocabulary, with sentence structure, with the underlying patterns that fluent readers absorb without realizing it. The students who struggle with longer texts often have gaps at this layer that nobody addressed.\n\nWe diagnose reading skills carefully on the first session and design the work around what is actually missing. Filling the gaps is faster than re reading the syllabus chapter.",
+      "hashtags": ["#ReadingTutor", "#WritingTutor", "#LiteracyMatters", "#AcademicCoaching", "#StudentSuccess"],
+      "graphicHook": "Find the gap. Fill it.",
+      "designerNotes": "Open book with vocabulary notes in the margins, soft natural light on a wooden desk."
+    },
+    {
+      "caption": "Science tutoring for high school students bridges the lab and the textbook.\n\nMany students can repeat the formulas without understanding the underlying physics, chemistry, or biology. Then a problem twists slightly and the formula no longer applies. We connect the abstract concept to a concrete example until the underlying picture is clear.\n\nThe shift unlocks both the next test and the year after, because science classes build on each other. Filling foundational gaps now compounds.",
+      "hashtags": ["#ScienceTutor", "#STEMEducation", "#HighSchoolScience", "#AcademicCoaching", "#StudentSuccess"],
+      "graphicHook": "Picture first. Formula second.",
+      "designerNotes": "Whiteboard with a physics problem broken down into a sketch and an equation side by side."
+    },
+    {
+      "caption": "College application coaching is more strategy than essay editing.\n\nWhich schools to apply to, which to apply to early, which scholarships to chase, how to position the application narrative across all the schools on the list. The essays matter. The framework around them matters more.\n\nWe start coaching juniors in the spring and seniors in the summer. By the time deadlines arrive the heavy thinking is already done.",
+      "hashtags": ["#CollegeApplications", "#CollegeCoaching", "#CollegePrep", "#HighSchoolJuniors", "#StudentSuccess"],
+      "graphicHook": "Strategy. Then essays.",
+      "designerNotes": "Map of colleges with application timeline overlay. Strategic visual planning aesthetic."
+    },
+    {
+      "caption": "Group classes have their place and one on one tutoring fills different needs.\n\nGroup work builds peer learning, accountability, and discussion based depth. One on one work builds individualized pacing and gap filling. Many students benefit from both at the same time.\n\nWe offer small group sessions for students who want collaborative practice alongside individual coaching. The combination usually outperforms either approach alone for most subjects.",
+      "hashtags": ["#GroupTutoring", "#OneOnOneTutoring", "#SmallGroup", "#AcademicCoaching", "#StudentSupport"],
+      "graphicHook": "Group. Solo. Both.",
+      "designerNotes": "Two scenes in one frame. Small group around a table on one side, one on one on the other."
+    },
+    {
+      "caption": "Parents often ask whether tutoring will create dependency.\n\nThe honest answer is the opposite. Good tutoring builds independence by teaching the student how to study, how to organize, and how to seek help productively. The student leaves more capable than they arrived.\n\nWe measure success by sessions saved as much as by sessions completed. The goal is for our students to outgrow us.",
+      "hashtags": ["#StudentIndependence", "#AcademicCoaching", "#StudySkills", "#EducationMatters", "#StudentSuccess"],
+      "graphicHook": "Outgrow the tutor.",
+      "designerNotes": "Student walking away from a tutoring desk with confidence, books in hand. Forward facing composition."
+    }
+  ],
+
+  "beauty": [
+    {
+      "caption": "Color appointments work best when you book the consultation a week ahead.\n\nA fifteen minute consult lets us see your hair in natural light, talk through what you actually want, and source the right product for your specific tone. The day of color appointment goes faster, fits the time we set aside, and the result lands closer to what was in your head.\n\nWe always offer the consult free for new clients. The investment in the relationship matters more than the upfront cost.",
+      "hashtags": ["#HairColor", "#ColorConsultation", "#HairSalon", "#ColorMelt", "#HairGoals"],
+      "graphicHook": "Consult. Then color.",
+      "designerNotes": "Stylist holding color swatches against a client's hair in soft natural light by a window."
+    },
+    {
+      "caption": "Extensions are not a quick add on. They are a partnership with the hair you have.\n\nA proper install protects your natural hair, blends in seamlessly, and lasts for months. A rushed install damages the underlying hair, looks obvious from across a room, and turns into a repair job. The difference is technique and the quality of the hair sourced.\n\nWe specialize in tape ins and weft installs. We will tell you which method fits your hair, your lifestyle, and your maintenance budget before we book.",
+      "hashtags": ["#HairExtensions", "#TapeIns", "#HairWefts", "#HairSalon", "#HairGoals"],
+      "graphicHook": "Method matters.",
+      "designerNotes": "Close up of a clean extension install with seamless blend, side angle of styled hair after."
+    },
+    {
+      "caption": "Cuts are an investment that lasts longer than most clients realize.\n\nA precise cut grows out gracefully because each section is shaped to support the next phase. A rushed cut grows out into a problem within four weeks. The same shape, two different lifespans.\n\nWe build cuts that are designed to grow well. Many of our clients book six to eight weeks out and the cut still feels intentional in week five.",
+      "hashtags": ["#HairCut", "#PreciseCut", "#HairSalon", "#HairCare", "#StylistChoice"],
+      "graphicHook": "Cut. Grows on plan.",
+      "designerNotes": "Three frame style sequence. Day of cut, week three, week six. Same hair, evolving naturally."
+    },
+    {
+      "caption": "Bridal hair and makeup is a full team operation.\n\nWe do trial runs four to six weeks before the wedding so the timeline, the look, and the products all get tested in advance. The day of, we send a stylist team that handles the bride and the bridal party in parallel. Everyone is camera ready before first look.\n\nWe book bridal teams six to eight months in advance. If you are getting married next year, send us your date now.",
+      "hashtags": ["#BridalHair", "#BridalMakeup", "#WeddingHair", "#WeddingDay", "#BridalTeam"],
+      "graphicHook": "Trial. Then the day.",
+      "designerNotes": "Bride in chair with stylist working, soft glamour lighting, getting ready environment."
+    },
+    {
+      "caption": "Lash and brow services are the small upgrades that change how every photo looks.\n\nA lash lift, a brow lamination, a tint and shape. Each one takes less than an hour and the result lasts six to eight weeks. The morning routine gets shorter, the makeup goes on faster, and the eyes look like a more rested version of themselves.\n\nWe offer them as add ons to most appointments because clients keep asking. The value to time ratio is one of the best in the salon.",
+      "hashtags": ["#LashLift", "#BrowLamination", "#LashesAndBrows", "#BeautyServices", "#NaturalGlow"],
+      "graphicHook": "Lash. Brow. Done.",
+      "designerNotes": "Eye level macro of beautifully shaped brows and lifted lashes. Editorial styling."
+    },
+    {
+      "caption": "Skin care services are a bridge between salon services and a clinical aesthetician.\n\nA hydrating facial, a chemical peel at the right strength, an extraction session done correctly. Each one supports the rest of your beauty routine. We refer to clinical providers when the work calls for it and we deliver maintenance level care in house.\n\nThe right cadence is usually every four to six weeks. Most of our clients book recurring slots and notice the cumulative effect.",
+      "hashtags": ["#SkinCare", "#FacialTreatment", "#GlowingSkin", "#BeautyServices", "#SkinHealth"],
+      "graphicHook": "Skin. On schedule.",
+      "designerNotes": "Aesthetician applying a serum during a facial in a calm dim treatment room."
+    },
+    {
+      "caption": "Education forward stylists do better work and we hire only that kind.\n\nEvery stylist on our team takes at least two continuing education classes a year. New techniques, new color lines, new chemistry. The industry evolves and the best stylists evolve with it.\n\nIt is part of why our pricing reflects what it does. Skill takes time to maintain and we honor the time.",
+      "hashtags": ["#StylistEducation", "#ContinuingEd", "#HairSalon", "#PrecisionStylist", "#SalonLife"],
+      "graphicHook": "Skill. Maintained.",
+      "designerNotes": "Stylist at a continuing education class with model and instructor, focused workshop setting."
+    },
+    {
+      "caption": "Booking online is faster than calling and we set the system up to be useful.\n\nReal time availability across every stylist. Service descriptions. Approximate timing. Cancellation policy. Reminder texts a day before so nobody forgets.\n\nIf you have a complex request, the call is still better. For routine appointments, the online tool gets you scheduled in under a minute and you can rebook from your couch.",
+      "hashtags": ["#OnlineBooking", "#SalonAppointment", "#HairAppointment", "#ConvenientBooking", "#HairSalon"],
+      "graphicHook": "Book. From your couch.",
+      "designerNotes": "Phone showing booking interface with calendar visible. Clean UI mockup style."
+    },
+    {
+      "caption": "Color correction is a multi visit process and the timeline matters.\n\nIf you came in with box dye to fix, or with a color from another stylist that did not land, the work usually takes two to three sessions to do safely. We take the time because forcing it in one session damages the hair and limits where the color can go from there.\n\nWe map the plan in the consult, share the timeline, and stick to it. Patience is part of the result.",
+      "hashtags": ["#ColorCorrection", "#HairColor", "#HairSalon", "#ColorRescue", "#StylistChoice"],
+      "graphicHook": "Correction. In stages.",
+      "designerNotes": "Three frame progression of color correction. Before, mid process, after. Honest visible progress."
+    },
+    {
+      "caption": "We carry product lines in the salon for a reason and a discount is part of it.\n\nThe shampoo and conditioner you bought from a drugstore are formulated differently than the ones we use at the chair. Sometimes the difference is dramatic. Other times it is marginal. We tell you the truth on each one rather than pushing every product on the shelf.\n\nIf the salon line is a real upgrade for your hair we will say so. If the drugstore version works fine we will say that too.",
+      "hashtags": ["#HairProducts", "#SalonProducts", "#HairCare", "#HonestRecommendation", "#HairSalon"],
+      "graphicHook": "Product. With honesty.",
+      "designerNotes": "Salon shelf with select products, stylist's hand picking one. Editorial product styling."
+    }
+  ],
+
+  "beverage": [
+    {
+      "caption": "The taproom rotation refreshes Friday and we are pretty excited about this lineup.\n\nThree returning seasonals, two new brews from our pilot system, and a barrel aged release that has been resting since the spring. Tap list updates live on the website by noon.\n\nWe do flights at the bar for anyone who wants to taste through. Tell the bartender what styles you usually like and they will pick four for you to try.",
+      "hashtags": ["#Brewery", "#TapList", "#NewRelease", "#CraftBeer", "#TaproomLife"],
+      "graphicHook": "New tap list. Friday.",
+      "designerNotes": "Tap handles in a row with the new list visible behind, low light bar setting, beer in hand."
+    },
+    {
+      "caption": "Brewery tours run Saturday afternoons and they are more fun than they sound on paper.\n\nForty five minutes through the brew house with our head brewer, a couple of small pours along the way, and a chance to ask the questions you would not get to ask at the bar. We cap each tour at twelve people on purpose.\n\nTours are free with reservation. Walk ins join the next available tour or grab a drink in the taproom while you wait.",
+      "hashtags": ["#BreweryTour", "#CraftBeer", "#BehindTheBrew", "#TaproomLife", "#WeekendVibes"],
+      "graphicHook": "Saturday. Behind the kettles.",
+      "designerNotes": "Head brewer pointing at the mash tun with a small group listening, warm industrial setting."
+    },
+    {
+      "caption": "Private events at the brewery work for groups from twelve to eighty.\n\nWe have hosted rehearsal dinners, milestone birthdays, company holiday parties, and one engagement party with a custom beer the couple helped brew. The space is part industrial, part neighborhood, fully welcoming.\n\nIf you have a date in mind, send it to us with a head count. We will send back a quote, a beverage plan, and food partner options the same day.",
+      "hashtags": ["#PrivateEvents", "#BreweryEvents", "#EventVenue", "#TaproomLife", "#GroupEvents"],
+      "graphicHook": "Your group. Our taproom.",
+      "designerNotes": "Long table set up for a private event in the taproom with string lights overhead."
+    },
+    {
+      "caption": "Cellar releases are our favorite project and the limited bottles go fast.\n\nWe age select beers in barrels for six to eighteen months. The result is a small batch release that is unlike anything we have on tap day to day. Funky, deep, sometimes weird, always worth the wait.\n\nThe next bottle release drops in two weeks. Members get first access twenty four hours before public sale. The members list closes the day before each release.",
+      "hashtags": ["#CellarRelease", "#BarrelAged", "#LimitedRelease", "#CraftBeer", "#BeerCollector"],
+      "graphicHook": "Bottles. Limited.",
+      "designerNotes": "Bottles lined up in a cool cellar, light angle catching the labels. Editorial product feel."
+    },
+    {
+      "caption": "Our outdoor patio is dog friendly and family friendly and it is one of our favorite parts of the brewery.\n\nString lights, communal tables, food truck most weekends, and enough space for the kids to run around safely. It is the kind of place where someone you have never met before strikes up a conversation about whatever is on tap.\n\nThe patio opens for the season this week. Wave to the dog at the next table, they would love a friend.",
+      "hashtags": ["#PatioLife", "#DogFriendly", "#FamilyFriendly", "#TaproomLife", "#OutdoorDrinks"],
+      "graphicHook": "Patio. Open.",
+      "designerNotes": "Patio scene with families, dogs, and string lights at golden hour. Honest joyful energy."
+    },
+    {
+      "caption": "Food truck rotation lands every Friday and Saturday.\n\nThis week we have a tacos truck on Friday and a wood fired pizza truck on Saturday. Both are local favorites we book back to back through the season because the lines tell us so.\n\nWe post the schedule a week ahead on the website and the social channels. Plan your taproom visit around the food and bring an appetite.",
+      "hashtags": ["#FoodTruck", "#TaproomEats", "#LocalFood", "#TaproomLife", "#WeekendFood"],
+      "graphicHook": "Trucks. Tacos. Pizza.",
+      "designerNotes": "Food truck parked at the brewery exterior with patrons grabbing food. Casual joyful scene."
+    },
+    {
+      "caption": "Beer education classes run quarterly and they fill up fast.\n\nA two hour evening class taught by our head brewer. We cover ingredients, fermentation, style families, and how to taste beer with a more discerning palate. Includes flights and a small bottle to take home.\n\nThe next class is at the end of the month. Twenty seats. Reserve through the website.",
+      "hashtags": ["#BeerEducation", "#BeerClass", "#CraftBeer", "#TaproomLife", "#BeerNerd"],
+      "graphicHook": "Class. Tasting included.",
+      "designerNotes": "Class scene with brewer pointing at ingredients, attendees with flights in front of them."
+    },
+    {
+      "caption": "Flagship beers are the recipes we have committed to long term.\n\nA pilsner, an IPA, a porter, and one rotating wild card. The first three are on every taproom list we run, year round. They get tweaked seasonally as ingredients shift but the core recipes hold steady.\n\nIf you have not tried our flagships yet, ask the bartender for the lineup. They are the easiest way to understand what we are about as a brewery.",
+      "hashtags": ["#FlagshipBeer", "#CraftBeer", "#YearRoundBeer", "#TaproomLife", "#BreweryLife"],
+      "graphicHook": "Flagship. Always on.",
+      "designerNotes": "Three flagship glasses lined up on the bar with the wild card slot empty. Editorial product."
+    },
+    {
+      "caption": "Growlers and crowlers are how the taproom comes home with you.\n\nA growler is sixty four ounces, a crowler is thirty two ounces. Both can be filled with any beer on tap. The growler is reusable and we discount the refill. The crowler is a one trip aluminum can that goes in the recycling.\n\nIf you are heading to a friend's place tonight, fill a crowler on the way. It is exactly like having the taproom over for the evening.",
+      "hashtags": ["#Growler", "#Crowler", "#BeerToGo", "#TaproomLife", "#CraftBeer"],
+      "graphicHook": "Taproom. To go.",
+      "designerNotes": "Growler being filled at the tap with the crowler can beside it. Side angle, action feel."
+    },
+    {
+      "caption": "We brew with local ingredients whenever the season allows.\n\nLocal hops in late summer. Local stone fruit in early fall. A grain partnership with a small farm an hour away. The radius of where our ingredients come from matters and it shapes the beer.\n\nThe seasonal release this month uses peaches from a farm we have worked with for three years. Limited run. Available on tap and in cans until it is gone.",
+      "hashtags": ["#LocalIngredients", "#FarmToTap", "#SeasonalBeer", "#CraftBeer", "#TaproomLife"],
+      "graphicHook": "Local. In every batch.",
+      "designerNotes": "Crate of fresh peaches at the brewery with the brewer inspecting them. Documentary feel."
+    }
+  ],
+
+  "health": [
+    {
+      "caption": "Hormone testing is one of the most overlooked diagnostic tools in adult health.\n\nFatigue, sleep issues, weight changes, mood shifts, low libido. These symptoms get attributed to stress more often than they should. A comprehensive hormone panel surfaces patterns that a basic CBC will not catch.\n\nWe run hormone panels at the start of every functional medicine intake. The results often explain a year or more of symptoms in a single sit down conversation.",
+      "hashtags": ["#FunctionalMedicine", "#HormoneHealth", "#HormoneBalance", "#WomensHealth", "#WellnessJourney"],
+      "graphicHook": "Hormones. Tested honestly.",
+      "designerNotes": "Lab report on a clinic desk with key numbers highlighted, calm warm setting."
+    },
+    {
+      "caption": "Gut health affects more than digestion.\n\nMood, immune function, skin clarity, energy levels. The microbiome is upstream of more body systems than most people realize. We use comprehensive stool testing to identify imbalances and design protocols around what each individual gut actually needs.\n\nIf you have ongoing symptoms that have not responded to standard interventions, the gut is often where the conversation should start.",
+      "hashtags": ["#GutHealth", "#Microbiome", "#FunctionalMedicine", "#WellnessClinic", "#WholeBodyHealth"],
+      "graphicHook": "Gut. Upstream of everything.",
+      "designerNotes": "Layered diagram of body systems with the gut at the center. Educational illustration style."
+    },
+    {
+      "caption": "IV therapy is a delivery method, not a magic fix.\n\nWhen used correctly, IV nutrients bypass digestion and reach cells faster than oral supplements. We use IV therapy for specific protocols where the speed and bioavailability matter, not as a wellness trend.\n\nIf an IV protocol is right for your case we walk through what it is doing and why. If oral supplementation is sufficient we recommend that instead.",
+      "hashtags": ["#IVTherapy", "#NutrientIV", "#WellnessClinic", "#FunctionalMedicine", "#HealthOptimization"],
+      "graphicHook": "IV. When indicated.",
+      "designerNotes": "IV setup in a calm clinic room with a patient relaxed in a comfortable chair."
+    },
+    {
+      "caption": "Acupuncture has decades of clinical research supporting its use for specific conditions.\n\nChronic pain, migraine, certain reproductive concerns, post operative recovery. The evidence is meaningful and the side effect profile is among the lowest in medicine.\n\nWe integrate acupuncture into our broader functional medicine practice when the case calls for it. Most patients experience the benefits within three to five sessions.",
+      "hashtags": ["#Acupuncture", "#TraditionalMedicine", "#PainRelief", "#WellnessClinic", "#FunctionalMedicine"],
+      "graphicHook": "Acupuncture. Evidence based.",
+      "designerNotes": "Calm acupuncture treatment scene with a soft focus, peaceful environment."
+    },
+    {
+      "caption": "Nutrition counseling is more than a meal plan.\n\nWe look at how food interacts with your specific physiology. Inflammation markers, blood sugar response, micronutrient status, food sensitivities. The plan that comes out is targeted to the patient, not pulled from a book.\n\nMost patients see meaningful changes in the metrics they care about within six to eight weeks of consistent application. The plan adapts as the body responds.",
+      "hashtags": ["#NutritionCounseling", "#PersonalizedNutrition", "#WellnessClinic", "#FunctionalMedicine", "#FoodAsMedicine"],
+      "graphicHook": "Nutrition. Specific to you.",
+      "designerNotes": "Top down of fresh ingredients arranged on a clean counter with a notebook beside them."
+    },
+    {
+      "caption": "Functional medicine looks for root causes, not symptom suppression.\n\nA prescription that masks a symptom is sometimes the right answer. Often it is not. The harder, slower work of understanding why a body is producing a symptom usually leads to better outcomes over years.\n\nWe spend longer at the first appointment than most clinics do. Sixty to ninety minutes. The depth of the intake is where the real diagnostic work happens.",
+      "hashtags": ["#FunctionalMedicine", "#RootCause", "#IntegrativeMedicine", "#WholeBodyHealth", "#WellnessClinic"],
+      "graphicHook": "Why. Not just what.",
+      "designerNotes": "Practitioner taking detailed notes during a long consult, two coffee cups visible. Quiet attentive."
+    },
+    {
+      "caption": "Lab driven personalization beats one size fits all every time.\n\nOmega 3 levels, vitamin D status, B vitamin function markers, inflammation, blood sugar dynamics, micronutrient panels. We use comprehensive labs to design supplementation that matches the person.\n\nMost patients leave their first visit understanding their numbers in plain language and knowing exactly which supplements they actually need versus the ones they have been buying out of habit.",
+      "hashtags": ["#LabDriven", "#PersonalizedMedicine", "#FunctionalMedicine", "#WellnessClinic", "#HealthOptimization"],
+      "graphicHook": "Labs. Then plan.",
+      "designerNotes": "Lab values printed and highlighted on a desk, supplements arranged beside them."
+    },
+    {
+      "caption": "Sleep is foundational and we treat it as one of the first interventions.\n\nIf sleep is broken, almost no other intervention works as well as it should. Hormones, blood sugar, mood, recovery, immune function. All compromised by chronic insufficient sleep.\n\nWe work with patients on sleep hygiene, evening routines, light exposure, and targeted supplements when appropriate. Most patients see measurable improvements within two weeks of focused work on this layer.",
+      "hashtags": ["#SleepHealth", "#SleepHygiene", "#FunctionalMedicine", "#WellnessClinic", "#HealthFundamentals"],
+      "graphicHook": "Sleep. First lever.",
+      "designerNotes": "Calm bedroom at twilight with a journal and a glass of water on the nightstand."
+    },
+    {
+      "caption": "Chronic stress shows up in lab values long before patients describe it as stress.\n\nElevated morning cortisol, inverted diurnal patterns, suppressed thyroid output, blood sugar instability. The body keeps a record even when the mind tells itself things are fine.\n\nWe use a combination of lifestyle protocols, targeted supplementation, and sometimes referrals to therapists when the case warrants. Stress physiology is a real diagnostic and a real intervention point.",
+      "hashtags": ["#StressManagement", "#CortisolBalance", "#FunctionalMedicine", "#WellnessClinic", "#WholeBodyHealth"],
+      "graphicHook": "Stress. The body remembers.",
+      "designerNotes": "Cortisol curve graph with healthy versus inverted patterns side by side. Educational."
+    },
+    {
+      "caption": "Most chronic conditions are not single cause, single fix problems.\n\nDigestive issues, autoimmune flares, hormonal imbalances, persistent fatigue. Each has multiple contributing factors and each responds to a layered intervention. There is no single supplement that resolves them.\n\nWe build long term care plans that address contributing factors in priority order. Patients see incremental improvements through the process and the gains compound.",
+      "hashtags": ["#ChronicHealth", "#IntegrativeMedicine", "#FunctionalMedicine", "#WellnessJourney", "#HealthOptimization"],
+      "graphicHook": "Layers. Not single fixes.",
+      "designerNotes": "Stack of clear glass layers with labels at each level, building upward. Conceptual visual."
+    }
+  ],
+
+  "retail": [
+    {
+      "caption": "New arrivals land Thursday and the dressing rooms book up fast.\n\nA fresh capsule from one of our favorite small designers, a few summer linens that finally arrived after the supply chain delay, and a jewelry restock that includes some of the pieces that sold out in spring.\n\nWe hold styling appointments throughout the week. Tell us what you are looking for and we will pull a fitting room before you arrive.",
+      "hashtags": ["#NewArrivals", "#BoutiqueStyle", "#PersonalStyling", "#SupportLocal", "#ShopSmall"],
+      "graphicHook": "New in. Thursday.",
+      "designerNotes": "Editorial flat lay of new arrivals on a clean wooden table. Soft natural light."
+    },
+    {
+      "caption": "Personal styling appointments are the way to actually use a closet you already own.\n\nWe come over for a closet edit before we recommend anything new. Often the gaps you think are missing pieces are actually styling combinations you have not tried.\n\nThe consult is free for clients who book a styling session in store. Bring a few looks and we will work backward from your wardrobe.",
+      "hashtags": ["#PersonalStyling", "#ClosetEdit", "#StyleConsult", "#BoutiqueStyle", "#ShopSmall"],
+      "graphicHook": "Closet. Better used.",
+      "designerNotes": "Open closet with curated outfit pulled and laid out on a bed. Editorial styling."
+    },
+    {
+      "caption": "Sustainable brands are not a trend on our shelves. They are a buying philosophy.\n\nEvery brand we carry has a sourcing standard we have actually verified. Where the materials come from, who makes the garment, how the workers are paid. These criteria narrow the buying universe and we are good with that.\n\nIf you ask about any piece on the floor we can tell you where and how it was made. Transparency is part of the value.",
+      "hashtags": ["#SustainableFashion", "#EthicalBrands", "#SlowFashion", "#BoutiqueStyle", "#ShopSmall"],
+      "graphicHook": "Sustainable. Verified.",
+      "designerNotes": "Behind the scenes shot of a small brand atelier or maker at work. Documentary editorial feel."
+    },
+    {
+      "caption": "Gift wrapping is free and we take it seriously.\n\nHeavy paper, ribbon by the spool, dried flower garnish. Whatever you bought looks more meaningful when it leaves the store. We have wrapped engagement gifts, retirement gifts, milestone birthdays, and more reluctant Valentine's purchases than we can count.\n\nThe wrap is on the house. The pressure to remember an occasion is on you, but we are happy to help.",
+      "hashtags": ["#GiftWrap", "#GiftIdeas", "#BoutiqueGifts", "#SupportLocal", "#ShopSmall"],
+      "graphicHook": "Wrap. Always free.",
+      "designerNotes": "Beautifully wrapped package with brand color ribbon and dried flower. Editorial composition."
+    },
+    {
+      "caption": "Local delivery is one of the small services that makes a big difference.\n\nIf you live within a fifteen minute radius and you order before two p m on a weekday, we will deliver the same day. The driver is one of our staff who knows the neighborhoods. The packaging is intentional. The experience feels like a friend dropping something off.\n\nNo charge on orders over a hundred. Modest fee otherwise. We made it easy because the alternative was watching purchases sit in inboxes.",
+      "hashtags": ["#LocalDelivery", "#SameDayDelivery", "#SmallBusiness", "#SupportLocal", "#ShopSmall"],
+      "graphicHook": "Local. Same day.",
+      "designerNotes": "Wrapped package being handed over at a doorstep with a hand written tag. Warm honest scene."
+    },
+    {
+      "caption": "Curated jewelry has changed how our customers think about every piece.\n\nWe carry small designers who make in small runs. Many of the pieces are one of one or one of a few. The relationship with the maker is often the difference between a piece you buy in a moment and a piece you keep for decades.\n\nIf you see something on the floor that catches you, ask about the maker. We are happy to share the story.",
+      "hashtags": ["#CuratedJewelry", "#SmallDesigners", "#StatementJewelry", "#BoutiqueStyle", "#ShopSmall"],
+      "graphicHook": "Jewelry. With story.",
+      "designerNotes": "Macro of a single piece of jewelry on a velvet tray with the maker's mark visible."
+    },
+    {
+      "caption": "Home goods on our shelves are chosen the same way the apparel is.\n\nSmall makers, considered materials, pieces we would put in our own homes. A linen napkin set, a hand thrown ceramic vase, a hand woven basket from a co op we have worked with for years.\n\nIf you are setting up a new space or refreshing a corner of your home, we can help with curation. The home section is small on purpose.",
+      "hashtags": ["#HomeGoods", "#SlowHome", "#HandmadeHome", "#BoutiqueStyle", "#ShopSmall"],
+      "graphicHook": "Home. Considered.",
+      "designerNotes": "Styled home goods vignette with a vase, linen, ceramics. Editorial home magazine feel."
+    },
+    {
+      "caption": "Seasonal sales are intentional and they are not the way we usually price.\n\nWe run two real sales a year, end of season, on pieces that are transitioning out of the floor. The discounts are meaningful and the inventory is genuine. We do not run constant promotions because the regular pricing is already considered.\n\nThe end of season sale starts in two weeks. Members on the email list get first access on Wednesday morning.",
+      "hashtags": ["#SeasonalSale", "#EndOfSeason", "#BoutiqueStyle", "#ShopSmall", "#ShoppingSmart"],
+      "graphicHook": "Sale. Meaningful.",
+      "designerNotes": "Sale sign in clean typography on a single rack. Editorial restraint, not bargain bin energy."
+    },
+    {
+      "caption": "Brand stories are why we love this work.\n\nThe sweater you tried on yesterday was made in a workshop with seven employees who have been together for ten years. The tote bag was sewn by a co op that supports women returning to work. The jewelry was hand finished by a designer who cares deeply about provenance.\n\nWe share the stories on the wall in store and in the captions online. The stories are part of what you take home.",
+      "hashtags": ["#BrandStory", "#MakerStories", "#SlowFashion", "#BoutiqueStyle", "#ShopSmall"],
+      "graphicHook": "Stories. In every piece.",
+      "designerNotes": "Hand written brand story card next to a piece on a shelf. Tactile, authentic feel."
+    },
+    {
+      "caption": "Loyalty programs that actually serve customers are rare and we built ours to be one.\n\nNo points to track. No tiers to grind toward. A simple rewards model where members get early access to new arrivals, first invites to events, free local delivery, and a birthday note worth using.\n\nSign up at the register or online. The membership is free. The intent is to deepen the relationship, not to gamify it.",
+      "hashtags": ["#LoyaltyProgram", "#BoutiqueStyle", "#ShopSmall", "#CustomerFirst", "#SupportLocal"],
+      "graphicHook": "Loyalty. Without points.",
+      "designerNotes": "Membership card with brand color in a customer's hand at the register. Warm transactional moment."
+    }
+  ]
+}

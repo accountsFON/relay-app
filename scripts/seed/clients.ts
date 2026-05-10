@@ -539,6 +539,8 @@ export interface SeededClient {
   amUserId: string | null
   designerUserId: string | null
   postingDays: string
+  /** Used by content-runs seed to append the CTA after each caption body. */
+  mainCta: string
 }
 
 function buildCrawledData(def: ClientDef): string | null {
@@ -634,6 +636,7 @@ export async function seedClients(
       amUserId,
       designerUserId,
       postingDays: def.postingDays,
+      mainCta: def.mainCta,
     })
   }
 

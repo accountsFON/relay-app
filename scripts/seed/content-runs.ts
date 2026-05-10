@@ -1,8 +1,18 @@
 /**
  * Demo seed: 3 ContentRuns per onboarded client across the last 4 months
- * (2026-02, 2026-03, 2026-04). Every run is `complete` with 10 Posts,
- * 4 hashtags per post, and deterministic captions sourced from the
- * industry caption pool.
+ * (2026-02, 2026-03, 2026-04). Every run is `complete` with 10 Posts each.
+ *
+ * Posts mirror the captionPrompt output shape so the demo reads like real
+ * Bekah AI output. Source data lives in `data/post-templates.json` keyed
+ * by industry. Each template carries:
+ *   - caption: 2 to 5 paragraph body, no CTA
+ *   - hashtags: 3 to 8 entries, # prefixed
+ *   - graphicHook: 3 to 8 word visual hook
+ *   - designerNotes: 1 sentence broad direction
+ *
+ * The seed appends `client.mainCta` to the caption body to match the
+ * postParser behavior in production. The result is a publish ready post
+ * exactly the way the live pipeline persists them.
  *
  * Stable on (clientId, targetMonth) so reruns do not churn diffs.
  */
@@ -13,11 +23,15 @@ import path from 'node:path'
 import type { SeededClient } from './clients'
 import type { SeededUserMap } from './users'
 
-interface CaptionMap {
-  [industry: string]: string[]
+interface PostTemplate {
+  caption: string
+  hashtags: string[]
+  graphicHook: string
+  designerNotes: string
 }
-interface HashtagMap {
-  [industry: string]: string[]
+
+interface PostTemplatesFile {
+  [industry: string]: PostTemplate[]
 }
 
 function loadJson<T>(file: string): T {
@@ -25,14 +39,17 @@ function loadJson<T>(file: string): T {
   return JSON.parse(readFileSync(p, 'utf8')) as T
 }
 
-const CAPTIONS = loadJson<CaptionMap>('captions.json')
-const HASHTAGS = loadJson<HashtagMap>('hashtags.json')
+const TEMPLATES_RAW = loadJson<PostTemplatesFile>('post-templates.json')
+// Drop the leading `_comment` key from the raw JSON so industry lookups
+// stay clean.
+const TEMPLATES: PostTemplatesFile = Object.fromEntries(
+  Object.entries(TEMPLATES_RAW).filter(([k]) => !k.startsWith('_')),
+)
 
 export const TARGET_MONTHS = ['2026-02', '2026-03', '2026-04'] as const
 export type TargetMonth = (typeof TARGET_MONTHS)[number]
 
 const POSTS_PER_RUN = 10
-const HASHTAGS_PER_POST = 4
 
 export interface SeededContentRun {
   id: string
@@ -93,49 +110,36 @@ function buildPostDates(
   return dates.slice(0, count).sort((a, b) => a.getTime() - b.getTime())
 }
 
-function pickCaption(industryKey: string, postIdx: number, monthIdx: number): string {
-  const pool = CAPTIONS[industryKey] ?? CAPTIONS.dental
+function templatesFor(industryKey: string): PostTemplate[] {
+  return TEMPLATES[industryKey] ?? TEMPLATES.dental
+}
+
+function pickTemplate(
+  industryKey: string,
+  postIdx: number,
+  monthIdx: number,
+): PostTemplate {
+  const pool = templatesFor(industryKey)
+  // Stagger by post index plus a month offset so successive months read as
+  // different content even when the pool repeats.
   const offset = (postIdx + monthIdx * 3) % pool.length
   return pool[offset]
 }
 
-function pickHashtags(industryKey: string, postIdx: number, monthIdx: number): string[] {
-  const pool = HASHTAGS[industryKey] ?? HASHTAGS.dental
-  const result: string[] = []
-  for (let i = 0; i < HASHTAGS_PER_POST; i += 1) {
-    const offset = (postIdx * 5 + i + monthIdx * 7) % pool.length
-    result.push(pool[offset])
-  }
-  return result
+/**
+ * Append the client's main CTA to a caption body, matching the postParser
+ * behavior in production. The CTA is added after a blank line so it visually
+ * separates from the body in the post detail card.
+ */
+function appendCta(captionBody: string, mainCta: string | null | undefined): string {
+  const trimmed = captionBody.trimEnd()
+  const cta = (mainCta ?? '').trim()
+  if (!cta) return trimmed
+  return `${trimmed}\n\n${cta}`
 }
 
 function monthIdx(targetMonth: TargetMonth): number {
   return TARGET_MONTHS.indexOf(targetMonth)
-}
-
-function pickGraphicHook(industryKey: string, postIdx: number): string {
-  const hooks: Record<string, string> = {
-    dental: 'Smile photo + bold tagline overlay',
-    plumbing: 'Action shot of plumber on a job',
-    fitness: 'Member training mid rep',
-    real_estate: 'Hero exterior or interior shot',
-    auto: 'Vehicle on a lift, clean shop background',
-    legal: 'Office portrait or skyline backdrop',
-    accounting: 'Clean numbers graphic with brand color',
-    landscaping: 'Before / after landscape pairing',
-    restaurant: 'Plated dish, top down',
-    veterinary: 'Patient with their human',
-    contracting: 'Job site progress',
-    photography: 'Behind the scenes setup',
-    hvac: 'Tech installing equipment',
-    education: 'Student aha moment',
-    beauty: 'Stylist mid service',
-    beverage: 'Tap pour or coffee bloom',
-    health: 'Calm clinic environment',
-    retail: 'Lifestyle product shot',
-  }
-  const base = hooks[industryKey] ?? 'Hero brand photo'
-  return `${base} (variation ${(postIdx % 3) + 1})`
 }
 
 export async function seedContentRuns(
@@ -199,18 +203,17 @@ export async function seedContentRuns(
 
       for (let i = 0; i < postDates.length; i += 1) {
         const postDate = postDates[i]
-        const caption = pickCaption(client.industryKey, i, monthIndex)
-        const tags = pickHashtags(client.industryKey, i, monthIndex)
-        const hook = pickGraphicHook(client.industryKey, i)
+        const tpl = pickTemplate(client.industryKey, i, monthIndex)
+        const caption = appendCta(tpl.caption, client.mainCta)
         const created = await db.post.create({
           data: {
             contentRunId: runId,
             clientId: client.id,
             postDate,
             caption,
-            hashtags: tags,
-            graphicHook: hook,
-            designerNotes: null,
+            hashtags: tpl.hashtags,
+            graphicHook: tpl.graphicHook,
+            designerNotes: tpl.designerNotes,
             mediaUrls: [],
           },
           select: { id: true },
