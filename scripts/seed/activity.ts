@@ -6,10 +6,16 @@
  * Strategy: wipe demo activity rows first, then re emit. The demo activity
  * is fully derived from the seeded clients / runs / batches so a clean
  * rebuild is the simplest path to determinism.
+ *
+ * Timestamp spread: events are backdated across the last ~75 days so demo
+ * activity feeds and inbox lists feel like a real working pipeline rather
+ * than a single instant. Older clients onboarded longer ago; runs span
+ * Feb / Mar / Apr; batches cluster in the last 2 weeks; mentions and
+ * comments cluster in the last week or so. See `ageFor()` below.
  */
-import type { PrismaClient } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 import { ActivityKind, EventVisibility } from '@prisma/client'
-import { recordActivity } from '@/server/services/activity'
+import { recordActivity, type RecordActivityInput } from '@/server/services/activity'
 import type { SeededBatch } from './batches'
 import type { SeededClient } from './clients'
 import type { SeededContentRun } from './content-runs'
@@ -45,7 +51,7 @@ const MENTION_PLANS: MentionPlan[] = [
   {
     mentionUserKey: 'am1',
     read: false,
-    body: '@morgan.reyes client asked about adding a holiday hours post — pinging you for sign off.',
+    body: '@morgan.reyes client asked about adding a holiday hours post, pinging you for sign off.',
   },
   {
     mentionUserKey: 'am1',
@@ -94,6 +100,19 @@ function pickComment(industryKey: string, idx: number): string {
   return pool[idx % pool.length]
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+const MS_PER_HOUR = 60 * 60 * 1000
+
+function targetMonthDaysAgo(targetMonth: string, anchor: Date): number {
+  const [yStr, mStr] = targetMonth.split('-')
+  const y = Number.parseInt(yStr, 10)
+  const m = Number.parseInt(mStr, 10)
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return 30
+  const refDay = new Date(y, m - 1, 15).getTime()
+  const days = Math.round((anchor.getTime() - refDay) / MS_PER_DAY)
+  return Math.max(2, days)
+}
+
 export async function seedActivity(
   db: PrismaClient,
   clients: SeededClient[],
@@ -104,8 +123,29 @@ export async function seedActivity(
   const clientIds = clients.map((c) => c.id)
   await db.activityEvent.deleteMany({ where: { clientId: { in: clientIds } } })
 
-  const record = (input: Parameters<typeof recordActivity>[0]) =>
-    recordActivity(input, db)
+  const now = new Date()
+  const ageOf = (daysAgo: number, jitterHours = 0): Date =>
+    new Date(now.getTime() - daysAgo * MS_PER_DAY - jitterHours * MS_PER_HOUR)
+
+  const backdate = async (eventId: string, when: Date): Promise<void> => {
+    await db.activityEvent.update({
+      where: { id: eventId },
+      data: { createdAt: when },
+    })
+    await db.mention.updateMany({
+      where: { activityEventId: eventId },
+      data: { createdAt: when },
+    })
+  }
+
+  const recordAt = async (
+    input: RecordActivityInput,
+    when: Date,
+  ): Promise<{ id: string } | null> => {
+    const event = await recordActivity(input, db)
+    if (event) await backdate(event.id, when)
+    return event
+  }
 
   let totalEvents = 0
   let totalMentions = 0
@@ -125,108 +165,157 @@ export async function seedActivity(
     batchesByClient.set(b.clientId, list)
   }
 
-  for (const client of clients) {
-    const triggerActor = client.amUserId ?? org.users.admin.id
+  // Spread client_created events across days 65..15 ago so older client cards
+  // feel established, newer clients show as recent additions. Each client's
+  // provisioning events (am_assigned, designer_assigned, profile_edited)
+  // anchor to that client's onboarded date and step forward by hours/days.
+  const clientCount = clients.length
+  const oldestClientDays = 65
+  const newestClientDays = 15
+  const provisioningSpread = oldestClientDays - newestClientDays
+  const clientOnboardedDaysAgo = (idx0: number): number => {
+    if (clientCount <= 1) return oldestClientDays
+    return oldestClientDays - Math.round((idx0 / (clientCount - 1)) * provisioningSpread)
+  }
 
-    await record({
-      clientId: client.id,
-      actorId: org.users.admin.id,
-      kind: ActivityKind.client_created,
-      visibility: EventVisibility.internal,
-      payload: { name: client.name },
-    })
-    totalEvents += 1
+  for (let i = 0; i < clients.length; i += 1) {
+    const client = clients[i]
+    const triggerActor = client.amUserId ?? org.users.admin.id
+    const onboardedDaysAgo = clientOnboardedDaysAgo(i)
+
+    const created = await recordAt(
+      {
+        clientId: client.id,
+        actorId: org.users.admin.id,
+        kind: ActivityKind.client_created,
+        visibility: EventVisibility.internal,
+        payload: { name: client.name },
+      },
+      ageOf(onboardedDaysAgo),
+    )
+    if (created) totalEvents += 1
 
     if (client.amUserId) {
-      await record({
-        clientId: client.id,
-        actorId: org.users.admin.id,
-        kind: ActivityKind.client_am_assigned,
-        visibility: EventVisibility.internal,
-        payload: { userId: client.amUserId },
-      })
-      totalEvents += 1
+      const e = await recordAt(
+        {
+          clientId: client.id,
+          actorId: org.users.admin.id,
+          kind: ActivityKind.client_am_assigned,
+          visibility: EventVisibility.internal,
+          payload: { userId: client.amUserId },
+        },
+        ageOf(onboardedDaysAgo, -2),
+      )
+      if (e) totalEvents += 1
     }
     if (client.designerUserId) {
-      await record({
-        clientId: client.id,
-        actorId: org.users.admin.id,
-        kind: ActivityKind.client_designer_assigned,
-        visibility: EventVisibility.internal,
-        payload: { userId: client.designerUserId },
-      })
-      totalEvents += 1
+      const e = await recordAt(
+        {
+          clientId: client.id,
+          actorId: org.users.admin.id,
+          kind: ActivityKind.client_designer_assigned,
+          visibility: EventVisibility.internal,
+          payload: { userId: client.designerUserId },
+        },
+        ageOf(onboardedDaysAgo, -4),
+      )
+      if (e) totalEvents += 1
     }
 
     if (client.onboarded) {
-      await record({
-        clientId: client.id,
-        actorId: triggerActor,
-        kind: ActivityKind.client_profile_edited,
-        visibility: EventVisibility.internal,
-        payload: {
-          fieldsChanged: ['businessSummary', 'brandVoice', 'mainCta'],
+      const e = await recordAt(
+        {
+          clientId: client.id,
+          actorId: triggerActor,
+          kind: ActivityKind.client_profile_edited,
+          visibility: EventVisibility.internal,
+          payload: {
+            fieldsChanged: ['businessSummary', 'brandVoice', 'mainCta'],
+          },
         },
-      })
-      totalEvents += 1
+        ageOf(Math.max(2, onboardedDaysAgo - 3)),
+      )
+      if (e) totalEvents += 1
     }
   }
 
-  for (const client of onboarded) {
+  for (let oi = 0; oi < onboarded.length; oi += 1) {
+    const client = onboarded[oi]
     const triggerActor = client.amUserId ?? org.users.admin.id
     const runsForClient = runsByClient.get(client.id) ?? []
 
     for (const run of runsForClient) {
-      await record({
-        clientId: client.id,
-        runId: run.id,
-        actorId: triggerActor,
-        kind: ActivityKind.run_started,
-        visibility: EventVisibility.internal,
-        payload: { targetMonth: run.targetMonth },
-      })
-      await record({
-        clientId: client.id,
-        runId: run.id,
-        actorId: triggerActor,
-        kind: ActivityKind.run_completed,
-        visibility: EventVisibility.public,
-        payload: { targetMonth: run.targetMonth, posts: run.postIds.length },
-      })
-      totalEvents += 2
+      const runDaysAgo = targetMonthDaysAgo(run.targetMonth, now)
+      // run_started is logged a few hours before run_completed, both within
+      // the same calendar day relative to the run's target month anchor.
+      const startedE = await recordAt(
+        {
+          clientId: client.id,
+          runId: run.id,
+          actorId: triggerActor,
+          kind: ActivityKind.run_started,
+          visibility: EventVisibility.internal,
+          payload: { targetMonth: run.targetMonth },
+        },
+        ageOf(runDaysAgo, 4),
+      )
+      const completedE = await recordAt(
+        {
+          clientId: client.id,
+          runId: run.id,
+          actorId: triggerActor,
+          kind: ActivityKind.run_completed,
+          visibility: EventVisibility.public,
+          payload: { targetMonth: run.targetMonth, posts: run.postIds.length },
+        },
+        ageOf(runDaysAgo, 1),
+      )
+      if (startedE) totalEvents += 1
+      if (completedE) totalEvents += 1
     }
 
     const batchesForClient = batchesByClient.get(client.id) ?? []
-    for (const batch of batchesForClient) {
+    for (let bi = 0; bi < batchesForClient.length; bi += 1) {
+      const batch = batchesForClient[bi]
       if (batch.month) {
-        await record({
-          clientId: client.id,
-          actorId: triggerActor,
-          kind: ActivityKind.batch_passed,
-          visibility: EventVisibility.internal,
-          payload: {
-            batchId: batch.id,
-            toStep: batch.step,
-            month: batch.month,
+        // Batch transitions cluster in the last 2 weeks. Stagger across
+        // (clientIdx, batchIdx) so the dashboard feed has a steady stream.
+        const daysAgo = Math.max(1, 14 - ((oi + bi) % 14))
+        const e = await recordAt(
+          {
+            clientId: client.id,
+            actorId: triggerActor,
+            kind: ActivityKind.batch_passed,
+            visibility: EventVisibility.internal,
+            payload: {
+              batchId: batch.id,
+              toStep: batch.step,
+              month: batch.month,
+            },
           },
-        })
-        totalEvents += 1
+          ageOf(daysAgo, oi % 12),
+        )
+        if (e) totalEvents += 1
       }
     }
 
     if (client.idx === 5) {
-      await record({
-        clientId: client.id,
-        actorId: triggerActor,
-        kind: ActivityKind.batch_sent_back,
-        visibility: EventVisibility.internal,
-        payload: {
-          reason: 'Color tone on hero photos drifted too cool, send back to designer for warmer balance.',
-          fromStep: 'am_review_design',
-          toStep: 'in_design',
+      const e = await recordAt(
+        {
+          clientId: client.id,
+          actorId: triggerActor,
+          kind: ActivityKind.batch_sent_back,
+          visibility: EventVisibility.internal,
+          payload: {
+            reason:
+              'Color tone on hero photos drifted too cool, send back to designer for warmer balance.',
+            fromStep: 'am_review_design',
+            toStep: 'in_design',
+          },
         },
-      })
-      totalEvents += 1
+        ageOf(7),
+      )
+      if (e) totalEvents += 1
     }
 
     const revisionBatch = batchesForClient.find(
@@ -234,67 +323,92 @@ export async function seedActivity(
         b.step === 'design_revisions' || b.step === 'implementing_revisions',
     )
     if (revisionBatch) {
-      await record({
-        clientId: client.id,
-        actorId: triggerActor,
-        kind: ActivityKind.batch_revision_dispatched,
-        visibility: EventVisibility.internal,
-        payload: { batchId: revisionBatch.id, items: 3 },
-      })
-      await record({
-        clientId: client.id,
-        actorId: triggerActor,
-        kind: ActivityKind.batch_revision_completed,
-        visibility: EventVisibility.internal,
-        payload: { batchId: revisionBatch.id },
-      })
-      totalEvents += 2
+      const dispatched = await recordAt(
+        {
+          clientId: client.id,
+          actorId: triggerActor,
+          kind: ActivityKind.batch_revision_dispatched,
+          visibility: EventVisibility.internal,
+          payload: { batchId: revisionBatch.id, items: 3 },
+        },
+        ageOf(5),
+      )
+      const completed = await recordAt(
+        {
+          clientId: client.id,
+          actorId: triggerActor,
+          kind: ActivityKind.batch_revision_completed,
+          visibility: EventVisibility.internal,
+          payload: { batchId: revisionBatch.id },
+        },
+        ageOf(3),
+      )
+      if (dispatched) totalEvents += 1
+      if (completed) totalEvents += 1
     }
 
     for (let i = 0; i < 2; i += 1) {
       const isPublic = i % 2 === 0
-      await record({
-        clientId: client.id,
-        actorId: i % 2 === 0 ? triggerActor : org.users.designer1.id,
-        kind: ActivityKind.comment,
-        visibility: isPublic ? EventVisibility.public : EventVisibility.internal,
-        payload: { body: pickComment(client.industryKey, client.idx + i) },
-      })
-      totalEvents += 1
+      // Comments scattered across the last 3 weeks. (oi, i) keys produce
+      // distinct timestamps per client per comment so the activity feed
+      // reads as an evolving conversation.
+      const commentDaysAgo = Math.max(1, 20 - ((oi * 2 + i * 3) % 20))
+      const e = await recordAt(
+        {
+          clientId: client.id,
+          actorId: i % 2 === 0 ? triggerActor : org.users.designer1.id,
+          kind: ActivityKind.comment,
+          visibility: isPublic ? EventVisibility.public : EventVisibility.internal,
+          payload: { body: pickComment(client.industryKey, client.idx + i) },
+        },
+        ageOf(commentDaysAgo, (oi + i) % 18),
+      )
+      if (e) totalEvents += 1
     }
   }
 
-  await record({
-    clientId: onboarded[2].id,
-    actorId: org.users.admin.id,
-    kind: ActivityKind.run_failed,
-    visibility: EventVisibility.internal,
-    payload: {
-      reason: 'OpenAI rate limit during caption generation; retry succeeded on the next attempt.',
-      targetMonth: '2026-01',
+  const failedE = await recordAt(
+    {
+      clientId: onboarded[2].id,
+      actorId: org.users.admin.id,
+      kind: ActivityKind.run_failed,
+      visibility: EventVisibility.internal,
+      payload: {
+        reason:
+          'OpenAI rate limit during caption generation; retry succeeded on the next attempt.',
+        targetMonth: '2026-01',
+      },
     },
-  })
-  totalEvents += 1
+    ageOf(35),
+  )
+  if (failedE) totalEvents += 1
 
-  await record({
-    clientId: onboarded[0].id,
-    actorId: org.users.admin.id,
-    kind: ActivityKind.member_role_changed,
-    visibility: EventVisibility.admin_only,
-    payload: {
-      targetUserId: org.users.designer1.id,
-      fromRole: 'designer',
-      toRole: 'designer',
-      note: 'Permission overrides updated.',
+  const memberE = await recordAt(
+    {
+      clientId: onboarded[0].id,
+      actorId: org.users.admin.id,
+      kind: ActivityKind.member_role_changed,
+      visibility: EventVisibility.admin_only,
+      payload: {
+        targetUserId: org.users.designer1.id,
+        fromRole: 'designer',
+        toRole: 'designer',
+        note: 'Permission overrides updated.',
+      },
     },
-  })
-  totalEvents += 1
+    ageOf(11),
+  )
+  if (memberE) totalEvents += 1
 
-  for (const plan of MENTION_PLANS) {
+  for (let mi = 0; mi < MENTION_PLANS.length; mi += 1) {
+    const plan = MENTION_PLANS[mi]
     if (mentionCursor >= onboarded.length) mentionCursor = 0
     const client = onboarded[mentionCursor % onboarded.length]
     mentionCursor += 1
     const mentionedUser = org.users[plan.mentionUserKey]
+    // Mentions span the last 8 days, freshest first so the inbox lands on
+    // the most recent unread on top per the inbox spec ordering.
+    const mentionWhen = ageOf(Math.max(0.25, 7 - mi * 0.85), mi % 6)
     const event = await db.activityEvent.create({
       data: {
         clientId: client.id,
@@ -304,7 +418,11 @@ export async function seedActivity(
           plan.mentionUserKey === 'client1'
             ? EventVisibility.public
             : EventVisibility.internal,
-        payload: { body: plan.body, mentions: [mentionedUser.email] },
+        payload: {
+          body: plan.body,
+          mentions: [mentionedUser.email],
+        } as Prisma.InputJsonValue,
+        createdAt: mentionWhen,
       },
       select: { id: true },
     })
@@ -313,6 +431,7 @@ export async function seedActivity(
         activityEventId: event.id,
         mentionedUserId: mentionedUser.id,
         readAt: plan.read ? new Date() : null,
+        createdAt: mentionWhen,
       },
     })
     totalEvents += 1
@@ -331,6 +450,9 @@ export async function seedActivity(
   if (morganBatchClient) {
     const batch = (batchesByClient.get(morganBatchClient.id) ?? [])[0]
     if (batch) {
+      // Batch deep link mention is the freshest unread for Morgan so it
+      // surfaces at the top of the inbox.
+      const morganBatchWhen = ageOf(0.5)
       const batchEvent = await db.activityEvent.create({
         data: {
           clientId: morganBatchClient.id,
@@ -342,7 +464,8 @@ export async function seedActivity(
             toStep: batch.step,
             month: batch.month,
             mentions: [org.users.am1.email],
-          },
+          } as Prisma.InputJsonValue,
+          createdAt: morganBatchWhen,
         },
         select: { id: true },
       })
@@ -351,6 +474,7 @@ export async function seedActivity(
           activityEventId: batchEvent.id,
           mentionedUserId: org.users.am1.id,
           readAt: null,
+          createdAt: morganBatchWhen,
         },
       })
       totalEvents += 1
