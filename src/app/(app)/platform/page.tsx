@@ -38,7 +38,7 @@ export default async function PlatformIndexPage() {
               <div>{org._count.clients} {org._count.clients === 1 ? 'client' : 'clients'}</div>
               <div className="text-xs">Created {org.createdAt.toLocaleDateString()}</div>
             </div>
-            <StepIntoAgencyButton clerkOrgId={org.clerkOrgId} />
+            <StepIntoAgencyButton clerkOrgId={org.clerkOrgId} dbOrgId={org.id} />
           </Card>
         ))}
       </div>
