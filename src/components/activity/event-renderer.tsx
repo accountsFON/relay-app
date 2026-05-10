@@ -223,10 +223,16 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       const name = stringField(p, 'targetUserName')
       const fromRole = stringField(p, 'fromRole')
       const toRole = stringField(p, 'toRole')
+      // No op transitions (same role twice) usually mean "permission overrides
+      // updated" rather than an actual role change. Don't pretend the role
+      // changed when it didn't.
+      const isNoOp = fromRole && toRole && fromRole === toRole
       return {
         icon: ShieldCheck,
         tone: 'default',
-        message: `changed ${name ?? 'a member'}'s role: ${fromRole ?? '?'} → ${toRole ?? '?'}`,
+        message: isNoOp
+          ? `updated ${name ?? 'a member'}'s permissions`
+          : `changed ${name ?? 'a member'}'s role: ${fromRole ?? '?'} → ${toRole ?? '?'}`,
       }
     }
     case 'post_edited': {
