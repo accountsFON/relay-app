@@ -108,7 +108,9 @@ export default async function ClientDetailPage({
                     href={
                       run.status === 'complete' && run._count.posts > 0
                         ? `/clients/${client.id}/runs/${run.id}`
-                        : undefined
+                        : run.status === 'failed'
+                          ? `/clients/${client.id}/runs/${run.id}`
+                          : undefined
                     }
                     leading={<RowAvatar icon={<Calendar className="size-5 text-ink-50" />} />}
                     title={

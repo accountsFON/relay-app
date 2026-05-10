@@ -60,6 +60,41 @@ export async function listRunsByClient(
   return runs.filter((r) => dateScopeIncludesMonth(opts.dateScope!, r.targetMonth))
 }
 
+/**
+ * Recently failed ContentRuns scoped to an organization. Powers the admin
+ * Failed Runs section and any future ops dashboards. Sorted newest first.
+ *
+ * Uses `createdAt` rather than `completedAt` because failed runs do not set
+ * `completedAt`. We treat the run row's createdAt as a "best signal" for
+ * recency. If a run failed long after creation (rare, but possible on
+ * retries), it still surfaces here in the right order relative to others.
+ */
+export async function listFailedRunsForOrg(
+  organizationId: string,
+  opts: { limit?: number } = {},
+) {
+  return db.contentRun.findMany({
+    where: {
+      status: 'failed',
+      client: { organizationId },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: opts.limit ?? 25,
+    select: {
+      id: true,
+      clientId: true,
+      targetMonth: true,
+      errorMessage: true,
+      totalCostUsd: true,
+      creditsConsumed: true,
+      createdAt: true,
+      startedAt: true,
+      client: { select: { id: true, name: true } },
+      _count: { select: { posts: true } },
+    },
+  })
+}
+
 export async function getMonthlyCostSummary(
   organizationId: string,
   opts: { dateScope?: DateScope } = {},

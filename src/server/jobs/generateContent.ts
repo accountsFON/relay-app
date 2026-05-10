@@ -220,6 +220,26 @@ export const generateContentTask = task({
         pipelineDurationSeconds,
       })
 
+      // Capture enough error context to render a useful failed run detail
+      // page later. We keep the raw stack (truncated) under tokenUsage rather
+      // than introducing a new column; the run detail page reads it back.
+      const errorContext = {
+        name: error instanceof Error ? error.name : 'UnknownError',
+        message,
+        stack:
+          error instanceof Error && error.stack
+            ? error.stack.slice(0, 8000)
+            : null,
+        capturedAt: new Date().toISOString(),
+      }
+
+      const tokenUsageForFailed = {
+        ...tokenUsage,
+        breakdown: JSON.parse(JSON.stringify(partialBreakdown)),
+        pipelineDurationSeconds,
+        errorContext,
+      }
+
       await db.contentRun.update({
         where: { id: contentRunId },
         data: {
@@ -229,13 +249,7 @@ export const generateContentTask = task({
           anthropicCostUsd: partialBreakdown.anthropic.total || undefined,
           apifyCostUsd: partialBreakdown.crawl.usd || undefined,
           totalCostUsd: partialBreakdown.total || undefined,
-          tokenUsage: Object.keys(tokenUsage).length > 0
-            ? {
-                ...tokenUsage,
-                breakdown: JSON.parse(JSON.stringify(partialBreakdown)),
-                pipelineDurationSeconds,
-              }
-            : undefined,
+          tokenUsage: tokenUsageForFailed,
         },
       })
 
