@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { History, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { restorePostVersionAction } from './actions'
+import { restorePostVersionAction } from '@/server/actions/posts'
 
 export type PostVersionRow = {
   id: string

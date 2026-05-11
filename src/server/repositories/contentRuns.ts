@@ -95,6 +95,25 @@ export async function listFailedRunsForOrg(
   })
 }
 
+/**
+ * Find the most recent ContentRun whose posts are attached to this batch.
+ *
+ * In practice today, exactly one run feeds a batch (the run for the
+ * batch's targetMonth). The "most recent" rule handles the future case
+ * where a regenerate creates a new run for the same batch.
+ *
+ * Returns null when the batch has zero posts (early-stage batches).
+ */
+export async function findRunForBatch(batchId: string) {
+  const post = await db.post.findFirst({
+    where: { batchId },
+    orderBy: { contentRun: { createdAt: 'desc' } },
+    select: { contentRunId: true },
+  })
+  if (!post) return null
+  return findContentRun(post.contentRunId)
+}
+
 export async function getMonthlyCostSummary(
   organizationId: string,
   opts: { dateScope?: DateScope } = {},

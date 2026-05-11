@@ -180,6 +180,26 @@ export async function seedContentRuns(
         creditsConsumed: 1,
         startedAt,
         completedAt,
+        tokenUsage: {
+          pipelineDurationSeconds: 1830,
+          breakdown: {
+            openai: {
+              brief: { inputTokens: 4200, outputTokens: 820, usd: 0.21 },
+              facts: { inputTokens: 3100, outputTokens: 610, usd: 0.18 },
+              total: 0.39,
+            },
+            anthropic: {
+              captions: { inputTokens: 8500, outputTokens: 2100, usd: 0.21 },
+              total: 0.21,
+            },
+            crawl: { credits: 50, urlsCrawled: 12, usd: 0.05 },
+            infra: { triggerDev: 0.02, vercel: 0.01, neon: 0.01, total: 0.04 },
+            subtotal: 0.69,
+            infraBuffer: 0.03,
+            total: 0.72,
+            credits: 1,
+          },
+        },
       }
 
       let runId: string

@@ -12,15 +12,3 @@ test('am: Cedar Creek client detail loads with profile + activity sections', asy
   await expect(activityHeader).toBeVisible()
 })
 
-test('am: client detail surfaces a Generate content affordance', async ({ page }) => {
-  const seed = readSeedData()
-  await page.goto(`/clients/${seed.clients.cedarCreekDental.id}`)
-  await page.waitForLoadState('networkidle')
-
-  // Either a button labeled "Generate", or a link to /generate.
-  const generateAffordance = page
-    .locator('a[href*="/generate"], button')
-    .filter({ hasText: /generate/i })
-    .first()
-  await expect(generateAffordance).toBeVisible()
-})

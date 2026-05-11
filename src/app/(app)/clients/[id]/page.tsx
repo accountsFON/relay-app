@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
   requireClientViewer,
@@ -14,7 +13,6 @@ import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { buildMentionRoster } from '@/lib/mentions'
-import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
 import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
@@ -24,6 +22,7 @@ import { DeleteRunButton, RegenRunButton } from './run-management'
 import { RunStatusPoller } from './run-status-poller'
 import { ClientStatusBadge } from '@/components/clients/client-status-badge'
 import { ClientQuickAccess } from '@/components/clients/client-quick-access'
+import { ActiveBatchesSection } from '@/components/clients/active-batches-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 
@@ -72,21 +71,16 @@ export default async function ClientDetailPage({
         backHref="/clients"
         backLabel="Back to clients"
         actions={
-          canEdit ? (
-            <>
-              <Link href={`/clients/${client.id}/generate`}>
-                <Button variant="accent">Generate content</Button>
-              </Link>
-              <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
-            </>
-          ) : (
-            <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
-          )
+          <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
         }
       />
 
       <div className="mt-6">
         <ClientQuickAccess urls={client.urls} assetsFolderUrl={client.assetsFolderUrl} />
+      </div>
+
+      <div className="mt-10">
+        <ActiveBatchesSection clientId={client.id} viewerUserId={ctx.userDbId} />
       </div>
 
       <div className="mt-10">
