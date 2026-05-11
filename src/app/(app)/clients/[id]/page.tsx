@@ -18,6 +18,7 @@ import { PageSection } from '@/components/ui/page-section'
 import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
 import { StatusDot } from '@/components/ui/badge'
 import { Calendar } from 'lucide-react'
+import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
 import { DeleteRunButton, RegenRunButton } from './run-management'
 import { RunStatusPoller } from './run-status-poller'
 import { ClientStatusBadge } from '@/components/clients/client-status-badge'
@@ -71,7 +72,14 @@ export default async function ClientDetailPage({
         backHref="/clients"
         backLabel="Back to clients"
         actions={
-          <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
+          canEdit ? (
+            <>
+              <GenerateContentDialog clientId={client.id} targetMonth={getNextMonth()} />
+              <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
+            </>
+          ) : (
+            <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
+          )
         }
       />
 
@@ -170,4 +178,10 @@ function formatMonth(ym: string): string {
   const [y, m] = ym.split('-')
   const date = new Date(parseInt(y), parseInt(m) - 1)
   return date.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+}
+
+function getNextMonth(): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() + 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
