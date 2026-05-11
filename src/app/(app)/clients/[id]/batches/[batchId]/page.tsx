@@ -31,6 +31,7 @@ import { PostVersionHistory } from '@/components/posts/post-version-history'
 import { CostBreakdown } from '@/components/runs/cost-breakdown'
 import { FailedRunBanner } from '@/components/runs/failed-run-banner'
 import { ExportButton } from '@/components/runs/export-button'
+import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
 
 export default async function BatchDetailPage({
   params,
@@ -175,17 +176,24 @@ export default async function BatchDetailPage({
         backHref="/dashboard"
         backLabel="Back to dashboard"
         actions={
-          canAct && run && posts.length > 0 ? (
-            <ExportButton
-              posts={posts.map((p) => ({
-                date: p.postDate.toISOString().split('T')[0],
-                caption: p.caption,
-                hashtags: p.hashtags.join(' '),
-                graphicHook: p.graphicHook ?? '',
-                designerNotes: p.designerNotes ?? '',
-              }))}
-              filename={`${client.name}-${targetMonth}`}
-            />
+          canAct ? (
+            <>
+              {batch.currentStep !== RelayStep.final_qa_schedule && (
+                <GenerateContentDialog clientId={client.id} targetMonth={targetMonth} />
+              )}
+              {run && posts.length > 0 && (
+                <ExportButton
+                  posts={posts.map((p) => ({
+                    date: p.postDate.toISOString().split('T')[0],
+                    caption: p.caption,
+                    hashtags: p.hashtags.join(' '),
+                    graphicHook: p.graphicHook ?? '',
+                    designerNotes: p.designerNotes ?? '',
+                  }))}
+                  filename={`${client.name}-${targetMonth}`}
+                />
+              )}
+            </>
           ) : undefined
         }
       />
