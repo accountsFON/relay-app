@@ -41,12 +41,15 @@ const STEP_INSIGHTS = [
 export function GenerateContentDialog({
   clientId,
   targetMonth,
+  lockMonth = false,
 }: {
   clientId: string
   targetMonth: string
+  lockMonth?: boolean
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [pickedMonth, setPickedMonth] = useState(targetMonth)
   const [reCrawl, setReCrawl] = useState(true)
   const [lastCrawled, setLastCrawled] = useState<string | null>(null)
   const [progress, setProgress] = useState<RunProgress | null>(null)
@@ -104,7 +107,8 @@ export function GenerateContentDialog({
     setError(null)
     startTransition(async () => {
       try {
-        const { contentRunId } = await triggerGeneration(clientId, targetMonth, reCrawl)
+        const monthToUse = lockMonth ? targetMonth : pickedMonth
+        const { contentRunId } = await triggerGeneration(clientId, monthToUse, reCrawl)
         setProgress({
           id: contentRunId,
           status: 'running',
@@ -130,14 +134,32 @@ export function GenerateContentDialog({
       <DialogTrigger render={<Button variant="accent" />}>Generate content</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Generate content for {monthLabel}</DialogTitle>
+          {lockMonth ? (
+            <DialogTitle>Generate content for {monthLabel}</DialogTitle>
+          ) : (
+            <DialogTitle>Generate content</DialogTitle>
+          )}
           <DialogDescription>
-            Locked to this batch&apos;s month. Open a different batch to generate for a different month.
+            {lockMonth
+              ? "Locked to this batch’s month. Open a different batch to generate for a different month."
+              : 'Choose the month to generate content for. Re-crawl is optional.'}
           </DialogDescription>
         </DialogHeader>
 
         {!progress && !error && (
           <div className="space-y-4 py-4">
+            {!lockMonth && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="month-picker">Month</Label>
+                <input
+                  id="month-picker"
+                  type="month"
+                  value={pickedMonth}
+                  onChange={(e) => setPickedMonth(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm w-full"
+                />
+              </div>
+            )}
             <div className="flex items-start gap-3">
               <input
                 id="recrawl-toggle"

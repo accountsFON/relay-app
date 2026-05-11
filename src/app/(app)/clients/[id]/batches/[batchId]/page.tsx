@@ -179,7 +179,7 @@ export default async function BatchDetailPage({
           canAct ? (
             <>
               {batch.currentStep !== RelayStep.final_qa_schedule && (
-                <GenerateContentDialog clientId={client.id} targetMonth={targetMonth} />
+                <GenerateContentDialog clientId={client.id} targetMonth={targetMonth} lockMonth />
               )}
               {run && posts.length > 0 && (
                 <ExportButton
