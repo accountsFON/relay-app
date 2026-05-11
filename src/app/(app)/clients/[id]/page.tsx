@@ -24,6 +24,7 @@ import { DeleteRunButton, RegenRunButton } from './run-management'
 import { RunStatusPoller } from './run-status-poller'
 import { ClientStatusBadge } from '@/components/clients/client-status-badge'
 import { ClientQuickAccess } from '@/components/clients/client-quick-access'
+import { ActiveBatchesSection } from '@/components/clients/active-batches-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 
@@ -87,6 +88,10 @@ export default async function ClientDetailPage({
 
       <div className="mt-6">
         <ClientQuickAccess urls={client.urls} assetsFolderUrl={client.assetsFolderUrl} />
+      </div>
+
+      <div className="mt-10">
+        <ActiveBatchesSection clientId={client.id} viewerUserId={ctx.userDbId} />
       </div>
 
       <div className="mt-10">

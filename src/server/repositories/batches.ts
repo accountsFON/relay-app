@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient, RelayStep, RelayRole } from '@prisma/client'
+import { RelayStep as RelayStepEnum } from '@prisma/client'
 import { db } from '@/db/client'
 
 type DbOrTx = PrismaClient | Prisma.TransactionClient
@@ -138,6 +139,47 @@ export async function listBatchesForOrg(orgId: string) {
       _count: { select: { posts: true } },
     },
     orderBy: { createdAt: 'desc' },
+  })
+}
+
+/**
+ * List batches in flight for a client, sorted by held-by-viewer first,
+ * then by most recent activity (RelayEvent createdAt, fallback to batch.createdAt).
+ *
+ * In flight = currentStep != final_qa_schedule (the terminal step in the
+ * RelayStep enum).
+ *
+ * Used by ActiveBatchesSection on the client page. In flight counts per
+ * client are typically <5, so the in-JS sort is cheap.
+ */
+export async function listActiveBatchesForClient(
+  clientId: string,
+  viewerUserId: string,
+) {
+  const batches = await db.batch.findMany({
+    where: {
+      clientId,
+      currentStep: { not: RelayStepEnum.final_qa_schedule },
+    },
+    include: {
+      holder: { select: { id: true, name: true, role: true } },
+      _count: { select: { posts: true } },
+      relayEvents: {
+        take: 1,
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      },
+    },
+  })
+
+  return batches.sort((a, b) => {
+    const aHeldByViewer = a.currentHolder === viewerUserId ? 1 : 0
+    const bHeldByViewer = b.currentHolder === viewerUserId ? 1 : 0
+    if (aHeldByViewer !== bHeldByViewer) return bHeldByViewer - aHeldByViewer
+
+    const aActivity = a.relayEvents[0]?.createdAt ?? a.createdAt
+    const bActivity = b.relayEvents[0]?.createdAt ?? b.createdAt
+    return bActivity.getTime() - aActivity.getTime()
   })
 }
 

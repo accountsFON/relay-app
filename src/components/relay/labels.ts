@@ -82,3 +82,15 @@ export const COPY_SUB_STATE_LABEL: Record<string, string> = {
   drafted: 'Drafted',
   approved: 'Approved',
 }
+
+/**
+ * Approximate days a batch has been on its current step using batch.createdAt.
+ * Note: schema has no per-step entry timestamp, so this is days since batch
+ * creation. Matches the existing approximation in the batch detail page.
+ */
+export function daysOnStep(batchCreatedAt: Date): number {
+  return Math.max(
+    0,
+    Math.floor((Date.now() - new Date(batchCreatedAt).getTime()) / (24 * 60 * 60 * 1000)),
+  )
+}
