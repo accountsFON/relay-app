@@ -25,10 +25,6 @@ export const generateContentTask = task({
 
     const client = contentRun.client
 
-    const matchingBatch = await db.batch.findFirst({
-      where: { clientId: client.id, label: contentRun.targetMonth },
-      select: { id: true, currentSubState: true, currentStep: true },
-    })
     const tokenUsage: TokenUsageLog = {}
     let openaiCost = 0
     let anthropicCost = 0
@@ -166,24 +162,17 @@ export const generateContentTask = task({
       }
       anthropicCost = captionResult.cost.usd
 
-      // Step 6: Create Post records. Posts attach to matchingBatch if one
-      // exists (so the Batch detail page's posts grid resolves cleanly), and
-      // the Batch's copy sub-state advances generating → drafted.
+      // Step 6: Create Post records with batchId=null. The modal's
+      // finalizePostGenerationAction handles batch attachment after the user
+      // chooses how to handle the new posts.
       currentStep = 'post_finalization'
       const postCount = await createPostsFromCaptions(
         captionResult.posts,
         contentRunId,
         client.id,
         ctaCandidates,
-        matchingBatch?.id ?? null
+        null
       )
-
-      if (matchingBatch?.id) {
-        await db.batch.update({
-          where: { id: matchingBatch.id },
-          data: { currentSubState: 'drafted' },
-        })
-      }
 
       const pipelineDurationSeconds = Math.round((Date.now() - pipelineStart) / 1000)
 
