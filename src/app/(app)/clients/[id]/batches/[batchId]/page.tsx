@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { RelayStep } from '@prisma/client'
 import { requireClientViewer } from '@/server/middleware/permissions'
@@ -24,6 +23,14 @@ import { ActivityThread } from '@/components/activity/activity-thread'
 import { STEP_LABEL } from '@/components/relay/labels'
 import { passBaton } from '@/server/services/relay'
 import { parseDateScope } from '@/lib/date-scope'
+import { findRunForBatch } from '@/server/repositories/contentRuns'
+import { listVersionsForPost } from '@/server/services/postVersions'
+import { resolveBatchTargetMonth } from '@/lib/batch-target-month'
+import { PostCard } from '@/components/posts/post-card'
+import { PostVersionHistory } from '@/components/posts/post-version-history'
+import { CostBreakdown } from '@/components/runs/cost-breakdown'
+import { FailedRunBanner } from '@/components/runs/failed-run-banner'
+import { ExportButton } from '@/components/runs/export-button'
 
 export default async function BatchDetailPage({
   params,
@@ -82,6 +89,7 @@ export default async function BatchDetailPage({
         caption: true,
         hashtags: true,
         graphicHook: true,
+        designerNotes: true,
         contentRunId: true,
       },
     }),
@@ -122,6 +130,34 @@ export default async function BatchDetailPage({
 
   const canAct = batch.currentHolder === ctx.userDbId || ctx.platformOwner
 
+  const run = await findRunForBatch(batch.id)
+  const targetMonth = resolveBatchTargetMonth(batch, run)
+
+  // Pull breakdown + duration + errorContext from run.tokenUsage, mirroring
+  // the runs/[runId] page parsing (which is being deprecated).
+  const tokenUsage =
+    run?.tokenUsage && typeof run.tokenUsage === 'object'
+      ? (run.tokenUsage as Record<string, unknown>)
+      : null
+  const breakdown =
+    tokenUsage && 'breakdown' in tokenUsage
+      ? (tokenUsage.breakdown as Parameters<typeof CostBreakdown>[0]['breakdown'])
+      : null
+  const pipelineDurationSeconds =
+    tokenUsage && 'pipelineDurationSeconds' in tokenUsage
+      ? Number((tokenUsage as Record<string, unknown>).pipelineDurationSeconds)
+      : null
+  const errorContext =
+    tokenUsage && 'errorContext' in tokenUsage
+      ? (tokenUsage.errorContext as {
+          name?: string
+          message?: string
+          stack?: string | null
+          capturedAt?: string
+          failedStep?: string
+        })
+      : null
+
   const isRevisionsStep = batch.currentStep === RelayStep.implementing_revisions
   const isClientDecisionView =
     ctx.role === 'client' &&
@@ -138,6 +174,20 @@ export default async function BatchDetailPage({
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
         backHref="/dashboard"
         backLabel="Back to dashboard"
+        actions={
+          canAct && run && posts.length > 0 ? (
+            <ExportButton
+              posts={posts.map((p) => ({
+                date: p.postDate.toISOString().split('T')[0],
+                caption: p.caption,
+                hashtags: p.hashtags.join(' '),
+                graphicHook: p.graphicHook ?? '',
+                designerNotes: p.designerNotes ?? '',
+              }))}
+              filename={`${client.name}-${targetMonth}`}
+            />
+          ) : undefined
+        }
       />
 
       <div className="mt-8">
@@ -147,6 +197,28 @@ export default async function BatchDetailPage({
         />
       </div>
 
+      {run?.status === 'failed' && (
+        <div className="mt-6">
+          <FailedRunBanner
+            errorMessage={run.errorMessage}
+            errorContext={errorContext}
+            failedStep={errorContext?.failedStep ? humanizeFailedStep(errorContext.failedStep) : 'unknown step'}
+            pipelineDurationSeconds={Number.isFinite(pipelineDurationSeconds) ? pipelineDurationSeconds : null}
+            reRunHref={`/clients/${id}/batches/${batchId}`}
+            partialPostCount={posts.length}
+          />
+        </div>
+      )}
+
+      {run && breakdown && (
+        <div className="mt-8">
+          <CostBreakdown
+            breakdown={breakdown}
+            pipelineDurationSeconds={Number.isFinite(pipelineDurationSeconds) ? pipelineDurationSeconds : null}
+          />
+        </div>
+      )}
+
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           <PageSection title={`Posts (${posts.length})`}>
@@ -154,39 +226,30 @@ export default async function BatchDetailPage({
               <p className="text-sm text-muted-foreground">
                 {batchSummary.currentStep === 'onboarding_gate' ||
                 batchSummary.currentStep === 'copy'
-                  ? 'No posts attached to this batch yet. Generated posts attach automatically once a content run finishes for this month.'
+                  ? 'No posts yet. Click Generate content to start.'
                   : 'No posts on this batch. The batch may pre-date the content run, or posts may have been moved to a different batch.'}
               </p>
             ) : (
-              <ul className="divide-y divide-border rounded-md border border-border bg-card">
-                {posts.map((post) => (
-                  <li key={post.id} className="px-4 py-3">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <p className="text-[12px] font-mono text-muted-foreground">
-                        {formatPostDate(post.postDate)}
-                      </p>
-                      <Link
-                        href={`/clients/${client.id}/runs/${post.contentRunId}`}
-                        className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
-                      >
-                        edit →
-                      </Link>
-                    </div>
-                    <p className="mt-1.5 text-[13px] text-foreground line-clamp-3 whitespace-pre-wrap">
-                      {post.caption}
-                    </p>
-                    {post.hashtags.length > 0 && (
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {post.hashtags
-                          .slice(0, 8)
-                          .map((h) => (h.startsWith('#') ? h : `#${h}`))
-                          .join(' ')}
-                        {post.hashtags.length > 8 && ` +${post.hashtags.length - 8} more`}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <div className="space-y-4">
+                {await Promise.all(
+                  posts.map(async (post) => {
+                    const versions = await listVersionsForPost(post.id)
+                    const versionRows = versions.map((v) => ({
+                      id: v.id,
+                      caption: v.caption,
+                      hashtagCount: v.hashtags.length,
+                      createdAt: v.createdAt,
+                      authorName: v.author?.name ?? null,
+                    }))
+                    return (
+                      <div key={post.id} className="space-y-2">
+                        <PostCard post={post} />
+                        <PostVersionHistory postId={post.id} versions={versionRows} />
+                      </div>
+                    )
+                  }),
+                )}
+              </div>
             )}
           </PageSection>
 
@@ -235,10 +298,15 @@ export default async function BatchDetailPage({
   )
 }
 
-function formatPostDate(d: Date): string {
-  return new Date(d).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
+function humanizeFailedStep(step: string): string {
+  switch (step) {
+    case 'run_init': return 'run initialization'
+    case 'date_calculation': return 'date calculation'
+    case 'brief_generation': return 'brief generation'
+    case 'website_crawl': return 'website crawl'
+    case 'facts_extraction': return 'facts extraction'
+    case 'caption_generation': return 'caption generation'
+    case 'post_finalization': return 'post finalization'
+    default: return step.replace(/_/g, ' ')
+  }
 }
