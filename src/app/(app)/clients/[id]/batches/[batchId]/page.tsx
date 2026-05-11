@@ -136,8 +136,8 @@ export default async function BatchDetailPage({
       <PageHeader
         title={`Batch ${batch.label}`}
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
-        backHref={`/clients/${id}`}
-        backLabel={`Back to ${client.name}`}
+        backHref="/dashboard"
+        backLabel="Back to dashboard"
       />
 
       <div className="mt-8">
