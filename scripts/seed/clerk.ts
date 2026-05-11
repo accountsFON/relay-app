@@ -51,7 +51,15 @@ export async function findClerkUserByEmail(
 
 /**
  * Idempotent: returns the existing Clerk user if found by email, otherwise
- * creates one with the demo password and the email pre verified.
+ * creates one with the demo password and the email marked verified so
+ * interactive sign in does not prompt for a verification code.
+ *
+ * `clerk.users.createUser({ emailAddress: ['x@y.z'] })` defaults the email
+ * to `verification.status === 'unverified'`. Without an explicit verify
+ * step the demo accounts cannot complete an interactive sign in because
+ * the codes go to a fake @relaydemo.app domain. We patch each
+ * email_address right after creation via the Backend API directly (the
+ * SDK does not expose a `verified` flag on every version).
  */
 export async function ensureClerkUser(
   clerk: ClerkClient,
@@ -69,7 +77,35 @@ export async function ensureClerkUser(
     skipPasswordChecks: true,
     skipPasswordRequirement: false,
   })
+
+  // Re-fetch to walk the email_addresses list, then verify each one.
+  const fresh = await clerk.users.getUser(created.id)
+  await markEmailsVerified(fresh.emailAddresses ?? [])
+
   return { email: user.email, clerkUserId: created.id, created: true }
+}
+
+/**
+ * PATCH each email_address with `verified: true` via the Backend API.
+ * Used by ensureClerkUser for new creates and by the standalone
+ * `verify-demo-emails` script for backfilling already-created users.
+ */
+async function markEmailsVerified(
+  emailAddresses: { id: string; verification?: { status?: string } | null }[],
+): Promise<void> {
+  const secretKey = process.env.CLERK_SECRET_KEY
+  if (!secretKey) return
+  for (const ea of emailAddresses) {
+    if (ea.verification?.status === 'verified') continue
+    await fetch(`https://api.clerk.com/v1/email_addresses/${ea.id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ verified: true }),
+    })
+  }
 }
 
 export async function findClerkOrgByName(
