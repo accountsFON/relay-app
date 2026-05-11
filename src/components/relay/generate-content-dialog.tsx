@@ -14,11 +14,17 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import {
   triggerGeneration,
   getRunStatus,
   getClientCrawlInfo,
 } from '@/app/(app)/clients/[id]/generate/actions'
+import {
+  finalizePostGenerationAction,
+  findMatchingBatchForRunAction,
+  type FinalizePostGenerationInput,
+} from '@/server/actions/finalize-post-generation'
 
 type RunProgress = {
   id: string
@@ -29,6 +35,12 @@ type RunProgress = {
   postCount: number
   totalCostUsd: number | null
   errorMessage: string | null
+}
+
+type MatchingBatch = {
+  batchId: string
+  label: string
+  postCount: number
 }
 
 const STEP_INSIGHTS = [
@@ -57,10 +69,21 @@ export function GenerateContentDialog({
   const [isPending, startTransition] = useTransition()
   const completionTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Choice-panel state
+  const [matchingBatch, setMatchingBatch] = useState<MatchingBatch | null>(null)
+  const [confirmingReplace, setConfirmingReplace] = useState(false)
+  const [showingNewBatchInput, setShowingNewBatchInput] = useState(false)
+  const [newBatchLabel, setNewBatchLabel] = useState('')
+  const [isFinalizing, setIsFinalizing] = useState(false)
+
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       setProgress(null)
       setError(null)
+      setMatchingBatch(null)
+      setConfirmingReplace(false)
+      setShowingNewBatchInput(false)
+      setNewBatchLabel('')
     }
     setOpen(next)
   }
@@ -87,11 +110,18 @@ export function GenerateContentDialog({
         if (!next) return
         setProgress(next)
         if (next.status === 'complete') {
-          completionTimer.current = setTimeout(() => {
+          clearInterval(interval)
+          const matched = await findMatchingBatchForRunAction(next.id)
+          if (matched) {
+            setMatchingBatch(matched)
+            // Don't close -- show choice panel
+          } else {
+            // Auto-new: silently create a batch and close
+            await finalizePostGenerationAction({ choice: 'auto-new', runId: next.id })
             setOpen(false)
             setProgress(null)
             router.refresh()
-          }, 800)
+          }
         }
       } catch (e) {
         clearInterval(interval)
@@ -102,6 +132,24 @@ export function GenerateContentDialog({
       if (completionTimer.current) clearTimeout(completionTimer.current)
     }
   }, [progress?.id, progress?.status, router])
+
+  const handleChoice = async (input: FinalizePostGenerationInput) => {
+    setIsFinalizing(true)
+    try {
+      await finalizePostGenerationAction(input)
+      setOpen(false)
+      setProgress(null)
+      setMatchingBatch(null)
+      setConfirmingReplace(false)
+      setShowingNewBatchInput(false)
+      setNewBatchLabel('')
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to finalize')
+    } finally {
+      setIsFinalizing(false)
+    }
+  }
 
   const handleStart = () => {
     setError(null)
@@ -141,7 +189,7 @@ export function GenerateContentDialog({
           )}
           <DialogDescription>
             {lockMonth
-              ? "Locked to this batch’s month. Open a different batch to generate for a different month."
+              ? "Locked to this batch's month. Open a different batch to generate for a different month."
               : 'Choose the month to generate content for. Re-crawl is optional.'}
           </DialogDescription>
         </DialogHeader>
@@ -186,7 +234,7 @@ export function GenerateContentDialog({
           </div>
         )}
 
-        {progress && (
+        {progress && !matchingBatch && (
           <div className="space-y-3 py-4">
             <StepProgressRow done={progress.brief} label={STEP_INSIGHTS[0]} />
             <StepProgressRow done={progress.crawledContent} label={STEP_INSIGHTS[1]} />
@@ -211,6 +259,118 @@ export function GenerateContentDialog({
                 >
                   Retry
                 </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isComplete && matchingBatch && progress && (
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-green-600 font-medium">
+              {progress.postCount} posts generated for {monthLabel}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              The &quot;{matchingBatch.label}&quot; batch already has {matchingBatch.postCount} posts.
+              What would you like to do?
+            </p>
+
+            {/* Add */}
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              disabled={isFinalizing}
+              onClick={() =>
+                handleChoice({
+                  choice: 'add',
+                  runId: progress.id,
+                  batchId: matchingBatch.batchId,
+                })
+              }
+            >
+              Add to &quot;{matchingBatch.label}&quot; batch ({progress.postCount + matchingBatch.postCount} total posts)
+            </Button>
+
+            {/* Replace -- needs confirm gate */}
+            {!confirmingReplace ? (
+              <Button
+                variant="outline"
+                className="w-full justify-start text-destructive"
+                disabled={isFinalizing}
+                onClick={() => setConfirmingReplace(true)}
+              >
+                Replace &quot;{matchingBatch.label}&quot; batch (delete {matchingBatch.postCount} existing)
+              </Button>
+            ) : (
+              <div className="rounded border border-destructive p-3 space-y-2">
+                <p className="text-sm text-destructive">
+                  This will permanently delete the {matchingBatch.postCount} existing posts
+                  in the &quot;{matchingBatch.label}&quot; batch. This cannot be undone.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={isFinalizing}
+                    onClick={() => setConfirmingReplace(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={isFinalizing}
+                    onClick={() =>
+                      handleChoice({
+                        choice: 'replace',
+                        runId: progress.id,
+                        batchId: matchingBatch.batchId,
+                      })
+                    }
+                  >
+                    {isFinalizing ? <Loader2 className="size-4 animate-spin" /> : 'Yes, replace'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* New batch -- needs label input */}
+            {!showingNewBatchInput ? (
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                disabled={isFinalizing}
+                onClick={() => setShowingNewBatchInput(true)}
+              >
+                Start a new batch
+              </Button>
+            ) : (
+              <div className="rounded border border-border p-3 space-y-2">
+                <Label htmlFor="new-batch-label">New batch label</Label>
+                <Input
+                  id="new-batch-label"
+                  value={newBatchLabel}
+                  onChange={(e) => setNewBatchLabel(e.target.value)}
+                  placeholder={`${monthLabel} (rerun)`}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={isFinalizing}
+                    onClick={() => setShowingNewBatchInput(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    disabled={isFinalizing || (!newBatchLabel.trim() && !monthLabel)}
+                    onClick={() =>
+                      handleChoice({
+                        choice: 'new',
+                        runId: progress.id,
+                        label: newBatchLabel.trim() || `${monthLabel} (rerun)`,
+                      })
+                    }
+                  >
+                    {isFinalizing ? <Loader2 className="size-4 animate-spin" /> : 'Create batch'}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
