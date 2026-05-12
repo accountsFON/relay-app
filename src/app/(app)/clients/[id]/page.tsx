@@ -10,6 +10,7 @@ import {
   visibilityForViewer,
 } from '@/server/repositories/activityEvents'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
+import { db } from '@/db/client'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { buildMentionRoster } from '@/lib/mentions'
@@ -26,6 +27,8 @@ import { ClientQuickAccess } from '@/components/clients/client-quick-access'
 import { ActiveBatchesSection } from '@/components/clients/active-batches-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
+import { ArchiveClientButton } from '@/components/relay/archive-client-button'
+import { RestoreClientBanner } from '@/components/relay/restore-client-banner'
 
 export default async function ClientDetailPage({
   params,
@@ -42,11 +45,23 @@ export default async function ClientDetailPage({
     from: typeof sp.from === 'string' ? sp.from : null,
     to: typeof sp.to === 'string' ? sp.to : null,
   })
+  const showArchived = sp.archived === '1'
 
+  // findClientForUser now uses withArchived() so archived clients still load.
   const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
-  const [runs, activity, memberships] = await Promise.all([
+  // Resolve the display name for the user who archived the client (if any).
+  let archivedByName: string | null = null
+  if (client.deletedAt && client.deletedBy) {
+    const actor = await db.user.findUnique({
+      where: { id: client.deletedBy },
+      select: { name: true },
+    })
+    archivedByName = actor?.name ?? null
+  }
+
+  const [runs, activity, memberships, archivedBatchCount] = await Promise.all([
     listRunsByClient(id, { dateScope }),
     listActivityForClient(client.id, {
       limit: 30,
@@ -54,15 +69,28 @@ export default async function ClientDetailPage({
       dateRange: { from: dateScope.from, to: dateScope.to },
     }),
     listMembershipsForOrg(ctx.organizationDbId),
+    db.batch.onlyArchived().count({ where: { clientId: id } }),
   ])
   const canEdit = canEditClients(ctx)
   const mentionTargets = buildMentionRoster(memberships)
   const hasActiveRun = runs.some(
     (r) => r.status === 'running' || r.status === 'queued'
   )
+  // Actions (generate content, archive) are unavailable on archived clients.
+  const isLive = !client.deletedAt
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+      {client.deletedAt && (
+        <div className="mb-6">
+          <RestoreClientBanner
+            clientId={client.id}
+            archivedAt={client.deletedAt}
+            archivedBy={archivedByName}
+          />
+        </div>
+      )}
+
       <PageHeader
         title={client.name}
         description={
@@ -74,11 +102,16 @@ export default async function ClientDetailPage({
         actions={
           canEdit ? (
             <>
-              <GenerateContentDialog clientId={client.id} targetMonth={getNextMonth()} />
-              <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
+              {isLive && (
+                <>
+                  <GenerateContentDialog clientId={client.id} targetMonth={getNextMonth()} />
+                  <ArchiveClientButton clientId={client.id} clientName={client.name} />
+                </>
+              )}
+              <ClientStatusBadge clientId={client.id} status={client.status} canEdit={isLive && canEdit} />
             </>
           ) : (
-            <ClientStatusBadge clientId={client.id} status={client.status} canEdit={canEdit} />
+            <ClientStatusBadge clientId={client.id} status={client.status} canEdit={false} />
           )
         }
       />
@@ -88,7 +121,12 @@ export default async function ClientDetailPage({
       </div>
 
       <div className="mt-10">
-        <ActiveBatchesSection clientId={client.id} viewerUserId={ctx.userDbId} />
+        <ActiveBatchesSection
+          clientId={client.id}
+          viewerUserId={ctx.userDbId}
+          showArchived={showArchived}
+          archivedBatchCount={archivedBatchCount}
+        />
       </div>
 
       <div className="mt-10">
@@ -138,7 +176,7 @@ export default async function ClientDetailPage({
                       </span>
                     }
                     trailing={
-                      canEdit ? (
+                      isLive && canEdit ? (
                         <div className="flex items-center gap-1">
                           <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} status={run.status} />
                           <DeleteRunButton runId={run.id} status={run.status} />
@@ -154,7 +192,7 @@ export default async function ClientDetailPage({
       </div>
 
       <div className="mt-10">
-        <ClientProfileView client={client} canEdit={canEdit} />
+        <ClientProfileView client={client} canEdit={isLive && canEdit} />
       </div>
 
       <div className="mt-10">
@@ -166,7 +204,7 @@ export default async function ClientDetailPage({
             clientId={client.id}
             events={activity}
             mentionTargets={mentionTargets}
-            hideComposer={!canEdit}
+            hideComposer={!canEdit || !isLive}
           />
         </PageSection>
       </div>

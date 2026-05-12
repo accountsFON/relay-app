@@ -39,7 +39,8 @@ export async function listClientsByOrg(
  * scope (caller should call notFound() on null to avoid existence leaks).
  */
 export async function findClientForUser(ctx: OrgContext, id: string) {
-  return db.client.findFirst({
+  // withArchived() so the client page still loads when the client is soft-deleted.
+  return db.client.withArchived().findFirst({
     where: {
       id,
       organizationId: ctx.organizationDbId,

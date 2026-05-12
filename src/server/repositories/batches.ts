@@ -188,6 +188,26 @@ export async function listActiveBatchesForClient(
   })
 }
 
+/**
+ * Lists soft-deleted (archived) batches for a client, sorted by most recently
+ * archived first.
+ *
+ * Used by ActiveBatchesSection when the ShowArchivedToggle is on.
+ */
+export async function listArchivedBatchesForClient(clientId: string) {
+  return db.batch.onlyArchived().findMany({
+    where: { clientId },
+    orderBy: { deletedAt: 'desc' },
+    select: {
+      id: true,
+      label: true,
+      currentStep: true,
+      deletedAt: true,
+      createdAt: true,
+    },
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Trash: archive / restore
 // ---------------------------------------------------------------------------
