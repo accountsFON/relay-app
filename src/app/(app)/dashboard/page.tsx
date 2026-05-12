@@ -52,20 +52,34 @@ export default async function DashboardPage({
     from: typeof sp.from === 'string' ? sp.from : null,
     to: typeof sp.to === 'string' ? sp.to : null,
   })
+  const showArchived = sp.archived === '1'
 
-  // Pre-fetch archived client count for roles that show the toggle.
-  const archivedClientCount =
+  // Archived batch count for the org. Drives the toggle label on the
+  // AM / Designer kanban dashboards.
+  const archivedBatchCount =
     ctx.role === 'account_manager' || ctx.role === 'admin' || ctx.role === 'designer'
-      ? await db.client.onlyArchived().count({
-          where: { organizationId: ctx.organizationDbId },
+      ? await db.batch.onlyArchived().count({
+          where: { client: { organizationId: ctx.organizationDbId } },
         })
       : 0
 
   if (ctx.role === 'account_manager' || ctx.role === 'admin') {
-    return <AmDashboard ctx={ctx} archivedClientCount={archivedClientCount} />
+    return (
+      <AmDashboard
+        ctx={ctx}
+        archivedBatchCount={archivedBatchCount}
+        showArchived={showArchived}
+      />
+    )
   }
   if (ctx.role === 'designer') {
-    return <DesignerDashboard ctx={ctx} archivedClientCount={archivedClientCount} />
+    return (
+      <DesignerDashboard
+        ctx={ctx}
+        archivedBatchCount={archivedBatchCount}
+        showArchived={showArchived}
+      />
+    )
   }
   if (ctx.role === 'client' && ctx.linkedClientId) {
     return <ClientDashboard linkedClientId={ctx.linkedClientId} />
@@ -75,12 +89,14 @@ export default async function DashboardPage({
 
 async function AmDashboard({
   ctx,
-  archivedClientCount,
+  archivedBatchCount,
+  showArchived,
 }: {
   ctx: { organizationDbId: string; userDbId: string; role: string }
-  archivedClientCount: number
+  archivedBatchCount: number
+  showArchived: boolean
 }) {
-  const allBatches = await listBatchesForOrg(ctx.organizationDbId)
+  const allBatches = await listBatchesForOrg(ctx.organizationDbId, { showArchived })
   // For AMs, scope to batches on clients they're assigned to. Admins see all.
   const myBatches =
     ctx.role === 'admin'
@@ -106,7 +122,7 @@ async function AmDashboard({
         }
       />
       <div className="mt-4">
-        <ShowArchivedToggle countArchived={archivedClientCount} />
+        <ShowArchivedToggle countArchived={archivedBatchCount} />
       </div>
       {myBatches.length === 0 ? (
         <div className="mt-10">
@@ -132,12 +148,14 @@ async function AmDashboard({
 
 async function DesignerDashboard({
   ctx,
-  archivedClientCount,
+  archivedBatchCount,
+  showArchived,
 }: {
   ctx: { organizationDbId: string; userDbId: string }
-  archivedClientCount: number
+  archivedBatchCount: number
+  showArchived: boolean
 }) {
-  const allBatches = await listBatchesForOrg(ctx.organizationDbId)
+  const allBatches = await listBatchesForOrg(ctx.organizationDbId, { showArchived })
   const myBatches = allBatches.filter(
     (b) => b.client.assignedDesignerId === ctx.userDbId,
   )
@@ -156,7 +174,7 @@ async function DesignerDashboard({
         description="Your design queue, grouped by stage."
       />
       <div className="mt-4">
-        <ShowArchivedToggle countArchived={archivedClientCount} />
+        <ShowArchivedToggle countArchived={archivedBatchCount} />
       </div>
       {myBatches.length === 0 ? (
         <div className="mt-10">
@@ -225,6 +243,7 @@ interface ColumnBatch {
   currentStep: import('@prisma/client').RelayStep
   currentSubState: string | null
   createdAt: Date
+  deletedAt?: Date | null
   client?: { name: string }
   holder?: { name: string }
   revisionPlan?: { items: { status: import('@prisma/client').RevisionItemStatus }[] } | null
@@ -261,6 +280,7 @@ function KanbanColumn({
                 currentStep: batch.currentStep,
                 currentSubState: batch.currentSubState,
                 createdAt: batch.createdAt,
+                deletedAt: batch.deletedAt ?? null,
                 client: { name: batch.client?.name ?? '' },
                 holder: { name: batch.holder?.name ?? '' },
                 revisionPlan: batch.revisionPlan ?? null,

@@ -130,8 +130,12 @@ export async function listOnboardingQueue(orgId: string) {
  * All batches for an org. Used by the AM kanban (filter client-side
  * to assignedAmId === userId) and admin dashboards.
  */
-export async function listBatchesForOrg(orgId: string) {
-  return db.batch.findMany({
+export async function listBatchesForOrg(
+  orgId: string,
+  options?: { showArchived?: boolean },
+) {
+  const query = options?.showArchived ? db.batch.withArchived() : db.batch
+  return query.findMany({
     where: { client: { organizationId: orgId } },
     include: {
       client: {
