@@ -71,7 +71,7 @@ export function DashboardRelayTrack({
         <div
           role="list"
           aria-label="Relay track"
-          className="flex items-start gap-3 overflow-x-auto pb-3"
+          className="flex items-start gap-3 overflow-x-auto px-1 py-2"
           style={{
             scrollbarColor: 'var(--ink-80) transparent',
             scrollbarWidth: 'thin',
