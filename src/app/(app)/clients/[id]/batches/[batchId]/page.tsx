@@ -37,6 +37,7 @@ import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
 import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { MissingClientUserBanner } from '@/components/relay/missing-client-user-banner'
+import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
 
 export default async function BatchDetailPage({
   params,
@@ -210,8 +211,63 @@ export default async function BatchDetailPage({
   const showMissingClientUserBanner =
     isLive && isClientHeldStep && !hasLinkedClientUser && canAct
 
+  // Celebration participants: AM, Designer, current holder, and any linked
+  // client users. Only loaded when the batch has reached the terminal step
+  // so the cost is paid once per batch lifetime, not on every page render.
+  const isBatchComplete = batch.currentStep === RelayStep.final_qa_schedule
+  let celebrationParticipants: Array<{
+    id: string
+    name: string
+    avatarUrl: string | null
+  }> = []
+  if (isBatchComplete) {
+    const clientWithTeam = await db.client.findUnique({
+      where: { id: client.id },
+      select: { assignedAmId: true, assignedDesignerId: true },
+    })
+    const explicitIds = [
+      clientWithTeam?.assignedAmId,
+      clientWithTeam?.assignedDesignerId,
+      batch.holder.id,
+    ].filter((x): x is string => Boolean(x))
+    const users = await db.user.findMany({
+      where: {
+        OR: [
+          { id: { in: explicitIds } },
+          { linkedClientId: client.id },
+        ],
+      },
+      select: { id: true, name: true, avatarUrl: true },
+      take: 8,
+    })
+    // Dedupe while preserving a stable order: AM, Designer, holder, client(s).
+    const seen = new Set<string>()
+    const ordered: Array<{ id: string; name: string; avatarUrl: string | null }> = []
+    for (const id of explicitIds) {
+      const u = users.find((x) => x.id === id)
+      if (u && !seen.has(u.id)) {
+        seen.add(u.id)
+        ordered.push(u)
+      }
+    }
+    for (const u of users) {
+      if (!seen.has(u.id)) {
+        seen.add(u.id)
+        ordered.push(u)
+      }
+    }
+    celebrationParticipants = ordered
+  }
+
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
+      {isBatchComplete && celebrationParticipants.length > 0 && (
+        <BatchCompletionLap
+          batchId={batch.id}
+          participants={celebrationParticipants}
+        />
+      )}
+
       {batch.deletedAt && (
         <div className="mb-6">
           <RestoreBatchBanner
