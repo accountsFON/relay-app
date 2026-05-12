@@ -4,6 +4,8 @@ vi.mock('@/db/client', () => ({
   db: {
     contentRun: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
     },
   },
 }))
@@ -12,9 +14,19 @@ vi.mock('@/server/middleware/auth', () => ({
   requireOrgContext: vi.fn(),
 }))
 
+vi.mock('@/server/middleware/permissions', () => ({
+  requireClientEditor: vi.fn(),
+}))
+
+vi.mock('@/server/repositories/clients', () => ({
+  findClientForUser: vi.fn(),
+}))
+
 import { db } from '@/db/client'
 import { requireOrgContext } from '@/server/middleware/auth'
-import { listInFlightRuns } from '@/server/actions/in-flight-runs'
+import { requireClientEditor } from '@/server/middleware/permissions'
+import { findClientForUser } from '@/server/repositories/clients'
+import { listInFlightRuns, acknowledgeFailedRunAction } from '@/server/actions/in-flight-runs'
 
 const mockCtx = {
   userId: 'user_clerk_123',
@@ -29,16 +41,56 @@ const mockCtx = {
   roleDefaults: {},
 }
 
+// ---- Shared fixture helper -----------------------------------------------
+
+type RowOverrides = Partial<{
+  id: string
+  clientId: string
+  targetMonth: string
+  status: string
+  brief: string | null
+  crawledContent: string | null
+  supportingFacts: string | null
+  errorMessage: string | null
+  createdAt: Date
+  acknowledgedAt: Date | null
+  client: { name: string }
+  _count: { posts: number }
+}>
+
+function makeRow(overrides: RowOverrides = {}) {
+  return {
+    id: 'run_1',
+    clientId: 'client_1',
+    targetMonth: '2026-05',
+    status: 'running',
+    brief: null,
+    crawledContent: null,
+    supportingFacts: null,
+    errorMessage: null,
+    createdAt: new Date('2026-05-12T10:00:00Z'),
+    acknowledgedAt: null,
+    client: { name: 'Acme Corp' },
+    _count: { posts: 0 },
+    ...overrides,
+  }
+}
+
+// ---- Test setup -----------------------------------------------------------
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireOrgContext).mockResolvedValue(mockCtx as never)
+  vi.mocked(requireClientEditor).mockResolvedValue(mockCtx as never)
 })
+
+// ---- listInFlightRuns ----------------------------------------------------
 
 describe('listInFlightRuns', () => {
   it('returns active runs (status not in complete or failed)', async () => {
     const now = new Date('2026-05-12T10:00:00Z')
     vi.mocked(db.contentRun.findMany).mockResolvedValue([
-      {
+      makeRow({
         id: 'run_1',
         clientId: 'client_1',
         targetMonth: '2026-05',
@@ -48,10 +100,9 @@ describe('listInFlightRuns', () => {
         supportingFacts: 'some facts',
         errorMessage: null,
         createdAt: now,
-        acknowledgedAt: null,
         client: { name: 'Acme Corp' },
         _count: { posts: 3 },
-      },
+      }),
     ] as never)
 
     const result = await listInFlightRuns()
@@ -77,7 +128,7 @@ describe('listInFlightRuns', () => {
   it('returns awaiting_choice runs (status complete with unattached posts)', async () => {
     const now = new Date('2026-05-12T11:00:00Z')
     vi.mocked(db.contentRun.findMany).mockResolvedValue([
-      {
+      makeRow({
         id: 'run_2',
         clientId: 'client_2',
         targetMonth: '2026-06',
@@ -85,12 +136,10 @@ describe('listInFlightRuns', () => {
         brief: 'brief content',
         crawledContent: 'crawled stuff',
         supportingFacts: null,
-        errorMessage: null,
         createdAt: now,
-        acknowledgedAt: null,
         client: { name: 'Beta LLC' },
         _count: { posts: 5 },
-      },
+      }),
     ] as never)
 
     const result = await listInFlightRuns()
@@ -110,24 +159,18 @@ describe('listInFlightRuns', () => {
 
   it('returns failed runs only if acknowledgedAt is null', async () => {
     const t1 = new Date('2026-05-10T08:00:00Z')
-    const t2 = new Date('2026-05-11T08:00:00Z')
     // The DB query already filters out acknowledged failed runs (WHERE clause).
     // This test verifies that only the unacknowledged one comes back from the action.
     vi.mocked(db.contentRun.findMany).mockResolvedValue([
-      {
+      makeRow({
         id: 'run_failed_unack',
         clientId: 'client_3',
-        targetMonth: '2026-05',
         status: 'failed',
-        brief: null,
-        crawledContent: null,
-        supportingFacts: null,
         errorMessage: 'OpenAI timeout',
         createdAt: t1,
-        acknowledgedAt: null,
         client: { name: 'Gamma Inc' },
         _count: { posts: 0 },
-      },
+      }),
     ] as never)
 
     const result = await listInFlightRuns()
@@ -152,19 +195,16 @@ describe('listInFlightRuns', () => {
       }),
     )
 
-    // The acknowledged run (t2) is not returned — the DB mock already omits it,
+    // The acknowledged run is not returned — the DB mock already omits it,
     // confirming the WHERE clause would filter it at the DB level.
     expect(result.find((r) => r.id === 'run_failed_ack')).toBeUndefined()
-    void t2 // satisfy lint — only used in comment above
   })
 
-  it('does not return runs from other organizations', async () => {
+  it('passes the current org\'s DB ID in the WHERE clause', async () => {
     // DB mock returns empty — simulating org scoping working correctly
     vi.mocked(db.contentRun.findMany).mockResolvedValue([] as never)
 
-    const result = await listInFlightRuns()
-
-    expect(result).toHaveLength(0)
+    await listInFlightRuns()
 
     // Confirm the WHERE clause scopes to the current org's DB id
     expect(vi.mocked(db.contentRun.findMany)).toHaveBeenCalledWith(
@@ -181,34 +221,8 @@ describe('listInFlightRuns', () => {
     const newer = new Date('2026-05-10T09:00:00Z')
 
     vi.mocked(db.contentRun.findMany).mockResolvedValue([
-      {
-        id: 'run_old',
-        clientId: 'client_1',
-        targetMonth: '2026-05',
-        status: 'running',
-        brief: null,
-        crawledContent: null,
-        supportingFacts: null,
-        errorMessage: null,
-        createdAt: older,
-        acknowledgedAt: null,
-        client: { name: 'Alpha Co' },
-        _count: { posts: 2 },
-      },
-      {
-        id: 'run_new',
-        clientId: 'client_1',
-        targetMonth: '2026-05',
-        status: 'running',
-        brief: null,
-        crawledContent: null,
-        supportingFacts: null,
-        errorMessage: null,
-        createdAt: newer,
-        acknowledgedAt: null,
-        client: { name: 'Alpha Co' },
-        _count: { posts: 1 },
-      },
+      makeRow({ id: 'run_old', clientId: 'client_1', createdAt: older, _count: { posts: 2 } }),
+      makeRow({ id: 'run_new', clientId: 'client_1', createdAt: newer, _count: { posts: 1 } }),
     ] as never)
 
     const result = await listInFlightRuns()
@@ -222,6 +236,48 @@ describe('listInFlightRuns', () => {
       expect.objectContaining({
         orderBy: { createdAt: 'asc' },
       }),
+    )
+  })
+})
+
+// ---- acknowledgeFailedRunAction ------------------------------------------
+
+describe('acknowledgeFailedRunAction', () => {
+  it('sets acknowledgedAt on the target run', async () => {
+    vi.mocked(db.contentRun.findUnique).mockResolvedValue(
+      { clientId: 'client_1', status: 'failed' } as never,
+    )
+    vi.mocked(findClientForUser).mockResolvedValue({ id: 'client_1' } as never)
+    vi.mocked(db.contentRun.update).mockResolvedValue({} as never)
+
+    const result = await acknowledgeFailedRunAction('r1')
+
+    expect(result.success).toBe(true)
+    expect(vi.mocked(db.contentRun.update)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'r1' },
+        data: expect.objectContaining({ acknowledgedAt: expect.any(Date) }),
+      }),
+    )
+  })
+
+  it('refuses to acknowledge a run from another org', async () => {
+    vi.mocked(db.contentRun.findUnique).mockResolvedValue(
+      { clientId: 'client_other', status: 'failed' } as never,
+    )
+    vi.mocked(findClientForUser).mockResolvedValue(null as never)
+
+    await expect(acknowledgeFailedRunAction('r2')).rejects.toThrow('Run not in this org')
+  })
+
+  it('refuses to acknowledge a non-failed run', async () => {
+    vi.mocked(db.contentRun.findUnique).mockResolvedValue(
+      { clientId: 'client_1', status: 'running' } as never,
+    )
+    vi.mocked(findClientForUser).mockResolvedValue({ id: 'client_1' } as never)
+
+    await expect(acknowledgeFailedRunAction('r3')).rejects.toThrow(
+      'Only failed runs can be acknowledged',
     )
   })
 })

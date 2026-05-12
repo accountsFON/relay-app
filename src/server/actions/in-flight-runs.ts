@@ -1,7 +1,11 @@
 'use server'
 
 import { requireOrgContext } from '@/server/middleware/auth'
+import { requireClientEditor } from '@/server/middleware/permissions'
+import { findClientForUser } from '@/server/repositories/clients'
 import { db } from '@/db/client'
+
+const TERMINAL_STATUSES = ['complete', 'failed'] as const
 
 export type InFlightRunIntent = 'active' | 'awaiting_choice' | 'failed'
 
@@ -41,7 +45,7 @@ export async function listInFlightRuns(): Promise<InFlightRun[]> {
     where: {
       client: { organizationId: ctx.organizationDbId },
       OR: [
-        { status: { notIn: ['complete', 'failed'] } },
+        { status: { notIn: [...TERMINAL_STATUSES] } },
         { status: 'complete', posts: { some: { batchId: null } } },
         { status: 'failed', acknowledgedAt: null },
       ],
@@ -56,7 +60,6 @@ export async function listInFlightRuns(): Promise<InFlightRun[]> {
       supportingFacts: true,
       errorMessage: true,
       createdAt: true,
-      acknowledgedAt: true,
       client: { select: { name: true } },
       _count: { select: { posts: true } },
     },
@@ -86,4 +89,31 @@ export async function listInFlightRuns(): Promise<InFlightRun[]> {
       startedAt: row.createdAt.toISOString(),
     }
   })
+}
+
+/**
+ * Marks a failed ContentRun as acknowledged so it drops from the in-flight UI.
+ * Only the owning org can acknowledge a run, and only failed runs can be acknowledged.
+ */
+export async function acknowledgeFailedRunAction(runId: string): Promise<{ success: true }> {
+  const ctx = await requireClientEditor()
+
+  const run = await db.contentRun.findUnique({
+    where: { id: runId },
+    select: { clientId: true, status: true },
+  })
+  if (!run) throw new Error('Run not found')
+
+  // Org-scoped permission check via the client.
+  const client = await findClientForUser(ctx, run.clientId)
+  if (!client) throw new Error('Run not in this org')
+
+  if (run.status !== 'failed') throw new Error('Only failed runs can be acknowledged')
+
+  await db.contentRun.update({
+    where: { id: runId },
+    data: { acknowledgedAt: new Date() },
+  })
+
+  return { success: true }
 }
