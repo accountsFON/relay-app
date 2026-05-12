@@ -196,17 +196,18 @@ export default async function BatchDetailPage({
     batch.currentStep === RelayStep.copy &&
     (batch.currentSubState ?? 'generating') !== 'approved'
 
-  // Step 9 (sent_to_client) auto-advances only when a real client user opens
-  // the batch. If no client user is linked, resolveHolderForStep silently
-  // falls the holder back to the actor (AM/admin), and the batch sits at
-  // step 9 forever. Surface a banner so the holder can advance manually.
+  // sent_to_client (UI step 8) and client_decision (UI step 9) both expect a
+  // real client viewer to advance the batch (auto on 8 → 9, manual approve on
+  // 9 → 10). If no client user is linked, resolveHolderForStep silently falls
+  // the holder back to the AM/admin and the batch sits on whichever step it
+  // landed on. Surface a banner so the holder can advance manually on either.
   const hasLinkedClientUser =
     (batch.client._count?.linkedClientUsers ?? 0) > 0
+  const isClientHeldStep =
+    batch.currentStep === RelayStep.sent_to_client ||
+    batch.currentStep === RelayStep.client_decision
   const showMissingClientUserBanner =
-    isLive &&
-    batch.currentStep === RelayStep.sent_to_client &&
-    !hasLinkedClientUser &&
-    canAct
+    isLive && isClientHeldStep && !hasLinkedClientUser && canAct
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
@@ -261,6 +262,7 @@ export default async function BatchDetailPage({
           <MissingClientUserBanner
             batchId={batch.id}
             clientName={client.name}
+            currentStep={batch.currentStep as typeof RelayStep.sent_to_client | typeof RelayStep.client_decision}
           />
         </div>
       )}
