@@ -4,6 +4,7 @@ import {
   listBatchesForOrg,
   listClientPipelineBatches,
 } from '@/server/repositories/batches'
+import { db } from '@/db/client'
 import { Card } from '@/components/ui/card'
 import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
@@ -19,6 +20,7 @@ import {
 } from '@/lib/batch-sub-status'
 import { KanbanCard } from '@/components/relay/kanban-card'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
+import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 
 const AM_COLUMNS: AmKanbanColumn[] = [
   'Copy',
@@ -51,11 +53,19 @@ export default async function DashboardPage({
     to: typeof sp.to === 'string' ? sp.to : null,
   })
 
+  // Pre-fetch archived client count for roles that show the toggle.
+  const archivedClientCount =
+    ctx.role === 'account_manager' || ctx.role === 'admin' || ctx.role === 'designer'
+      ? await db.client.onlyArchived().count({
+          where: { organizationId: ctx.organizationDbId },
+        })
+      : 0
+
   if (ctx.role === 'account_manager' || ctx.role === 'admin') {
-    return <AmDashboard ctx={ctx} />
+    return <AmDashboard ctx={ctx} archivedClientCount={archivedClientCount} />
   }
   if (ctx.role === 'designer') {
-    return <DesignerDashboard ctx={ctx} />
+    return <DesignerDashboard ctx={ctx} archivedClientCount={archivedClientCount} />
   }
   if (ctx.role === 'client' && ctx.linkedClientId) {
     return <ClientDashboard linkedClientId={ctx.linkedClientId} />
@@ -65,8 +75,10 @@ export default async function DashboardPage({
 
 async function AmDashboard({
   ctx,
+  archivedClientCount,
 }: {
   ctx: { organizationDbId: string; userDbId: string; role: string }
+  archivedClientCount: number
 }) {
   const allBatches = await listBatchesForOrg(ctx.organizationDbId)
   // For AMs, scope to batches on clients they're assigned to. Admins see all.
@@ -93,6 +105,9 @@ async function AmDashboard({
             : 'Your batches, grouped by relay step.'
         }
       />
+      <div className="mt-4">
+        <ShowArchivedToggle countArchived={archivedClientCount} />
+      </div>
       {myBatches.length === 0 ? (
         <div className="mt-10">
           <EmptyState
@@ -117,8 +132,10 @@ async function AmDashboard({
 
 async function DesignerDashboard({
   ctx,
+  archivedClientCount,
 }: {
   ctx: { organizationDbId: string; userDbId: string }
+  archivedClientCount: number
 }) {
   const allBatches = await listBatchesForOrg(ctx.organizationDbId)
   const myBatches = allBatches.filter(
@@ -138,6 +155,9 @@ async function DesignerDashboard({
         title="Dashboard"
         description="Your design queue, grouped by stage."
       />
+      <div className="mt-4">
+        <ShowArchivedToggle countArchived={archivedClientCount} />
+      </div>
       {myBatches.length === 0 ? (
         <div className="mt-10">
           <EmptyState

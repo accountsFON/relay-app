@@ -56,9 +56,10 @@ export async function findClientForUser(ctx: OrgContext, id: string) {
  */
 export async function listClientsForUser(
   ctx: OrgContext,
-  filters?: { status?: ClientStatus },
+  filters?: { status?: ClientStatus; showArchived?: boolean },
 ) {
-  return db.client.findMany({
+  const base = filters?.showArchived ? db.client.withArchived() : db.client
+  return base.findMany({
     where: {
       organizationId: ctx.organizationDbId,
       ...getClientScopeFilter(ctx),
