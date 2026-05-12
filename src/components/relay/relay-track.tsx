@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { STEP_LABEL, STEP_ROLE } from './labels'
 import type { BatchSummary, SendBackArc } from './types'
 import { ScrollCurrentIntoView } from './scroll-current-into-view'
+import { RoleTooltip, StepTooltip } from './relay-tooltips'
 
 const FULL_TRACK: RelayStep[] = [
   RelayStep.onboarding_gate,
@@ -122,9 +123,14 @@ function RelayTrackHeader({
           <span className="size-1.5 rounded-full bg-foreground" aria-hidden />
           Holder: {batch.holder.name}
         </span>
-        <span className="inline-flex items-center rounded-full bg-cream-warm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {ROLE_LABEL[currentRole]}
-        </span>
+        <RoleTooltip role={currentRole}>
+          <span
+            tabIndex={0}
+            className="inline-flex items-center rounded-full bg-cream-warm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {ROLE_LABEL[currentRole]}
+          </span>
+        </RoleTooltip>
         {batch.daysOnCurrentStep > 0 && (
           <span
             className={cn(
@@ -207,7 +213,14 @@ function RelayTrackDesktop({
                   />
                 )}
                 <div className="relative z-10 mx-auto">
-                  <RelayNodeCircle index={i} isCurrent={isCurrent} isPast={isPast} />
+                  <StepTooltip step={step}>
+                    <span
+                      tabIndex={0}
+                      className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <RelayNodeCircle index={i} isCurrent={isCurrent} isPast={isPast} />
+                    </span>
+                  </StepTooltip>
                 </div>
               </div>
               <RelayNodeLabel step={step} isCurrent={isCurrent} isPast={isPast} />

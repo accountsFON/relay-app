@@ -208,7 +208,16 @@ export function GenerateContentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="accent" />}>Generate content</DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button
+            variant="accent"
+            title="Generate next period's content for this client"
+          />
+        }
+      >
+        Generate content
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           {lockMonth ? (

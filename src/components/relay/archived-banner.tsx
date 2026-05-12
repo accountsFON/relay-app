@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
+import { SimpleTooltip } from '@/components/relay/relay-tooltips';
 
 interface Props {
   entityType: 'Client' | 'Relay' | 'Post' | 'Run';
@@ -38,9 +39,11 @@ export function ArchivedBanner({ entityType, archivedAt, archivedBy, onRestore }
         <time dateTime={archivedAt.toISOString()}>{archivedAt.toLocaleDateString()}</time>
         {archivedBy && <> by {archivedBy}</>}. Read-only view.
       </div>
-      <Button variant="outline" size="sm" onClick={handleRestore} disabled={pending}>
-        {pending ? 'Restoring…' : 'Restore'}
-      </Button>
+      <SimpleTooltip content={`Restore this ${entityType.toLowerCase()} to active.`}>
+        <Button variant="outline" size="sm" onClick={handleRestore} disabled={pending}>
+          {pending ? 'Restoring…' : 'Restore'}
+        </Button>
+      </SimpleTooltip>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { archiveBatchAction } from '@/app/(app)/trash/actions'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 interface Props {
   batchId: string
@@ -39,9 +40,11 @@ export function ArchiveBatchButton({ batchId }: Props) {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        Archive relay
-      </Button>
+      <SimpleTooltip content="Archive this relay. It will not appear in active views but stays in trash for 90 days.">
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          Archive relay
+        </Button>
+      </SimpleTooltip>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
