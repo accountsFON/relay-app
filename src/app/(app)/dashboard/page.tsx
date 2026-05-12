@@ -216,7 +216,7 @@ async function AmDashboard({
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-[1600px]">
       <PageHeader
-        title="Dashboard"
+        title="My Relay"
         description={
           ctx.role === 'admin'
             ? 'Every relay in flight, moving across the track.'
@@ -259,7 +259,7 @@ async function DesignerDashboard({
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <PageHeader
-        title="Dashboard"
+        title="My Relay"
         description="Your design queue, moving across the track."
       />
       <div className="mt-4">
@@ -286,13 +286,13 @@ async function ClientDashboard({ linkedClientId }: { linkedClientId: string }) {
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-4xl">
       <PageHeader
         title="Your content"
-        description="Batches awaiting your approval and what's in production."
+        description="Relays awaiting your approval and what's in production."
       />
       {allBatches.length === 0 ? (
         <div className="mt-10">
           <EmptyState
-            title="No batches yet"
-            description="Your team will create batches as they prepare your content. They'll show up here when ready for your review."
+            title="No relays yet"
+            description="Your team will create relays as they prepare your content. They'll show up here when ready for your review."
           />
         </div>
       ) : (
@@ -393,7 +393,7 @@ async function CostFallback({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
-      <PageHeader title="Dashboard" description={`Activity for ${scopeLabel.toLowerCase()}.`} />
+      <PageHeader title="My Relay" description={`Activity for ${scopeLabel.toLowerCase()}.`} />
       <div className="mt-10 grid gap-4 sm:grid-cols-3">
         <StatCard
           label={`${scopeLabel} cost`}
