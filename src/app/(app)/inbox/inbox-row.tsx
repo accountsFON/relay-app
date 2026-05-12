@@ -88,6 +88,13 @@ function renderSummary(row: MentionInboxRow): string {
       return `Revision completed.`
     case 'batch_step_advanced':
       return `${actor} advanced the batch.`
+    case 'run_completed': {
+      const count = (payload as { postCount?: number }).postCount
+      if (typeof count === 'number') {
+        return `Generation complete: ${count} posts ready for your review.`
+      }
+      return `Generation complete: posts ready for your review.`
+    }
     default:
       return `${actor} mentioned you.`
   }

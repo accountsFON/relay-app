@@ -239,6 +239,11 @@ model ContentRun {
   errorMessage     String?
   startedAt        DateTime?
   completedAt      DateTime?
+  /// When true, pipeline completion auto-attaches posts (matching batch
+  /// if exists, else auto-creates one) instead of waiting for the user
+  /// to pick from the choice modal. Set when the user dismisses the
+  /// generation dialog to "run in background".
+  autoFinalize     Boolean   @default(false)
   createdAt        DateTime  @default(now())
   deletedAt        DateTime?
   deletedBy        String?

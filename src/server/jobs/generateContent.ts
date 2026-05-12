@@ -9,6 +9,10 @@ import { createPostsFromCaptions, parseCtaCandidates } from '@/server/services/p
 import { sumCosts, costToCredits, buildCostBreakdown } from '@/server/services/costTracker'
 import type { CostResult, RunCostBreakdown } from '@/server/services/costTracker'
 import { recordActivity, ActivityKind, EventVisibility } from '@/server/services/activity'
+import {
+  finalizePostGeneration,
+  findDefaultMatchingBatch,
+} from '@/server/services/finalize-post-generation'
 
 type TokenUsageLog = Record<string, { input: number; output: number }>
 
@@ -202,6 +206,34 @@ export const generateContentTask = task({
         },
       })
 
+      // Background auto-finalize: if the user dismissed the dialog while
+      // the pipeline was running, attach posts to the default target now so
+      // the inbox notification can deep-link straight to the populated batch.
+      const refreshed = await db.contentRun.findUnique({
+        where: { id: contentRunId },
+        select: { autoFinalize: true },
+      })
+      let attachedBatchId: string | null = null
+      if (refreshed?.autoFinalize) {
+        try {
+          const match = await findDefaultMatchingBatch(
+            client.id,
+            contentRun.targetMonth,
+          )
+          const result = await finalizePostGeneration({
+            input: match
+              ? { choice: 'add', runId: contentRunId, batchId: match.batchId }
+              : { choice: 'auto-new', runId: contentRunId },
+            actorUserId: contentRun.triggeredById,
+          })
+          attachedBatchId = result.batchId
+        } catch (err) {
+          // Auto-finalize is best-effort; pipeline already succeeded.
+          // The user can still attach via the modal on next visit.
+          console.error('[generate-content] auto-finalize failed', err)
+        }
+      }
+
       await recordActivity({
         clientId: client.id,
         runId: contentRunId,
@@ -212,7 +244,12 @@ export const generateContentTask = task({
           targetMonth: contentRun.targetMonth,
           postCount,
           totalCostUsd: breakdown.total,
+          batchId: attachedBatchId,
         },
+        // Only mention the triggering user when the run auto-finalized in
+        // the background. Foreground users land on the batch via the modal
+        // redirect, so no inbox notification is needed for them.
+        mentionedUserIds: attachedBatchId ? [contentRun.triggeredById] : [],
       })
 
       return { postCount, totalCostUsd: breakdown.total, breakdown }

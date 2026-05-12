@@ -2,11 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { RelayRole } from '@prisma/client'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
 import { findContentRun } from '@/server/repositories/contentRuns'
-import { parseLabel, buildBatchLabel } from '@/lib/batch-target-month'
+import { parseLabel } from '@/lib/batch-target-month'
+import { finalizePostGeneration } from '@/server/services/finalize-post-generation'
 
 const ChoiceSchema = z.discriminatedUnion('choice', [
   z.object({
@@ -47,92 +47,25 @@ export async function finalizePostGenerationAction(
 ): Promise<{ batchId: string }> {
   const input = ChoiceSchema.parse(raw)
   const ctx = await requireClientEditor()
-
-  const run = await findContentRun(input.runId)
-  if (!run) throw new Error('Run not found')
-
-  const newPostIds = run.posts.map((p) => p.id)
-  if (newPostIds.length === 0) {
-    throw new Error('Run has no posts to attach')
-  }
-
-  let targetBatchId: string
-
-  if (input.choice === 'add') {
-    targetBatchId = input.batchId
-  } else if (input.choice === 'replace') {
-    targetBatchId = input.batchId
-    // Delete existing posts in the batch (excluding the just-generated ones,
-    // which currently have batchId=null so they're not in this set anyway).
-    await db.post.deleteMany({
-      where: {
-        batchId: input.batchId,
-        id: { notIn: newPostIds },
-      },
-    })
-  } else if (input.choice === 'new') {
-    // Find a current holder for the new batch -- use the existing batch's
-    // holder if any exists for this client, else the requesting user.
-    const anyBatch = await db.batch.findFirst({
-      where: { clientId: run.clientId },
-      orderBy: { createdAt: 'desc' },
-      select: { currentHolder: true, currentRole: true },
-    })
-    const newBatch = await db.batch.create({
-      data: {
-        clientId: run.clientId,
-        label: input.label,
-        currentStep: 'copy',
-        currentSubState: 'drafted',
-        currentHolder: anyBatch?.currentHolder ?? ctx.userDbId,
-        currentRole: anyBatch?.currentRole ?? RelayRole.am,
-      },
-    })
-    targetBatchId = newBatch.id
-  } else {
-    // auto-new: same as 'new' but with the canonical "{Client Name} {Month Year}"
-    // label, so batches sort and read consistently across the app.
-    const anyBatch = await db.batch.findFirst({
-      where: { clientId: run.clientId },
-      orderBy: { createdAt: 'desc' },
-      select: { currentHolder: true, currentRole: true },
-    })
-    const clientRow = await db.client.findUnique({
-      where: { id: run.clientId },
-      select: { name: true },
-    })
-    const newBatch = await db.batch.create({
-      data: {
-        clientId: run.clientId,
-        label: buildBatchLabel(clientRow?.name ?? 'Batch', run.targetMonth),
-        currentStep: 'copy',
-        currentSubState: 'drafted',
-        currentHolder: anyBatch?.currentHolder ?? ctx.userDbId,
-        currentRole: anyBatch?.currentRole ?? RelayRole.am,
-      },
-    })
-    targetBatchId = newBatch.id
-  }
-
-  // Attach the new posts to the target batch.
-  await db.post.updateMany({
-    where: { id: { in: newPostIds } },
-    data: { batchId: targetBatchId },
-  })
-
-  // For 'add' / 'replace', advance the batch sub-state to drafted.
-  if (input.choice === 'add' || input.choice === 'replace') {
-    await db.batch.update({
-      where: { id: targetBatchId },
-      data: { currentSubState: 'drafted' },
-    })
-  }
-
+  const result = await finalizePostGeneration({ input, actorUserId: ctx.userDbId })
   // Revalidate any pages that show the batch.
-  revalidatePath(`/clients/${run.clientId}/batches/${targetBatchId}`)
-  revalidatePath(`/clients/${run.clientId}`)
+  revalidatePath(`/clients/${result.clientId}/batches/${result.batchId}`)
+  revalidatePath(`/clients/${result.clientId}`)
+  return { batchId: result.batchId }
+}
 
-  return { batchId: targetBatchId }
+/**
+ * Server action mirror of `deferFinalize` for client-side use. Sets the
+ * autoFinalize flag on the run so the pipeline auto-attaches posts on
+ * completion. Called when the user dismisses the generation dialog while
+ * the pipeline is still running.
+ */
+export async function deferFinalizeAction(runId: string): Promise<void> {
+  await requireClientEditor()
+  await db.contentRun.update({
+    where: { id: runId },
+    data: { autoFinalize: true },
+  })
 }
 
 /**
