@@ -301,47 +301,48 @@ export function GenerateContentDialog({
                 : `Add to "${matchingBatch.label}" batch (${progress.postCount + matchingBatch.postCount} total posts)`}
             </Button>
 
-            {/* Replace -- only available when there are existing posts to delete */}
-            {matchingBatch.postCount > 0 && (
-              !confirmingReplace ? (
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-destructive"
-                  disabled={isFinalizing}
-                  onClick={() => setConfirmingReplace(true)}
-                >
-                  Replace &quot;{matchingBatch.label}&quot; batch (delete {matchingBatch.postCount} existing)
-                </Button>
-              ) : (
-                <div className="rounded border border-destructive p-3 space-y-2">
-                  <p className="text-sm text-destructive">
-                    This will permanently delete the {matchingBatch.postCount} existing posts
-                    in the &quot;{matchingBatch.label}&quot; batch. This cannot be undone.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      disabled={isFinalizing}
-                      onClick={() => setConfirmingReplace(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      disabled={isFinalizing}
-                      onClick={() =>
-                        handleChoice({
-                          choice: 'replace',
-                          runId: progress.id,
-                          batchId: matchingBatch.batchId,
-                        })
-                      }
-                    >
-                      {isFinalizing ? <Loader2 className="size-4 animate-spin" /> : 'Yes, replace'}
-                    </Button>
-                  </div>
+            {/* Replace -- always available; label and confirmation adapt when count=0 */}
+            {!confirmingReplace ? (
+              <Button
+                variant="outline"
+                className="w-full justify-start text-destructive"
+                disabled={isFinalizing}
+                onClick={() => setConfirmingReplace(true)}
+              >
+                {matchingBatch.postCount === 0
+                  ? `Replace "${matchingBatch.label}" batch`
+                  : `Replace "${matchingBatch.label}" batch (delete ${matchingBatch.postCount} existing)`}
+              </Button>
+            ) : (
+              <div className="rounded border border-destructive p-3 space-y-2">
+                <p className="text-sm text-destructive">
+                  {matchingBatch.postCount === 0
+                    ? `This will replace the "${matchingBatch.label}" batch with the new posts. (No existing posts to delete.)`
+                    : `⚠ This will permanently delete the ${matchingBatch.postCount} existing posts in the "${matchingBatch.label}" batch. This cannot be undone. The new posts will replace them.`}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={isFinalizing}
+                    onClick={() => setConfirmingReplace(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={isFinalizing}
+                    onClick={() =>
+                      handleChoice({
+                        choice: 'replace',
+                        runId: progress.id,
+                        batchId: matchingBatch.batchId,
+                      })
+                    }
+                  >
+                    {isFinalizing ? <Loader2 className="size-4 animate-spin" /> : 'Yes, replace'}
+                  </Button>
                 </div>
-              )
+              </div>
             )}
 
             {/* New batch -- needs label input */}
