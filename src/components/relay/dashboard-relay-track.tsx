@@ -67,15 +67,14 @@ export function DashboardRelayTrack({
     >
       {/* Desktop: horizontal scrollable track */}
       <div className="relative hidden md:block">
-        {/* Right edge fade hint when content overflows */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent"
-        />
         <div
           role="list"
           aria-label="Relay track"
-          className="flex items-start gap-2 overflow-x-auto pb-2"
+          className="flex items-start gap-2 overflow-x-auto pb-3"
+          style={{
+            scrollbarColor: 'var(--ink-80) transparent',
+            scrollbarWidth: 'thin',
+          }}
         >
           {stations.map((station) => (
             <DesktopStation key={station.step} station={station} now={now} />
@@ -109,7 +108,7 @@ function DesktopStation({
       data-step={station.step}
       data-active={hasRecent ? 'true' : undefined}
       className={cn(
-        'flex w-[170px] shrink-0 flex-col rounded-md bg-cream-warm/40 p-2',
+        'flex w-[130px] shrink-0 flex-col rounded-md bg-cream-warm/40 p-2',
         hasRecent && 'ring-1 ring-[color:var(--orange)]/50 bg-cream-warm/60'
       )}
     >
