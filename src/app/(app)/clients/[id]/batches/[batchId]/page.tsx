@@ -28,6 +28,10 @@ import { findRunForBatch } from '@/server/repositories/contentRuns'
 import { listVersionsForPost } from '@/server/services/postVersions'
 import { resolveBatchTargetMonth } from '@/lib/batch-target-month'
 import { PostCard } from '@/components/posts/post-card'
+import {
+  PostListCollapseProvider,
+  PostListExpandAllToggle,
+} from '@/components/posts/post-list-collapse'
 import { PostVersionHistory } from '@/components/posts/post-version-history'
 import { CostBreakdown } from '@/components/runs/cost-breakdown'
 import { FailedRunBanner } from '@/components/runs/failed-run-banner'
@@ -377,40 +381,51 @@ export default async function BatchDetailPage({
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          <PageSection
-            title={`Posts (${posts.length})`}
-            action={<ShowArchivedToggle countArchived={archivedCount} />}
-          >
-            {posts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {batchSummary.currentStep === 'onboarding_gate' ||
-                batchSummary.currentStep === 'copy'
-                  ? 'No posts yet. Click Generate content to start.'
-                  : 'No posts on this batch. The batch may pre-date the content run, or posts may have been moved to a different batch.'}
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {await Promise.all(
-                  posts.map(async (post) => {
-                    const versions = await listVersionsForPost(post.id)
-                    const versionRows = versions.map((v) => ({
-                      id: v.id,
-                      caption: v.caption,
-                      hashtagCount: v.hashtags.length,
-                      createdAt: v.createdAt,
-                      authorName: v.author?.name ?? null,
-                    }))
-                    return (
-                      <div key={post.id} className="space-y-2">
-                        <PostCard post={post} canEdit={canEdit} />
-                        <PostVersionHistory postId={post.id} versions={versionRows} />
-                      </div>
-                    )
-                  }),
-                )}
-              </div>
-            )}
-          </PageSection>
+          <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
+            <PageSection
+              title={`Posts (${posts.length})`}
+              action={
+                <div className="flex items-center gap-3">
+                  {posts.length > 0 && <PostListExpandAllToggle />}
+                  <ShowArchivedToggle countArchived={archivedCount} />
+                </div>
+              }
+            >
+              {posts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {batchSummary.currentStep === 'onboarding_gate' ||
+                  batchSummary.currentStep === 'copy'
+                    ? 'No posts yet. Click Generate content to start.'
+                    : 'No posts on this batch. The batch may pre-date the content run, or posts may have been moved to a different batch.'}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {await Promise.all(
+                    posts.map(async (post, idx) => {
+                      const versions = await listVersionsForPost(post.id)
+                      const versionRows = versions.map((v) => ({
+                        id: v.id,
+                        caption: v.caption,
+                        hashtagCount: v.hashtags.length,
+                        createdAt: v.createdAt,
+                        authorName: v.author?.name ?? null,
+                      }))
+                      return (
+                        <div key={post.id} className="space-y-2">
+                          <PostCard
+                            post={post}
+                            canEdit={canEdit}
+                            postNumber={idx + 1}
+                          />
+                          <PostVersionHistory postId={post.id} versions={versionRows} />
+                        </div>
+                      )
+                    }),
+                  )}
+                </div>
+              )}
+            </PageSection>
+          </PostListCollapseProvider>
 
           <PageSection title="Activity">
             <ActivityThread
