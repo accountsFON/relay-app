@@ -2,6 +2,9 @@ import { db } from '@/db/client'
 import { Prisma } from '@prisma/client'
 import type { DateScope } from '@/lib/date-scope'
 import { dateScopeIncludesMonth } from '@/lib/date-scope'
+import { writeTrashAudit } from '@/server/repositories/trashAuditLogs'
+import { can } from '@/server/auth/permissions'
+import type { UserRole } from '@/lib/types'
 
 export async function createContentRun(input: {
   clientId: string
@@ -165,4 +168,148 @@ export async function getMonthlyCostSummary(
     totalRuns: runs.length,
     byClient: Array.from(byClient.values()).sort((a, b) => b.cost - a.cost),
   }
+}
+
+// ---------------------------------------------------------------------------
+// Trash: archive / restore
+// ---------------------------------------------------------------------------
+
+/**
+ * Checks that `actorUserId` holds an org membership for the given
+ * `organizationId` AND that the membership role has `run.delete` permission.
+ *
+ * `run.delete` is the closest existing permission key for soft-deleting a
+ * ContentRun — it covers both admins and account managers, and excludes
+ * designers and clients, which matches the intended gatekeeping.
+ */
+async function assertCanEditContentRun(
+  actorUserId: string,
+  organizationId: string,
+): Promise<void> {
+  const membership = await db.membership.findUnique({
+    where: { userId_organizationId: { userId: actorUserId, organizationId } },
+  })
+  if (!membership) {
+    throw new Error(
+      `Not authorized: user ${actorUserId} has no membership in organization ${organizationId}`,
+    )
+  }
+  const allowed = can(
+    {
+      role: membership.role as UserRole,
+      permissionOverrides:
+        (membership.permissionOverrides as Record<string, boolean> | null) ?? null,
+    },
+    'run.delete',
+  )
+  if (!allowed) {
+    throw new Error(
+      `Forbidden: user ${actorUserId} (role: ${membership.role}) does not have run.delete permission`,
+    )
+  }
+}
+
+export interface ContentRunArchiveInput {
+  runId: string
+  actorUserId: string
+}
+
+/**
+ * Soft-deletes a ContentRun and all of its live Posts in a single transaction.
+ *
+ * - The run and every post where `deletedAt IS NULL` receive the same
+ *   `deletedAt` timestamp and `deletedBy = actorUserId`.
+ * - Posts already archived at a different timestamp are left untouched,
+ *   preserving their independent-archive intent.
+ * - A TrashAuditLog entry is written with `cascadeCount = 1 + <posts stamped>`.
+ */
+export async function archiveContentRun({
+  runId,
+  actorUserId,
+}: ContentRunArchiveInput): Promise<void> {
+  // Two-query pattern: withArchived() + include causes a Prisma invocation
+  // error, so we fetch the run bare first, then load the client separately.
+  const run = await db.contentRun.withArchived().findFirst({ where: { id: runId } })
+  if (!run) throw new Error(`ContentRun ${runId} not found`)
+  if (run.deletedAt) throw new Error(`ContentRun ${runId} is already archived`)
+
+  const client = await db.client.withArchived().findFirst({ where: { id: run.clientId } })
+  if (!client) throw new Error(`Client ${run.clientId} not found for ContentRun ${runId}`)
+
+  const organizationId = client.organizationId
+  await assertCanEditContentRun(actorUserId, organizationId)
+
+  const now = new Date()
+  await db.$transaction(async (tx) => {
+    // Stamp the run itself.
+    await tx.contentRun.update({
+      where: { id: runId },
+      data: { deletedAt: now, deletedBy: actorUserId },
+    })
+
+    // Stamp all live posts belonging to this run (skip already-archived ones).
+    const { count: postCount } = await tx.post.updateMany({
+      where: { contentRunId: runId, deletedAt: null },
+      data: { deletedAt: now, deletedBy: actorUserId },
+    })
+
+    await writeTrashAudit(tx, {
+      actorUserId,
+      organizationId,
+      action: 'archive',
+      entityType: 'contentRun',
+      entityId: runId,
+      parentContext: { clientId: run.clientId },
+      cascadeCount: 1 + postCount,
+    })
+  })
+}
+
+/**
+ * Restores a soft-deleted ContentRun and any Posts whose `deletedAt` matches
+ * the run's prior `deletedAt` timestamp (timestamp-aware restore).
+ *
+ * Posts archived independently at a different timestamp are left alone — they
+ * were archived by a separate intent and should not be brought back by a run
+ * restore.
+ */
+export async function restoreContentRun({
+  runId,
+  actorUserId,
+}: ContentRunArchiveInput): Promise<void> {
+  // Two-query pattern — same reason as archiveContentRun.
+  const run = await db.contentRun.withArchived().findFirst({ where: { id: runId } })
+  if (!run) throw new Error(`ContentRun ${runId} not found`)
+  if (!run.deletedAt) throw new Error(`ContentRun ${runId} is not archived`)
+
+  const client = await db.client.withArchived().findFirst({ where: { id: run.clientId } })
+  if (!client) throw new Error(`Client ${run.clientId} not found for ContentRun ${runId}`)
+
+  const organizationId = client.organizationId
+  await assertCanEditContentRun(actorUserId, organizationId)
+
+  const priorDeletedAt = run.deletedAt
+  await db.$transaction(async (tx) => {
+    // Restore the run.
+    await tx.contentRun.update({
+      where: { id: runId },
+      data: { deletedAt: null, deletedBy: null },
+    })
+
+    // Restore only posts whose deletedAt matches the cascade timestamp.
+    const { count: postCount } = await tx.post.updateMany({
+      where: { contentRunId: runId, deletedAt: priorDeletedAt },
+      data: { deletedAt: null, deletedBy: null },
+    })
+
+    await writeTrashAudit(tx, {
+      actorUserId,
+      organizationId,
+      action: 'restore',
+      entityType: 'contentRun',
+      entityId: runId,
+      parentContext: { clientId: run.clientId },
+      cascadeCount: 1 + postCount,
+    })
+  })
 }
