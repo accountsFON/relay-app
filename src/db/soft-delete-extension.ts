@@ -34,12 +34,11 @@
 import { PrismaClient } from '@prisma/client'
 
 /**
- * Prisma's query interceptor receives lowercase camelCase model names that
- * match the `modelProps` keys in the generated client type map
- * (e.g. "client", "contentRun", "batch", "post").
+ * Prisma passes model names in PascalCase to both query interceptors and
+ * model extension methods (e.g. "Client", "ContentRun", "Batch", "Post").
  *
- * The set uses lowercase for case-insensitive comparison since Prisma
- * passes the model name with its original casing.
+ * The set stores lowercase values and `isSoftDeleteModel` calls `.toLowerCase()`
+ * so the lookup is case-insensitive regardless of how Prisma passes the name.
  */
 const SOFT_DELETE_MODELS = new Set(['client', 'contentrun', 'batch', 'post'])
 
@@ -144,6 +143,13 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
          * in the `where` object tells the interceptor the caller has opted out.
          */
         withArchived<M>(this: M): Omit<M, 'withArchived' | 'onlyArchived'> {
+          const modelName = (this as { $name?: string }).$name
+          if (!isSoftDeleteModel(modelName)) {
+            throw new Error(
+              `withArchived() is only valid on soft-delete models (Client, Batch, ContentRun, Post). ` +
+                `Called on: ${modelName ?? 'unknown'}`,
+            )
+          }
           return buildWhereProxy(this as object, undefined) as Omit<
             M,
             'withArchived' | 'onlyArchived'
@@ -160,6 +166,13 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
          * The interceptor sees the key present and passes the filter through.
          */
         onlyArchived<M>(this: M): Omit<M, 'withArchived' | 'onlyArchived'> {
+          const modelName = (this as { $name?: string }).$name
+          if (!isSoftDeleteModel(modelName)) {
+            throw new Error(
+              `onlyArchived() is only valid on soft-delete models (Client, Batch, ContentRun, Post). ` +
+                `Called on: ${modelName ?? 'unknown'}`,
+            )
+          }
           return buildWhereProxy(this as object, { not: null }) as Omit<
             M,
             'withArchived' | 'onlyArchived'

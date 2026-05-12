@@ -83,12 +83,17 @@ function buildFakeClient() {
     },
   }
 
-  // Build a model context object that withArchived/onlyArchived can work with
+  // Build a model context object that withArchived/onlyArchived can work with.
+  // Exposes `$name` so the isSoftDeleteModel guard inside the extension can
+  // read the model name at call time.
   function buildModelContext(modelName: string, _operation: string) {
+    const context = { $name: modelName }
     return new Proxy(
-      {},
+      context,
       {
-        get(_t, op: string) {
+        get(target, op: string) {
+          // Expose $name for the soft-delete guard
+          if (op === '$name') return target.$name
           const allModelMethods = registeredModelMethods['$allModels'] ?? {}
           if (op in allModelMethods) {
             return function (this: unknown) {
@@ -225,6 +230,35 @@ describe('applySoftDelete extension', () => {
       expect(result).toMatchObject({
         where: { organizationId: 'org1', deletedAt: { not: null } },
       })
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Guard: withArchived() / onlyArchived() on non-soft-delete models
+  // -------------------------------------------------------------------------
+  describe('soft-delete helper guard', () => {
+    it('withArchived() throws a clear error when called on a non-soft-delete model', () => {
+      const extended = applySoftDelete(buildFakeClient())
+      expect(() => (extended.organization as any).withArchived()).toThrow(
+        /withArchived\(\) is only valid on soft-delete models/,
+      )
+    })
+
+    it('onlyArchived() throws a clear error when called on a non-soft-delete model', () => {
+      const extended = applySoftDelete(buildFakeClient())
+      expect(() => (extended.organization as any).onlyArchived()).toThrow(
+        /onlyArchived\(\) is only valid on soft-delete models/,
+      )
+    })
+
+    it('withArchived() does not throw on a valid soft-delete model (Client)', () => {
+      const extended = applySoftDelete(buildFakeClient())
+      expect(() => (extended.client as any).withArchived()).not.toThrow()
+    })
+
+    it('onlyArchived() does not throw on a valid soft-delete model (Post)', () => {
+      const extended = applySoftDelete(buildFakeClient())
+      expect(() => (extended.post as any).onlyArchived()).not.toThrow()
     })
   })
 })
