@@ -15,6 +15,7 @@
  *   4. Multiple items in the same org are grouped into a single notification.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
+import { cleanupLeakedTestOrgs } from '../../helpers/cleanup-leaked-test-orgs'
 import { randomUUID } from 'crypto'
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,7 @@ import {
 } from '@/server/jobs/notifyImpendingPurge'
 
 afterAll(async () => {
+  await cleanupLeakedTestOrgs(db, 'test-notify-purge-org-')
   await pool.end()
 })
 

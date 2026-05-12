@@ -18,6 +18,7 @@
  *      f. Mix: some old, some young — only old items purged.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
+import { cleanupLeakedTestOrgs } from '../../helpers/cleanup-leaked-test-orgs'
 import { randomUUID } from 'crypto'
 
 // ---------------------------------------------------------------------------
@@ -48,6 +49,7 @@ vi.mock('@/db/client', () => ({ db }))
 import { runPurgeArchivedItems } from '@/server/jobs/purgeArchivedItems'
 
 afterAll(async () => {
+  await cleanupLeakedTestOrgs(db, 'test-purge-job-org-')
   await pool.end()
 })
 
