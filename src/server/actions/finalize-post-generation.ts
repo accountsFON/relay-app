@@ -152,7 +152,6 @@ export async function findMatchingBatchForRunAction(
       id: true,
       label: true,
       createdAt: true,
-      _count: { select: { posts: true } },
     },
   })
 
@@ -165,18 +164,27 @@ export async function findMatchingBatchForRunAction(
 
   if (matches.length === 0) return null
 
+  // Get accurate post counts for each match via direct count.
+  // (Prisma's _count.posts in a select was returning 0 incorrectly here.)
+  const matchesWithCounts = await Promise.all(
+    matches.map(async (b) => ({
+      ...b,
+      postCount: await db.post.count({ where: { batchId: b.id } }),
+    })),
+  )
+
   // Multiple matches: prefer the batch with the most posts (the user's
   // actual in-use batch, not an empty stub from a prior auto-new pass).
   // Tie-break by most recent createdAt.
-  matches.sort((a, b) => {
-    if (a._count.posts !== b._count.posts) return b._count.posts - a._count.posts
+  matchesWithCounts.sort((a, b) => {
+    if (a.postCount !== b.postCount) return b.postCount - a.postCount
     return b.createdAt.getTime() - a.createdAt.getTime()
   })
 
-  const best = matches[0]
+  const best = matchesWithCounts[0]
   return {
     batchId: best.id,
     label: best.label,
-    postCount: best._count.posts,
+    postCount: best.postCount,
   }
 }
