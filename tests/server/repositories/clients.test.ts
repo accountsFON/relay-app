@@ -45,6 +45,7 @@ const mockClient: Client = {
   holidayHandling: 'Major-US',
   excludedDates: [],
   assetsFolderUrl: null,
+  canvaUrl: null,
   autoCrawl: 'always',
   crawledData: null,
   crawledDataAt: null,

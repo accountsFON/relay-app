@@ -38,6 +38,8 @@ import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { MissingClientUserBanner } from '@/components/relay/missing-client-user-banner'
 import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
+import { Palette, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function BatchDetailPage({
   params,
@@ -292,31 +294,45 @@ export default async function BatchDetailPage({
         title={`Batch ${batch.label}`}
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
         actions={
-          isLive && canAct ? (
-            <>
-              {batch.currentStep !== RelayStep.final_qa_schedule && (
-                <GenerateContentDialog
-                  clientId={client.id}
-                  clientName={client.name}
-                  targetMonth={targetMonth}
-                  lockMonth
-                />
-              )}
-              {run && posts.length > 0 && (
-                <ExportButton
-                  posts={posts.map((p) => ({
-                    date: p.postDate.toISOString().split('T')[0],
-                    caption: p.caption,
-                    hashtags: p.hashtags.join(' '),
-                    graphicHook: p.graphicHook ?? '',
-                    designerNotes: p.designerNotes ?? '',
-                  }))}
-                  filename={`${client.name}-${targetMonth}`}
-                />
-              )}
-              {canEdit && <ArchiveBatchButton batchId={batch.id} />}
-            </>
-          ) : undefined
+          <>
+            {client.canvaUrl && (
+              <Link
+                href={client.canvaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+              >
+                <Palette className="size-3.5 shrink-0 text-muted-foreground" />
+                <span>Open in Canva</span>
+                <ExternalLink className="size-3 shrink-0 opacity-60" />
+              </Link>
+            )}
+            {isLive && canAct && (
+              <>
+                {batch.currentStep !== RelayStep.final_qa_schedule && (
+                  <GenerateContentDialog
+                    clientId={client.id}
+                    clientName={client.name}
+                    targetMonth={targetMonth}
+                    lockMonth
+                  />
+                )}
+                {run && posts.length > 0 && (
+                  <ExportButton
+                    posts={posts.map((p) => ({
+                      date: p.postDate.toISOString().split('T')[0],
+                      caption: p.caption,
+                      hashtags: p.hashtags.join(' '),
+                      graphicHook: p.graphicHook ?? '',
+                      designerNotes: p.designerNotes ?? '',
+                    }))}
+                    filename={`${client.name}-${targetMonth}`}
+                  />
+                )}
+                {canEdit && <ArchiveBatchButton batchId={batch.id} />}
+              </>
+            )}
+          </>
         }
       />
 

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Link2, FolderOpen, ExternalLink } from 'lucide-react'
+import { Link2, FolderOpen, ExternalLink, Palette } from 'lucide-react'
 
 function hostnameOf(url: string): string {
   try {
@@ -12,11 +12,13 @@ function hostnameOf(url: string): string {
 export function ClientQuickAccess({
   urls,
   assetsFolderUrl,
+  canvaUrl,
 }: {
   urls: string[]
   assetsFolderUrl: string | null | undefined
+  canvaUrl?: string | null | undefined
 }) {
-  const hasAnything = urls.length > 0 || !!assetsFolderUrl
+  const hasAnything = urls.length > 0 || !!assetsFolderUrl || !!canvaUrl
   if (!hasAnything) return null
 
   return (
@@ -58,6 +60,24 @@ export function ClientQuickAccess({
             >
               <FolderOpen className="size-3 shrink-0 text-muted-foreground" />
               <span className="truncate">Open folder</span>
+              <ExternalLink className="size-3 shrink-0 opacity-60" />
+            </Link>
+          </div>
+        )}
+
+        {canvaUrl && (
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground shrink-0">
+              Canva
+            </span>
+            <Link
+              href={canvaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1 text-[12px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
+            >
+              <Palette className="size-3 shrink-0 text-muted-foreground" />
+              <span className="truncate">Open in Canva</span>
               <ExternalLink className="size-3 shrink-0 opacity-60" />
             </Link>
           </div>

@@ -44,6 +44,7 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
       holidayHandling: defaultValues?.holidayHandling ?? 'Major-US',
       excludedDates: arrayToCsv(defaultValues?.excludedDates),
       assetsFolderUrl: defaultValues?.assetsFolderUrl ?? '',
+      canvaUrl: defaultValues?.canvaUrl ?? '',
       autoCrawl: defaultValues?.autoCrawl ?? 'always',
       status: defaultValues?.status ?? 'active',
     },
@@ -152,6 +153,17 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
               id="assetsFolderUrl"
               {...form.register('assetsFolderUrl')}
               placeholder="https://..."
+            />
+          </Field>
+          <Field
+            label="Canva URL"
+            hint="Folder or design link for this client's monthly content"
+            htmlFor="canvaUrl"
+          >
+            <Input
+              id="canvaUrl"
+              {...form.register('canvaUrl')}
+              placeholder="https://www.canva.com/..."
             />
           </Field>
         </div>
