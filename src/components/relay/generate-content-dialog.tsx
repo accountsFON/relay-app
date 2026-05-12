@@ -76,9 +76,6 @@ export function GenerateContentDialog({
   const [newBatchLabel, setNewBatchLabel] = useState('')
   const [isFinalizing, setIsFinalizing] = useState(false)
 
-  // DEBUG: trace state (persisted via localStorage)
-  const [debugTrace, setDebugTrace] = useState<string[]>([])
-
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       setProgress(null)
@@ -89,26 +86,6 @@ export function GenerateContentDialog({
       setNewBatchLabel('')
     }
     setOpen(next)
-  }
-
-  // DEBUG: hydrate trace from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('relay-modal-trace')
-      if (stored) setDebugTrace(JSON.parse(stored))
-    } catch {}
-  }, [])
-
-  // DEBUG: helper to append a timestamped line to the trace
-  const trace = (msg: string) => {
-    const stamp = new Date().toISOString().slice(11, 23)
-    const line = `[${stamp}] ${msg}`
-    setDebugTrace((prev) => {
-      const next = [...prev, line]
-      try { localStorage.setItem('relay-modal-trace', JSON.stringify(next.slice(-50))) } catch {}
-      return next
-    })
-    console.log(`[modal trace] ${line}`)
   }
 
   // Pull crawl preferences when the dialog opens.
@@ -134,44 +111,25 @@ export function GenerateContentDialog({
         setProgress(next)
         if (next.status === 'complete') {
           clearInterval(interval)
-          trace(`status=complete runId=${next.id} postCount=${next.postCount}`)
           try {
             const matched = await findMatchingBatchForRunAction(next.id)
-            trace(`findMatchingBatch returned: ${matched ? `batchId=${matched.batchId} label="${matched.label}" postCount=${matched.postCount}` : 'null'}`)
-
-            if (matched && matched.postCount > 0) {
-              trace('branch: show choice panel (matched.postCount > 0)')
+            if (matched) {
+              // Always show the choice panel when a matching batch exists,
+              // regardless of post count. The user wants to pick.
               setMatchingBatch(matched)
-            } else if (matched) {
-              trace('branch: silent attach (matched.postCount === 0)')
-              try {
-                const result = await finalizePostGenerationAction({
-                  choice: 'add',
-                  runId: next.id,
-                  batchId: matched.batchId,
-                })
-                trace(`finalizePostGenerationAction (add) returned: batchId=${result.batchId}`)
-                setOpen(false)
-                setProgress(null)
-                router.refresh()
-              } catch (attachErr) {
-                trace(`finalizePostGenerationAction THREW: ${attachErr instanceof Error ? attachErr.message : String(attachErr)}`)
-                // leave modal open so error is visible
-              }
             } else {
-              trace('branch: auto-new (no match)')
+              // No matching batch — auto-create a new one
               try {
-                const result = await finalizePostGenerationAction({ choice: 'auto-new', runId: next.id })
-                trace(`finalizePostGenerationAction (auto-new) returned: batchId=${result.batchId}`)
+                await finalizePostGenerationAction({ choice: 'auto-new', runId: next.id })
                 setOpen(false)
                 setProgress(null)
                 router.refresh()
-              } catch (autoErr) {
-                trace(`finalizePostGenerationAction (auto-new) THREW: ${autoErr instanceof Error ? autoErr.message : String(autoErr)}`)
+              } catch (e) {
+                setError(e instanceof Error ? e.message : 'Failed to attach posts')
               }
             }
-          } catch (lookupErr) {
-            trace(`findMatchingBatchForRunAction THREW: ${lookupErr instanceof Error ? lookupErr.message : String(lookupErr)}`)
+          } catch (e) {
+            setError(e instanceof Error ? e.message : 'Failed to look up matching batch')
           }
         }
       } catch (e) {
@@ -232,14 +190,6 @@ export function GenerateContentDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button variant="accent" />}>Generate content</DialogTrigger>
       <DialogContent>
-        {debugTrace.length > 0 && (
-          <div className="text-[10px] font-mono bg-yellow-100 border border-yellow-400 rounded p-2 max-h-40 overflow-y-auto space-y-0.5">
-            <div className="font-bold">DEBUG TRACE:</div>
-            {debugTrace.map((line, i) => (
-              <div key={i}>{line}</div>
-            ))}
-          </div>
-        )}
         <DialogHeader>
           {lockMonth ? (
             <DialogTitle>Generate content for {monthLabel}</DialogTitle>
@@ -329,8 +279,9 @@ export function GenerateContentDialog({
               {progress.postCount} posts generated for {monthLabel}
             </p>
             <p className="text-sm text-muted-foreground">
-              The &quot;{matchingBatch.label}&quot; batch already has {matchingBatch.postCount} posts.
-              What would you like to do?
+              {matchingBatch.postCount === 0
+                ? `The "${matchingBatch.label}" batch is empty. What would you like to do with the ${progress?.postCount ?? 0} new posts?`
+                : `The "${matchingBatch.label}" batch already has ${matchingBatch.postCount} posts. What would you like to do?`}
             </p>
             {/* Add */}
             <Button
@@ -345,48 +296,52 @@ export function GenerateContentDialog({
                 })
               }
             >
-              Add to &quot;{matchingBatch.label}&quot; batch ({progress.postCount + matchingBatch.postCount} total posts)
+              {matchingBatch.postCount === 0
+                ? `Attach to "${matchingBatch.label}" batch`
+                : `Add to "${matchingBatch.label}" batch (${progress.postCount + matchingBatch.postCount} total posts)`}
             </Button>
 
-            {/* Replace -- needs confirm gate */}
-            {!confirmingReplace ? (
-              <Button
-                variant="outline"
-                className="w-full justify-start text-destructive"
-                disabled={isFinalizing}
-                onClick={() => setConfirmingReplace(true)}
-              >
-                Replace &quot;{matchingBatch.label}&quot; batch (delete {matchingBatch.postCount} existing)
-              </Button>
-            ) : (
-              <div className="rounded border border-destructive p-3 space-y-2">
-                <p className="text-sm text-destructive">
-                  This will permanently delete the {matchingBatch.postCount} existing posts
-                  in the &quot;{matchingBatch.label}&quot; batch. This cannot be undone.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    disabled={isFinalizing}
-                    onClick={() => setConfirmingReplace(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    disabled={isFinalizing}
-                    onClick={() =>
-                      handleChoice({
-                        choice: 'replace',
-                        runId: progress.id,
-                        batchId: matchingBatch.batchId,
-                      })
-                    }
-                  >
-                    {isFinalizing ? <Loader2 className="size-4 animate-spin" /> : 'Yes, replace'}
-                  </Button>
+            {/* Replace -- only available when there are existing posts to delete */}
+            {matchingBatch.postCount > 0 && (
+              !confirmingReplace ? (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-destructive"
+                  disabled={isFinalizing}
+                  onClick={() => setConfirmingReplace(true)}
+                >
+                  Replace &quot;{matchingBatch.label}&quot; batch (delete {matchingBatch.postCount} existing)
+                </Button>
+              ) : (
+                <div className="rounded border border-destructive p-3 space-y-2">
+                  <p className="text-sm text-destructive">
+                    This will permanently delete the {matchingBatch.postCount} existing posts
+                    in the &quot;{matchingBatch.label}&quot; batch. This cannot be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={isFinalizing}
+                      onClick={() => setConfirmingReplace(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={isFinalizing}
+                      onClick={() =>
+                        handleChoice({
+                          choice: 'replace',
+                          runId: progress.id,
+                          batchId: matchingBatch.batchId,
+                        })
+                      }
+                    >
+                      {isFinalizing ? <Loader2 className="size-4 animate-spin" /> : 'Yes, replace'}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
             {/* New batch -- needs label input */}
