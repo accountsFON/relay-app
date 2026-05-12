@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { canEditClients } from '@/server/middleware/permissions'
 import { searchAcrossEntities } from '@/server/repositories/search'
 import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PostSearchResultActions } from '@/components/search/post-search-result-actions'
 
 export default async function SearchPage({
   searchParams,
@@ -15,6 +17,7 @@ export default async function SearchPage({
   const sp = await searchParams
   const q = typeof sp.q === 'string' ? sp.q : ''
   const filter = typeof sp.type === 'string' ? sp.type : 'all'
+  const canEdit = canEditClients(ctx)
 
   const results = q ? await searchAcrossEntities(ctx, q) : null
 
@@ -92,7 +95,7 @@ export default async function SearchPage({
               <SectionHeader title="Posts" count={results.posts.length}>
                 <ul className="space-y-2">
                   {results.posts.map((p) => (
-                    <li key={p.id}>
+                    <li key={p.id} className="relative">
                       <Link
                         href={`/clients/${p.clientId}/runs/${p.contentRunId}`}
                         className="block rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-cream-warm"
@@ -101,7 +104,7 @@ export default async function SearchPage({
                           <span className="font-medium text-foreground">{p.clientName}</span>
                           <span>· {formatPostDate(p.postDate)}</span>
                         </div>
-                        <p className="mt-1 line-clamp-2 text-[13px] text-foreground">
+                        <p className="mt-1 line-clamp-2 text-[13px] text-foreground pr-8">
                           {p.caption}
                         </p>
                         {p.hashtags.length > 0 && (
@@ -113,6 +116,11 @@ export default async function SearchPage({
                           </p>
                         )}
                       </Link>
+                      {canEdit && (
+                        <div className="absolute right-2 top-2">
+                          <PostSearchResultActions postId={p.id} />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
