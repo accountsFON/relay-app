@@ -9,7 +9,8 @@ import type { UserRole } from '@/lib/types'
 type DbOrTx = DbClient | DbTx
 
 export async function findBatch(id: string) {
-  return db.batch.findUnique({
+  // withArchived() so the batch page still loads when the batch is soft-deleted.
+  return db.batch.withArchived().findFirst({
     where: { id },
     include: {
       client: { select: { id: true, name: true, organizationId: true } },
