@@ -6,6 +6,7 @@ import { RelayRole } from '@prisma/client'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
 import { findContentRun } from '@/server/repositories/contentRuns'
+import { parseLabel } from '@/lib/batch-target-month'
 
 const ChoiceSchema = z.discriminatedUnion('choice', [
   z.object({
@@ -141,19 +142,41 @@ export async function findMatchingBatchForRunAction(
   const run = await findContentRun(runId)
   if (!run) return null
 
-  const matching = await db.batch.findFirst({
-    where: { clientId: run.clientId, label: run.targetMonth },
+  // Pull candidate batches for the client (cap at 50 most recent — typical
+  // client has < 12 batches across a year; this is generous).
+  const candidates = await db.batch.findMany({
+    where: { clientId: run.clientId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
     select: {
       id: true,
       label: true,
+      createdAt: true,
       _count: { select: { posts: true } },
     },
   })
-  if (!matching) return null
 
+  // Match by parsed targetMonth from each batch's label.
+  // The just-generated posts have batchId=null so they're not in any count.
+  const matches = candidates.filter((b) => {
+    const parsed = parseLabel(b.label, b.createdAt)
+    return parsed === run.targetMonth
+  })
+
+  if (matches.length === 0) return null
+
+  // Multiple matches: prefer the batch with the most posts (the user's
+  // actual in-use batch, not an empty stub from a prior auto-new pass).
+  // Tie-break by most recent createdAt.
+  matches.sort((a, b) => {
+    if (a._count.posts !== b._count.posts) return b._count.posts - a._count.posts
+    return b.createdAt.getTime() - a.createdAt.getTime()
+  })
+
+  const best = matches[0]
   return {
-    batchId: matching.id,
-    label: matching.label,
-    postCount: matching._count.posts,
+    batchId: best.id,
+    label: best.label,
+    postCount: best._count.posts,
   }
 }

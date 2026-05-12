@@ -29,7 +29,17 @@ export function resolveBatchTargetMonth(
   return formatYearMonth(now)
 }
 
-function parseLabel(label: string, fallbackDate: Date): string | null {
+/**
+ * Parse a batch label into a YYYY-MM string, or return null if the label
+ * cannot be interpreted as a calendar month.
+ *
+ * Handles:
+ *  - "April 2026"  → "2026-04"
+ *  - "April"       → uses fallbackDate's year
+ *  - "2026-04"     → "2026-04"
+ *  - anything else → null
+ */
+export function parseLabel(label: string, fallbackDate: Date): string | null {
   const lower = label.trim().toLowerCase()
 
   // Match "April 2026"

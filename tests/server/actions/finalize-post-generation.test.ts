@@ -8,6 +8,7 @@ vi.mock('@/db/client', () => ({
     },
     batch: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -159,28 +160,27 @@ describe('finalizePostGenerationAction', () => {
 })
 
 describe('findMatchingBatchForRunAction', () => {
-  it('returns null when no batch matches client + targetMonth', async () => {
-    vi.mocked(db.batch.findFirst).mockResolvedValue(null)
+  it('returns null when no candidate label parses to the target month', async () => {
+    vi.mocked(db.batch.findMany).mockResolvedValue([
+      { id: 'b_other', label: 'Q2 Push', createdAt: new Date(), _count: { posts: 5 } },
+      { id: 'b_may', label: '2026-05', createdAt: new Date(), _count: { posts: 3 } },
+    ] as never)
+
+    // run targetMonth is '2026-05' (from mockRun), but we override it here
+    vi.mocked(findContentRun).mockResolvedValue({
+      ...mockRun,
+      targetMonth: '2026-04',
+    } as never)
 
     const result = await findMatchingBatchForRunAction('run_1')
 
     expect(result).toBeNull()
-    expect(db.batch.findFirst).toHaveBeenCalledWith({
-      where: { clientId: 'client_1', label: '2026-05' },
-      select: {
-        id: true,
-        label: true,
-        _count: { select: { posts: true } },
-      },
-    })
   })
 
-  it('returns batch info when client + targetMonth match', async () => {
-    vi.mocked(db.batch.findFirst).mockResolvedValue({
-      id: 'batch_existing',
-      label: '2026-05',
-      _count: { posts: 12 },
-    } as never)
+  it('returns batch info when an ISO label matches targetMonth exactly', async () => {
+    vi.mocked(db.batch.findMany).mockResolvedValue([
+      { id: 'batch_existing', label: '2026-05', createdAt: new Date('2026-04-15'), _count: { posts: 12 } },
+    ] as never)
 
     const result = await findMatchingBatchForRunAction('run_1')
 
@@ -189,5 +189,37 @@ describe('findMatchingBatchForRunAction', () => {
       label: '2026-05',
       postCount: 12,
     })
+  })
+
+  it('matches batches with friendly labels like "April 2026" or "April"', async () => {
+    // run.targetMonth: '2026-04'
+    vi.mocked(findContentRun).mockResolvedValue({
+      ...mockRun,
+      targetMonth: '2026-04',
+    } as never)
+
+    vi.mocked(db.batch.findMany).mockResolvedValue([
+      { id: 'b_friendly', label: 'April 2026', createdAt: new Date('2026-03-01'), _count: { posts: 12 } },
+      { id: 'b_iso', label: '2026-04', createdAt: new Date('2026-04-15'), _count: { posts: 0 } },
+    ] as never)
+
+    const result = await findMatchingBatchForRunAction('run_1')
+    // Should return the 'April 2026' batch (12 posts), not the empty '2026-04' stub.
+    expect(result).toEqual({ batchId: 'b_friendly', label: 'April 2026', postCount: 12 })
+  })
+
+  it('returns null when no candidate label parses to the target month (non-month labels)', async () => {
+    vi.mocked(findContentRun).mockResolvedValue({
+      ...mockRun,
+      targetMonth: '2026-04',
+    } as never)
+
+    vi.mocked(db.batch.findMany).mockResolvedValue([
+      { id: 'b_other', label: 'Q2 Push', createdAt: new Date(), _count: { posts: 5 } },
+      { id: 'b_may', label: '2026-05', createdAt: new Date(), _count: { posts: 3 } },
+    ] as never)
+
+    const result = await findMatchingBatchForRunAction('run_1')
+    expect(result).toBeNull()
   })
 })
