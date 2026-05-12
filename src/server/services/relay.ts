@@ -1,4 +1,3 @@
-import type { Prisma } from '@prisma/client'
 import {
   ActivityKind,
   EventVisibility,
@@ -9,6 +8,7 @@ import {
   RevisionItemType,
 } from '@prisma/client'
 import { db } from '@/db/client'
+import type { DbTx } from '@/db/client'
 import {
   holderRoleForStep,
   reseedChecklistForStep,
@@ -72,7 +72,7 @@ export class RelayServiceError extends Error {
  * forward acts as a stand-in until the assignment is filled).
  */
 async function resolveHolderForStep(
-  tx: Prisma.TransactionClient,
+  tx: DbTx,
   batchClientId: string,
   step: RelayStep,
   fallbackUserId: string,
@@ -103,7 +103,7 @@ async function resolveHolderForStep(
 }
 
 async function loadUserName(
-  tx: Prisma.TransactionClient,
+  tx: DbTx,
   userId: string,
 ): Promise<string> {
   const user = await tx.user.findUnique({

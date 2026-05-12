@@ -10,9 +10,9 @@
  * - Cap at 50 versions per post; trim oldest in the same transaction.
  */
 import { db } from '@/db/client'
-import type { Prisma, PrismaClient } from '@prisma/client'
+import type { DbClient, DbTx } from '@/db/client'
 
-type DbOrTx = PrismaClient | Prisma.TransactionClient
+type DbOrTx = DbClient | DbTx
 
 const MAX_VERSIONS_PER_POST = 50
 

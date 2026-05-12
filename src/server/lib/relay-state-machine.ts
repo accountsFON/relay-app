@@ -1,10 +1,10 @@
-import type { Prisma, PrismaClient } from '@prisma/client'
 import { RelayStep, RelayRole } from '@prisma/client'
 import { CHECKLIST_SEED } from '@/lib/relay-checklists'
+import type { DbClient, DbTx } from '@/db/client'
 
 export { RelayStep, RelayRole }
 
-type DbOrTx = PrismaClient | Prisma.TransactionClient
+type DbOrTx = DbClient | DbTx
 
 export const HOLDER_ROLE: Record<RelayStep, RelayRole> = {
   [RelayStep.onboarding_gate]: RelayRole.admin,

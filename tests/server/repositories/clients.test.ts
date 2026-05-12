@@ -51,6 +51,8 @@ const mockClient: Client = {
   status: 'active',
   onboardingCompletedAt: null,
   createdAt: new Date(),
+  deletedAt: null,
+  deletedBy: null,
 }
 
 beforeEach(() => {

@@ -9,7 +9,7 @@
  *
  * Idempotent on (organizationId, name).
  */
-import type { PrismaClient } from '@prisma/client'
+import type { DbClient } from '@/db/client'
 import { ClientStatus } from '@prisma/client'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -566,7 +566,7 @@ function dosForClient(def: ClientDef): { dos: string; donts: string } {
 }
 
 export async function seedClients(
-  db: PrismaClient,
+  db: DbClient,
   org: SeededUserMap,
 ): Promise<SeededClient[]> {
   const onboardedAt = new Date('2026-02-01T00:00:00Z')

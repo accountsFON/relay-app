@@ -10,7 +10,7 @@
  * subset partially ticked so the "Pass to" button enable/disable surface
  * is testable.
  */
-import type { PrismaClient } from '@prisma/client'
+import type { DbClient } from '@/db/client'
 import {
   RelayRole,
   RelayStep,
@@ -275,7 +275,7 @@ function resolveAssignee(
 const STUCK_BACKDATE_DAYS = 5
 
 export async function seedBatches(
-  db: PrismaClient,
+  db: DbClient,
   clients: SeededClient[],
   runs: SeededContentRun[],
   org: SeededUserMap,

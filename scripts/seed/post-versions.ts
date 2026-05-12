@@ -7,7 +7,7 @@
  * Idempotent: wipes existing PostVersion rows on the targeted posts and
  * re creates them. Determinism guarded by mtime offsets in seconds.
  */
-import type { PrismaClient } from '@prisma/client'
+import type { DbClient } from '@/db/client'
 import type { SeededContentRun } from './content-runs'
 import type { SeededClient } from './clients'
 import type { SeededUserMap } from './users'
@@ -46,7 +46,7 @@ interface PostVersionsResult {
 }
 
 export async function seedPostVersions(
-  db: PrismaClient,
+  db: DbClient,
   clients: SeededClient[],
   runs: SeededContentRun[],
   org: SeededUserMap,

@@ -1,8 +1,9 @@
-import type { Prisma, PrismaClient, RelayStep, RelayRole } from '@prisma/client'
+import type { RelayStep, RelayRole } from '@prisma/client'
 import { RelayStep as RelayStepEnum } from '@prisma/client'
 import { db } from '@/db/client'
+import type { DbClient, DbTx } from '@/db/client'
 
-type DbOrTx = PrismaClient | Prisma.TransactionClient
+type DbOrTx = DbClient | DbTx
 
 export async function findBatch(id: string) {
   return db.batch.findUnique({

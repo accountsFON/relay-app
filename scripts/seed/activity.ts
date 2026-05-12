@@ -13,9 +13,10 @@
  * Feb / Mar / Apr; batches cluster in the last 2 weeks; mentions and
  * comments cluster in the last week or so. See `ageFor()` below.
  */
-import type { Prisma, PrismaClient } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import { ActivityKind, EventVisibility } from '@prisma/client'
 import { recordActivity, type RecordActivityInput } from '@/server/services/activity'
+import type { DbClient } from '@/db/client'
 import type { SeededBatch } from './batches'
 import type { SeededClient } from './clients'
 import type { SeededContentRun } from './content-runs'
@@ -114,7 +115,7 @@ function targetMonthDaysAgo(targetMonth: string, anchor: Date): number {
 }
 
 export async function seedActivity(
-  db: PrismaClient,
+  db: DbClient,
   clients: SeededClient[],
   runs: SeededContentRun[],
   batches: SeededBatch[],
