@@ -244,6 +244,7 @@ model ContentRun {
   /// to pick from the choice modal. Set when the user dismisses the
   /// generation dialog to "run in background".
   autoFinalize     Boolean   @default(false)
+  acknowledgedAt   DateTime?
   createdAt        DateTime  @default(now())
   deletedAt        DateTime?
   deletedBy        String?
