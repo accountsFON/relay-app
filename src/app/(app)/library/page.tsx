@@ -130,35 +130,10 @@ export default async function LibraryPage() {
     link?: { href: string; label: string }
   }[] = [
     {
-      status: 'investigating',
-      title: 'Post-generation choice modal: matched batch shows postCount=0',
-      description: "When a matching batch is found for a generation's targetMonth, the modal sometimes shows 'this batch already has 0 posts' even when the user can see posts in the batch. Either the matching is finding the wrong batch (an empty stub) or a prior silent-attach claimed success but didn't persist. Reproduced on 2026-05-11 testing PR #16-23 with batchId=cmp1x0jz0000204jvci7whhlm labeled '2026-06'. Need a manual prod check on that batch's actual contents to settle which scenario.",
-      owner: 'Julio',
-      link: { href: 'https://github.com/accountsFON/relay-app/pull/23', label: 'PRs #16-23' },
-    },
-    {
-      status: 'missing',
-      title: 'Trigger.dev auto-deploy on push to main',
-      description: 'Currently requires manual `npx trigger.dev@4.4.5 deploy`. Hit 3 times in 2 sessions (stale Prisma client, then PR #16 pipeline change). Needs a GitHub Action with TRIGGER_ACCESS_TOKEN secret. ~2 hours to build, very high leverage.',
-      owner: 'Julio',
-    },
-    {
       status: 'deferred',
       title: 'Pin trigger.dev CLI version in package.json scripts',
       description: 'Backlog item from prior session says pin to 4.4.4 but actual installed CLI is now 4.4.5. Update the pin to match the SDK version.',
       owner: 'Julio',
-    },
-    {
-      status: 'deferred',
-      title: 'Generate modal: cancel getClientCrawlInfo fetch on dialog close',
-      description: 'Minor: when dialog closes mid-fetch, the .then() still fires and calls setState on a closed (but mounted) component. Benign because the modal is controlled, but worth tightening with an AbortController.',
-      owner: 'either',
-    },
-    {
-      status: 'deferred',
-      title: 'Generate modal: surface polling errors to the user',
-      description: 'Polling currently swallows errors silently and clears the interval. If the network call fails repeatedly, the UI freezes on the spinner with no feedback. At minimum, set the error state from the caught exception so the user knows polling broke.',
-      owner: 'either',
     },
   ]
 
