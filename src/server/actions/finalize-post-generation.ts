@@ -154,6 +154,8 @@ export async function findMatchingBatchForRunAction(
       createdAt: true,
     },
   })
+  console.log('[debug findMatchingBatch] runId=%s clientId=%s targetMonth=%s candidates=%d',
+    runId, run.clientId, run.targetMonth, candidates.length)
 
   // Match by parsed targetMonth from each batch's label.
   // The just-generated posts have batchId=null so they're not in any count.
@@ -161,6 +163,9 @@ export async function findMatchingBatchForRunAction(
     const parsed = parseLabel(b.label, b.createdAt)
     return parsed === run.targetMonth
   })
+
+  console.log('[debug findMatchingBatch] matches.length=%d, labels=%s',
+    matches.length, matches.map(m => m.label).join(','))
 
   if (matches.length === 0) return null
 
@@ -173,6 +178,8 @@ export async function findMatchingBatchForRunAction(
     })),
   )
 
+  console.log('[debug findMatchingBatch] matchesWithCounts=%j', matchesWithCounts)
+
   // Multiple matches: prefer the batch with the most posts (the user's
   // actual in-use batch, not an empty stub from a prior auto-new pass).
   // Tie-break by most recent createdAt.
@@ -182,6 +189,7 @@ export async function findMatchingBatchForRunAction(
   })
 
   const best = matchesWithCounts[0]
+  console.log('[debug findMatchingBatch] returning best=%j', { batchId: best.id, label: best.label, postCount: best.postCount })
   return {
     batchId: best.id,
     label: best.label,

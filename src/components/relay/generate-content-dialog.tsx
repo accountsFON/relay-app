@@ -273,6 +273,9 @@ export function GenerateContentDialog({
               The &quot;{matchingBatch.label}&quot; batch already has {matchingBatch.postCount} posts.
               What would you like to do?
             </p>
+            <p className="text-[11px] font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
+              DEBUG: batchId={matchingBatch.batchId} | count={matchingBatch.postCount} | runId={progress?.id ?? 'null'}
+            </p>
 
             {/* Add */}
             <Button
