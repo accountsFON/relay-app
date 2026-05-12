@@ -71,13 +71,13 @@ export function RelayRunnerCard({ relay, now }: RelayRunnerCardProps) {
         }
       }}
       className={cn(
-        'block w-full rounded-md border border-border bg-background px-2.5 py-2 text-left cursor-pointer transition-colors',
+        'block w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left cursor-pointer transition-colors',
         'hover:bg-cream-warm/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         recentlyPassed && 'ring-1 ring-[var(--orange)]/60'
       )}
     >
       <div className="flex items-center justify-between gap-1.5">
-        <p className="text-[12px] font-medium text-foreground truncate">
+        <p className="text-[13px] font-medium text-foreground truncate">
           {relay.clientName}
         </p>
         {recentlyPassed && (
@@ -90,24 +90,24 @@ export function RelayRunnerCard({ relay, now }: RelayRunnerCardProps) {
           </span>
         )}
       </div>
-      <p className="text-[10px] text-muted-foreground truncate">
+      <p className="text-[11px] text-muted-foreground truncate">
         {relay.label}
       </p>
-      <div className="mt-1.5 flex items-center justify-between gap-1.5">
-        <div className="flex items-center gap-1 min-w-0">
-          <Avatar size="sm" title={relay.holder.name} className="size-5">
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Avatar size="sm" title={relay.holder.name} className="size-6">
             {relay.holder.avatarUrl && (
               <AvatarImage src={relay.holder.avatarUrl} />
             )}
-            <AvatarFallback className="text-[9px]">
+            <AvatarFallback className="text-[10px]">
               {initials(relay.holder.name)}
             </AvatarFallback>
           </Avatar>
-          <span className="truncate text-[10px] text-muted-foreground">
+          <span className="truncate text-[11px] text-muted-foreground">
             {relay.holder.name}
           </span>
         </div>
-        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
           {relay.daysOnStep}d
         </span>
       </div>
