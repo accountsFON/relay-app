@@ -31,6 +31,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 import { ArchiveClientButton } from '@/components/relay/archive-client-button'
 import { RestoreClientBanner } from '@/components/relay/restore-client-banner'
+import { InFlightBanner } from '@/components/relay/in-flight-banner'
 
 export default async function ClientDetailPage({
   params,
@@ -176,6 +177,7 @@ export default async function ClientDetailPage({
       </div>
 
       <div className="mt-10">
+        <InFlightBanner clientId={client.id} />
         <ActiveBatchesSection
           clientId={client.id}
           viewerUserId={ctx.userDbId}
