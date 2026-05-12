@@ -89,10 +89,10 @@ export async function restoreBatchAction(batchId: string): Promise<void> {
 
 /**
  * Soft-deletes a client and cascades to all its live Batches, ContentRuns,
- * and Posts. This is the trash soft-delete — distinct from `archiveClientAction`
+ * and Posts. This is the trash soft-delete — distinct from `deactivateClientAction`
  * in clients/actions.ts which calls `deactivateClient` (a status-change only).
  */
-export async function trashClientAction(clientId: string): Promise<void> {
+export async function archiveClientAction(clientId: string): Promise<void> {
   const ctx = await requireClientEditor()
   await archiveClient({ clientId, actorUserId: ctx.userDbId })
   revalidatePath('/clients')

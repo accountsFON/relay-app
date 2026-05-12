@@ -41,7 +41,7 @@ import { revalidatePath } from 'next/cache'
 import {
   createClientAction,
   updateClientAction,
-  archiveClientAction,
+  deactivateClientAction,
 } from '@/app/(app)/clients/actions'
 
 const mockCtx = {
@@ -120,11 +120,11 @@ describe('updateClientAction', () => {
   })
 })
 
-describe('archiveClientAction', () => {
-  it('archives a client and revalidates the list', async () => {
+describe('deactivateClientAction', () => {
+  it('deactivates a client and revalidates the list', async () => {
     vi.mocked(deactivateClient).mockResolvedValue({ count: 1 } as any)
 
-    await archiveClientAction('cuid_client_1')
+    await deactivateClientAction('cuid_client_1')
 
     expect(deactivateClient).toHaveBeenCalledWith('cuid_client_1', 'cuid_org_1')
     expect(revalidatePath).toHaveBeenCalledWith('/clients')

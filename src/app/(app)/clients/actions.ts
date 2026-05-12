@@ -62,7 +62,7 @@ export async function updateClientAction(id: string, input: ClientUpdate) {
   revalidatePath('/clients')
 }
 
-export async function archiveClientAction(id: string) {
+export async function deactivateClientAction(id: string) {
   const ctx = await requireClientEditor()
   await deactivateClient(id, ctx.organizationDbId)
 
