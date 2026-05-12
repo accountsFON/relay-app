@@ -17,6 +17,15 @@ import { PageHeader } from '@/components/page-header'
 import { PageSection } from '@/components/ui/page-section'
 import { Badge } from '@/components/ui/badge'
 
+function badgeVariantForStatus(status: 'bug' | 'missing' | 'investigating' | 'deferred') {
+  switch (status) {
+    case 'bug': return 'destructive' as const
+    case 'investigating': return 'primary' as const
+    case 'missing': return 'outline' as const
+    case 'deferred': return 'secondary' as const
+  }
+}
+
 export const dynamic = 'force-dynamic'
 
 interface RouteLink {
@@ -113,6 +122,46 @@ export default async function LibraryPage() {
     },
   ]
 
+  const knownIssues: {
+    status: 'bug' | 'missing' | 'investigating' | 'deferred'
+    title: string
+    description: string
+    owner?: string
+    link?: { href: string; label: string }
+  }[] = [
+    {
+      status: 'investigating',
+      title: 'Post-generation choice modal: matched batch shows postCount=0',
+      description: "When a matching batch is found for a generation's targetMonth, the modal sometimes shows 'this batch already has 0 posts' even when the user can see posts in the batch. Either the matching is finding the wrong batch (an empty stub) or a prior silent-attach claimed success but didn't persist. Reproduced on 2026-05-11 testing PR #16-23 with batchId=cmp1x0jz0000204jvci7whhlm labeled '2026-06'. Need a manual prod check on that batch's actual contents to settle which scenario.",
+      owner: 'Julio',
+      link: { href: 'https://github.com/accountsFON/relay-app/pull/23', label: 'PRs #16-23' },
+    },
+    {
+      status: 'missing',
+      title: 'Trigger.dev auto-deploy on push to main',
+      description: 'Currently requires manual `npx trigger.dev@4.4.5 deploy`. Hit 3 times in 2 sessions (stale Prisma client, then PR #16 pipeline change). Needs a GitHub Action with TRIGGER_ACCESS_TOKEN secret. ~2 hours to build, very high leverage.',
+      owner: 'Julio',
+    },
+    {
+      status: 'deferred',
+      title: 'Pin trigger.dev CLI version in package.json scripts',
+      description: 'Backlog item from prior session says pin to 4.4.4 but actual installed CLI is now 4.4.5. Update the pin to match the SDK version.',
+      owner: 'Julio',
+    },
+    {
+      status: 'deferred',
+      title: 'Generate modal: cancel getClientCrawlInfo fetch on dialog close',
+      description: 'Minor: when dialog closes mid-fetch, the .then() still fires and calls setState on a closed (but mounted) component. Benign because the modal is controlled, but worth tightening with an AbortController.',
+      owner: 'either',
+    },
+    {
+      status: 'deferred',
+      title: 'Generate modal: surface polling errors to the user',
+      description: 'Polling currently swallows errors silently and clears the interval. If the network call fails repeatedly, the UI freezes on the spinner with no feedback. At minimum, set the error state from the caught exception so the user knows polling broke.',
+      owner: 'either',
+    },
+  ]
+
   const componentGroups: { group: string; items: { name: string; path: string; note?: string }[] }[] = [
     {
       group: 'App chrome',
@@ -182,11 +231,44 @@ export default async function LibraryPage() {
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <PageHeader
         title="Library"
-        description="Beta QA index. Click any route to visit it. Components are listed for inventory only (no preview)."
+        description="Beta QA index. Known issues at the top, then routes (clickable) and components (inventory only)."
         actions={<Badge variant="primary">BETA</Badge>}
       />
 
       <div className="mt-10 space-y-8">
+        {knownIssues.length > 0 && (
+          <PageSection title="Known Issues & Missing Features">
+            <ul className="divide-y divide-border rounded-md border border-border bg-background">
+              {knownIssues.map((issue) => (
+                <li
+                  key={issue.title}
+                  className="flex items-baseline justify-between gap-4 px-4 py-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-medium text-foreground">{issue.title}</p>
+                    <p className="mt-0.5 text-[12px] text-muted-foreground">{issue.description}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {issue.owner && <span>Owner: {issue.owner}</span>}
+                      {issue.owner && issue.link && <span> · </span>}
+                      {issue.link && (
+                        <Link
+                          href={issue.link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          {issue.link.label} ↗
+                        </Link>
+                      )}
+                    </p>
+                  </div>
+                  <Badge variant={badgeVariantForStatus(issue.status)}>{issue.status}</Badge>
+                </li>
+              ))}
+            </ul>
+          </PageSection>
+        )}
+
         {routes.map((section) => (
           <PageSection key={section.section} title={`Routes — ${section.section}`}>
             <ul className="divide-y divide-border rounded-md border border-border bg-background">
