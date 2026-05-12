@@ -11,6 +11,7 @@ import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 import { DateScopePill } from '@/components/date-scope-pill'
 import { SearchBar } from '@/components/search-bar'
 import { MobileSearchSheet } from '@/components/search/mobile-search-sheet'
+import { InFlightRunsProvider } from '@/components/relay/in-flight-runs-provider'
 
 type BadgeKey = 'unreadMentions'
 type NavItem = {
@@ -88,6 +89,7 @@ export function AppShell({
   }, [pathname, closeSidebar])
 
   return (
+    <InFlightRunsProvider>
     <div className="flex h-dvh flex-col md:flex-row bg-background">
       {sidebarOpen && (
         <div
@@ -225,5 +227,6 @@ export function AppShell({
         </main>
       </div>
     </div>
+    </InFlightRunsProvider>
   )
 }
