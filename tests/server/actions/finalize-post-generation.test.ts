@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/db/client', () => ({
   db: {
+    contentRun: {
+      findUnique: vi.fn(),
+    },
     post: {
       count: vi.fn(),
       deleteMany: vi.fn(),
       updateMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     batch: {
       findFirst: vi.fn(),
@@ -61,6 +65,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireClientEditor).mockResolvedValue(mockCtx)
   vi.mocked(findContentRun).mockResolvedValue(mockRun as never)
+  // Default: run exists.
+  vi.mocked(db.contentRun.findUnique).mockResolvedValue({ id: 'run_1' } as never)
+  // Default: no posts are attached yet (run not finalized).
+  vi.mocked(db.post.findFirst).mockResolvedValue(null)
 })
 
 describe('finalizePostGenerationAction', () => {
@@ -238,5 +246,27 @@ describe('findMatchingBatchForRunAction', () => {
 
     const result = await findMatchingBatchForRunAction('run_1')
     expect(result).toBeNull()
+  })
+})
+
+describe('finalizePostGenerationAction idempotency', () => {
+  it('returns existing batchId when called against an already-finalized run', async () => {
+    // Posts for this run are already attached to a batch (finalized by another tab).
+    vi.mocked(db.post.findFirst).mockResolvedValue({ batchId: 'b1' } as never)
+
+    const result = await finalizePostGenerationAction({
+      choice: 'add',
+      runId: 'run_1',
+      batchId: 'b1',
+    })
+
+    expect(result.batchId).toBe('b1')
+    expect(result.alreadyFinalized).toBe(true)
+
+    // The full choice-handling logic must NOT have run.
+    expect(db.post.updateMany).not.toHaveBeenCalled()
+    expect(db.post.deleteMany).not.toHaveBeenCalled()
+    expect(db.batch.update).not.toHaveBeenCalled()
+    expect(db.batch.create).not.toHaveBeenCalled()
   })
 })

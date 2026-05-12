@@ -44,9 +44,25 @@ export type FinalizePostGenerationInput = z.infer<typeof ChoiceSchema>
  */
 export async function finalizePostGenerationAction(
   raw: unknown,
-): Promise<{ batchId: string }> {
+): Promise<{ batchId: string; alreadyFinalized?: true }> {
   const input = ChoiceSchema.parse(raw)
+  // Auth runs unconditionally so unauthorized callers cannot probe for batchId
+  // existence via the idempotency path.
   const ctx = await requireClientEditor()
+
+  // Idempotency guard: if this run's posts are already attached to a batch,
+  // return the existing batchId rather than throwing. This handles the
+  // cross-tab race where two InFlightChoiceModals fire simultaneously.
+  // Not-found guard is handled by the service; we only need to check whether
+  // posts are already attached.
+  const existingPost = await db.post.findFirst({
+    where: { contentRunId: input.runId, batchId: { not: null } },
+    select: { batchId: true },
+  })
+  if (existingPost?.batchId) {
+    return { batchId: existingPost.batchId, alreadyFinalized: true }
+  }
+
   const result = await finalizePostGeneration({ input, actorUserId: ctx.userDbId })
   // Revalidate any pages that show the batch.
   revalidatePath(`/clients/${result.clientId}/batches/${result.batchId}`)
