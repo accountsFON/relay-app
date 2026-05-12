@@ -312,13 +312,13 @@ export default async function BatchDetailPage({
           items={[
             { href: '/dashboard', label: 'Dashboard' },
             { href: `/clients/${client.id}`, label: client.name },
-            { label: `Batch ${batch.label}` },
+            { label: `Relay ${batch.label}` },
           ]}
         />
       </div>
 
       <PageHeader
-        title={`Batch ${batch.label}`}
+        title={`Relay ${batch.label}`}
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
         actions={
           <>
@@ -479,7 +479,7 @@ export default async function BatchDetailPage({
                   {batchSummary.currentStep === 'onboarding_gate' ||
                   batchSummary.currentStep === 'copy'
                     ? 'No posts yet. Click Generate content to start.'
-                    : 'No posts on this batch. The batch may pre-date the content run, or posts may have been moved to a different batch.'}
+                    : 'No posts on this relay. The relay may pre-date the content run, or posts may have been moved to a different relay.'}
                 </p>
               ) : (
                 <div className="space-y-4">

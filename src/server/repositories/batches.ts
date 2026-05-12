@@ -281,11 +281,11 @@ export async function archiveBatch({
   // Two-query pattern: withArchived() + include causes a Prisma invocation
   // error, so we fetch the batch bare first, then load the client separately.
   const batch = await db.batch.withArchived().findFirst({ where: { id: batchId } })
-  if (!batch) throw new Error(`Batch ${batchId} not found`)
-  if (batch.deletedAt) throw new Error(`Batch ${batchId} is already archived`)
+  if (!batch) throw new Error(`Relay ${batchId} not found`)
+  if (batch.deletedAt) throw new Error(`Relay ${batchId} is already archived`)
 
   const client = await db.client.withArchived().findFirst({ where: { id: batch.clientId } })
-  if (!client) throw new Error(`Client ${batch.clientId} not found for Batch ${batchId}`)
+  if (!client) throw new Error(`Client ${batch.clientId} not found for Relay ${batchId}`)
 
   const organizationId = client.organizationId
   await assertCanEditBatch(actorUserId, organizationId)
@@ -349,11 +349,11 @@ export async function restoreBatch({
 }: BatchArchiveInput): Promise<void> {
   // Two-query pattern — same reason as archiveBatch.
   const batch = await db.batch.withArchived().findFirst({ where: { id: batchId } })
-  if (!batch) throw new Error(`Batch ${batchId} not found`)
-  if (!batch.deletedAt) throw new Error(`Batch ${batchId} is not archived`)
+  if (!batch) throw new Error(`Relay ${batchId} not found`)
+  if (!batch.deletedAt) throw new Error(`Relay ${batchId} is not archived`)
 
   const client = await db.client.withArchived().findFirst({ where: { id: batch.clientId } })
-  if (!client) throw new Error(`Client ${batch.clientId} not found for Batch ${batchId}`)
+  if (!client) throw new Error(`Client ${batch.clientId} not found for Relay ${batchId}`)
 
   const organizationId = client.organizationId
   await assertCanEditBatch(actorUserId, organizationId)

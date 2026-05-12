@@ -69,7 +69,7 @@ export function ArchiveClientButton({ clientId, clientName }: Props) {
 
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
-              All batches, runs, and posts will move to trash and be permanently
+              All relays, runs, and posts will move to trash and be permanently
               deleted in 30 days. You can restore this client from the admin
               trash view before then.
             </p>

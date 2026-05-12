@@ -180,7 +180,7 @@ export default async function AdminTrashPage() {
     },
     {
       key: 'batches',
-      label: 'Batches',
+      label: 'Relays',
       count: batchRows.length,
       rows: batchRows,
       entityType: 'batch' as const,

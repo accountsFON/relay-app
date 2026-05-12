@@ -24,7 +24,7 @@ export function RestoreBatchBanner({ batchId, archivedAt, archivedBy }: Props) {
 
   return (
     <ArchivedBanner
-      entityType="Batch"
+      entityType="Relay"
       archivedAt={archivedAt}
       archivedBy={archivedBy}
       onRestore={handleRestore}

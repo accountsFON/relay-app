@@ -40,16 +40,16 @@ export function ArchiveBatchButton({ batchId }: Props) {
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        Archive batch
+        Archive relay
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Archive this batch?</DialogTitle>
+            <DialogTitle>Archive this relay?</DialogTitle>
             <DialogDescription>
               Its posts and runs will move to trash and be permanently deleted
-              in 30 days. You can restore the batch from the admin trash view
+              in 30 days. You can restore the relay from the admin trash view
               before then.
             </DialogDescription>
           </DialogHeader>

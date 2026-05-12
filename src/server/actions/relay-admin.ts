@@ -20,7 +20,7 @@ export async function nudgeStuckBatchAction(input: { batchId: string }) {
       label: true,
     },
   })
-  if (!batch) throw new Error('Batch not found')
+  if (!batch) throw new Error('Relay not found')
 
   await recordActivity({
     clientId: batch.clientId,
@@ -59,7 +59,7 @@ export async function takeOverBatchAction(input: {
       label: true,
     },
   })
-  if (!batch) throw new Error('Batch not found')
+  if (!batch) throw new Error('Relay not found')
   if (batch.currentHolder === input.newHolderId) {
     return { ok: true as const, changed: false }
   }
@@ -196,7 +196,7 @@ export async function createBatchAction(input: {
     throw new Error('Forbidden: client not in active org')
   }
   if (!client.onboardingCompletedAt) {
-    throw new Error('Client onboarding not complete; cannot create batch yet')
+    throw new Error('Client onboarding not complete; cannot create relay yet')
   }
 
   return db.$transaction(async (tx) => {
@@ -205,7 +205,7 @@ export async function createBatchAction(input: {
       select: { id: true },
     })
     if (existing) {
-      throw new Error(`Batch ${input.label} already exists for this client`)
+      throw new Error(`Relay ${input.label} already exists for this client`)
     }
     const holderId = client.assignedAmId ?? ctx.userDbId
     const batch = await tx.batch.create({

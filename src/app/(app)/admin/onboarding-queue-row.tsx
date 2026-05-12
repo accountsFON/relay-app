@@ -55,7 +55,7 @@ export function OnboardingQueueRow({ client }: { client: OnboardingClient }) {
         onClick={handleComplete}
         disabled={isPending}
       >
-        {isPending ? 'Starting…' : 'Complete onboarding + open batch'}
+        {isPending ? 'Starting…' : 'Complete onboarding + open relay'}
       </Button>
     </div>
   )

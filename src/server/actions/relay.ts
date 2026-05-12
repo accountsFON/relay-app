@@ -79,7 +79,7 @@ export async function advanceCopySubStateAction(input: {
       currentHolder: true,
     },
   })
-  if (!batch) throw new Error('Batch not found')
+  if (!batch) throw new Error('Relay not found')
   if (batch.currentStep !== 'copy') {
     throw new Error('Sub-state advance only valid at step copy')
   }
@@ -111,7 +111,7 @@ export async function tickChecklistItemAction(input: {
     where: { id: item.batchId },
     select: { currentHolder: true, clientId: true },
   })
-  if (!batch) throw new Error('Batch not found')
+  if (!batch) throw new Error('Relay not found')
   if (batch.currentHolder !== ctx.userDbId && !ctx.platformOwner) {
     throw new Error('Only the current holder may tick checklist items')
   }

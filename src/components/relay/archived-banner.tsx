@@ -5,7 +5,7 @@ import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 
 interface Props {
-  entityType: 'Client' | 'Batch' | 'Post' | 'Run';
+  entityType: 'Client' | 'Relay' | 'Post' | 'Run';
   archivedAt: Date;
   archivedBy?: string | null;
   /** Server action wrapper supplied by the caller — knows which entity to restore */
