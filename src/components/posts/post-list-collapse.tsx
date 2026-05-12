@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 /**
  * PostListCollapseContext, a per parent state map keyed by post id.
  *
- * Default state for every card is collapsed. The provider also exposes a
+ * Default state for every card is expanded. The provider also exposes a
  * setAll() helper so the batch detail page can offer an Expand all /
  * Collapse all button. Individual cards remain free to toggle themselves
  * after a global setAll(), because each id keeps its own entry in the map.
@@ -33,7 +33,7 @@ const PostListCollapseContext = createContext<PostListCollapseValue | null>(
 
 export function PostListCollapseProvider({
   postIds,
-  defaultCollapsed = true,
+  defaultCollapsed = false,
   children,
 }: {
   postIds: readonly string[]

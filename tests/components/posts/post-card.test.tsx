@@ -30,30 +30,42 @@ const basePost = {
 }
 
 describe('PostCard collapsed state', () => {
-  it('defaults to collapsed and renders the slim header strip', () => {
-    render(<PostCard post={basePost} />)
-    // Caption preview is shown
+  it('defaults to expanded and renders the full body', () => {
+    render(<PostCard post={basePost} canEdit />)
+    // Caption is shown
     expect(
       screen.getByText(/A wonderful caption that should be visible/i),
     ).toBeInTheDocument()
-    // Edit / Copy / overflow buttons are hidden when collapsed
+    // Copy and Edit buttons are visible when expanded
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    // The expanded root does NOT carry the collapsed data attribute
+    expect(
+      document.querySelector('[data-post-id="post-1"][data-collapsed="1"]'),
+    ).toBeNull()
+    // Chevron toggle reads Collapse on initial render
+    expect(
+      screen.getByRole('button', { name: /collapse post/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('collapses when the chevron toggle is clicked', () => {
+    render(<PostCard post={basePost} canEdit />)
+    const toggle = screen.getByRole('button', { name: /collapse post/i })
+    fireEvent.click(toggle)
+    // Once collapsed, Copy and Edit buttons disappear
     expect(screen.queryByRole('button', { name: 'Copy' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-    // The collapsed root carries the data attribute
+    // Toggle now reads Expand
+    expect(screen.getByRole('button', { name: /expand post/i })).toBeInTheDocument()
+  })
+
+  it('honors a controlled collapsed=true prop', () => {
+    render(<PostCard post={basePost} collapsed canEdit />)
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
     expect(
       document.querySelector('[data-post-id="post-1"][data-collapsed="1"]'),
     ).not.toBeNull()
-  })
-
-  it('expands when the chevron toggle is clicked', () => {
-    render(<PostCard post={basePost} canEdit />)
-    const toggle = screen.getByRole('button', { name: /expand post/i })
-    fireEvent.click(toggle)
-    // Once expanded, Copy and Edit buttons appear
-    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-    // Toggle now reads Collapse
-    expect(screen.getByRole('button', { name: /collapse post/i })).toBeInTheDocument()
   })
 
   it('renders the post number badge when supplied', () => {
@@ -61,10 +73,6 @@ describe('PostCard collapsed state', () => {
     expect(screen.getByText('#3')).toBeInTheDocument()
   })
 
-  it('honors a controlled collapsed=false prop', () => {
-    render(<PostCard post={basePost} collapsed={false} canEdit />)
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-  })
 })
 
 describe('PostListCollapseProvider', () => {
@@ -73,7 +81,7 @@ describe('PostListCollapseProvider', () => {
     { ...basePost, id: 'b', caption: 'Caption B' },
   ]
 
-  it('expands every card when Expand all is clicked', () => {
+  it('starts with every card expanded and surfaces a Collapse all toggle', () => {
     render(
       <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
         <PostListExpandAllToggle />
@@ -83,19 +91,13 @@ describe('PostListCollapseProvider', () => {
       </PostListCollapseProvider>,
     )
 
-    expect(screen.getByRole('button', { name: 'Expand all' })).toBeInTheDocument()
-    // Initially collapsed: no Edit buttons rendered for either card
-    expect(screen.queryAllByRole('button', { name: 'Edit' })).toHaveLength(0)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
-
-    // Both cards now expanded
+    // Both cards expanded on initial render
     expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2)
-    // Toggle flips to Collapse all
+    // Global toggle reads Collapse all
     expect(screen.getByRole('button', { name: 'Collapse all' })).toBeInTheDocument()
   })
 
-  it('lets individual cards re-collapse after Expand all', () => {
+  it('collapses every card when Collapse all is clicked, then expands again', () => {
     render(
       <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
         <PostListExpandAllToggle />
@@ -105,33 +107,33 @@ describe('PostListCollapseProvider', () => {
       </PostListCollapseProvider>,
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse all' }))
+    expect(screen.queryAllByRole('button', { name: 'Edit' })).toHaveLength(0)
+    expect(screen.getByRole('button', { name: 'Expand all' })).toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
-    // After expand all, "Collapse post" buttons exist for each card
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Collapse all' })).toBeInTheDocument()
+  })
+
+  it('lets individual cards re-collapse without affecting the other', () => {
+    render(
+      <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
+        <PostListExpandAllToggle />
+        {posts.map((p, idx) => (
+          <PostCard key={p.id} post={p} postNumber={idx + 1} canEdit />
+        ))}
+      </PostListCollapseProvider>,
+    )
+
+    // Both expanded by default, so both rows have a Collapse post toggle.
     const collapseButtons = screen.getAllByRole('button', { name: /collapse post/i })
     expect(collapseButtons).toHaveLength(2)
 
-    // Collapse just the first card
+    // Collapse just the first card.
     fireEvent.click(collapseButtons[0])
-    // Now only one Edit button remains visible (second card still expanded)
     expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(1)
-    // Global toggle is back to Expand all (not all expanded any more)
-    expect(screen.getByRole('button', { name: 'Expand all' })).toBeInTheDocument()
-  })
-
-  it('collapses every card when Collapse all is clicked', () => {
-    render(
-      <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
-        <PostListExpandAllToggle />
-        {posts.map((p, idx) => (
-          <PostCard key={p.id} post={p} postNumber={idx + 1} canEdit />
-        ))}
-      </PostListCollapseProvider>,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse all' }))
-
-    expect(screen.queryAllByRole('button', { name: 'Edit' })).toHaveLength(0)
+    // Global toggle flips to Expand all once not every card is expanded.
     expect(screen.getByRole('button', { name: 'Expand all' })).toBeInTheDocument()
   })
 })

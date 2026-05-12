@@ -430,40 +430,8 @@ export default async function BatchDetailPage({
         </div>
       )}
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)_340px]">
-        <div className="lg:sticky lg:top-4 lg:self-start lg:order-1 space-y-4">
-          {isClientDecisionView ? (
-            <ClientDecisionPanel batch={batchSummary} />
-          ) : isRevisionsStep ? (
-            <RevisionPlanComposer
-              batch={batchSummary}
-              assignedAmId={client.assignedAmId}
-              assignedDesignerId={client.assignedDesignerId}
-              meId={ctx.userDbId}
-            />
-          ) : (
-            <>
-              {isCopyPreApproved && (
-                <CopySubStatePanel
-                  batchId={batch.id}
-                  clientId={client.id}
-                  label={batch.label}
-                  subState={batch.currentSubState}
-                  canAct={canAct}
-                />
-              )}
-              <ChecklistPanel
-                batch={batchSummary}
-                items={batch.checklists}
-                canAct={canAct}
-                legalSendBackTargets={sendBackTargets}
-                nextStep={nextStep}
-              />
-            </>
-          )}
-        </div>
-
-        <div className="space-y-6 lg:order-2">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-6 lg:order-1">
           <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
             <PageSection
               title={`Posts (${posts.length})`}
@@ -512,19 +480,55 @@ export default async function BatchDetailPage({
         </div>
 
         <aside
-          aria-label="Client thread"
-          data-testid="client-thread-rail"
-          className="lg:sticky lg:top-4 lg:self-start lg:order-3 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto rounded-2xl bg-card p-4"
+          aria-label="Relay sidebar"
+          data-testid="relay-sidebar-rail"
+          className="lg:sticky lg:top-4 lg:self-start lg:order-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-4"
         >
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-3">
-            Client thread
-          </h2>
-          <ActivityThread
-            clientId={client.id}
-            events={events}
-            mentionTargets={mentionTargets}
-            hideComposer={!canEdit || !isLive}
-          />
+          {isClientDecisionView ? (
+            <ClientDecisionPanel batch={batchSummary} />
+          ) : isRevisionsStep ? (
+            <RevisionPlanComposer
+              batch={batchSummary}
+              assignedAmId={client.assignedAmId}
+              assignedDesignerId={client.assignedDesignerId}
+              meId={ctx.userDbId}
+            />
+          ) : (
+            <>
+              {isCopyPreApproved && (
+                <CopySubStatePanel
+                  batchId={batch.id}
+                  clientId={client.id}
+                  label={batch.label}
+                  subState={batch.currentSubState}
+                  canAct={canAct}
+                />
+              )}
+              <ChecklistPanel
+                batch={batchSummary}
+                items={batch.checklists}
+                canAct={canAct}
+                legalSendBackTargets={sendBackTargets}
+                nextStep={nextStep}
+              />
+            </>
+          )}
+
+          <div
+            aria-label="Client thread"
+            data-testid="client-thread-rail"
+            className="rounded-2xl bg-card p-4"
+          >
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-3">
+              Client thread
+            </h2>
+            <ActivityThread
+              clientId={client.id}
+              events={events}
+              mentionTargets={mentionTargets}
+              hideComposer={!canEdit || !isLive}
+            />
+          </div>
         </aside>
       </div>
     </div>
