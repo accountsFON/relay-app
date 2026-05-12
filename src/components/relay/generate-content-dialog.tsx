@@ -112,11 +112,21 @@ export function GenerateContentDialog({
         if (next.status === 'complete') {
           clearInterval(interval)
           const matched = await findMatchingBatchForRunAction(next.id)
-          if (matched) {
+          if (matched && matched.postCount > 0) {
+            // Real choice to make: existing batch has posts, show prompt
             setMatchingBatch(matched)
-            // Don't close -- show choice panel
+          } else if (matched) {
+            // Matched batch is empty -- silently attach to it (no prompt)
+            await finalizePostGenerationAction({
+              choice: 'add',
+              runId: next.id,
+              batchId: matched.batchId,
+            })
+            setOpen(false)
+            setProgress(null)
+            router.refresh()
           } else {
-            // Auto-new: silently create a batch and close
+            // No matching batch -- auto-create a new one
             await finalizePostGenerationAction({ choice: 'auto-new', runId: next.id })
             setOpen(false)
             setProgress(null)
@@ -273,10 +283,6 @@ export function GenerateContentDialog({
               The &quot;{matchingBatch.label}&quot; batch already has {matchingBatch.postCount} posts.
               What would you like to do?
             </p>
-            <p className="text-[11px] font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
-              DEBUG: batchId={matchingBatch.batchId} | count={matchingBatch.postCount} | runId={progress?.id ?? 'null'}
-            </p>
-
             {/* Add */}
             <Button
               variant="outline"
