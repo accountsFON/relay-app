@@ -32,6 +32,7 @@ import { seedContentRuns } from './seed/content-runs'
 import { seedBatches } from './seed/batches'
 import { seedActivity } from './seed/activity'
 import { seedPostVersions } from './seed/post-versions'
+import { seedArchivedItems } from './seed/archived-items'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
@@ -283,6 +284,14 @@ async function main(): Promise<void> {
     console.log(
       `  ${versions.totalRows} versions across ${versions.postsTouched} posts`,
     )
+
+    console.log('--- Step 7: archived items (trash demo) ---')
+    await seedArchivedItems({
+      db,
+      actorUserId: userMap.users.am1.id,
+      ownerUserId: userMap.users.admin.id,
+      clients,
+    })
 
     const { ok, rows } = await runVerification(db)
     printVerification(rows, ok)
