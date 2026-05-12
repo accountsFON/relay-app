@@ -132,6 +132,7 @@ model Organization {
   roleDefaults        RoleDefault[]
   permissionAuditLogs PermissionAuditLog[]
   memberships         Membership[]
+  trashAuditLogs      TrashAuditLog[]
 
   @@map("organizations")
 }
@@ -492,4 +493,24 @@ model Mention {
   @@unique([activityEventId, mentionedUserId])
   @@index([mentionedUserId, readAt])
   @@map("mentions")
+}
+
+model TrashAuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorUserId    String
+  action         String   // 'archive' | 'restore' | 'purge'
+  entityType     String   // 'client' | 'batch' | 'contentRun' | 'post'
+  entityId       String
+  parentContext  Json     @default("{}")
+  cascadeCount   Int
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("trash_audit_logs")
 }
