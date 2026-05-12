@@ -47,7 +47,9 @@ export function DateScopePill() {
     // synchronously after onSelect, which cancels the suspended transition
     // before the navigation commits. Without the wrapper the navigation
     // commits cleanly even though the menu tears down.
-    router.push(qs ? `${pathname}?${qs}` : pathname)
+    // scroll:false keeps the user's scroll position when only the filter
+    // changes. Without it Next.js scrolls to top on every URL update.
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
   return (

@@ -28,7 +28,9 @@ export function ShowArchivedToggle({ countArchived }: Props) {
     if (next) params.set('archived', '1');
     else params.delete('archived');
     const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname);
+    // scroll:false keeps the user's scroll position when only the filter
+    // changes. Without it Next.js scrolls to top on every URL update.
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
   return (
