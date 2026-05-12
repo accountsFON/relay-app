@@ -340,7 +340,6 @@ export default async function BatchDetailPage({
                 {batch.currentStep !== RelayStep.final_qa_schedule && (
                   <GenerateContentDialog
                     clientId={client.id}
-                    clientName={client.name}
                     targetMonth={targetMonth}
                     lockMonth
                   />
