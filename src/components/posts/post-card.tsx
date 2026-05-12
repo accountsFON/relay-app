@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -25,6 +26,7 @@ import {
 import { updatePostAction } from '@/server/actions/posts'
 import { archivePostAction, restorePostAction } from '@/app/(app)/trash/actions'
 import { cn } from '@/lib/utils'
+import { usePostListCollapse } from '@/components/posts/post-list-collapse'
 
 type Post = {
   id: string
@@ -39,11 +41,24 @@ type Post = {
 export function PostCard({
   post,
   canEdit = false,
+  postNumber,
+  collapsed: collapsedProp,
+  defaultCollapsed = true,
+  onToggleCollapsed,
 }: {
   post: Post
   canEdit?: boolean
+  /** 1-based position in the post list, used in the collapsed header strip. */
+  postNumber?: number
+  /** Controlled collapsed state. If omitted, uses context or local state. */
+  collapsed?: boolean
+  /** Initial collapsed state when uncontrolled and no context is present. */
+  defaultCollapsed?: boolean
+  /** Called when the user clicks the collapse chevron in uncontrolled mode. */
+  onToggleCollapsed?: (next: boolean) => void
 }) {
   const router = useRouter()
+  const listCollapse = usePostListCollapse()
   const [isEditing, setIsEditing] = useState(false)
   const [caption, setCaption] = useState(post.caption)
   const [hashtags, setHashtags] = useState(post.hashtags.join(' '))
@@ -52,8 +67,23 @@ export function PostCard({
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
+  const [localCollapsed, setLocalCollapsed] = useState(defaultCollapsed)
 
   const isArchived = Boolean(post.deletedAt)
+
+  // Resolution order: explicit prop wins, then list context, then local state.
+  const collapsed =
+    collapsedProp ?? listCollapse?.isCollapsed(post.id) ?? localCollapsed
+
+  const handleCollapseToggle = () => {
+    const next = !collapsed
+    if (listCollapse) {
+      listCollapse.setCollapsed(post.id, next)
+    } else {
+      setLocalCollapsed(next)
+    }
+    onToggleCollapsed?.(next)
+  }
 
   const dateLabel = post.postDate.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -102,147 +132,182 @@ export function PostCard({
       <Card
         data-post-id={post.id}
         data-archived={isArchived ? '1' : undefined}
+        data-collapsed={collapsed ? '1' : undefined}
         className={cn(isArchived && 'opacity-50 grayscale pointer-events-none')}
       >
-        {isArchived && (
-          <div className="px-5 pt-3 pointer-events-auto">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              Archived
+        {/* Header strip: always rendered. Acts as the slim collapsed view
+            when `collapsed` is true, and as the title row otherwise. */}
+        <div
+          className={cn(
+            'px-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
+            collapsed && 'py-3',
+          )}
+        >
+          <button
+            type="button"
+            onClick={handleCollapseToggle}
+            aria-expanded={!collapsed}
+            aria-controls={`post-body-${post.id}`}
+            aria-label={collapsed ? 'Expand post' : 'Collapse post'}
+            className="pointer-events-auto flex flex-1 items-center gap-3 text-left min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span aria-hidden="true" className="text-muted-foreground shrink-0">
+              {collapsed ? (
+                <ChevronRight className="size-4" />
+              ) : (
+                <ChevronDown className="size-4" />
+              )}
             </span>
-          </div>
-        )}
-
-        <div className="px-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-[15px] font-semibold text-foreground">{dateLabel}</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {!isArchived && (
-              <Button variant="ghost" size="sm" onClick={handleCopy}>
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
+            {typeof postNumber === 'number' && (
+              <span className="text-[12px] font-semibold tabular-nums text-muted-foreground shrink-0">
+                #{postNumber}
+              </span>
             )}
-            {!isEditing && !isArchived && (
-              <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
-                Edit
-              </Button>
+            <span className="text-[15px] font-semibold text-foreground shrink-0">
+              {dateLabel}
+            </span>
+            {isArchived && (
+              <Badge variant="secondary" className="shrink-0">
+                Archived
+              </Badge>
             )}
-            {showOverflowMenu && (
-              <div className="pointer-events-auto">
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label="Post options"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {!isArchived && (
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => setArchiveConfirmOpen(true)}
-                      >
-                        Archive post
-                      </DropdownMenuItem>
-                    )}
-                    {isArchived && (
-                      <DropdownMenuItem onClick={handleRestore}>
-                        Restore post
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+            {collapsed && (
+              <span className="text-[14px] text-muted-foreground line-clamp-1 min-w-0 flex-1">
+                {post.caption || 'No caption yet'}
+              </span>
             )}
-          </div>
-        </div>
-
-        <div className="px-5">
-          {isEditing ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor={`caption-${post.id}`}>Caption</Label>
-                <Textarea
-                  id={`caption-${post.id}`}
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  rows={6}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={`hashtags-${post.id}`}>Hashtags</Label>
-                <Input
-                  id={`hashtags-${post.id}`}
-                  value={hashtags}
-                  onChange={(e) => setHashtags(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor={`hook-${post.id}`}>Graphic hook</Label>
-                  <Input
-                    id={`hook-${post.id}`}
-                    value={graphicHook}
-                    onChange={(e) => setGraphicHook(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`notes-${post.id}`}>Designer notes</Label>
-                  <Input
-                    id={`notes-${post.id}`}
-                    value={designerNotes}
-                    onChange={(e) => setDesignerNotes(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="accent" size="sm" onClick={handleSave} disabled={isPending}>
-                  {isPending ? 'Saving…' : 'Save'}
+          </button>
+          {!collapsed && (
+            <div className="flex flex-wrap items-center gap-2">
+              {!isArchived && (
+                <Button variant="ghost" size="sm" onClick={handleCopy}>
+                  {copied ? 'Copied' : 'Copy'}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setCaption(post.caption)
-                    setHashtags(post.hashtags.join(' '))
-                    setGraphicHook(post.graphicHook ?? '')
-                    setDesignerNotes(post.designerNotes ?? '')
-                    setIsEditing(false)
-                  }}
-                >
-                  Cancel
+              )}
+              {!isEditing && !isArchived && (
+                <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                  Edit
                 </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-[15px] text-foreground whitespace-pre-line leading-relaxed">
-                {caption}
-              </p>
-              {post.hashtags.length > 0 && (
-                <p className="text-[14px] text-ink-50">{post.hashtags.join(' ')}</p>
               )}
-              {post.graphicHook && (
-                <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
-                  <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
-                    Graphic hook
-                  </p>
-                  <p className="text-[14px] text-foreground mt-1">{post.graphicHook}</p>
-                </div>
-              )}
-              {post.designerNotes && (
-                <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
-                  <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
-                    Designer notes
-                  </p>
-                  <p className="text-[14px] text-foreground mt-1">{post.designerNotes}</p>
+              {showOverflowMenu && (
+                <div className="pointer-events-auto">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label="Post options"
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {!isArchived && (
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => setArchiveConfirmOpen(true)}
+                        >
+                          Archive post
+                        </DropdownMenuItem>
+                      )}
+                      {isArchived && (
+                        <DropdownMenuItem onClick={handleRestore}>
+                          Restore post
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {isArchived && canEdit && (
+        {!collapsed && (
+          <div id={`post-body-${post.id}`} className="px-5">
+            {isEditing ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`caption-${post.id}`}>Caption</Label>
+                  <Textarea
+                    id={`caption-${post.id}`}
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    rows={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`hashtags-${post.id}`}>Hashtags</Label>
+                  <Input
+                    id={`hashtags-${post.id}`}
+                    value={hashtags}
+                    onChange={(e) => setHashtags(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor={`hook-${post.id}`}>Graphic hook</Label>
+                    <Input
+                      id={`hook-${post.id}`}
+                      value={graphicHook}
+                      onChange={(e) => setGraphicHook(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`notes-${post.id}`}>Designer notes</Label>
+                    <Input
+                      id={`notes-${post.id}`}
+                      value={designerNotes}
+                      onChange={(e) => setDesignerNotes(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="accent" size="sm" onClick={handleSave} disabled={isPending}>
+                    {isPending ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCaption(post.caption)
+                      setHashtags(post.hashtags.join(' '))
+                      setGraphicHook(post.graphicHook ?? '')
+                      setDesignerNotes(post.designerNotes ?? '')
+                      setIsEditing(false)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-[15px] text-foreground whitespace-pre-line leading-relaxed">
+                  {caption}
+                </p>
+                {post.hashtags.length > 0 && (
+                  <p className="text-[14px] text-ink-50">{post.hashtags.join(' ')}</p>
+                )}
+                {post.graphicHook && (
+                  <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
+                    <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
+                      Graphic hook
+                    </p>
+                    <p className="text-[14px] text-foreground mt-1">{post.graphicHook}</p>
+                  </div>
+                )}
+                {post.designerNotes && (
+                  <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
+                    <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
+                      Designer notes
+                    </p>
+                    <p className="text-[14px] text-foreground mt-1">{post.designerNotes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!collapsed && isArchived && canEdit && (
           <div className="px-5 pb-4 pointer-events-auto">
             <Button
               variant="outline"
