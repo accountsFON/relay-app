@@ -23,6 +23,7 @@ import {
 import {
   finalizePostGenerationAction,
   findMatchingBatchForRunAction,
+  deferFinalizeAction,
   type FinalizePostGenerationInput,
 } from '@/server/actions/finalize-post-generation'
 
@@ -122,10 +123,13 @@ export function GenerateContentDialog({
             } else {
               // No matching batch — auto-create a new one
               try {
-                await finalizePostGenerationAction({ choice: 'auto-new', runId: next.id })
+                const result = await finalizePostGenerationAction({
+                  choice: 'auto-new',
+                  runId: next.id,
+                })
                 setOpen(false)
                 setProgress(null)
-                router.refresh()
+                router.push(`/clients/${clientId}/batches/${result.batchId}`)
               } catch (e) {
                 setError(e instanceof Error ? e.message : 'Failed to attach posts')
               }
@@ -147,18 +151,32 @@ export function GenerateContentDialog({
   const handleChoice = async (input: FinalizePostGenerationInput) => {
     setIsFinalizing(true)
     try {
-      await finalizePostGenerationAction(input)
+      const result = await finalizePostGenerationAction(input)
       setOpen(false)
       setProgress(null)
       setMatchingBatch(null)
       setConfirmingReplace(false)
       setShowingNewBatchInput(false)
       setNewBatchLabel('')
-      router.refresh()
+      // Auto-redirect to the just-populated batch so the user lands where
+      // their work is, not on the page they happened to be on.
+      router.push(`/clients/${clientId}/batches/${result.batchId}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to finalize')
     } finally {
       setIsFinalizing(false)
+    }
+  }
+
+  const handleRunInBackground = async () => {
+    if (!progress) return
+    try {
+      await deferFinalizeAction(progress.id)
+      setOpen(false)
+      setProgress(null)
+      setMatchingBatch(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to background')
     }
   }
 
@@ -271,6 +289,13 @@ export function GenerateContentDialog({
                   Retry
                 </Button>
               </div>
+            )}
+            {!isComplete && !isFailed && (
+              <DialogFooter className="pt-2">
+                <Button variant="outline" size="sm" onClick={handleRunInBackground}>
+                  Run in background
+                </Button>
+              </DialogFooter>
             )}
           </div>
         )}
