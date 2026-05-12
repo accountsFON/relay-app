@@ -71,7 +71,7 @@ export function DashboardRelayTrack({
         <div
           role="list"
           aria-label="Relay track"
-          className="flex items-start gap-2 overflow-x-auto pb-3"
+          className="flex items-start gap-3 overflow-x-auto pb-3"
           style={{
             scrollbarColor: 'var(--ink-80) transparent',
             scrollbarWidth: 'thin',
@@ -109,7 +109,7 @@ function DesktopStation({
       data-step={station.step}
       data-active={hasRecent ? 'true' : undefined}
       className={cn(
-        'flex w-[130px] shrink-0 flex-col rounded-md bg-cream-warm/40 p-2',
+        'flex w-[200px] shrink-0 flex-col rounded-lg bg-cream-warm/40 p-3',
         hasRecent && 'ring-1 ring-[color:var(--orange)]/50 bg-cream-warm/60'
       )}
     >
@@ -124,7 +124,7 @@ function DesktopStation({
             <RelayRunnerCard key={relay.id} relay={relay} now={now} />
           ))
         ) : (
-          <p className="px-1 py-1 text-[11px] italic text-muted-foreground">
+          <p className="px-1 py-1 text-[12px] italic text-muted-foreground">
             empty
           </p>
         )}
@@ -187,7 +187,7 @@ function StationHeader({
         <h3
           tabIndex={0}
           className={cn(
-            'truncate rounded text-[11px] font-semibold uppercase tracking-[0.06em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'truncate rounded text-[12px] font-semibold uppercase tracking-[0.06em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             recent ? 'text-foreground' : 'text-muted-foreground'
           )}
         >
@@ -196,7 +196,7 @@ function StationHeader({
       </StepTooltip>
       <span
         className={cn(
-          'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums',
+          'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] tabular-nums',
           recent
             ? 'bg-[color:var(--orange)]/20 text-foreground'
             : 'bg-cream-80 text-ink-80'
