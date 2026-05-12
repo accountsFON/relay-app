@@ -7,6 +7,10 @@ import {
   listActivityForClient,
   visibilityForViewer,
 } from '@/server/repositories/activityEvents'
+import { listMembershipsForOrg } from '@/server/repositories/memberships'
+import { can } from '@/server/auth/permissions'
+import { buildMentionRoster } from '@/lib/mentions'
+import { ClientTeamHeader } from '@/components/clients/client-team-header'
 import { db } from '@/db/client'
 import {
   legalNextSteps,
@@ -107,7 +111,7 @@ export default async function BatchDetailPage({
   // the toggle remains the user's explicit control.
   const postQuery = showArchived ? db.post.withArchived() : db.post
 
-  const [events, posts, archivedCount] = await Promise.all([
+  const [events, posts, archivedCount, memberships] = await Promise.all([
     listActivityForClient(client.id, {
       limit: 30,
       visibilityFilter: visibilityForViewer(ctx),
@@ -128,7 +132,26 @@ export default async function BatchDetailPage({
       },
     }),
     db.post.onlyArchived().count({ where: { batchId: batch.id } }),
+    listMembershipsForOrg(ctx.organizationDbId),
   ])
+  const canManageTeam = can(ctx, 'admin.portal')
+  const mentionTargets = buildMentionRoster(memberships)
+
+  // Mirror /clients/[id]/page.tsx: role-filtered option lists plus enriched
+  // assigned ids for the AM/Designer pills in the team header.
+  const amOptions = memberships
+    .filter((m) => m.role === 'account_manager' || m.role === 'admin')
+    .map((m) => ({ id: m.user.id, name: m.user.name }))
+  const designerOptions = memberships
+    .filter((m) => m.role === 'designer' || m.role === 'admin')
+    .map((m) => ({ id: m.user.id, name: m.user.name }))
+  const userIndex = new Map(memberships.map((m) => [m.user.id, m.user]))
+  const assignedAm = client.assignedAmId
+    ? (userIndex.get(client.assignedAmId) ?? null)
+    : null
+  const assignedDesigner = client.assignedDesignerId
+    ? (userIndex.get(client.assignedDesignerId) ?? null)
+    : null
 
   const sendBackTargets = legalSendBackTargets(batch.currentStep).map((step) => ({
     step,
@@ -266,7 +289,7 @@ export default async function BatchDetailPage({
   }
 
   return (
-    <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
       {isBatchComplete && celebrationParticipants.length > 0 && (
         <BatchCompletionLap
           batchId={batch.id}
@@ -340,6 +363,34 @@ export default async function BatchDetailPage({
         }
       />
 
+      <div className="mt-6">
+        <ClientTeamHeader
+          clientId={client.id}
+          clientName={client.name}
+          am={
+            assignedAm
+              ? {
+                  id: assignedAm.id,
+                  name: assignedAm.name,
+                  avatarUrl: assignedAm.avatarUrl,
+                }
+              : null
+          }
+          designer={
+            assignedDesigner
+              ? {
+                  id: assignedDesigner.id,
+                  name: assignedDesigner.name,
+                  avatarUrl: assignedDesigner.avatarUrl,
+                }
+              : null
+          }
+          amOptions={amOptions}
+          designerOptions={designerOptions}
+          canManage={canManageTeam}
+        />
+      </div>
+
       <div className="mt-8">
         <RelayTrack
           batch={batchSummary}
@@ -379,8 +430,40 @@ export default async function BatchDetailPage({
         </div>
       )}
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)_340px]">
+        <div className="lg:sticky lg:top-4 lg:self-start lg:order-1 space-y-4">
+          {isClientDecisionView ? (
+            <ClientDecisionPanel batch={batchSummary} />
+          ) : isRevisionsStep ? (
+            <RevisionPlanComposer
+              batch={batchSummary}
+              assignedAmId={client.assignedAmId}
+              assignedDesignerId={client.assignedDesignerId}
+              meId={ctx.userDbId}
+            />
+          ) : (
+            <>
+              {isCopyPreApproved && (
+                <CopySubStatePanel
+                  batchId={batch.id}
+                  clientId={client.id}
+                  label={batch.label}
+                  subState={batch.currentSubState}
+                  canAct={canAct}
+                />
+              )}
+              <ChecklistPanel
+                batch={batchSummary}
+                items={batch.checklists}
+                canAct={canAct}
+                legalSendBackTargets={sendBackTargets}
+                nextStep={nextStep}
+              />
+            </>
+          )}
+        </div>
+
+        <div className="space-y-6 lg:order-2">
           <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
             <PageSection
               title={`Posts (${posts.length})`}
@@ -426,47 +509,23 @@ export default async function BatchDetailPage({
               )}
             </PageSection>
           </PostListCollapseProvider>
-
-          <PageSection title="Activity">
-            <ActivityThread
-              clientId={client.id}
-              events={events}
-              hideComposer
-            />
-          </PageSection>
         </div>
 
-        <div className="lg:sticky lg:top-4 lg:self-start space-y-4">
-          {isClientDecisionView ? (
-            <ClientDecisionPanel batch={batchSummary} />
-          ) : isRevisionsStep ? (
-            <RevisionPlanComposer
-              batch={batchSummary}
-              assignedAmId={client.assignedAmId}
-              assignedDesignerId={client.assignedDesignerId}
-              meId={ctx.userDbId}
-            />
-          ) : (
-            <>
-              {isCopyPreApproved && (
-                <CopySubStatePanel
-                  batchId={batch.id}
-                  clientId={client.id}
-                  label={batch.label}
-                  subState={batch.currentSubState}
-                  canAct={canAct}
-                />
-              )}
-              <ChecklistPanel
-                batch={batchSummary}
-                items={batch.checklists}
-                canAct={canAct}
-                legalSendBackTargets={sendBackTargets}
-                nextStep={nextStep}
-              />
-            </>
-          )}
-        </div>
+        <aside
+          aria-label="Client thread"
+          data-testid="client-thread-rail"
+          className="lg:sticky lg:top-4 lg:self-start lg:order-3 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto rounded-2xl bg-card p-4"
+        >
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-3">
+            Client thread
+          </h2>
+          <ActivityThread
+            clientId={client.id}
+            events={events}
+            mentionTargets={mentionTargets}
+            hideComposer={!canEdit || !isLive}
+          />
+        </aside>
       </div>
     </div>
   )
