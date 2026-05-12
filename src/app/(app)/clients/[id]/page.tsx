@@ -168,7 +168,11 @@ export default async function ClientDetailPage({
       </div>
 
       <div className="mt-4">
-        <ClientQuickAccess urls={client.urls} assetsFolderUrl={client.assetsFolderUrl} />
+        <ClientQuickAccess
+          urls={client.urls}
+          assetsFolderUrl={client.assetsFolderUrl}
+          canvaUrl={client.canvaUrl}
+        />
       </div>
 
       <div className="mt-10">

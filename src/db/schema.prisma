@@ -192,6 +192,7 @@ model Client {
   holidayHandling    String       @default("Major-US")
   excludedDates      String[]
   assetsFolderUrl    String?
+  canvaUrl           String?
   autoCrawl          String       @default("always")
   crawledData        String?      @db.Text
   crawledDataAt      DateTime?

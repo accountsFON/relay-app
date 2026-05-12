@@ -46,6 +46,7 @@ export const clientInputSchema = z.object({
   holidayHandling: holidayHandlingEnum.default('Major-US'),
   excludedDates: excludedDatesField,
   assetsFolderUrl: z.string().url().optional().or(z.literal('')),
+  canvaUrl: z.string().url().optional().or(z.literal('')),
   autoCrawl: autoCrawlEnum.default('always'),
   assignedAmId: z.string().optional(),
   status: statusEnum.default('active'),
@@ -75,6 +76,7 @@ export const clientUpdateSchema = z.object({
     .preprocess(csvToArray, z.array(z.string().regex(isoDate, 'Must be YYYY-MM-DD')))
     .optional(),
   assetsFolderUrl: z.string().url().optional().or(z.literal('')),
+  canvaUrl: z.string().url().optional().or(z.literal('')),
   autoCrawl: autoCrawlEnum.optional(),
   assignedAmId: z.string().optional(),
   status: statusEnum.optional(),
