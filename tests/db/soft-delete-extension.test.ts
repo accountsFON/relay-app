@@ -1,9 +1,12 @@
 /**
- * Tests for the soft-delete Prisma extension.
+ * Unit tests for the soft-delete Prisma extension.
  *
  * Strategy: unit-test `applySoftDelete` directly rather than hitting the DB.
  * We construct a minimal fake Prisma client that has `$extends` and records
  * the intercepted args so we can assert on what was injected.
+ *
+ * See soft-delete-extension.integration.test.ts for real-DB tests that prove
+ * the extension actually filters rows against a live Prisma connection.
  */
 import { describe, it, expect } from 'vitest'
 import { applySoftDelete } from '@/db/soft-delete-extension'
@@ -148,6 +151,18 @@ describe('applySoftDelete extension', () => {
       // deletedAt should not be injected
       expect((result as any).where?.deletedAt).toBeUndefined()
     })
+
+    it('skips default injection when where already contains a deletedAt key', async () => {
+      const extended = applySoftDelete(buildFakeClient())
+      // Simulate the withArchived proxy: it pre-sets deletedAt = undefined in where.
+      // The interceptor must leave it alone when the key is present.
+      const where = { organizationId: 'org1' } as Record<string, unknown>
+      where['deletedAt'] = undefined // key present, value undefined
+      const result = await (extended.client.findMany as Function)({ where })
+      // Interceptor should NOT overwrite — deletedAt key is present so pass through
+      expect('deletedAt' in (result as any).where).toBe(true)
+      expect((result as any).where.deletedAt).toBeUndefined()
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -187,13 +202,15 @@ describe('applySoftDelete extension', () => {
   // withArchived() — opt-in to include archived rows alongside live ones
   // -------------------------------------------------------------------------
   describe('withArchived()', () => {
-    it('skips the deletedAt filter so archived rows are returned', async () => {
+    it('pre-sets deletedAt key in where so the interceptor skips default injection', async () => {
       const extended = applySoftDelete(buildFakeClient())
-      // withArchived() returns a model proxy with _withArchived flag set
+      // withArchived() returns a model proxy that injects where.deletedAt = undefined
       const proxyModel = (extended.client as any).withArchived()
       const result = await proxyModel.findMany({ where: { organizationId: 'org1' } })
-      // deletedAt should NOT be injected
-      expect((result as any).where?.deletedAt).toBeUndefined()
+      // The interceptor should NOT inject deletedAt: null because the key is present.
+      // The echoed args will have deletedAt = undefined (key present, value absent).
+      expect('deletedAt' in (result as any).where).toBe(true)
+      expect((result as any).where.deletedAt).toBeUndefined()
     })
   })
 

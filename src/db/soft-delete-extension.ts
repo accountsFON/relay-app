@@ -8,53 +8,55 @@
  *   db.client.withArchived().findMany(...)   — returns live + archived rows
  *   db.client.onlyArchived().findMany(...)   — returns only archived rows
  *
- * How the flags flow:
+ * How the filtering works:
  *
- * 1. `withArchived()` / `onlyArchived()` are model-level methods that return
- *    a new model delegate proxy with `_withArchived` or `_onlyArchived`
- *    properties set on it. Each query method (findMany, findFirst, etc.) on
- *    that proxy injects the flag into the `args` object before forwarding.
+ * 1. Query interceptors inject `deletedAt: null` into the `where` clause
+ *    for every read operation on the four soft-deletable models, unless the
+ *    caller has already supplied a `deletedAt` key in `where`.
  *
- * 2. The query interceptors read and strip `_withArchived` / `_onlyArchived`
- *    from `args`, then inject the appropriate `deletedAt` filter (or skip it).
+ * 2. `withArchived()` returns a model proxy whose read methods inject
+ *    `where.deletedAt = undefined` before calling the real Prisma method.
+ *    The `undefined` value satisfies Prisma's type validator (treated as
+ *    "field not set") while causing the `'deletedAt' in where` check in
+ *    the interceptor to evaluate to `true`, which signals the interceptor
+ *    to leave the `deletedAt` filter alone.
  *
- * The flags are never forwarded to Prisma's SQL builder — they are consumed
- * and removed inside the interceptors.
+ * 3. `onlyArchived()` returns a model proxy whose read methods inject
+ *    `where.deletedAt = { not: null }` — the interceptor sees the key
+ *    present and passes it through unchanged, so only soft-deleted rows
+ *    are returned.
+ *
+ * This approach avoids the previous `_withArchived` / `_onlyArchived`
+ * flag mechanism, which failed against real Prisma because Prisma's
+ * strict input validator rejects unknown argument names before the
+ * query interceptors have a chance to strip them.
  */
-import { PrismaClient, Prisma } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 /**
  * Prisma's query interceptor receives lowercase camelCase model names that
  * match the `modelProps` keys in the generated client type map
  * (e.g. "client", "contentRun", "batch", "post").
+ *
+ * The set uses lowercase for case-insensitive comparison since Prisma
+ * passes the model name with its original casing.
  */
-const SOFT_DELETE_MODELS = ['client', 'contentRun', 'batch', 'post'] as const
-type SoftDeleteModel = (typeof SOFT_DELETE_MODELS)[number]
+const SOFT_DELETE_MODELS = new Set(['client', 'contentrun', 'batch', 'post'])
 
-function isSoftDeleteModel(model: string | undefined): model is SoftDeleteModel {
-  return SOFT_DELETE_MODELS.includes(model as SoftDeleteModel)
+function isSoftDeleteModel(model: string | undefined): boolean {
+  return SOFT_DELETE_MODELS.has((model ?? '').toLowerCase())
 }
 
-// Internal arg shape used inside the interceptors.
-// The flag keys are stripped before the query reaches Prisma's core.
-type SoftDeleteArgs = {
-  where?: Record<string, unknown>
-  _withArchived?: boolean
-  _onlyArchived?: boolean
-  [key: string]: unknown
-}
+type WhereArg = Record<string, unknown> | undefined
 
-// Shared logic for injecting (or skipping) the soft-delete filter
-function injectFilter(args: SoftDeleteArgs): SoftDeleteArgs {
-  const { _withArchived, _onlyArchived, ...rest } = args
-  if (_withArchived) return rest
-  return {
-    ...rest,
-    where: {
-      ...rest.where,
-      deletedAt: _onlyArchived ? { not: null } : null,
-    },
-  }
+/**
+ * Inject `deletedAt: null` into `where` unless the caller has already
+ * provided a `deletedAt` key (which signals withArchived / onlyArchived
+ * opt-out mode).
+ */
+function injectDefaultFilter(args: { where?: WhereArg; [k: string]: unknown }) {
+  if ('deletedAt' in (args.where ?? {})) return args
+  return { ...args, where: { ...args.where, deletedAt: null } }
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +67,8 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
     name: 'softDelete',
 
     // -----------------------------------------------------------------------
-    // Query interceptors — auto-inject deletedAt filter for the 4 models
+    // Query interceptors — auto-inject deletedAt: null for the 4 models
+    // unless the caller already set a deletedAt filter in `where`.
     // -----------------------------------------------------------------------
     query: {
       $allModels: {
@@ -75,11 +78,11 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
           query,
         }: {
           model?: string
-          args: SoftDeleteArgs
-          query: (args: SoftDeleteArgs) => Promise<unknown>
+          args: { where?: WhereArg; [k: string]: unknown }
+          query: (args: { where?: WhereArg; [k: string]: unknown }) => Promise<unknown>
         }) {
           if (!isSoftDeleteModel(model)) return query(args)
-          return query(injectFilter(args))
+          return query(injectDefaultFilter(args))
         },
 
         async findFirst({
@@ -88,11 +91,11 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
           query,
         }: {
           model?: string
-          args: SoftDeleteArgs
-          query: (args: SoftDeleteArgs) => Promise<unknown>
+          args: { where?: WhereArg; [k: string]: unknown }
+          query: (args: { where?: WhereArg; [k: string]: unknown }) => Promise<unknown>
         }) {
           if (!isSoftDeleteModel(model)) return query(args)
-          return query(injectFilter(args))
+          return query(injectDefaultFilter(args))
         },
 
         async findUnique({
@@ -101,11 +104,11 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
           query,
         }: {
           model?: string
-          args: SoftDeleteArgs
-          query: (args: SoftDeleteArgs) => Promise<unknown>
+          args: { where?: WhereArg; [k: string]: unknown }
+          query: (args: { where?: WhereArg; [k: string]: unknown }) => Promise<unknown>
         }) {
           if (!isSoftDeleteModel(model)) return query(args)
-          return query(injectFilter(args))
+          return query(injectDefaultFilter(args))
         },
 
         async count({
@@ -114,29 +117,34 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
           query,
         }: {
           model?: string
-          args: SoftDeleteArgs
-          query: (args: SoftDeleteArgs) => Promise<unknown>
+          args: { where?: WhereArg; [k: string]: unknown }
+          query: (args: { where?: WhereArg; [k: string]: unknown }) => Promise<unknown>
         }) {
           if (!isSoftDeleteModel(model)) return query(args)
-          return query(injectFilter(args))
+          return query(injectDefaultFilter(args))
         },
       },
     },
 
     // -----------------------------------------------------------------------
-    // Model helpers — return a delegate that injects flags into query args
+    // Model helpers — return a delegate that pre-sets `where.deletedAt`
+    // to signal the interceptor to skip its default injection.
     // -----------------------------------------------------------------------
     model: {
       $allModels: {
         /**
-         * Returns a model delegate that includes soft-deleted rows alongside
-         * live rows in subsequent read queries.
+         * Returns a model delegate whose read queries include both live and
+         * soft-deleted rows (i.e. no `deletedAt` filter is applied).
          *
          * Usage: `db.client.withArchived().findMany({ where: ... })`
+         *
+         * Mechanism: injects `where.deletedAt = undefined` into each call.
+         * The `undefined` value is valid per Prisma's type validator (treated
+         * as "field not set" at the SQL level) while the presence of the key
+         * in the `where` object tells the interceptor the caller has opted out.
          */
         withArchived<M>(this: M): Omit<M, 'withArchived' | 'onlyArchived'> {
-          // Wrap each query operation to inject _withArchived into the args
-          return buildFlagProxy(this as object, '_withArchived') as Omit<
+          return buildWhereProxy(this as object, undefined) as Omit<
             M,
             'withArchived' | 'onlyArchived'
           >
@@ -147,9 +155,12 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
          * soft-deleted rows (deletedAt IS NOT NULL).
          *
          * Usage: `db.client.onlyArchived().findMany({ where: ... })`
+         *
+         * Mechanism: injects `where.deletedAt = { not: null }` into each call.
+         * The interceptor sees the key present and passes the filter through.
          */
         onlyArchived<M>(this: M): Omit<M, 'withArchived' | 'onlyArchived'> {
-          return buildFlagProxy(this as object, '_onlyArchived') as Omit<
+          return buildWhereProxy(this as object, { not: null }) as Omit<
             M,
             'withArchived' | 'onlyArchived'
           >
@@ -165,20 +176,23 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
 
 /**
  * Builds a Proxy over the Prisma model delegate `target` that wraps every
- * method whose first argument is an `args` object by injecting a flag field
- * (`_withArchived` or `_onlyArchived`) into that args object.
+ * method whose first argument is an `args` object by injecting a specific
+ * `where.deletedAt` value into that args object.
  *
- * This is the mechanism that bridges the model-level helper (which returns a
- * new model context) to the query interceptor (which reads flags from `args`).
+ * - `deletedAtValue = undefined`   → withArchived  (no filter applied)
+ * - `deletedAtValue = { not:null }` → onlyArchived (only soft-deleted rows)
  */
-function buildFlagProxy(target: object, flag: '_withArchived' | '_onlyArchived') {
+function buildWhereProxy(
+  target: object,
+  deletedAtValue: undefined | { not: null },
+) {
   return new Proxy(target, {
     get(obj, prop: string | symbol) {
       const value = (obj as Record<string | symbol, unknown>)[prop]
       if (typeof value !== 'function') return value
-      // Wrap the method: inject the flag into the first argument
-      return (args: SoftDeleteArgs = {}, ...rest: unknown[]) => {
-        return (value as Function).call(obj, { ...args, [flag]: true }, ...rest)
+      return (args: { where?: WhereArg; [k: string]: unknown } = {}, ...rest: unknown[]) => {
+        const newWhere = Object.assign({ deletedAt: deletedAtValue }, args.where)
+        return (value as Function).call(obj, { ...args, where: newWhere }, ...rest)
       }
     },
   })
