@@ -310,7 +310,7 @@ export default async function BatchDetailPage({
       <div className="mb-5">
         <Breadcrumbs
           items={[
-            { href: '/dashboard', label: 'Dashboard' },
+            { href: '/dashboard', label: 'My Relay' },
             { href: `/clients/${client.id}`, label: client.name },
             { label: `Relay ${batch.label}` },
           ]}

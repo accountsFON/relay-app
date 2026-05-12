@@ -94,9 +94,9 @@ export default async function LibraryPage() {
           ? {
               href: `/clients/${batch.clientId}/batches/${batch.id}`,
               label: '/clients/[id]/batches/[batchId]',
-              description: `Batch ${batch.label} (sample)`,
+              description: `Relay ${batch.label} (sample)`,
             }
-          : { href: null, label: '/clients/[id]/batches/[batchId]', description: 'no batches yet' },
+          : { href: null, label: '/clients/[id]/batches/[batchId]', description: 'no relays yet' },
       ],
     },
     {

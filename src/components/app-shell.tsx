@@ -20,7 +20,7 @@ type NavItem = {
   badgeKey?: BadgeKey
 }
 const baseNavItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'My Relay', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Clients', href: '/clients', icon: Users },
   { label: 'Inbox', href: '/inbox', icon: Inbox, badgeKey: 'unreadMentions' },
 ]
