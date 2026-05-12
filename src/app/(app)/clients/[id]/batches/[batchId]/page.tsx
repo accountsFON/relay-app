@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { RelayStep } from '@prisma/client'
-import { requireClientViewer } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import {
@@ -41,6 +41,7 @@ export default async function BatchDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const ctx = await requireClientViewer()
+  const canEdit = canEditClients(ctx)
   const { id, batchId } = await params
   const sp = await searchParams
   const dateScope = parseDateScope({
@@ -92,6 +93,7 @@ export default async function BatchDetailPage({
         graphicHook: true,
         designerNotes: true,
         contentRunId: true,
+        deletedAt: true,
       },
     }),
   ])
@@ -251,7 +253,7 @@ export default async function BatchDetailPage({
                     }))
                     return (
                       <div key={post.id} className="space-y-2">
-                        <PostCard post={post} />
+                        <PostCard post={post} canEdit={canEdit} />
                         <PostVersionHistory postId={post.id} versions={versionRows} />
                       </div>
                     )
