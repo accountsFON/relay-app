@@ -1,3 +1,4 @@
+import { RelayStep, RelayEventType } from '@prisma/client'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { getMonthlyCostSummary } from '@/server/repositories/contentRuns'
 import {
@@ -11,34 +12,140 @@ import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
 import {
-  amKanbanColumn,
   clientKanbanColumn,
-  designerKanbanColumn,
-  type AmKanbanColumn,
-  type DesignerKanbanColumn,
   type ClientKanbanColumn,
 } from '@/lib/batch-sub-status'
 import { KanbanCard } from '@/components/relay/kanban-card'
+import {
+  DashboardRelayTrack,
+  type DashboardRelayTrackStation,
+} from '@/components/relay/dashboard-relay-track'
+import type { RunnerRelay } from '@/components/relay/relay-runner-card'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 
-const AM_COLUMNS: AmKanbanColumn[] = [
-  'Copy',
-  'Design',
-  'Pre-Client QA',
-  'With Client',
-  'Revisions',
-  'Schedule',
+/**
+ * Full relay track, left to right. The dashboard surfaces every step so the
+ * race reads as one sweep from onboarding through final QA. Designer view
+ * is a filtered subset of this same ordering.
+ */
+const AM_TRACK_STEPS: RelayStep[] = [
+  RelayStep.onboarding_gate,
+  RelayStep.copy,
+  RelayStep.in_design,
+  RelayStep.designs_completed,
+  RelayStep.am_review_design,
+  RelayStep.design_revisions,
+  RelayStep.am_qa_pre_client,
+  RelayStep.sent_to_client,
+  RelayStep.client_decision,
+  RelayStep.ready_to_schedule,
+  RelayStep.implementing_revisions,
+  RelayStep.revisions_complete,
+  RelayStep.final_qa_schedule,
 ]
-const DESIGNER_COLUMNS: DesignerKanbanColumn[] = [
-  'In Design',
-  'Awaiting QA',
-  'Revisions',
+
+/**
+ * Designer view scopes to the steps where a designer is the holder or is
+ * actively being unblocked. Mirrors the prior DESIGNER_COLUMNS shape but
+ * uses raw RelayStep keys so the same component renders both views.
+ */
+const DESIGNER_TRACK_STEPS: RelayStep[] = [
+  RelayStep.in_design,
+  RelayStep.designs_completed,
+  RelayStep.design_revisions,
 ]
+
 const CLIENT_COLUMNS: ClientKanbanColumn[] = [
   'Awaiting Your Approval',
   'In Production',
 ]
+
+const TRANSITION_EVENT_TYPES: RelayEventType[] = [
+  RelayEventType.pass_forward,
+  RelayEventType.send_back,
+]
+
+/**
+ * Pull the most recent transition timestamp for each batch in the given set
+ * so the relay track can flag runners whose baton was just passed.
+ *
+ * One round trip via groupBy(_max). The page owns this so the batches
+ * repository stays untouched in this PR.
+ */
+async function lastTransitionByBatch(
+  batchIds: string[],
+): Promise<Map<string, Date>> {
+  const map = new Map<string, Date>()
+  if (batchIds.length === 0) return map
+  const rows = await db.relayEvent.groupBy({
+    by: ['batchId'],
+    where: {
+      batchId: { in: batchIds },
+      type: { in: TRANSITION_EVENT_TYPES },
+    },
+    _max: { createdAt: true },
+  })
+  for (const row of rows) {
+    if (row._max.createdAt) {
+      map.set(row.batchId, row._max.createdAt)
+    }
+  }
+  return map
+}
+
+type OrgBatch = Awaited<ReturnType<typeof listBatchesForOrg>>[number]
+
+function daysOnStep(createdAt: Date): number {
+  return Math.max(
+    0,
+    Math.floor((Date.now() - createdAt.getTime()) / (24 * 60 * 60 * 1000)),
+  )
+}
+
+function toRunner(
+  batch: OrgBatch,
+  lastTransitionAt: Date | null,
+): RunnerRelay {
+  return {
+    id: batch.id,
+    clientId: batch.clientId,
+    clientName: batch.client?.name ?? '',
+    label: batch.label,
+    daysOnStep: daysOnStep(batch.createdAt),
+    holder: {
+      id: batch.holder?.id ?? '',
+      name: batch.holder?.name ?? '',
+    },
+    lastTransitionAt,
+  }
+}
+
+function bucketRunners(
+  batches: OrgBatch[],
+  steps: RelayStep[],
+  transitions: Map<string, Date>,
+): DashboardRelayTrackStation[] {
+  const buckets = new Map<RelayStep, RunnerRelay[]>()
+  for (const step of steps) buckets.set(step, [])
+  for (const batch of batches) {
+    const list = buckets.get(batch.currentStep)
+    if (!list) continue
+    list.push(toRunner(batch, transitions.get(batch.id) ?? null))
+  }
+  // Most recently moved first inside each station.
+  for (const list of buckets.values()) {
+    list.sort((a, b) => {
+      const aT = a.lastTransitionAt?.getTime() ?? 0
+      const bT = b.lastTransitionAt?.getTime() ?? 0
+      return bT - aT
+    })
+  }
+  return steps.map((step) => ({
+    step,
+    relays: buckets.get(step) ?? [],
+  }))
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -55,7 +162,7 @@ export default async function DashboardPage({
   const showArchived = sp.archived === '1'
 
   // Archived batch count for the org. Drives the toggle label on the
-  // AM / Designer kanban dashboards.
+  // AM / Designer relay track dashboards.
   const archivedBatchCount =
     ctx.role === 'account_manager' || ctx.role === 'admin' || ctx.role === 'designer'
       ? await db.batch.onlyArchived().count({
@@ -97,51 +204,34 @@ async function AmDashboard({
   showArchived: boolean
 }) {
   const allBatches = await listBatchesForOrg(ctx.organizationDbId, { showArchived })
-  // For AMs, scope to batches on clients they're assigned to. Admins see all.
+  // For AMs, scope to relays on clients they're assigned to. Admins see all.
   const myBatches =
     ctx.role === 'admin'
       ? allBatches
       : allBatches.filter((b) => b.client.assignedAmId === ctx.userDbId)
 
-  const buckets = new Map<AmKanbanColumn, typeof myBatches>()
-  for (const col of AM_COLUMNS) buckets.set(col, [])
-  for (const batch of myBatches) {
-    const col = amKanbanColumn(batch.currentStep)
-    if (!col) continue
-    buckets.get(col)!.push(batch)
-  }
+  const transitions = await lastTransitionByBatch(myBatches.map((b) => b.id))
+  const stations = bucketRunners(myBatches, AM_TRACK_STEPS, transitions)
 
   return (
-    <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-[1600px]">
       <PageHeader
         title="Dashboard"
         description={
           ctx.role === 'admin'
-            ? 'Every batch in flight, grouped by step.'
-            : 'Your batches, grouped by relay step.'
+            ? 'Every relay in flight, moving across the track.'
+            : 'Your relays, moving across the track.'
         }
       />
       <div className="mt-4">
         <ShowArchivedToggle countArchived={archivedBatchCount} />
       </div>
-      {myBatches.length === 0 ? (
-        <div className="mt-10">
-          <EmptyState
-            title="No active batches"
-            description="When you create or take over a batch, it shows up here grouped by relay step."
-          />
-        </div>
-      ) : (
-        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {AM_COLUMNS.map((col) => (
-            <KanbanColumn
-              key={col}
-              title={col}
-              batches={buckets.get(col) ?? []}
-            />
-          ))}
-        </div>
-      )}
+      <div className="mt-8">
+        <DashboardRelayTrack
+          stations={stations}
+          viewerRole={ctx.role === 'admin' ? 'admin' : 'am'}
+        />
+      </div>
     </div>
   )
 }
@@ -156,44 +246,28 @@ async function DesignerDashboard({
   showArchived: boolean
 }) {
   const allBatches = await listBatchesForOrg(ctx.organizationDbId, { showArchived })
+  // Designer view: relays on clients assigned to this designer. Matches the
+  // legacy DesignerDashboard scope so designers do not suddenly see other
+  // designers' queues.
   const myBatches = allBatches.filter(
     (b) => b.client.assignedDesignerId === ctx.userDbId,
   )
-  const buckets = new Map<DesignerKanbanColumn, typeof myBatches>()
-  for (const col of DESIGNER_COLUMNS) buckets.set(col, [])
-  for (const batch of myBatches) {
-    const col = designerKanbanColumn(batch.currentStep)
-    if (!col) continue
-    buckets.get(col)!.push(batch)
-  }
+
+  const transitions = await lastTransitionByBatch(myBatches.map((b) => b.id))
+  const stations = bucketRunners(myBatches, DESIGNER_TRACK_STEPS, transitions)
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <PageHeader
         title="Dashboard"
-        description="Your design queue, grouped by stage."
+        description="Your design queue, moving across the track."
       />
       <div className="mt-4">
         <ShowArchivedToggle countArchived={archivedBatchCount} />
       </div>
-      {myBatches.length === 0 ? (
-        <div className="mt-10">
-          <EmptyState
-            title="Nothing in your design queue"
-            description="When an AM passes a batch to design, it shows up here."
-          />
-        </div>
-      ) : (
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {DESIGNER_COLUMNS.map((col) => (
-            <KanbanColumn
-              key={col}
-              title={col}
-              batches={buckets.get(col) ?? []}
-            />
-          ))}
-        </div>
-      )}
+      <div className="mt-8">
+        <DashboardRelayTrack stations={stations} viewerRole="designer" />
+      </div>
     </div>
   )
 }
