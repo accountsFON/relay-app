@@ -25,6 +25,7 @@ import { ClientDecisionPanel } from '@/components/relay/client-decision-panel'
 import { CopySubStatePanel } from '@/components/relay/copy-substate-panel'
 import { RevisionPlanComposer } from '@/components/relay/revision-plan-composer'
 import { ActivityThread } from '@/components/activity/activity-thread'
+import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { STEP_LABEL } from '@/components/relay/labels'
 import { passBaton } from '@/server/services/relay'
 import { parseDateScope } from '@/lib/date-scope'
@@ -517,7 +518,7 @@ export default async function BatchDetailPage({
           <div
             aria-label="Client thread"
             data-testid="client-thread-rail"
-            className="rounded-2xl bg-card p-4"
+            className="hidden rounded-2xl bg-card p-4 lg:block"
           >
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-3">
               Client thread
@@ -531,6 +532,12 @@ export default async function BatchDetailPage({
           </div>
         </aside>
       </div>
+      <MobileThreadFab
+        clientId={client.id}
+        events={events}
+        mentionTargets={mentionTargets}
+        hideComposer={!canEdit || !isLive}
+      />
     </div>
   )
 }
