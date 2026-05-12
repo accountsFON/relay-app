@@ -13,6 +13,7 @@ import {
   legalSendBackTargets,
 } from '@/server/lib/relay-state-machine'
 import { PageHeader } from '@/components/page-header'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PageSection } from '@/components/ui/page-section'
 import { RelayTrack } from '@/components/relay/relay-track'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
@@ -207,11 +208,19 @@ export default async function BatchDetailPage({
         </div>
       )}
 
+      <div className="mb-5">
+        <Breadcrumbs
+          items={[
+            { href: '/dashboard', label: 'Dashboard' },
+            { href: `/clients/${client.id}`, label: client.name },
+            { label: `Batch ${batch.label}` },
+          ]}
+        />
+      </div>
+
       <PageHeader
         title={`Batch ${batch.label}`}
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
-        backHref="/dashboard"
-        backLabel="Back to dashboard"
         actions={
           isLive && canAct ? (
             <>
