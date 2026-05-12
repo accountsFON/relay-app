@@ -4,8 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
-import { findContentRun } from '@/server/repositories/contentRuns'
-import { parseLabel } from '@/lib/batch-target-month'
+import { findMatchingBatchForRun } from '@/server/repositories/contentRuns'
 import { finalizePostGeneration } from '@/server/services/finalize-post-generation'
 
 const ChoiceSchema = z.discriminatedUnion('choice', [
@@ -88,56 +87,17 @@ export async function deferFinalizeAction(runId: string): Promise<void> {
  * Look up an existing batch matching this client + targetMonth so the modal
  * can decide whether to show the choice prompt. Called as a server action
  * from the dialog after generation completes.
+ *
+ * Delegates to `findMatchingBatchForRun` in the repository layer, which is
+ * also used by `listInFlightRuns` for the same lookup. The action wrapper
+ * adds the auth gate and translates the `id` field to `batchId` for the
+ * client-facing shape.
  */
 export async function findMatchingBatchForRunAction(
   runId: string,
 ): Promise<{ batchId: string; label: string; postCount: number } | null> {
   await requireClientEditor()
-  const run = await findContentRun(runId)
-  if (!run) return null
-
-  // Pull candidate batches for the client (cap at 50 most recent — typical
-  // client has < 12 batches across a year; this is generous).
-  const candidates = await db.batch.findMany({
-    where: { clientId: run.clientId },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    select: {
-      id: true,
-      label: true,
-      createdAt: true,
-    },
-  })
-  // Match by parsed targetMonth from each batch's label.
-  // The just-generated posts have batchId=null so they're not in any count.
-  const matches = candidates.filter((b) => {
-    const parsed = parseLabel(b.label, b.createdAt)
-    return parsed === run.targetMonth
-  })
-
-  if (matches.length === 0) return null
-
-  // Get accurate post counts for each match via direct count.
-  // (Prisma's _count.posts in a select was returning 0 incorrectly here.)
-  const matchesWithCounts = await Promise.all(
-    matches.map(async (b) => ({
-      ...b,
-      postCount: await db.post.count({ where: { batchId: b.id } }),
-    })),
-  )
-
-  // Multiple matches: prefer the batch with the most posts (the user's
-  // actual in-use batch, not an empty stub from a prior auto-new pass).
-  // Tie-break by most recent createdAt.
-  matchesWithCounts.sort((a, b) => {
-    if (a.postCount !== b.postCount) return b.postCount - a.postCount
-    return b.createdAt.getTime() - a.createdAt.getTime()
-  })
-
-  const best = matchesWithCounts[0]
-  return {
-    batchId: best.id,
-    label: best.label,
-    postCount: best.postCount,
-  }
+  const match = await findMatchingBatchForRun(runId)
+  if (!match) return null
+  return { batchId: match.id, label: match.label, postCount: match.postCount }
 }

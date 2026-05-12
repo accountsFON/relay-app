@@ -1,9 +1,11 @@
 'use server'
 
+import { db } from '@/db/client'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
-import { db } from '@/db/client'
+import { findMatchingBatchForRun } from '@/server/repositories/contentRuns'
+import { triggerGeneration } from '@/app/(app)/clients/[id]/generate/actions'
 
 const TERMINAL_STATUSES = ['complete', 'failed'] as const
 
@@ -36,7 +38,7 @@ export type InFlightRun = {
  *   - failed:           status = 'failed' AND acknowledgedAt IS NULL
  *
  * Ordered by createdAt asc so the choice modal queues correctly.
- * matchingBatch is not populated here — Task A5 will add that enrichment.
+ * matchingBatch is populated on awaiting_choice rows via findMatchingBatchForRun.
  */
 export async function listInFlightRuns(): Promise<InFlightRun[]> {
   const ctx = await requireOrgContext()
@@ -66,29 +68,72 @@ export async function listInFlightRuns(): Promise<InFlightRun[]> {
     orderBy: { createdAt: 'asc' },
   })
 
-  return rows.map((row): InFlightRun => {
-    const intent: InFlightRunIntent =
-      row.status === 'failed'
-        ? 'failed'
-        : row.status === 'complete'
-          ? 'awaiting_choice'
-          : 'active'
+  return Promise.all(
+    rows.map(async (row): Promise<InFlightRun> => {
+      const intent: InFlightRunIntent =
+        row.status === 'failed'
+          ? 'failed'
+          : row.status === 'complete'
+            ? 'awaiting_choice'
+            : 'active'
 
-    return {
-      id: row.id,
-      clientId: row.clientId,
-      clientName: row.client.name,
-      targetMonth: row.targetMonth,
-      intent,
-      status: row.status,
-      brief: !!row.brief,
-      crawledContent: !!row.crawledContent,
-      supportingFacts: !!row.supportingFacts,
-      postCount: row._count.posts,
-      errorMessage: row.errorMessage,
-      startedAt: row.createdAt.toISOString(),
-    }
+      const base: InFlightRun = {
+        id: row.id,
+        clientId: row.clientId,
+        clientName: row.client.name,
+        targetMonth: row.targetMonth,
+        intent,
+        status: row.status,
+        brief: !!row.brief,
+        crawledContent: !!row.crawledContent,
+        supportingFacts: !!row.supportingFacts,
+        postCount: row._count.posts,
+        errorMessage: row.errorMessage,
+        startedAt: row.createdAt.toISOString(),
+      }
+
+      if (intent === 'awaiting_choice') {
+        const match = await findMatchingBatchForRun(row.id)
+        if (match) {
+          base.matchingBatch = {
+            batchId: match.id,
+            label: match.label,
+            postCount: match.postCount,
+          }
+        }
+      }
+
+      return base
+    }),
+  )
+}
+
+/**
+ * Deletes a failed ContentRun (and its posts) and fires a fresh generation
+ * for the same client + targetMonth. Returns the new run's ID so callers can
+ * track progress.
+ *
+ * Auth order: auth -> existence -> org -> status -> write (mirrors acknowledgeFailedRunAction).
+ */
+export async function retryFailedRunAction(runId: string): Promise<{ newRunId: string }> {
+  const ctx = await requireClientEditor()
+
+  const run = await db.contentRun.findUnique({
+    where: { id: runId },
+    select: { clientId: true, targetMonth: true, status: true },
   })
+  if (!run) throw new Error('Run not found')
+
+  const client = await findClientForUser(ctx, run.clientId)
+  if (!client) throw new Error('Run not in this org')
+
+  if (run.status !== 'failed') throw new Error('Only failed runs can be retried')
+
+  await db.post.deleteMany({ where: { contentRunId: runId } })
+  await db.contentRun.delete({ where: { id: runId } })
+
+  const { contentRunId } = await triggerGeneration(run.clientId, run.targetMonth)
+  return { newRunId: contentRunId }
 }
 
 /**

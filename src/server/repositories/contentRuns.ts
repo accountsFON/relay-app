@@ -2,6 +2,7 @@ import { db } from '@/db/client'
 import { Prisma } from '@prisma/client'
 import type { DateScope } from '@/lib/date-scope'
 import { dateScopeIncludesMonth } from '@/lib/date-scope'
+import { parseLabel } from '@/lib/batch-target-month'
 import { writeTrashAudit } from '@/server/repositories/trashAuditLogs'
 import { can } from '@/server/auth/permissions'
 import type { UserRole } from '@/lib/types'
@@ -115,6 +116,62 @@ export async function findRunForBatch(batchId: string) {
   })
   if (!post) return null
   return findContentRun(post.contentRunId)
+}
+
+/**
+ * For a given ContentRun, find the most-populated batch for the same client
+ * and targetMonth. Returns null when no matching batch exists.
+ *
+ * This is the pure repository layer used by listInFlightRuns (enrichment) and
+ * findMatchingBatchForRunAction (dialog lookup). Both callers share this query
+ * so the match logic stays in one place.
+ */
+export async function findMatchingBatchForRun(
+  runId: string,
+): Promise<{ id: string; label: string; postCount: number } | null> {
+  const run = await findContentRun(runId)
+  if (!run) return null
+
+  // Pull candidate batches for the client (cap at 50 most recent).
+  const candidates = await db.batch.findMany({
+    where: { clientId: run.clientId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: {
+      id: true,
+      label: true,
+      createdAt: true,
+    },
+  })
+
+  // Match by parsed targetMonth from each batch's label.
+  const matches = candidates.filter((b) => {
+    const parsed = parseLabel(b.label, b.createdAt)
+    return parsed === run.targetMonth
+  })
+
+  if (matches.length === 0) return null
+
+  // Get accurate post counts for each match via direct count.
+  const matchesWithCounts = await Promise.all(
+    matches.map(async (b) => ({
+      ...b,
+      postCount: await db.post.count({ where: { batchId: b.id } }),
+    })),
+  )
+
+  // Prefer the batch with the most posts; tie-break by most recent createdAt.
+  matchesWithCounts.sort((a, b) => {
+    if (a.postCount !== b.postCount) return b.postCount - a.postCount
+    return b.createdAt.getTime() - a.createdAt.getTime()
+  })
+
+  const best = matchesWithCounts[0]
+  return {
+    id: best.id,
+    label: best.label,
+    postCount: best.postCount,
+  }
 }
 
 export async function getMonthlyCostSummary(
