@@ -7,7 +7,7 @@ vi.mock('@/server/middleware/permissions', () => ({
 vi.mock('@/server/repositories/clients', () => ({
   createClient: vi.fn(),
   updateClient: vi.fn(),
-  archiveClient: vi.fn(),
+  deactivateClient: vi.fn(),
   findClientById: vi.fn(),
   findClientForUser: vi.fn(),
 }))
@@ -34,7 +34,7 @@ import { requireClientEditor } from '@/server/middleware/permissions'
 import {
   createClient,
   updateClient,
-  archiveClient,
+  deactivateClient,
 } from '@/server/repositories/clients'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -122,11 +122,11 @@ describe('updateClientAction', () => {
 
 describe('archiveClientAction', () => {
   it('archives a client and revalidates the list', async () => {
-    vi.mocked(archiveClient).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(deactivateClient).mockResolvedValue({ count: 1 } as any)
 
     await archiveClientAction('cuid_client_1')
 
-    expect(archiveClient).toHaveBeenCalledWith('cuid_client_1', 'cuid_org_1')
+    expect(deactivateClient).toHaveBeenCalledWith('cuid_client_1', 'cuid_org_1')
     expect(revalidatePath).toHaveBeenCalledWith('/clients')
   })
 })

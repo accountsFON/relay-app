@@ -133,8 +133,14 @@ export async function updateClient(
   })
 }
 
-/** @deprecated Use trashArchiveClient instead. Kept for legacy callers. */
-export async function archiveClient(id: string, organizationId: string) {
+/**
+ * Sets the client's status to `ClientStatus.archived` (enum value `'archived'`).
+ * This is a status-change operation, NOT a soft-delete. It does not touch
+ * `deletedAt` and does not cascade to child records.
+ *
+ * Use `archiveClient` (the trash soft-delete) for the full soft-delete flow.
+ */
+export async function deactivateClient(id: string, organizationId: string) {
   return db.client.updateMany({
     where: { id, organizationId },
     data: { status: 'archived' },
@@ -195,7 +201,7 @@ export async function assignClientDesigner(
  * — it covers admins and account managers while excluding designers and
  * client-role users, matching the intended gatekeeping.
  */
-async function assertCanEditClientForTrash(
+async function assertCanEditClient(
   actorUserId: string,
   organizationId: string,
 ): Promise<void> {
@@ -241,7 +247,7 @@ export interface ClientArchiveInput {
  * A TrashAuditLog entry is written with
  * `cascadeCount = 1 + batchCount + runCount + postCount`.
  */
-export async function trashArchiveClient({
+export async function archiveClient({
   clientId,
   actorUserId,
 }: ClientArchiveInput): Promise<void> {
@@ -252,7 +258,7 @@ export async function trashArchiveClient({
   if (client.deletedAt) throw new Error(`Client ${clientId} is already archived`)
 
   const organizationId = client.organizationId
-  await assertCanEditClientForTrash(actorUserId, organizationId)
+  await assertCanEditClient(actorUserId, organizationId)
 
   // Pre-fetch counts before the transaction so cascadeCount is accurate.
   const [batchCount, runCount, postCount] = await Promise.all([
@@ -307,17 +313,17 @@ export async function trashArchiveClient({
  * are cleared — rows archived independently at a different timestamp are left
  * alone (they were archived by a separate intent).
  */
-export async function trashRestoreClient({
+export async function restoreClient({
   clientId,
   actorUserId,
 }: ClientArchiveInput): Promise<void> {
-  // Two-query pattern — same reason as trashArchiveClient.
+  // Two-query pattern — same reason as archiveClient.
   const client = await db.client.withArchived().findFirst({ where: { id: clientId } })
   if (!client) throw new Error(`Client ${clientId} not found`)
   if (!client.deletedAt) throw new Error(`Client ${clientId} is not archived`)
 
   const organizationId = client.organizationId
-  await assertCanEditClientForTrash(actorUserId, organizationId)
+  await assertCanEditClient(actorUserId, organizationId)
 
   const priorDeletedAt = client.deletedAt
 

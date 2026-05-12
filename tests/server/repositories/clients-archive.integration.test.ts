@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Integration tests for trashArchiveClient and trashRestoreClient.
+ * Integration tests for archiveClient and restoreClient.
  *
  * These tests hit the real database. Because the functions import the
  * module-level `db` singleton we use vi.mock (with vi.hoisted) to replace
@@ -50,7 +50,7 @@ const { db, pool } = await vi.hoisted(async () => {
 vi.mock('@/db/client', () => ({ db }))
 
 // Import after vi.mock so the mock is in place.
-import { trashArchiveClient, trashRestoreClient } from '@/server/repositories/clients'
+import { archiveClient, restoreClient } from '@/server/repositories/clients'
 
 afterAll(async () => {
   await pool.end()
@@ -151,10 +151,10 @@ afterEach(async () => {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('trashArchiveClient', () => {
+describe('archiveClient', () => {
   it('stamps the same deletedAt on the client, all its batches, all its runs, and all its posts', async () => {
     const before = new Date()
-    await trashArchiveClient({ clientId, actorUserId })
+    await archiveClient({ clientId, actorUserId })
     const after = new Date()
 
     const archivedClient = await db.client.withArchived().findFirst({ where: { id: clientId } })
@@ -191,7 +191,7 @@ describe('trashArchiveClient', () => {
   })
 
   it('writes a TrashAuditLog with cascadeCount = 1 + batchCount + runCount + postCount', async () => {
-    await trashArchiveClient({ clientId, actorUserId })
+    await archiveClient({ clientId, actorUserId })
 
     const auditRow = await db.trashAuditLog.findFirst({
       where: { entityId: clientId, action: 'archive' },
@@ -206,10 +206,10 @@ describe('trashArchiveClient', () => {
   })
 })
 
-describe('trashRestoreClient', () => {
+describe('restoreClient', () => {
   it('clears deletedAt and deletedBy on the client, batches, runs, and cascade-archived posts', async () => {
-    await trashArchiveClient({ clientId, actorUserId })
-    await trashRestoreClient({ clientId, actorUserId })
+    await archiveClient({ clientId, actorUserId })
+    await restoreClient({ clientId, actorUserId })
 
     const restoredClient = await db.client.withArchived().findFirst({ where: { id: clientId } })
     expect(restoredClient).not.toBeNull()
@@ -236,7 +236,7 @@ describe('trashRestoreClient', () => {
 
   it('leaves pre-archived rows alone when restoring (timestamp-aware)', async () => {
     // Pre-archive ONE Post AND ONE Batch at a known earlier timestamp — different
-    // from the cascade timestamp that trashArchiveClient will use.
+    // from the cascade timestamp that archiveClient will use.
     const separatelyArchivedPostId = postIds[0]
     const earlierTimestamp = new Date('2026-01-01T00:00:00.000Z')
 
@@ -263,10 +263,10 @@ describe('trashRestoreClient', () => {
     })
 
     // Archive the client (stamps client + live batch + run + 2 remaining live posts).
-    await trashArchiveClient({ clientId, actorUserId })
+    await archiveClient({ clientId, actorUserId })
 
     // Restore the client — should bring back only cascade-archived rows.
-    await trashRestoreClient({ clientId, actorUserId })
+    await restoreClient({ clientId, actorUserId })
 
     // Client is restored.
     const restoredClient = await db.client.withArchived().findFirst({ where: { id: clientId } })
