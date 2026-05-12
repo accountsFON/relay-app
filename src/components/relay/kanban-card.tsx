@@ -1,10 +1,33 @@
-import Link from 'next/link'
+'use client'
+
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { MoreHorizontal } from 'lucide-react'
 import type { RelayStep } from '@prisma/client'
 import { STEP_LABEL } from './labels'
 import {
   deriveSubStatus,
   type BatchForSubStatus,
 } from '@/lib/batch-sub-status'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import {
+  archiveBatchAction,
+  restoreBatchAction,
+} from '@/app/(app)/trash/actions'
 
 export interface KanbanCardData extends BatchForSubStatus {
   id: string
@@ -17,48 +40,144 @@ export interface KanbanCardData extends BatchForSubStatus {
 }
 
 export function KanbanCard({ batch }: { batch: KanbanCardData }) {
+  const router = useRouter()
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const sub = deriveSubStatus(batch)
   const isArchived = Boolean(batch.deletedAt)
+  const href = `/clients/${batch.clientId}/batches/${batch.id}`
+
+  function navigate() {
+    router.push(href)
+  }
+
+  function handleArchive() {
+    startTransition(async () => {
+      await archiveBatchAction(batch.id)
+      setArchiveConfirmOpen(false)
+    })
+  }
+
+  function handleRestore() {
+    startTransition(async () => {
+      await restoreBatchAction(batch.id)
+    })
+  }
+
   return (
-    <Link
-      href={`/clients/${batch.clientId}/batches/${batch.id}`}
-      className={
-        'block rounded-md border border-border bg-background px-3 py-2 transition-colors hover:bg-cream-warm/40 ' +
-        (isArchived ? 'opacity-60' : '')
-      }
-      data-archived={isArchived ? 'true' : undefined}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[13px] font-medium text-foreground truncate">
-          {batch.client.name}
-        </p>
-        {isArchived && (
-          <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-            Archived
-          </span>
-        )}
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        {batch.label} · {STEP_LABEL[batch.currentStep]}
-      </p>
-      <div className="mt-1 flex items-center justify-between gap-2">
-        <span
-          className={
-            'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] ' +
-            toneClass(sub.tone)
+    <>
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={navigate}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            navigate()
           }
-        >
-          {sub.label}
-        </span>
-        <span className="text-[10px] text-muted-foreground">
-          {sub.daysHere}d
-        </span>
+        }}
+        data-archived={isArchived ? 'true' : undefined}
+        className={
+          'block rounded-md border border-border bg-background px-3 py-2 cursor-pointer transition-colors hover:bg-cream-warm/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ' +
+          (isArchived ? 'opacity-60' : '')
+        }
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[13px] font-medium text-foreground truncate">
+            {batch.client.name}
+          </p>
+          <div className="flex items-center gap-1 shrink-0">
+            {isArchived && (
+              <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                Archived
+              </span>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+                aria-label="Batch options"
+                className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {!isArchived && (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setArchiveConfirmOpen(true)}
+                  >
+                    Archive batch
+                  </DropdownMenuItem>
+                )}
+                {isArchived && (
+                  <DropdownMenuItem
+                    onClick={handleRestore}
+                    disabled={isPending}
+                  >
+                    Restore batch
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {batch.label} · {STEP_LABEL[batch.currentStep]}
+        </p>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <span
+            className={
+              'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] ' +
+              toneClass(sub.tone)
+            }
+          >
+            {sub.label}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {sub.daysHere}d
+          </span>
+        </div>
       </div>
-    </Link>
+
+      <Dialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Archive this batch?</DialogTitle>
+            <DialogDescription>
+              It will move to trash and be permanently deleted in 30 days.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setArchiveConfirmOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleArchive}
+              disabled={isPending}
+            >
+              {isPending ? 'Archiving…' : 'Archive'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
-function toneClass(tone: 'neutral' | 'progress' | 'attention' | 'success'): string {
+function toneClass(
+  tone: 'neutral' | 'progress' | 'attention' | 'success',
+): string {
   switch (tone) {
     case 'success':
       return 'bg-cream-warm text-foreground'
