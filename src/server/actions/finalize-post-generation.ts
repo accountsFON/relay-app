@@ -6,7 +6,7 @@ import { RelayRole } from '@prisma/client'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
 import { findContentRun } from '@/server/repositories/contentRuns'
-import { parseLabel } from '@/lib/batch-target-month'
+import { parseLabel, buildBatchLabel } from '@/lib/batch-target-month'
 
 const ChoiceSchema = z.discriminatedUnion('choice', [
   z.object({
@@ -90,16 +90,21 @@ export async function finalizePostGenerationAction(
     })
     targetBatchId = newBatch.id
   } else {
-    // auto-new: same as 'new' but with auto-generated label from targetMonth
+    // auto-new: same as 'new' but with the canonical "{Client Name} {Month Year}"
+    // label, so batches sort and read consistently across the app.
     const anyBatch = await db.batch.findFirst({
       where: { clientId: run.clientId },
       orderBy: { createdAt: 'desc' },
       select: { currentHolder: true, currentRole: true },
     })
+    const clientRow = await db.client.findUnique({
+      where: { id: run.clientId },
+      select: { name: true },
+    })
     const newBatch = await db.batch.create({
       data: {
         clientId: run.clientId,
-        label: run.targetMonth,
+        label: buildBatchLabel(clientRow?.name ?? 'Batch', run.targetMonth),
         currentStep: 'copy',
         currentSubState: 'drafted',
         currentHolder: anyBatch?.currentHolder ?? ctx.userDbId,

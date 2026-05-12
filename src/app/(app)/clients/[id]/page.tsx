@@ -104,7 +104,11 @@ export default async function ClientDetailPage({
             <>
               {isLive && (
                 <>
-                  <GenerateContentDialog clientId={client.id} targetMonth={getNextMonth()} />
+                  <GenerateContentDialog
+                    clientId={client.id}
+                    clientName={client.name}
+                    targetMonth={getNextMonth()}
+                  />
                   <ArchiveClientButton clientId={client.id} clientName={client.name} />
                 </>
               )}

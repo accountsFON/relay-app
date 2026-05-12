@@ -34,22 +34,26 @@ export function resolveBatchTargetMonth(
  * cannot be interpreted as a calendar month.
  *
  * Handles:
- *  - "April 2026"  → "2026-04"
- *  - "April"       → uses fallbackDate's year
- *  - "2026-04"     → "2026-04"
- *  - anything else → null
+ *  - "Cedar Creek Dental May 2026" → "2026-05"  (trailing Month Year)
+ *  - "April 2026"                  → "2026-04"
+ *  - "April"                       → uses fallbackDate's year
+ *  - "2026-04"                     → "2026-04"
+ *  - anything else                 → null
  */
 export function parseLabel(label: string, fallbackDate: Date): string | null {
   const lower = label.trim().toLowerCase()
 
-  // Match "April 2026"
-  const withYear = lower.match(/^([a-z]+)\s+(\d{4})$/)
-  if (withYear) {
-    const idx = MONTH_NAMES.indexOf(withYear[1])
-    if (idx >= 0) return `${withYear[2]}-${String(idx + 1).padStart(2, '0')}`
+  // Match "...prefix MonthName YYYY" — picks up the new "Client Name Month Year"
+  // format alongside the legacy "April 2026".
+  const trailingMonthYear = lower.match(/(?:^|\s)([a-z]+)\s+(\d{4})$/)
+  if (trailingMonthYear) {
+    const idx = MONTH_NAMES.indexOf(trailingMonthYear[1])
+    if (idx >= 0) {
+      return `${trailingMonthYear[2]}-${String(idx + 1).padStart(2, '0')}`
+    }
   }
 
-  // Match "April" (use fallbackDate's year)
+  // Match "April" alone (use fallbackDate's year)
   const monthOnly = lower.match(/^([a-z]+)$/)
   if (monthOnly) {
     const idx = MONTH_NAMES.indexOf(monthOnly[1])
@@ -65,4 +69,25 @@ export function parseLabel(label: string, fallbackDate: Date): string | null {
 
 function formatYearMonth(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * Render a YYYY-MM target month as "Month Year" (e.g. "May 2026"). Used when
+ * building human-readable batch labels and modal headings.
+ */
+export function formatMonthYear(targetMonth: string): string {
+  const [y, m] = targetMonth.split('-')
+  return new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+/**
+ * Compose the canonical batch label "{Client Name} {Month Year}". Centralized
+ * so every batch-creation site renders the same shape, and so parseLabel can
+ * round-trip without ambiguity.
+ */
+export function buildBatchLabel(clientName: string, targetMonth: string): string {
+  return `${clientName} ${formatMonthYear(targetMonth)}`
 }
