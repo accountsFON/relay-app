@@ -83,14 +83,15 @@ export async function regenerateContentRun(
 }
 
 export async function bulkGenerateContent(
-  clientIds: string[],
-  targetMonth: string
-) {
+  items: { clientId: string; reCrawl: boolean }[],
+  targetMonth: string,
+): Promise<{ clientId: string; clientName: string; contentRunId?: string; error?: string }[]> {
   const ctx = await requireClientEditor()
 
   const results: { clientId: string; clientName: string; contentRunId?: string; error?: string }[] = []
 
-  for (const clientId of clientIds) {
+  for (const item of items) {
+    const { clientId, reCrawl } = item
     const client = await findClientForUser(ctx, clientId)
     if (!client) {
       results.push({ clientId, clientName: 'Unknown', error: 'Client not found' })
@@ -116,7 +117,7 @@ export async function bulkGenerateContent(
 
     try {
       const { generateContentTask } = await import('@/server/jobs/generateContent')
-      await generateContentTask.trigger({ contentRunId: contentRun.id })
+      await generateContentTask.trigger({ contentRunId: contentRun.id, reCrawl })
       results.push({ clientId, clientName: client.name, contentRunId: contentRun.id })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

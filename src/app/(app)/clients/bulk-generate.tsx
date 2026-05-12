@@ -60,7 +60,8 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
     if (selected.size === 0) return
     setResults(null)
     startTransition(async () => {
-      const res = await bulkGenerateContent(Array.from(selected), targetMonth)
+      const items = Array.from(selected).map((clientId) => ({ clientId, reCrawl: true }))
+      const res = await bulkGenerateContent(items, targetMonth)
       setResults(res)
       setSelected(new Set())
     })
