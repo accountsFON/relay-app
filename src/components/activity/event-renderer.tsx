@@ -1,5 +1,5 @@
 /**
- * EventRenderer — switch on ActivityKind, return one row per event.
+ * EventRenderer, switch on ActivityKind, return one row per event.
  *
  * Spec: projects/relay-app/2026-05-09-activity-thread-plan.md § EventRenderer
  *       projects/relay-app/2026-05-09-relay-workflow-design.md § Phase 4
@@ -39,6 +39,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { tokenizeBody } from '@/lib/mentions'
+import { relayStepLabel } from '@/lib/relay-step-labels'
 import type { ActivityEventView } from './types'
 
 export interface EventRendererProps {
@@ -144,7 +145,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: ArrowLeft,
         tone: 'warning',
-        message: `sent ${p.batchLabel} back to ${p.toUserName} — "${truncate(p.reason, 60)}"`,
+        message: `sent ${p.batchLabel} back to ${p.toUserName}. Reason: "${truncate(p.reason, 60)}"`,
       }
     case 'batch_revision_dispatched':
       if (p.kind !== 'batch_revision_dispatched') break
@@ -165,7 +166,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: Sparkles,
         tone: 'default',
-        message: `advanced ${p.batchLabel}: ${p.fromSubState} → ${p.toSubState}`,
+        message: `moved ${p.batchLabel} from ${relayStepLabel(p.fromSubState)} to ${relayStepLabel(p.toSubState)}`,
       }
     case 'client_created': {
       const name = stringField(p, 'clientName')
@@ -176,7 +177,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       }
     }
     case 'client_profile_edited': {
-      const fields = stringArrayField(p, 'fieldsChanged')
+      const fields = stringArrayField(p, 'fieldsChanged').map(humanizeFieldName)
       return {
         icon: Pencil,
         tone: 'default',
@@ -192,7 +193,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: UserPlus,
         tone: 'default',
-        message: name ? `assigned ${name} as AM` : 'assigned an AM',
+        message: name ? `assigned ${name} as Account Manager` : 'assigned an Account Manager',
       }
     }
     case 'client_am_unassigned': {
@@ -200,7 +201,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: UserMinus,
         tone: 'default',
-        message: name ? `unassigned ${name} from AM slot` : 'unassigned the AM',
+        message: name ? `removed ${name} as Account Manager` : 'removed the Account Manager',
       }
     }
     case 'client_designer_assigned': {
@@ -208,7 +209,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: UserPlus,
         tone: 'default',
-        message: name ? `assigned ${name} as designer` : 'assigned a designer',
+        message: name ? `assigned ${name} as Designer` : 'assigned a Designer',
       }
     }
     case 'client_designer_unassigned': {
@@ -216,7 +217,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: UserMinus,
         tone: 'default',
-        message: name ? `unassigned ${name} from designer slot` : 'unassigned the designer',
+        message: name ? `removed ${name} as Designer` : 'removed the Designer',
       }
     }
     case 'member_role_changed': {
@@ -236,7 +237,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       }
     }
     case 'post_edited': {
-      const fields = stringArrayField(p, 'fieldsChanged')
+      const fields = stringArrayField(p, 'fieldsChanged').map(humanizeFieldName)
       return {
         icon: Pencil,
         tone: 'default',
@@ -250,7 +251,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: PlayCircle,
         tone: 'default',
-        message: month ? `started run for ${month}` : 'started a content run',
+        message: month ? `started content generation for ${month}` : 'started content generation',
       }
     }
     case 'run_completed': {
@@ -261,7 +262,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         tone: 'success',
         message:
           month && postCount !== null
-            ? `${month} run complete — ${postCount} posts ready`
+            ? `${month} run complete, ${postCount} posts ready for review`
             : 'content run complete',
       }
     }
@@ -270,7 +271,7 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: AlertTriangle,
         tone: 'destructive',
-        message: month ? `${month} run failed` : 'content run failed',
+        message: month ? `${month} content generation failed` : 'content generation failed',
       }
     }
   }
@@ -322,6 +323,55 @@ function truncate(s: string, max: number): string {
 
 function humanizeKind(kind: ActivityKind): string {
   return kind.replace(/_/g, ' ')
+}
+
+/**
+ * Map raw schema field keys to user-readable labels. Used when the activity
+ * payload carries a `fieldsChanged` array sourced from a Prisma model or Zod
+ * schema. Keys not in the map fall back to a spaced, capitalized form.
+ */
+const FIELD_NAME_LABELS: Record<string, string> = {
+  // Client schema
+  name: 'Name',
+  businessSummary: 'Business summary',
+  brandVoice: 'Brand voice',
+  industry: 'Industry',
+  location: 'Location',
+  phone: 'Phone',
+  mainCta: 'Main CTA',
+  focus1: 'Focus 1',
+  focus2: 'Focus 2',
+  focus3: 'Focus 3',
+  dos: 'Dos',
+  donts: 'Donts',
+  postingDays: 'Posting days',
+  postLength: 'Post length',
+  urls: 'URLs',
+  targetAudience: 'Target audience',
+  holidayHandling: 'Holiday handling',
+  excludedDates: 'Excluded dates',
+  assetsFolderUrl: 'Assets folder',
+  canvaUrl: 'Canva URL',
+  autoCrawl: 'Auto crawl',
+  assignedAmId: 'Account Manager',
+  assignedDesignerId: 'Designer',
+  primaryAccountManagerId: 'Account Manager',
+  status: 'Status',
+  // Post schema
+  caption: 'Caption',
+  hashtags: 'Hashtags',
+  graphicHook: 'Graphic hook',
+  designerNotes: 'Designer notes',
+}
+
+function humanizeFieldName(key: string): string {
+  if (FIELD_NAME_LABELS[key]) return FIELD_NAME_LABELS[key]
+  // Convert camelCase or snake_case into Sentence case.
+  const spaced = key
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
 function formatRelative(d: Date): string {
