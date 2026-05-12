@@ -13,7 +13,14 @@ export async function findBatch(id: string) {
   return db.batch.withArchived().findFirst({
     where: { id },
     include: {
-      client: { select: { id: true, name: true, organizationId: true } },
+      client: {
+        select: {
+          id: true,
+          name: true,
+          organizationId: true,
+          _count: { select: { linkedClientUsers: true } },
+        },
+      },
       holder: { select: { id: true, name: true, email: true, role: true } },
       checklists: { orderBy: { id: 'asc' } },
       revisionPlan: { include: { items: true } },
@@ -123,8 +130,12 @@ export async function listOnboardingQueue(orgId: string) {
  * All batches for an org. Used by the AM kanban (filter client-side
  * to assignedAmId === userId) and admin dashboards.
  */
-export async function listBatchesForOrg(orgId: string) {
-  return db.batch.findMany({
+export async function listBatchesForOrg(
+  orgId: string,
+  options?: { showArchived?: boolean },
+) {
+  const query = options?.showArchived ? db.batch.withArchived() : db.batch
+  return query.findMany({
     where: { client: { organizationId: orgId } },
     include: {
       client: {
