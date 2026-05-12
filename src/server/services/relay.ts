@@ -66,9 +66,45 @@ export class RelayServiceError extends Error {
 }
 
 /**
- * Resolve the next holder (DB user id) for a given step on a batch.
- * Pulls AM / Designer assignments from the Client; falls back to the
- * acting user if the role isn't assigned (an admin pushing the batch
+ * Subset of Client fields used to decide who is sitting with a batch at a
+ * given step. Exposed so the pure helper `getNotifyTargetsForStep` can be
+ * unit-tested without touching Prisma.
+ */
+export interface NotifyTargetClient {
+  assignedAmId: string | null
+  assignedDesignerId: string | null
+  linkedClientUsers: { id: string }[]
+}
+
+/**
+ * Return the DB user ids who should be notified when a batch lands at
+ * `step`. AM and Designer steps notify the single assigned person; client
+ * steps notify every user linked to the client. Returns `[]` when the
+ * relevant slot is unassigned so callers can fall back to a single holder
+ * id (e.g. the acting admin) without polluting mentions.
+ */
+export function getNotifyTargetsForStep(
+  step: RelayStep,
+  client: NotifyTargetClient,
+): string[] {
+  const role = holderRoleForStep(step)
+  switch (role) {
+    case RelayRole.am:
+      return client.assignedAmId ? [client.assignedAmId] : []
+    case RelayRole.designer:
+      return client.assignedDesignerId ? [client.assignedDesignerId] : []
+    case RelayRole.client:
+      return client.linkedClientUsers.map((u) => u.id)
+    case RelayRole.admin:
+      return []
+  }
+}
+
+/**
+ * Resolve the next holder (DB user id) for a given step on a batch and the
+ * full set of user ids to notify. Pulls AM / Designer assignments and
+ * linked client users from the Client; falls back to the acting user if
+ * the role's primary slot isn't assigned (an admin pushing the batch
  * forward acts as a stand-in until the assignment is filled).
  */
 async function resolveHolderForStep(
@@ -76,30 +112,55 @@ async function resolveHolderForStep(
   batchClientId: string,
   step: RelayStep,
   fallbackUserId: string,
-): Promise<{ userId: string; role: RelayRole }> {
+): Promise<{ userId: string; role: RelayRole; notifyUserIds: string[] }> {
   const role = holderRoleForStep(step)
   const client = await tx.client.findUnique({
     where: { id: batchClientId },
     select: {
       assignedAmId: true,
       assignedDesignerId: true,
-      linkedClientUsers: { select: { id: true }, take: 1 },
+      linkedClientUsers: { select: { id: true } },
     },
   })
   if (!client) throw new RelayServiceError('Client not found for batch')
 
+  const notifyUserIds = getNotifyTargetsForStep(step, client)
+
   switch (role) {
     case RelayRole.am:
-      return { userId: client.assignedAmId ?? fallbackUserId, role }
+      return {
+        userId: client.assignedAmId ?? fallbackUserId,
+        role,
+        notifyUserIds,
+      }
     case RelayRole.designer:
-      return { userId: client.assignedDesignerId ?? fallbackUserId, role }
+      return {
+        userId: client.assignedDesignerId ?? fallbackUserId,
+        role,
+        notifyUserIds,
+      }
     case RelayRole.client: {
       const clientUserId = client.linkedClientUsers[0]?.id
-      return { userId: clientUserId ?? fallbackUserId, role }
+      return {
+        userId: clientUserId ?? fallbackUserId,
+        role,
+        notifyUserIds,
+      }
     }
     case RelayRole.admin:
-      return { userId: fallbackUserId, role }
+      return { userId: fallbackUserId, role, notifyUserIds }
   }
+}
+
+/**
+ * Filter `targets` down to ids that are not the actor. Prevents a user
+ * who advances a batch from being mentioned in their own activity event.
+ */
+function mentionsExcludingActor(
+  targets: string[],
+  actorId: string,
+): string[] {
+  return targets.filter((id) => id !== actorId)
 }
 
 async function loadUserName(
@@ -187,7 +248,10 @@ export async function passBaton(input: PassBatonInput) {
           newHolderId: next.userId,
           newHolderRole: next.role,
         },
-        mentionedUserIds: next.userId !== input.actorId ? [next.userId] : [],
+        mentionedUserIds: mentionsExcludingActor(
+          next.notifyUserIds,
+          input.actorId,
+        ),
       },
       tx,
     )
@@ -273,7 +337,10 @@ export async function sendBackBaton(input: SendBackBatonInput) {
           reason: input.reason,
           newHolderId: next.userId,
         },
-        mentionedUserIds: next.userId !== input.actorId ? [next.userId] : [],
+        mentionedUserIds: mentionsExcludingActor(
+          next.notifyUserIds,
+          input.actorId,
+        ),
       },
       tx,
     )
@@ -451,6 +518,10 @@ export async function completeRevisionItem(input: CompleteRevisionItemInput) {
             fromSubState: 'in progress',
             toSubState: 'all revisions complete',
           },
+          mentionedUserIds: mentionsExcludingActor(
+            next.notifyUserIds,
+            input.actorId,
+          ),
         },
         tx,
       )

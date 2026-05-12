@@ -57,6 +57,10 @@ export async function setClientAssignment(input: {
     payload: input.assigned
       ? { assignedToId: input.userId, assignedToName: targetUser?.name ?? null }
       : { unassignedFromId: input.userId, unassignedFromName: targetUser?.name ?? null },
+    // Mention the new assignee on assign (skip on unassign and when an admin
+    // assigns themselves).
+    mentionedUserIds:
+      input.assigned && input.userId !== ctx.userDbId ? [input.userId] : [],
   })
 
   revalidatePath(`/admin/users/${input.userId}`)

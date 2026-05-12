@@ -56,6 +56,10 @@ export async function setClientPrimary(input: {
     payload: input.userId
       ? { assignedToId: input.userId, assignedToName: assigneeName }
       : {},
+    // Notify the new assignee (when there is one and it's not the actor).
+    // Unassign events have no mention target.
+    mentionedUserIds:
+      input.userId && input.userId !== ctx.userDbId ? [input.userId] : [],
   })
 
   revalidatePath('/admin/clients')
