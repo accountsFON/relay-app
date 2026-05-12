@@ -5,11 +5,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox, BookOpen, Search } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 import { DateScopePill } from '@/components/date-scope-pill'
 import { SearchBar } from '@/components/search-bar'
+import { MobileSearchSheet } from '@/components/search/mobile-search-sheet'
 
 type BadgeKey = 'unreadMentions'
 type NavItem = {
@@ -205,13 +206,7 @@ export function AppShell({
             className="h-6 w-auto"
           />
           <div className="ml-auto flex items-center gap-2">
-            <Link
-              href="/search"
-              className="rounded-full bg-card p-1.5 text-muted-foreground hover:text-foreground hover:bg-cream-80"
-              aria-label="Search"
-            >
-              <Search className="h-4 w-4" />
-            </Link>
+            <MobileSearchSheet />
             <DateScopePill />
           </div>
         </header>
