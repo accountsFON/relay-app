@@ -6,7 +6,7 @@ import { requireClientEditor } from '@/server/middleware/permissions'
 import {
   createClient,
   updateClient,
-  archiveClient,
+  deactivateClient,
   findClientForUser,
 } from '@/server/repositories/clients'
 import {
@@ -62,9 +62,9 @@ export async function updateClientAction(id: string, input: ClientUpdate) {
   revalidatePath('/clients')
 }
 
-export async function archiveClientAction(id: string) {
+export async function deactivateClientAction(id: string) {
   const ctx = await requireClientEditor()
-  await archiveClient(id, ctx.organizationDbId)
+  await deactivateClient(id, ctx.organizationDbId)
 
   await recordActivity({
     clientId: id,

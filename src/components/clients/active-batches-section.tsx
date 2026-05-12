@@ -1,37 +1,70 @@
-import { listActiveBatchesForClient } from '@/server/repositories/batches'
+import { listActiveBatchesForClient, listArchivedBatchesForClient } from '@/server/repositories/batches'
 import { PageSection } from '@/components/ui/page-section'
-import { DataRowGroup } from '@/components/ui/data-row'
+import { DataRowGroup, DataRow } from '@/components/ui/data-row'
 import { ActiveBatchHero } from '@/components/relay/active-batch-hero'
 import { ActiveBatchRow } from '@/components/relay/active-batch-row'
+import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
+import Link from 'next/link'
 
 /**
  * Adaptive Active Batches section on the client page.
- *  - 0 in flight: do not render (component returns null)
- *  - 1 in flight: hero card variant
- *  - 2+ in flight: equal-weight list, sorted held-by-you first then by activity
+ *  - 0 live in flight and 0 archived (or toggle off): do not render
+ *  - 1 live in flight: hero card variant
+ *  - 2+ live in flight: equal-weight list, sorted held-by-you first then by activity
+ *
+ * When showArchived=true, archived batches are appended below the live list
+ * with a muted "Archived" pill and a link to the batch page (where the
+ * RestoreBatchBanner handles restore).
  *
  * Per spec § Section A.
  */
 export async function ActiveBatchesSection({
   clientId,
   viewerUserId,
+  showArchived = false,
+  archivedBatchCount = 0,
 }: {
   clientId: string
   viewerUserId: string
+  showArchived?: boolean
+  archivedBatchCount?: number
 }) {
   const batches = await listActiveBatchesForClient(clientId, viewerUserId)
-  if (batches.length === 0) return null
+  const archivedBatches = showArchived
+    ? await listArchivedBatchesForClient(clientId)
+    : []
 
-  if (batches.length === 1) {
+  const hasContent = batches.length > 0 || archivedBatches.length > 0
+  if (!hasContent && archivedBatchCount === 0) return null
+
+  const toggle = <ShowArchivedToggle countArchived={archivedBatchCount} />
+
+  if (batches.length === 0 && archivedBatches.length === 0) {
+    // No live batches but there are archived ones (toggle is off)
     return (
-      <PageSection title="Active batch">
+      <PageSection title="Active batches" action={toggle}>
+        <p className="text-sm text-muted-foreground">No active batches.</p>
+      </PageSection>
+    )
+  }
+
+  if (batches.length === 1 && archivedBatches.length === 0) {
+    return (
+      <PageSection title="Active batch" action={toggle}>
         <ActiveBatchHero clientId={clientId} batch={batches[0]} />
       </PageSection>
     )
   }
 
+  const title =
+    batches.length === 1
+      ? 'Active batch'
+      : batches.length > 0
+        ? `Active batches (${batches.length})`
+        : 'Active batches'
+
   return (
-    <PageSection title={`Active batches (${batches.length})`}>
+    <PageSection title={title} action={toggle}>
       <DataRowGroup className="-mx-1">
         {batches.map((b) => (
           <ActiveBatchRow
@@ -39,6 +72,26 @@ export async function ActiveBatchesSection({
             clientId={clientId}
             batch={b}
             viewerUserId={viewerUserId}
+          />
+        ))}
+        {archivedBatches.map((b) => (
+          <DataRow
+            key={b.id}
+            href={`/clients/${clientId}/batches/${b.id}`}
+            title={
+              <span className="flex items-center gap-2 opacity-50">
+                {b.label}
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  Archived
+                </span>
+              </span>
+            }
+            subtitle={
+              <span className="opacity-50">
+                Archived {b.deletedAt ? b.deletedAt.toLocaleDateString() : ''}
+              </span>
+            }
+            className="grayscale"
           />
         ))}
       </DataRowGroup>

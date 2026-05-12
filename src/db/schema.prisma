@@ -132,6 +132,7 @@ model Organization {
   roleDefaults        RoleDefault[]
   permissionAuditLogs PermissionAuditLog[]
   memberships         Membership[]
+  trashAuditLogs      TrashAuditLog[]
 
   @@map("organizations")
 }
@@ -196,6 +197,8 @@ model Client {
   crawledDataAt      DateTime?
   status             ClientStatus @default(active)
   createdAt          DateTime     @default(now())
+  deletedAt          DateTime?
+  deletedBy          String?
 
   organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assignedAm        User?        @relation("AssignedAM", fields: [assignedAmId], references: [id])
@@ -210,6 +213,7 @@ model Client {
   @@index([organizationId])
   @@index([assignedAmId])
   @@index([assignedDesignerId])
+  @@index([deletedAt])
   @@map("clients")
 }
 
@@ -235,6 +239,8 @@ model ContentRun {
   startedAt        DateTime?
   completedAt      DateTime?
   createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+  deletedBy        String?
 
   client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   triggeredBy    User            @relation("TriggeredBy", fields: [triggeredById], references: [id])
@@ -242,6 +248,7 @@ model ContentRun {
   activityEvents ActivityEvent[]
 
   @@index([clientId])
+  @@index([deletedAt])
   @@map("content_runs")
 }
 
@@ -259,6 +266,8 @@ model Post {
   scheduledAt    DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+  deletedBy      String?
 
   contentRun     ContentRun      @relation(fields: [contentRunId], references: [id], onDelete: Cascade)
   client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -269,6 +278,7 @@ model Post {
   @@index([contentRunId])
   @@index([clientId])
   @@index([batchId])
+  @@index([deletedAt])
   @@map("posts")
 }
 
@@ -356,6 +366,8 @@ model Batch {
   currentRole     RelayRole
   scheduledAt     DateTime?
   createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+  deletedBy       String?
 
   client       Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   holder       User            @relation("BatchHolder", fields: [currentHolder], references: [id])
@@ -366,6 +378,7 @@ model Batch {
 
   @@index([clientId, currentStep])
   @@index([currentHolder, currentStep])
+  @@index([deletedAt])
   @@map("batches")
 }
 
@@ -480,4 +493,24 @@ model Mention {
   @@unique([activityEventId, mentionedUserId])
   @@index([mentionedUserId, readAt])
   @@map("mentions")
+}
+
+model TrashAuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  actorUserId    String
+  action         String   // 'archive' | 'restore' | 'purge'
+  entityType     String   // 'client' | 'batch' | 'contentRun' | 'post'
+  entityId       String
+  parentContext  Json     @default("{}")
+  cascadeCount   Int
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("trash_audit_logs")
 }

@@ -18,7 +18,7 @@ import {
   listClientsByOrg,
   createClient,
   updateClient,
-  archiveClient,
+  deactivateClient,
 } from '@/server/repositories/clients'
 
 const mockClient: Client = {
@@ -51,6 +51,8 @@ const mockClient: Client = {
   status: 'active',
   onboardingCompletedAt: null,
   createdAt: new Date(),
+  deletedAt: null,
+  deletedBy: null,
 }
 
 beforeEach(() => {
@@ -145,11 +147,11 @@ describe('updateClient', () => {
   })
 })
 
-describe('archiveClient', () => {
+describe('deactivateClient', () => {
   it('sets status to archived', async () => {
     vi.mocked(db.client.updateMany).mockResolvedValue({ count: 1 })
 
-    await archiveClient('cuid_client_1', 'cuid_org_1')
+    await deactivateClient('cuid_client_1', 'cuid_org_1')
 
     expect(db.client.updateMany).toHaveBeenCalledWith({
       where: { id: 'cuid_client_1', organizationId: 'cuid_org_1' },

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { RelayStep } from '@prisma/client'
-import { requireClientViewer } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import {
@@ -32,6 +32,9 @@ import { CostBreakdown } from '@/components/runs/cost-breakdown'
 import { FailedRunBanner } from '@/components/runs/failed-run-banner'
 import { ExportButton } from '@/components/runs/export-button'
 import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
+import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
+import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
+import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 
 export default async function BatchDetailPage({
   params,
@@ -41,6 +44,7 @@ export default async function BatchDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const ctx = await requireClientViewer()
+  const canEdit = canEditClients(ctx)
   const { id, batchId } = await params
   const sp = await searchParams
   const dateScope = parseDateScope({
@@ -48,16 +52,20 @@ export default async function BatchDetailPage({
     from: typeof sp.from === 'string' ? sp.from : null,
     to: typeof sp.to === 'string' ? sp.to : null,
   })
+  const showArchived = sp.archived === '1'
 
   const client = await findClientForUser(ctx, id)
   if (!client) notFound()
 
+  // findBatch now uses withArchived() so archived batches still load.
   let batch = await findBatch(batchId)
   if (!batch || batch.clientId !== client.id) notFound()
 
   // Spec § Verification step 9: client opening at sent_to_client auto-advances
   // to client_decision. Best-effort; failure logs and renders prior step.
+  // Skip auto-advance when batch is archived (read-only).
   if (
+    !batch.deletedAt &&
     ctx.role === 'client' &&
     batch.currentStep === RelayStep.sent_to_client &&
     batch.currentHolder === ctx.userDbId
@@ -75,13 +83,28 @@ export default async function BatchDetailPage({
     }
   }
 
-  const [events, posts] = await Promise.all([
+  // Resolve the display name for the user who archived the batch (if any).
+  let archivedByName: string | null = null
+  if (batch.deletedAt && batch.deletedBy) {
+    const actor = await db.user.findUnique({
+      where: { id: batch.deletedBy },
+      select: { name: true },
+    })
+    archivedByName = actor?.name ?? null
+  }
+
+  // Posts query: include archived posts when ?archived=1 is set.
+  // The batch itself being archived does NOT automatically show archived posts —
+  // the toggle remains the user's explicit control.
+  const postQuery = showArchived ? db.post.withArchived() : db.post
+
+  const [events, posts, archivedCount] = await Promise.all([
     listActivityForClient(client.id, {
       limit: 30,
       visibilityFilter: visibilityForViewer(ctx),
       dateRange: { from: dateScope.from, to: dateScope.to },
     }),
-    db.post.findMany({
+    postQuery.findMany({
       where: { batchId: batch.id },
       orderBy: { postDate: 'asc' },
       select: {
@@ -92,8 +115,10 @@ export default async function BatchDetailPage({
         graphicHook: true,
         designerNotes: true,
         contentRunId: true,
+        deletedAt: true,
       },
     }),
+    db.post.onlyArchived().count({ where: { batchId: batch.id } }),
   ])
 
   const sendBackTargets = legalSendBackTargets(batch.currentStep).map((step) => ({
@@ -130,6 +155,8 @@ export default async function BatchDetailPage({
   }
 
   const canAct = batch.currentHolder === ctx.userDbId || ctx.platformOwner
+  // Actions (generate content, export, archive) are unavailable on archived batches.
+  const isLive = !batch.deletedAt
 
   const run = await findRunForBatch(batch.id)
   const targetMonth = resolveBatchTargetMonth(batch, run)
@@ -170,13 +197,23 @@ export default async function BatchDetailPage({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
+      {batch.deletedAt && (
+        <div className="mb-6">
+          <RestoreBatchBanner
+            batchId={batch.id}
+            archivedAt={batch.deletedAt}
+            archivedBy={archivedByName}
+          />
+        </div>
+      )}
+
       <PageHeader
         title={`Batch ${batch.label}`}
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
         backHref="/dashboard"
         backLabel="Back to dashboard"
         actions={
-          canAct ? (
+          isLive && canAct ? (
             <>
               {batch.currentStep !== RelayStep.final_qa_schedule && (
                 <GenerateContentDialog clientId={client.id} targetMonth={targetMonth} lockMonth />
@@ -193,6 +230,7 @@ export default async function BatchDetailPage({
                   filename={`${client.name}-${targetMonth}`}
                 />
               )}
+              {canEdit && <ArchiveBatchButton batchId={batch.id} />}
             </>
           ) : undefined
         }
@@ -229,7 +267,10 @@ export default async function BatchDetailPage({
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          <PageSection title={`Posts (${posts.length})`}>
+          <PageSection
+            title={`Posts (${posts.length})`}
+            action={<ShowArchivedToggle countArchived={archivedCount} />}
+          >
             {posts.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {batchSummary.currentStep === 'onboarding_gate' ||
@@ -251,7 +292,7 @@ export default async function BatchDetailPage({
                     }))
                     return (
                       <div key={post.id} className="space-y-2">
-                        <PostCard post={post} />
+                        <PostCard post={post} canEdit={canEdit} />
                         <PostVersionHistory postId={post.id} versions={versionRows} />
                       </div>
                     )

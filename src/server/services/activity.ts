@@ -1,12 +1,13 @@
-import type { Prisma, PrismaClient } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import { ActivityKind, EventVisibility } from '@prisma/client'
 import { db } from '@/db/client'
+import type { DbClient, DbTx } from '@/db/client'
 
 export { ActivityKind, EventVisibility }
 
 export type ActivityPayload = Record<string, unknown>
 
-type DbOrTx = PrismaClient | Prisma.TransactionClient
+type DbOrTx = DbClient | DbTx
 
 export interface RecordActivityInput {
   clientId: string

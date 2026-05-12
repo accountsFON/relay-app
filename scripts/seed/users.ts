@@ -9,7 +9,7 @@
  * step. The clients seed step calls back via `linkClientUsers` once the
  * Cedar Creek / Apex / Sunrise Yoga rows exist.
  */
-import type { PrismaClient } from '@prisma/client'
+import type { DbClient } from '@/db/client'
 import { UserRole } from '@prisma/client'
 import {
   CLERK_DEMO_ORG_NAME,
@@ -158,7 +158,7 @@ export interface SeedUsersOptions {
  * missing.
  */
 export async function seedUsers(
-  db: PrismaClient,
+  db: DbClient,
   clerk: ClerkClient | null,
   opts: SeedUsersOptions,
 ): Promise<SeededUserMap> {
@@ -306,7 +306,7 @@ const SECONDARY_DEMO_CLERK_ORG_ID = 'org_relay_demo_secondary'
  * setStepIntoOrgCookie + getOrgContext catches the resolution.
  */
 export async function seedSecondaryOrg(
-  db: PrismaClient,
+  db: DbClient,
   platformUserId: string,
 ): Promise<{ organizationId: string; clerkOrgId: string }> {
   const org = await db.organization.upsert({
@@ -344,7 +344,7 @@ export async function seedSecondaryOrg(
  * the seed entry point after clients are written.
  */
 export async function linkClientUsers(
-  db: PrismaClient,
+  db: DbClient,
   users: SeededUserMap['users'],
   links: { client1: string; client2: string; client3: string },
 ): Promise<void> {

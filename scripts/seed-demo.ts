@@ -14,6 +14,8 @@ import path from 'node:path'
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
+import { applySoftDelete } from '@/db/soft-delete-extension'
+import type { DbClient } from '@/db/client'
 import dotenv from 'dotenv'
 import {
   CLERK_DEMO_ORG_NAME,
@@ -30,6 +32,7 @@ import { seedContentRuns } from './seed/content-runs'
 import { seedBatches } from './seed/batches'
 import { seedActivity } from './seed/activity'
 import { seedPostVersions } from './seed/post-versions'
+import { seedArchivedItems } from './seed/archived-items'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
@@ -47,10 +50,10 @@ function parseFlags(argv: string[]): CliFlags {
   }
 }
 
-function makeDb(): PrismaClient {
+function makeDb() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const adapter = new PrismaPg(pool)
-  return new PrismaClient({ adapter })
+  return applySoftDelete(new PrismaClient({ adapter }))
 }
 
 const PRODUCTION_EMAIL_DOMAINS = [
@@ -84,7 +87,7 @@ function assertSafeToRun(): void {
 }
 
 async function cleanDemoData(
-  db: PrismaClient,
+  db: DbClient,
   clerk: ClerkClient | null,
 ): Promise<void> {
   console.log('--- --clean: tearing down existing Relay Demo Agency ---')
@@ -135,7 +138,7 @@ interface VerifyTarget {
   max: number
 }
 
-async function runVerification(db: PrismaClient): Promise<{
+async function runVerification(db: DbClient): Promise<{
   ok: boolean
   rows: VerifyTarget[]
 }> {
@@ -281,6 +284,14 @@ async function main(): Promise<void> {
     console.log(
       `  ${versions.totalRows} versions across ${versions.postsTouched} posts`,
     )
+
+    console.log('--- Step 7: archived items (trash demo) ---')
+    await seedArchivedItems({
+      db,
+      actorUserId: userMap.users.am1.id,
+      ownerUserId: userMap.users.admin.id,
+      clients,
+    })
 
     const { ok, rows } = await runVerification(db)
     printVerification(rows, ok)

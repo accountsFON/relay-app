@@ -24,4 +24,9 @@ jobs:
 
       - run: npx tsc --noEmit
 
-      - run: npm test
+      # Run only unit tests in CI. The *.integration.test.ts suites need a
+      # real Postgres (they hit the actual db via Prisma) which CI doesn't
+      # provision yet. Integration tests run locally via `npm run test:integration`.
+      # See PR #24 — follow-up: add a postgres service container so CI can run
+      # the full suite.
+      - run: npm run test:unit

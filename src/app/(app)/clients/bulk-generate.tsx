@@ -14,6 +14,7 @@ type Client = {
   status: string
   industry: string | null
   location: string | null
+  isArchived?: boolean
 }
 
 function getNextMonth(): string {
@@ -144,11 +145,15 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
       <DataRowGroup>
         {clients.map((client) => {
           const subtitle = [client.industry, client.location].filter(Boolean).join(' · ') || 'No details set'
-          const isSelectable = client.status === 'active'
+          const isArchived = Boolean(client.isArchived)
+          const isSelectable = client.status === 'active' && !isArchived
           const isSelected = selected.has(client.id)
 
           return (
-            <div key={client.id} className="flex items-center">
+            <div
+              key={client.id}
+              className={`flex items-center${isArchived ? ' opacity-50 grayscale' : ''}`}
+            >
               <div className="pl-5 shrink-0">
                 {isSelectable ? (
                   <input
@@ -178,9 +183,11 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
                     {subtitle}
                   </div>
                 </div>
-                {!isSelectable && (
+                {isArchived ? (
+                  <Badge variant="secondary">archived</Badge>
+                ) : !isSelectable ? (
                   <Badge variant="secondary">{client.status}</Badge>
-                )}
+                ) : null}
               </Link>
             </div>
           )

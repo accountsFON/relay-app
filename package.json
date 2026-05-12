@@ -12,6 +12,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate --schema=src/db/schema.prisma",
     "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run --passWithNoTests '**/*.integration.test.ts'",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",
     "db:migrate-multi-tenant": "tsx scripts/migrate-to-multi-tenant.ts",

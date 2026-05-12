@@ -4,14 +4,32 @@ import {
   canEditClients,
 } from '@/server/middleware/permissions'
 import { listClientsForUser } from '@/server/repositories/clients'
+import { db } from '@/db/client'
 import { BulkGenerateList } from './bulk-generate'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
+import { getClientScopeFilter } from '@/server/auth/scope'
 
-export default async function ClientsPage() {
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const ctx = await requireClientViewer()
-  const clients = await listClientsForUser(ctx)
+  const sp = await searchParams
+  const showArchived = sp?.archived === '1'
+
+  const [clients, archivedClientCount] = await Promise.all([
+    listClientsForUser(ctx, { showArchived }),
+    db.client.onlyArchived().count({
+      where: {
+        organizationId: ctx.organizationDbId,
+        ...getClientScopeFilter(ctx),
+      },
+    }),
+  ])
 
   const canCreate = canEditClients(ctx)
 
@@ -35,12 +53,20 @@ export default async function ClientsPage() {
       />
 
       <div className="mt-10">
+        <div className="mb-4 flex items-center justify-between">
+          <ShowArchivedToggle countArchived={archivedClientCount} />
+        </div>
+
         {clients.length === 0 ? (
           <EmptyState
-            title="No clients here yet."
-            description="Add a brand and Relay can start drafting their content."
+            title={showArchived ? 'No archived clients.' : 'No clients here yet.'}
+            description={
+              showArchived
+                ? 'No archived clients found in this workspace.'
+                : 'Add a brand and Relay can start drafting their content.'
+            }
             action={
-              canCreate && (
+              !showArchived && canCreate && (
                 <Link href="/clients/new">
                   <Button variant="accent" size="lg">Add your first client</Button>
                 </Link>
@@ -55,6 +81,7 @@ export default async function ClientsPage() {
               status: c.status,
               industry: c.industry,
               location: c.location,
+              isArchived: Boolean(c.deletedAt),
             }))}
           />
         )}

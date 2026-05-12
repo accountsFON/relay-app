@@ -16,7 +16,7 @@
  *
  * Stable on (clientId, targetMonth) so reruns do not churn diffs.
  */
-import type { PrismaClient } from '@prisma/client'
+import type { DbClient } from '@/db/client'
 import { RunStatus } from '@prisma/client'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -143,7 +143,7 @@ function monthIdx(targetMonth: TargetMonth): number {
 }
 
 export async function seedContentRuns(
-  db: PrismaClient,
+  db: DbClient,
   clients: SeededClient[],
   org: SeededUserMap,
 ): Promise<SeededContentRun[]> {
