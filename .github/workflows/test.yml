@@ -30,3 +30,53 @@ jobs:
       # See PR #24 — follow-up: add a postgres service container so CI can run
       # the full suite.
       - run: npm run test:unit
+
+  detect-pipeline-changes:
+    # Decide whether the Trigger.dev deploy needs to run. Skipped on PRs so
+    # the deploy job below also skips. Output is consumed by deploy-trigger.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      pipeline: ${{ steps.changes.outputs.pipeline }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            pipeline:
+              - 'src/server/jobs/**'
+              - 'src/server/services/**'
+              - 'src/db/schema.prisma'
+              - 'trigger.config.ts'
+              - 'package.json'
+              - 'package-lock.json'
+
+  deploy-trigger:
+    # Auto-deploy the Trigger.dev pipeline on push to main when any
+    # pipeline-relevant file changed. Closes the manual `npx trigger.dev
+    # deploy` gotcha that bit us 3 times in the launch-week sprint.
+    # CLI version pinned to 4.4.5 to match the local-dev recipe; bump in
+    # lockstep with the package.json devDep when we upgrade.
+    name: Deploy Trigger.dev pipeline
+    needs: [test, detect-pipeline-changes]
+    if: needs.detect-pipeline-changes.outputs.pipeline == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npx prisma generate --schema=src/db/schema.prisma
+
+      - run: npx trigger.dev@4.4.5 deploy
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
