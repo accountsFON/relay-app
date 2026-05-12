@@ -7,13 +7,25 @@
  * one /admin/clients drives the dropdowns from. This component is the
  * client-page counterpart so admins don't have to detour through the admin
  * portal just to swap team members.
+ *
+ * Reassigns are gated behind a confirmation dialog so a stray dropdown click
+ * doesn't silently flip the team on a live client.
  */
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserCircle2 } from 'lucide-react'
 import { setClientPrimary } from '@/app/(app)/admin/clients/actions'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export interface TeamUser {
   id: string
@@ -89,18 +101,46 @@ function TeamSlot({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
+  // The select stays controlled by the saved value, plus a pending override
+  // while a reassign dialog is open. We never fire the action until Confirm.
+  const savedId = current?.id ?? ''
+  const [pendingId, setPendingId] = useState<string | null>(null)
+
+  const isOpen = pendingId !== null
+  const selectValue = pendingId !== null ? pendingId : savedId
+
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value
-    const userId = next === '' ? null : next
+    if (next === savedId) return
+    setPendingId(next)
+  }
+
+  function cancel() {
+    setPendingId(null)
+  }
+
+  function confirm() {
+    if (pendingId === null) return
+    const nextUserId = pendingId === '' ? null : pendingId
     startTransition(async () => {
       try {
-        await setClientPrimary({ clientId, slot, userId })
+        await setClientPrimary({ clientId, slot, userId: nextUserId })
+        setPendingId(null)
         router.refresh()
       } catch (err) {
+        setPendingId(null)
         alert(err instanceof Error ? err.message : 'Failed to reassign')
       }
     })
   }
+
+  const oldName = current?.name ?? 'Unassigned'
+  const newOption = pendingId !== null
+    ? options.find((o) => o.id === pendingId)
+    : undefined
+  const newName = pendingId === '' ? 'Unassigned' : newOption?.name ?? ''
+
+  const roleLower = slotLabel.toLowerCase()
 
   return (
     <div className="flex items-center gap-3 min-w-0">
@@ -124,8 +164,8 @@ function TeamSlot({
         </p>
         {canManage ? (
           <select
-            aria-label={`Reassign ${slotLabel.toLowerCase()} for ${clientName}`}
-            value={current?.id ?? ''}
+            aria-label={`Reassign ${roleLower} for ${clientName}`}
+            value={selectValue}
             onChange={onChange}
             disabled={isPending}
             className="-ml-1 max-w-full rounded-md bg-transparent px-1 py-0.5 text-[14px] font-medium text-foreground hover:bg-cream-warm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -143,6 +183,53 @@ function TeamSlot({
           </p>
         )}
       </div>
+
+      {canManage && (
+        <Dialog
+          open={isOpen}
+          onOpenChange={(open) => {
+            if (!open && !isPending) cancel()
+          }}
+        >
+          <DialogContent
+            className="sm:max-w-md"
+            initialFocus={(): HTMLElement | null => {
+              if (typeof document === 'undefined') return null
+              return document.querySelector<HTMLElement>(
+                `[data-confirm-reassign="${slot}"]`,
+              )
+            }}
+            showCloseButton={false}
+          >
+            <DialogHeader>
+              <DialogTitle>
+                {`Reassign ${slotLabel} for ${clientName}?`}
+              </DialogTitle>
+              <DialogDescription>
+                {`${oldName} will no longer be the ${roleLower} on this client. ${
+                  newName || 'The new teammate'
+                } will be notified.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={cancel}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-confirm-reassign={slot}
+                onClick={confirm}
+                disabled={isPending}
+              >
+                {isPending ? 'Saving…' : 'Confirm'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
