@@ -52,10 +52,12 @@ const STEP_INSIGHTS = [
 
 export function GenerateContentDialog({
   clientId,
+  clientName,
   targetMonth,
   lockMonth = false,
 }: {
   clientId: string
+  clientName: string
   targetMonth: string
   lockMonth?: boolean
 }) {
@@ -362,7 +364,7 @@ export function GenerateContentDialog({
                   id="new-batch-label"
                   value={newBatchLabel}
                   onChange={(e) => setNewBatchLabel(e.target.value)}
-                  placeholder={`${monthLabel} (rerun)`}
+                  placeholder={`${clientName} ${monthLabel}`}
                 />
                 <div className="flex gap-2">
                   <Button
@@ -378,7 +380,8 @@ export function GenerateContentDialog({
                       handleChoice({
                         choice: 'new',
                         runId: progress.id,
-                        label: newBatchLabel.trim() || `${monthLabel} (rerun)`,
+                        label:
+                          newBatchLabel.trim() || `${clientName} ${monthLabel}`,
                       })
                     }
                   >

@@ -6,6 +6,7 @@ import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
 import { recordActivity } from '@/server/services/activity'
 import { reseedChecklistForStep } from '@/server/lib/relay-state-machine'
+import { buildBatchLabel } from '@/lib/batch-target-month'
 
 export async function nudgeStuckBatchAction(input: { batchId: string }) {
   const ctx = await requireCan('relay.takeOver')
@@ -88,7 +89,7 @@ export async function takeOverBatchAction(input: {
 
 export async function completeOnboardingAction(input: {
   clientId: string
-  /** Optional initial-batch label, defaults to current YYYY-MM. */
+  /** Optional initial-batch label, defaults to "{Client Name} {Month Year}". */
   firstBatchLabel?: string
 }) {
   const ctx = await requireCan('relay.completeOnboarding')
@@ -96,6 +97,7 @@ export async function completeOnboardingAction(input: {
     where: { id: input.clientId },
     select: {
       id: true,
+      name: true,
       organizationId: true,
       assignedAmId: true,
       onboardingCompletedAt: true,
@@ -114,7 +116,7 @@ export async function completeOnboardingAction(input: {
       })
     }
 
-    const label = input.firstBatchLabel ?? defaultMonthLabel()
+    const label = input.firstBatchLabel ?? defaultMonthLabel(client.name)
     const existing = await tx.batch.findFirst({
       where: { clientId: client.id, label },
       select: { id: true },
@@ -234,9 +236,9 @@ export async function createBatchAction(input: {
   })
 }
 
-function defaultMonthLabel(): string {
+function defaultMonthLabel(clientName: string): string {
   const now = new Date()
   const y = now.getUTCFullYear()
   const m = String(now.getUTCMonth() + 1).padStart(2, '0')
-  return `${y}-${m}`
+  return buildBatchLabel(clientName, `${y}-${m}`)
 }
