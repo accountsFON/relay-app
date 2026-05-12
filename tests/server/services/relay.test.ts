@@ -143,12 +143,74 @@ import {
   RelayServiceError,
   completeRevisionItem,
   dispatchRevisions,
+  getNotifyTargetsForStep,
   passBaton,
   sendBackBaton,
 } from '@/server/services/relay'
 
 beforeEach(() => {
   currentTx = makeTx()
+})
+
+describe('getNotifyTargetsForStep', () => {
+  const client = {
+    assignedAmId: 'user_am',
+    assignedDesignerId: 'user_designer',
+    linkedClientUsers: [{ id: 'user_client_a' }, { id: 'user_client_b' }],
+  }
+
+  it('copy -> in_design notifies the designer', () => {
+    expect(getNotifyTargetsForStep(RelayStep.in_design, client)).toEqual([
+      'user_designer',
+    ])
+  })
+
+  it('in_design -> designs_completed stays with the designer', () => {
+    expect(
+      getNotifyTargetsForStep(RelayStep.designs_completed, client),
+    ).toEqual(['user_designer'])
+  })
+
+  it('am_review_design -> sent_to_client notifies every linked client user', () => {
+    expect(getNotifyTargetsForStep(RelayStep.sent_to_client, client)).toEqual([
+      'user_client_a',
+      'user_client_b',
+    ])
+  })
+
+  it('client_decision -> ready_to_schedule notifies the AM', () => {
+    expect(
+      getNotifyTargetsForStep(RelayStep.ready_to_schedule, client),
+    ).toEqual(['user_am'])
+  })
+
+  it('revisions_complete notifies the AM', () => {
+    expect(
+      getNotifyTargetsForStep(RelayStep.revisions_complete, client),
+    ).toEqual(['user_am'])
+  })
+
+  it('final_qa_schedule notifies the AM', () => {
+    expect(
+      getNotifyTargetsForStep(RelayStep.final_qa_schedule, client),
+    ).toEqual(['user_am'])
+  })
+
+  it('returns empty when the relevant slot is unassigned', () => {
+    expect(
+      getNotifyTargetsForStep(RelayStep.in_design, {
+        assignedAmId: 'user_am',
+        assignedDesignerId: null,
+        linkedClientUsers: [],
+      }),
+    ).toEqual([])
+  })
+
+  it('admin-held steps return no notify targets', () => {
+    expect(
+      getNotifyTargetsForStep(RelayStep.onboarding_gate, client),
+    ).toEqual([])
+  })
 })
 
 describe('passBaton', () => {
@@ -232,6 +294,48 @@ describe('passBaton', () => {
     expect(activityCall.data.mentions.create).toEqual([
       { mentionedUserId: 'user_designer' },
     ])
+  })
+
+  it('mentions every linked client user when passing to sent_to_client', async () => {
+    currentTx.tx.client.findUnique.mockResolvedValueOnce({
+      assignedAmId: 'user_am',
+      assignedDesignerId: 'user_designer',
+      linkedClientUsers: [{ id: 'user_client_a' }, { id: 'user_client_b' }],
+    })
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_qa_pre_client,
+      currentHolder: 'u_am',
+      label: '2026-05',
+    })
+    await passBaton({
+      batchId: 'b1',
+      toStep: RelayStep.sent_to_client,
+      actorId: 'u_am',
+    })
+    const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
+    expect(activityCall.data.mentions.create).toEqual([
+      { mentionedUserId: 'user_client_a' },
+      { mentionedUserId: 'user_client_b' },
+    ])
+  })
+
+  it('emits the activity event as public when landing on a client-facing step', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_qa_pre_client,
+      currentHolder: 'u_am',
+      label: '2026-05',
+    })
+    await passBaton({
+      batchId: 'b1',
+      toStep: RelayStep.sent_to_client,
+      actorId: 'u_am',
+    })
+    const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
+    expect(activityCall.data.visibility).toBe('public')
   })
 })
 
