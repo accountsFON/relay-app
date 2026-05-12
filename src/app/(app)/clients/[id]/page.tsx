@@ -24,7 +24,9 @@ import { DeleteRunButton, RegenRunButton } from './run-management'
 import { RunStatusPoller } from './run-status-poller'
 import { ClientStatusBadge } from '@/components/clients/client-status-badge'
 import { ClientQuickAccess } from '@/components/clients/client-quick-access'
+import { ClientTeamHeader } from '@/components/clients/client-team-header'
 import { ActiveBatchesSection } from '@/components/clients/active-batches-section'
+import { can } from '@/server/auth/permissions'
 import { EmptyState } from '@/components/ui/empty-state'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 import { ArchiveClientButton } from '@/components/relay/archive-client-button'
@@ -72,7 +74,24 @@ export default async function ClientDetailPage({
     db.batch.onlyArchived().count({ where: { clientId: id } }),
   ])
   const canEdit = canEditClients(ctx)
+  const canManageTeam = can(ctx, 'admin.portal')
   const mentionTargets = buildMentionRoster(memberships)
+
+  // Map memberships → role-filtered option lists for the AM/Designer pickers,
+  // plus enrich the assigned ids with name + avatar for read-only rendering.
+  const amOptions = memberships
+    .filter((m) => m.role === 'account_manager' || m.role === 'admin')
+    .map((m) => ({ id: m.user.id, name: m.user.name }))
+  const designerOptions = memberships
+    .filter((m) => m.role === 'designer' || m.role === 'admin')
+    .map((m) => ({ id: m.user.id, name: m.user.name }))
+  const userIndex = new Map(memberships.map((m) => [m.user.id, m.user]))
+  const assignedAm = client.assignedAmId
+    ? (userIndex.get(client.assignedAmId) ?? null)
+    : null
+  const assignedDesigner = client.assignedDesignerId
+    ? (userIndex.get(client.assignedDesignerId) ?? null)
+    : null
   const hasActiveRun = runs.some(
     (r) => r.status === 'running' || r.status === 'queued'
   )
@@ -117,6 +136,34 @@ export default async function ClientDetailPage({
       />
 
       <div className="mt-6">
+        <ClientTeamHeader
+          clientId={client.id}
+          clientName={client.name}
+          am={
+            assignedAm
+              ? {
+                  id: assignedAm.id,
+                  name: assignedAm.name,
+                  avatarUrl: assignedAm.avatarUrl,
+                }
+              : null
+          }
+          designer={
+            assignedDesigner
+              ? {
+                  id: assignedDesigner.id,
+                  name: assignedDesigner.name,
+                  avatarUrl: assignedDesigner.avatarUrl,
+                }
+              : null
+          }
+          amOptions={amOptions}
+          designerOptions={designerOptions}
+          canManage={canManageTeam}
+        />
+      </div>
+
+      <div className="mt-4">
         <ClientQuickAccess urls={client.urls} assetsFolderUrl={client.assetsFolderUrl} />
       </div>
 
