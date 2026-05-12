@@ -13,7 +13,14 @@ export async function findBatch(id: string) {
   return db.batch.withArchived().findFirst({
     where: { id },
     include: {
-      client: { select: { id: true, name: true, organizationId: true } },
+      client: {
+        select: {
+          id: true,
+          name: true,
+          organizationId: true,
+          _count: { select: { linkedClientUsers: true } },
+        },
+      },
       holder: { select: { id: true, name: true, email: true, role: true } },
       checklists: { orderBy: { id: 'asc' } },
       revisionPlan: { include: { items: true } },

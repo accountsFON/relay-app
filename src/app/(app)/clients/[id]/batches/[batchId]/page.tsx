@@ -35,6 +35,7 @@ import { GenerateContentDialog } from '@/components/relay/generate-content-dialo
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
 import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
+import { MissingClientUserBanner } from '@/components/relay/missing-client-user-banner'
 
 export default async function BatchDetailPage({
   params,
@@ -195,6 +196,18 @@ export default async function BatchDetailPage({
     batch.currentStep === RelayStep.copy &&
     (batch.currentSubState ?? 'generating') !== 'approved'
 
+  // Step 9 (sent_to_client) auto-advances only when a real client user opens
+  // the batch. If no client user is linked, resolveHolderForStep silently
+  // falls the holder back to the actor (AM/admin), and the batch sits at
+  // step 9 forever. Surface a banner so the holder can advance manually.
+  const hasLinkedClientUser =
+    (batch.client._count?.linkedClientUsers ?? 0) > 0
+  const showMissingClientUserBanner =
+    isLive &&
+    batch.currentStep === RelayStep.sent_to_client &&
+    !hasLinkedClientUser &&
+    canAct
+
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
       {batch.deletedAt && (
@@ -242,6 +255,15 @@ export default async function BatchDetailPage({
           audience={ctx.role === 'client' ? 'client' : 'internal'}
         />
       </div>
+
+      {showMissingClientUserBanner && (
+        <div className="mt-6">
+          <MissingClientUserBanner
+            batchId={batch.id}
+            clientName={client.name}
+          />
+        </div>
+      )}
 
       {run?.status === 'failed' && (
         <div className="mt-6">
