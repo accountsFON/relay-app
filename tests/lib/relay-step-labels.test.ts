@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { RelayStep } from '@prisma/client'
-import { RELAY_STEP_LABELS, relayStepLabel } from '@/lib/relay-step-labels'
+import {
+  RELAY_STEP_DESCRIPTIONS,
+  RELAY_STEP_LABELS,
+  relayStepDescription,
+  relayStepLabel,
+} from '@/lib/relay-step-labels'
 
 describe('RELAY_STEP_LABELS', () => {
   it('has a label for every RelayStep enum value', () => {
@@ -40,5 +45,47 @@ describe('relayStepLabel', () => {
     for (const step of Object.values(RelayStep)) {
       expect(relayStepLabel(step)).not.toMatch(/_/)
     }
+  })
+})
+
+describe('RELAY_STEP_DESCRIPTIONS', () => {
+  it('has a description for every RelayStep enum value', () => {
+    for (const step of Object.values(RelayStep)) {
+      expect(RELAY_STEP_DESCRIPTIONS[step]).toBeTruthy()
+      expect(typeof RELAY_STEP_DESCRIPTIONS[step]).toBe('string')
+    }
+  })
+
+  it('keeps every description under 80 characters', () => {
+    for (const step of Object.values(RelayStep)) {
+      expect(RELAY_STEP_DESCRIPTIONS[step].length).toBeLessThan(80)
+    }
+  })
+
+  it('uses no em or en dashes anywhere', () => {
+    for (const step of Object.values(RelayStep)) {
+      expect(RELAY_STEP_DESCRIPTIONS[step]).not.toMatch(/[–—]/)
+    }
+  })
+})
+
+describe('relayStepDescription', () => {
+  it('returns the canonical description for known steps', () => {
+    expect(relayStepDescription(RelayStep.copy)).toBe('Captions are being drafted')
+    expect(relayStepDescription(RelayStep.sent_to_client)).toBe(
+      'Sent to the client for approval',
+    )
+    expect(relayStepDescription(RelayStep.am_review_design)).toBe(
+      'AM is reviewing the designs before client send',
+    )
+  })
+
+  it('returns an empty string for null or undefined', () => {
+    expect(relayStepDescription(null)).toBe('')
+    expect(relayStepDescription(undefined)).toBe('')
+  })
+
+  it('returns an empty string for unknown step strings', () => {
+    expect(relayStepDescription('totally_unknown_step')).toBe('')
   })
 })

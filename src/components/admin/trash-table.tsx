@@ -15,6 +15,7 @@ import {
 } from '@/app/(app)/trash/actions'
 import type { TrashEntityType } from '@/server/repositories/trashAuditLogs'
 import { cn } from '@/lib/utils'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,27 +90,31 @@ function RowActions({
 
   return (
     <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="xs"
-        onClick={handleRestore}
-        disabled={isPending}
-        aria-label={`Restore ${row.label}`}
-      >
-        <RotateCcwIcon />
-        Restore
-      </Button>
+      <SimpleTooltip content="Restore this row to active.">
+        <Button
+          variant="outline"
+          size="xs"
+          onClick={handleRestore}
+          disabled={isPending}
+          aria-label={`Restore ${row.label}`}
+        >
+          <RotateCcwIcon />
+          Restore
+        </Button>
+      </SimpleTooltip>
 
-      <Button
-        variant="destructive"
-        size="xs"
-        onClick={() => setPurgeOpen(true)}
-        disabled={isPending}
-        aria-label={`Permanently delete ${row.label}`}
-      >
-        <Trash2Icon />
-        Delete forever
-      </Button>
+      <SimpleTooltip content="Permanently delete this row. This cannot be undone.">
+        <Button
+          variant="destructive"
+          size="xs"
+          onClick={() => setPurgeOpen(true)}
+          disabled={isPending}
+          aria-label={`Permanently delete ${row.label}`}
+        >
+          <Trash2Icon />
+          Delete forever
+        </Button>
+      </SimpleTooltip>
 
       <TypedConfirmModal
         open={purgeOpen}
@@ -205,15 +210,17 @@ export function TrashTable({ entityType, rows: initialRows }: Props) {
           <span className="text-sm font-medium">
             {selected.size} {selected.size === 1 ? 'item' : 'items'} selected
           </span>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setBulkPurgeOpen(true)}
-            disabled={bulkPurgePending}
-          >
-            <Trash2Icon />
-            Permanently delete ({selected.size})
-          </Button>
+          <SimpleTooltip content="Permanently delete every selected row. This cannot be undone.">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkPurgeOpen(true)}
+              disabled={bulkPurgePending}
+            >
+              <Trash2Icon />
+              Permanently delete ({selected.size})
+            </Button>
+          </SimpleTooltip>
 
           <TypedConfirmModal
             open={bulkPurgeOpen}

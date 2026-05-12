@@ -22,6 +22,7 @@ import {
   RelayRunnerCard,
   type RunnerRelay,
 } from '@/components/relay/relay-runner-card'
+import { StepTooltip } from '@/components/relay/relay-tooltips'
 
 export interface DashboardRelayTrackStation {
   step: RelayStep
@@ -182,15 +183,17 @@ function StationHeader({
 }) {
   return (
     <div className="flex items-center justify-between gap-1.5 px-1">
-      <h3
-        className={cn(
-          'truncate text-[11px] font-semibold uppercase tracking-[0.06em]',
-          recent ? 'text-foreground' : 'text-muted-foreground'
-        )}
-        title={relayStepLabel(step)}
-      >
-        {relayStepLabel(step)}
-      </h3>
+      <StepTooltip step={step}>
+        <h3
+          tabIndex={0}
+          className={cn(
+            'truncate rounded text-[11px] font-semibold uppercase tracking-[0.06em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            recent ? 'text-foreground' : 'text-muted-foreground'
+          )}
+        >
+          {relayStepLabel(step)}
+        </h3>
+      </StepTooltip>
       <span
         className={cn(
           'inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] tabular-nums',

@@ -36,6 +36,7 @@ import {
 import { cn } from '@/lib/utils'
 import { STEP_LABEL } from './labels'
 import type { BatchSummary, ChecklistItem } from './types'
+import { SimpleTooltip } from './relay-tooltips'
 import {
   passBatonAction,
   sendBackBatonAction,
@@ -169,21 +170,24 @@ export function ChecklistPanel({
           {error && (
             <p className="text-[11px] text-destructive">{error}</p>
           )}
-          <Button
-            type="button"
-            disabled={!allRequiredChecked || !nextStep || isPending}
-            className="w-full"
-            onClick={pass}
-          >
-            {isPending ? 'Passing…' : `Pass to ${nextStep ? STEP_LABEL[nextStep] : 'next step'}`}
-            <ArrowRight />
-          </Button>
+          <SimpleTooltip content="Hand the baton to the next person on the relay.">
+            <Button
+              type="button"
+              disabled={!allRequiredChecked || !nextStep || isPending}
+              className="w-full"
+              onClick={pass}
+            >
+              {isPending ? 'Passing…' : `Pass to ${nextStep ? STEP_LABEL[nextStep] : 'next step'}`}
+              <ArrowRight />
+            </Button>
+          </SimpleTooltip>
 
           {legalSendBackTargets.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-cream-warm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
                 aria-label="Send back"
+                title="Send this relay back to a previous step. Add a reason for the recipient."
               >
                 Send back
                 <ChevronDown className="h-4 w-4" />

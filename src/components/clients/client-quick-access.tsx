@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Link2, FolderOpen, ExternalLink, Palette } from 'lucide-react'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 function hostnameOf(url: string): string {
   try {
@@ -70,16 +71,18 @@ export function ClientQuickAccess({
             <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground shrink-0">
               Canva
             </span>
-            <Link
-              href={canvaUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1 text-[12px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
-            >
-              <Palette className="size-3 shrink-0 text-muted-foreground" />
-              <span className="truncate">Open in Canva</span>
-              <ExternalLink className="size-3 shrink-0 opacity-60" />
-            </Link>
+            <SimpleTooltip content="Open the client's Canva folder in a new tab">
+              <Link
+                href={canvaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1 text-[12px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
+              >
+                <Palette className="size-3 shrink-0 text-muted-foreground" />
+                <span className="truncate">Open in Canva</span>
+                <ExternalLink className="size-3 shrink-0 opacity-60" />
+              </Link>
+            </SimpleTooltip>
           </div>
         )}
       </div>

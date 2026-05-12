@@ -73,6 +73,20 @@ describe('PostCard collapsed state', () => {
     expect(screen.getByText('#3')).toBeInTheDocument()
   })
 
+  it('renders the action buttons inside tooltip triggers when expanded', () => {
+    render(<PostCard post={basePost} canEdit />)
+    // Buttons remain queryable by role + name even though they are now
+    // wrapped in SimpleTooltip. Base UI's TooltipTrigger uses render so the
+    // underlying Button is what actually mounts.
+    const copyButton = screen.getByRole('button', { name: 'Copy' })
+    const editButton = screen.getByRole('button', { name: 'Edit' })
+    expect(copyButton).toBeInTheDocument()
+    expect(editButton).toBeInTheDocument()
+    // The trigger button carries data-slot from the Tooltip primitive when
+    // it is the tooltip trigger.
+    expect(copyButton.getAttribute('data-slot')).toBe('tooltip-trigger')
+    expect(editButton.getAttribute('data-slot')).toBe('tooltip-trigger')
+  })
 })
 
 describe('PostListCollapseProvider', () => {

@@ -27,6 +27,7 @@ import { updatePostAction } from '@/server/actions/posts'
 import { archivePostAction, restorePostAction } from '@/app/(app)/trash/actions'
 import { cn } from '@/lib/utils'
 import { usePostListCollapse } from '@/components/posts/post-list-collapse'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 type Post = {
   id: string
@@ -167,9 +168,11 @@ export function PostCard({
               {dateLabel}
             </span>
             {isArchived && (
-              <Badge variant="secondary" className="shrink-0">
-                Archived
-              </Badge>
+              <SimpleTooltip content="This post is archived and hidden from active views">
+                <Badge variant="secondary" className="shrink-0">
+                  Archived
+                </Badge>
+              </SimpleTooltip>
             )}
             {collapsed && (
               <span className="text-[14px] text-muted-foreground line-clamp-1 min-w-0 flex-1">
@@ -180,14 +183,18 @@ export function PostCard({
           {!collapsed && (
             <div className="flex flex-wrap items-center gap-2">
               {!isArchived && (
-                <Button variant="ghost" size="sm" onClick={handleCopy}>
-                  {copied ? 'Copied' : 'Copy'}
-                </Button>
+                <SimpleTooltip content="Copy caption to clipboard">
+                  <Button variant="ghost" size="sm" onClick={handleCopy}>
+                    {copied ? 'Copied' : 'Copy'}
+                  </Button>
+                </SimpleTooltip>
               )}
               {!isEditing && !isArchived && (
-                <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
-                  Edit
-                </Button>
+                <SimpleTooltip content="Edit this post">
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                    Edit
+                  </Button>
+                </SimpleTooltip>
               )}
               {showOverflowMenu && (
                 <div className="pointer-events-auto">
@@ -309,14 +316,16 @@ export function PostCard({
 
         {!collapsed && isArchived && canEdit && (
           <div className="px-5 pb-4 pointer-events-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRestore}
-              disabled={isPending}
-            >
-              {isPending ? 'Restoring…' : 'Restore post'}
-            </Button>
+            <SimpleTooltip content="Restore this post">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRestore}
+                disabled={isPending}
+              >
+                {isPending ? 'Restoring…' : 'Restore post'}
+              </Button>
+            </SimpleTooltip>
           </div>
         )}
       </Card>
