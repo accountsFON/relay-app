@@ -76,6 +76,9 @@ export function GenerateContentDialog({
   const [newBatchLabel, setNewBatchLabel] = useState('')
   const [isFinalizing, setIsFinalizing] = useState(false)
 
+  // DEBUG: trace state (persisted via localStorage)
+  const [debugTrace, setDebugTrace] = useState<string[]>([])
+
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       setProgress(null)
@@ -86,6 +89,26 @@ export function GenerateContentDialog({
       setNewBatchLabel('')
     }
     setOpen(next)
+  }
+
+  // DEBUG: hydrate trace from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('relay-modal-trace')
+      if (stored) setDebugTrace(JSON.parse(stored))
+    } catch {}
+  }, [])
+
+  // DEBUG: helper to append a timestamped line to the trace
+  const trace = (msg: string) => {
+    const stamp = new Date().toISOString().slice(11, 23)
+    const line = `[${stamp}] ${msg}`
+    setDebugTrace((prev) => {
+      const next = [...prev, line]
+      try { localStorage.setItem('relay-modal-trace', JSON.stringify(next.slice(-50))) } catch {}
+      return next
+    })
+    console.log(`[modal trace] ${line}`)
   }
 
   // Pull crawl preferences when the dialog opens.
@@ -111,26 +134,44 @@ export function GenerateContentDialog({
         setProgress(next)
         if (next.status === 'complete') {
           clearInterval(interval)
-          const matched = await findMatchingBatchForRunAction(next.id)
-          if (matched && matched.postCount > 0) {
-            // Real choice to make: existing batch has posts, show prompt
-            setMatchingBatch(matched)
-          } else if (matched) {
-            // Matched batch is empty -- silently attach to it (no prompt)
-            await finalizePostGenerationAction({
-              choice: 'add',
-              runId: next.id,
-              batchId: matched.batchId,
-            })
-            setOpen(false)
-            setProgress(null)
-            router.refresh()
-          } else {
-            // No matching batch -- auto-create a new one
-            await finalizePostGenerationAction({ choice: 'auto-new', runId: next.id })
-            setOpen(false)
-            setProgress(null)
-            router.refresh()
+          trace(`status=complete runId=${next.id} postCount=${next.postCount}`)
+          try {
+            const matched = await findMatchingBatchForRunAction(next.id)
+            trace(`findMatchingBatch returned: ${matched ? `batchId=${matched.batchId} label="${matched.label}" postCount=${matched.postCount}` : 'null'}`)
+
+            if (matched && matched.postCount > 0) {
+              trace('branch: show choice panel (matched.postCount > 0)')
+              setMatchingBatch(matched)
+            } else if (matched) {
+              trace('branch: silent attach (matched.postCount === 0)')
+              try {
+                const result = await finalizePostGenerationAction({
+                  choice: 'add',
+                  runId: next.id,
+                  batchId: matched.batchId,
+                })
+                trace(`finalizePostGenerationAction (add) returned: batchId=${result.batchId}`)
+                setOpen(false)
+                setProgress(null)
+                router.refresh()
+              } catch (attachErr) {
+                trace(`finalizePostGenerationAction THREW: ${attachErr instanceof Error ? attachErr.message : String(attachErr)}`)
+                // leave modal open so error is visible
+              }
+            } else {
+              trace('branch: auto-new (no match)')
+              try {
+                const result = await finalizePostGenerationAction({ choice: 'auto-new', runId: next.id })
+                trace(`finalizePostGenerationAction (auto-new) returned: batchId=${result.batchId}`)
+                setOpen(false)
+                setProgress(null)
+                router.refresh()
+              } catch (autoErr) {
+                trace(`finalizePostGenerationAction (auto-new) THREW: ${autoErr instanceof Error ? autoErr.message : String(autoErr)}`)
+              }
+            }
+          } catch (lookupErr) {
+            trace(`findMatchingBatchForRunAction THREW: ${lookupErr instanceof Error ? lookupErr.message : String(lookupErr)}`)
           }
         }
       } catch (e) {
@@ -191,6 +232,14 @@ export function GenerateContentDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button variant="accent" />}>Generate content</DialogTrigger>
       <DialogContent>
+        {debugTrace.length > 0 && (
+          <div className="text-[10px] font-mono bg-yellow-100 border border-yellow-400 rounded p-2 max-h-40 overflow-y-auto space-y-0.5">
+            <div className="font-bold">DEBUG TRACE:</div>
+            {debugTrace.map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+          </div>
+        )}
         <DialogHeader>
           {lockMonth ? (
             <DialogTitle>Generate content for {monthLabel}</DialogTitle>
