@@ -43,7 +43,7 @@ export function PostCard({
   canEdit = false,
   postNumber,
   collapsed: collapsedProp,
-  defaultCollapsed = true,
+  defaultCollapsed = false,
   onToggleCollapsed,
 }: {
   post: Post

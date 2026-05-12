@@ -1,7 +1,8 @@
 /**
- * Wave 2F: batch detail page surfaces the AM + Designer team strip in its
- * header and pins the client thread (ActivityEvents scoped to the client) as
- * a sticky right rail. These tests render the same JSX shape the server
+ * Wave 2F + batch layout iteration: batch detail page surfaces the AM +
+ * Designer team strip in its header and pins a single right rail that stacks
+ * the step widgets (checklist or decision panel or revision composer) on top
+ * of the client thread. These tests render the same JSX shape the server
  * component emits so we cover the layout contract without booting Next.
  */
 import { describe, it, expect, vi } from 'vitest'
@@ -84,27 +85,42 @@ describe('Batch detail header: team strip', () => {
   })
 })
 
-describe('Batch detail: sticky client thread rail', () => {
+describe('Batch detail: sticky right rail stacks every widget', () => {
   function renderRail(props: { events: ActivityEventView[]; hideComposer?: boolean }) {
     return render(
       <aside
-        aria-label="Client thread"
-        data-testid="client-thread-rail"
-        className="lg:sticky lg:top-4 lg:self-start lg:order-3 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto rounded-2xl bg-card p-4"
+        aria-label="Relay sidebar"
+        data-testid="relay-sidebar-rail"
+        className="lg:sticky lg:top-4 lg:self-start lg:order-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-4"
       >
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-3">
-          Client thread
-        </h2>
-        <ActivityThread
-          clientId="c1"
-          events={props.events}
-          hideComposer={props.hideComposer}
-        />
+        <div data-testid="step-checklist-stub" className="rounded-2xl bg-card p-4">
+          Step checklist
+        </div>
+        <div data-testid="decision-panel-stub" className="rounded-2xl bg-card p-4">
+          Client decision
+        </div>
+        <div data-testid="revision-composer-stub" className="rounded-2xl bg-card p-4">
+          Revision composer
+        </div>
+        <div
+          aria-label="Client thread"
+          data-testid="client-thread-rail"
+          className="rounded-2xl bg-card p-4"
+        >
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-3">
+            Client thread
+          </h2>
+          <ActivityThread
+            clientId="c1"
+            events={props.events}
+            hideComposer={props.hideComposer}
+          />
+        </div>
       </aside>,
     )
   }
 
-  it('renders the thread heading and the client scoped ActivityEvents passed in', () => {
+  it('stacks the step widgets and the client thread inside a single rail', () => {
     renderRail({
       events: [
         makeCommentEvent({ id: 'evt1', payload: { kind: 'comment', body: 'Looks good to me', mentionedUserIds: [] } }),
@@ -112,26 +128,36 @@ describe('Batch detail: sticky client thread rail', () => {
       ],
     })
 
-    const rail = screen.getByTestId('client-thread-rail')
-    expect(within(rail).getByText(/client thread/i)).toBeInTheDocument()
+    const rail = screen.getByTestId('relay-sidebar-rail')
+    expect(within(rail).getByTestId('step-checklist-stub')).toBeInTheDocument()
+    expect(within(rail).getByTestId('decision-panel-stub')).toBeInTheDocument()
+    expect(within(rail).getByTestId('revision-composer-stub')).toBeInTheDocument()
+    expect(within(rail).getByTestId('client-thread-rail')).toBeInTheDocument()
     expect(within(rail).getByText('Looks good to me')).toBeInTheDocument()
     expect(within(rail).getByText('Send to client')).toBeInTheDocument()
   })
 
   it('applies sticky positioning classes on lg+ so the rail pins on scroll', () => {
     renderRail({ events: [] })
-    const rail = screen.getByTestId('client-thread-rail')
+    const rail = screen.getByTestId('relay-sidebar-rail')
     expect(rail.className).toMatch(/lg:sticky/)
     expect(rail.className).toMatch(/lg:top-4/)
     expect(rail.className).toMatch(/lg:max-h-/)
     expect(rail.className).toMatch(/lg:overflow-y-auto/)
   })
 
-  it('shows the composer when canEdit is allowed (hideComposer=false)', () => {
+  it('renders the composer above the event list when canEdit is allowed', () => {
     renderRail({ events: [], hideComposer: false })
     const rail = screen.getByTestId('client-thread-rail')
-    // CommentComposer ships a textarea + Send button.
     expect(within(rail).getByRole('textbox')).toBeInTheDocument()
+    // Composer at top means the textbox precedes the (empty) event list element
+    // inside the activity-thread container.
+    const thread = within(rail).getByText(/no activity yet/i)
+    const composer = within(rail).getByRole('textbox')
+    expect(
+      composer.compareDocumentPosition(thread) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 
   it('hides the composer when the viewer cannot edit', () => {
