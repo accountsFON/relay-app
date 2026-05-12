@@ -9,13 +9,13 @@ describe('Breadcrumbs', () => {
         items={[
           { href: '/dashboard', label: 'Dashboard' },
           { href: '/clients/c1', label: 'Cedar Creek Dental' },
-          { label: 'Batch May 2026' },
+          { label: 'Relay May 2026' },
         ]}
       />,
     )
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
     expect(screen.getByText('Cedar Creek Dental')).toBeInTheDocument()
-    expect(screen.getByText('Batch May 2026')).toBeInTheDocument()
+    expect(screen.getByText('Relay May 2026')).toBeInTheDocument()
   })
 
   it('renders earlier items as links and the last item as plain text', () => {
@@ -24,7 +24,7 @@ describe('Breadcrumbs', () => {
         items={[
           { href: '/dashboard', label: 'Dashboard' },
           { href: '/clients/c1', label: 'Cedar Creek Dental' },
-          { label: 'Batch May 2026' },
+          { label: 'Relay May 2026' },
         ]}
       />,
     )
@@ -36,7 +36,7 @@ describe('Breadcrumbs', () => {
       screen.getByRole('link', { name: 'Cedar Creek Dental' }),
     ).toHaveAttribute('href', '/clients/c1')
     expect(
-      screen.queryByRole('link', { name: 'Batch May 2026' }),
+      screen.queryByRole('link', { name: 'Relay May 2026' }),
     ).not.toBeInTheDocument()
   })
 

@@ -18,7 +18,7 @@ describe('BatchCompletionLap', () => {
         participants={[morgan, dakota, client]}
       />,
     )
-    expect(screen.getByText(/batch complete/i)).toBeInTheDocument()
+    expect(screen.getByText(/relay complete/i)).toBeInTheDocument()
     expect(screen.getByText(/3 of you/i)).toBeInTheDocument()
   })
 
@@ -40,17 +40,17 @@ describe('BatchCompletionLap', () => {
     const { unmount } = render(
       <BatchCompletionLap batchId="batch-1" participants={[morgan]} />,
     )
-    expect(screen.getByText(/batch complete/i)).toBeInTheDocument()
+    expect(screen.getByText(/relay complete/i)).toBeInTheDocument()
     unmount()
 
     render(<BatchCompletionLap batchId="batch-1" participants={[morgan]} />)
-    expect(screen.queryByText(/batch complete/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/relay complete/i)).not.toBeInTheDocument()
   })
 
   it('still renders for a different batch even when another was celebrated', () => {
     window.localStorage.setItem('celebrated:batch-1', '1')
     render(<BatchCompletionLap batchId="batch-2" participants={[morgan]} />)
-    expect(screen.getByText(/batch complete/i)).toBeInTheDocument()
+    expect(screen.getByText(/relay complete/i)).toBeInTheDocument()
   })
 
   it('renders nothing when the participants list is empty', () => {

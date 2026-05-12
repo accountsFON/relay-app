@@ -45,7 +45,7 @@ function configForStep(step: SupportedStep): ModeConfig {
     return {
       toStep: RelayStep.client_decision,
       description:
-        'The auto-advance from "With client" runs when a real client opens the batch. Invite a client user to enable that flow, or skip the review and advance manually.',
+        'The auto-advance from "With client" runs when a real client opens the relay. Invite a client user to enable that flow, or skip the review and advance manually.',
       buttonLabel: 'Skip client review',
       pendingLabel: 'Advancing…',
     }
@@ -53,7 +53,7 @@ function configForStep(step: SupportedStep): ModeConfig {
   return {
     toStep: RelayStep.ready_to_schedule,
     description:
-      'The client decision step normally advances when a real client approves. Invite a client user to enable that flow, or approve on their behalf to keep the batch moving.',
+      'The client decision step normally advances when a real client approves. Invite a client user to enable that flow, or approve on their behalf to keep the relay moving.',
     buttonLabel: 'Approve on behalf of client',
     pendingLabel: 'Approving…',
   }

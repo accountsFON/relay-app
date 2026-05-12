@@ -42,15 +42,15 @@ export async function ActiveBatchesSection({
   if (batches.length === 0 && archivedBatches.length === 0) {
     // No live batches but there are archived ones (toggle is off)
     return (
-      <PageSection title="Active batches" action={toggle}>
-        <p className="text-sm text-muted-foreground">No active batches.</p>
+      <PageSection title="Active relays" action={toggle}>
+        <p className="text-sm text-muted-foreground">No active relays.</p>
       </PageSection>
     )
   }
 
   if (batches.length === 1 && archivedBatches.length === 0) {
     return (
-      <PageSection title="Active batch" action={toggle}>
+      <PageSection title="Active relay" action={toggle}>
         <ActiveBatchHero clientId={clientId} batch={batches[0]} />
       </PageSection>
     )
@@ -58,10 +58,10 @@ export async function ActiveBatchesSection({
 
   const title =
     batches.length === 1
-      ? 'Active batch'
+      ? 'Active relay'
       : batches.length > 0
-        ? `Active batches (${batches.length})`
-        : 'Active batches'
+        ? `Active relays (${batches.length})`
+        : 'Active relays'
 
   return (
     <PageSection title={title} action={toggle}>

@@ -122,7 +122,7 @@ async function resolveHolderForStep(
       linkedClientUsers: { select: { id: true } },
     },
   })
-  if (!client) throw new RelayServiceError('Client not found for batch')
+  if (!client) throw new RelayServiceError('Client not found for relay')
 
   const notifyUserIds = getNotifyTargetsForStep(step, client)
 
@@ -186,7 +186,7 @@ export async function passBaton(input: PassBatonInput) {
         label: true,
       },
     })
-    if (!batch) throw new RelayServiceError('Batch not found')
+    if (!batch) throw new RelayServiceError('Relay not found')
 
     const result = validateTransition(batch.currentStep, input.toStep)
     if (!result.ok) throw new RelayServiceError(result.reason ?? 'Illegal transition')
@@ -276,7 +276,7 @@ export async function sendBackBaton(input: SendBackBatonInput) {
         label: true,
       },
     })
-    if (!batch) throw new RelayServiceError('Batch not found')
+    if (!batch) throw new RelayServiceError('Relay not found')
 
     const result = validateTransition(batch.currentStep, input.toStep)
     if (!result.ok) throw new RelayServiceError(result.reason ?? 'Illegal transition')
@@ -359,10 +359,10 @@ export async function dispatchRevisions(input: DispatchRevisionsInput) {
       where: { id: input.batchId },
       select: { id: true, clientId: true, currentStep: true, label: true },
     })
-    if (!batch) throw new RelayServiceError('Batch not found')
+    if (!batch) throw new RelayServiceError('Relay not found')
     if (batch.currentStep !== RelayStep.implementing_revisions) {
       throw new RelayServiceError(
-        `dispatchRevisions called on batch at step ${batch.currentStep}; must be implementing_revisions`,
+        `dispatchRevisions called on relay at step ${batch.currentStep}; must be implementing_revisions`,
       )
     }
 
@@ -447,7 +447,7 @@ export async function completeRevisionItem(input: CompleteRevisionItemInput) {
       where: { id: item.plan.batchId },
       select: { id: true, clientId: true, currentStep: true, label: true },
     })
-    if (!batch) throw new RelayServiceError('Batch not found')
+    if (!batch) throw new RelayServiceError('Relay not found')
 
     const completedByName = await loadUserName(tx, input.actorId)
 

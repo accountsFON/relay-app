@@ -51,7 +51,7 @@ export function BatchCompletionLap({
   return (
     <div
       role="dialog"
-      aria-label="Batch complete celebration"
+      aria-label="Relay complete celebration"
       data-component="batch-completion-lap"
       className={
         'fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm transition-opacity duration-700 ' +
@@ -75,7 +75,7 @@ export function BatchCompletionLap({
         <div className="absolute inset-0 grid place-items-center">
           <div className="flex flex-col items-center gap-2 text-foreground">
             <Trophy className="size-12 text-amber-500" />
-            <p className="text-lg font-semibold">Batch complete!</p>
+            <p className="text-lg font-semibold">Relay complete!</p>
             <p className="text-[13px] text-muted-foreground">
               {participants.length === 1
                 ? 'Solid lap.'

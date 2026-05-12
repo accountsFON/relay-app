@@ -135,7 +135,7 @@ export function GenerateContentDialog({
               }
             }
           } catch (e) {
-            setError(e instanceof Error ? e.message : 'Failed to look up matching batch')
+            setError(e instanceof Error ? e.message : 'Failed to look up matching relay')
           }
         }
       } catch (e) {
@@ -218,7 +218,7 @@ export function GenerateContentDialog({
           )}
           <DialogDescription>
             {lockMonth
-              ? "Locked to this batch's month. Open a different batch to generate for a different month."
+              ? "Locked to this relay's month. Open a different relay to generate for a different month."
               : 'Choose the month to generate content for. Re-crawl is optional.'}
           </DialogDescription>
         </DialogHeader>
@@ -307,8 +307,8 @@ export function GenerateContentDialog({
             </p>
             <p className="text-sm text-muted-foreground">
               {matchingBatch.postCount === 0
-                ? `The "${matchingBatch.label}" batch is empty. What would you like to do with the ${progress?.postCount ?? 0} new posts?`
-                : `The "${matchingBatch.label}" batch already has ${matchingBatch.postCount} posts. What would you like to do?`}
+                ? `The "${matchingBatch.label}" relay is empty. What would you like to do with the ${progress?.postCount ?? 0} new posts?`
+                : `The "${matchingBatch.label}" relay already has ${matchingBatch.postCount} posts. What would you like to do?`}
             </p>
             {/* Add */}
             <Button
@@ -324,8 +324,8 @@ export function GenerateContentDialog({
               }
             >
               {matchingBatch.postCount === 0
-                ? `Attach to "${matchingBatch.label}" batch`
-                : `Add to "${matchingBatch.label}" batch (${progress.postCount + matchingBatch.postCount} total posts)`}
+                ? `Attach to "${matchingBatch.label}" relay`
+                : `Add to "${matchingBatch.label}" relay (${progress.postCount + matchingBatch.postCount} total posts)`}
             </Button>
 
             {/* Replace -- always available; label and confirmation adapt when count=0 */}
@@ -337,15 +337,15 @@ export function GenerateContentDialog({
                 onClick={() => setConfirmingReplace(true)}
               >
                 {matchingBatch.postCount === 0
-                  ? `Replace "${matchingBatch.label}" batch`
-                  : `Replace "${matchingBatch.label}" batch (delete ${matchingBatch.postCount} existing)`}
+                  ? `Replace "${matchingBatch.label}" relay`
+                  : `Replace "${matchingBatch.label}" relay (delete ${matchingBatch.postCount} existing)`}
               </Button>
             ) : (
               <div className="rounded border border-destructive p-3 space-y-2">
                 <p className="text-sm text-destructive">
                   {matchingBatch.postCount === 0
-                    ? `This will replace the "${matchingBatch.label}" batch with the new posts. (No existing posts to delete.)`
-                    : `⚠ This will permanently delete the ${matchingBatch.postCount} existing posts in the "${matchingBatch.label}" batch. This cannot be undone. The new posts will replace them.`}
+                    ? `This will replace the "${matchingBatch.label}" relay with the new posts. (No existing posts to delete.)`
+                    : `⚠ This will permanently delete the ${matchingBatch.postCount} existing posts in the "${matchingBatch.label}" relay. This cannot be undone. The new posts will replace them.`}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -380,11 +380,11 @@ export function GenerateContentDialog({
                 disabled={isFinalizing}
                 onClick={() => setShowingNewBatchInput(true)}
               >
-                Start a new batch
+                Start a new relay
               </Button>
             ) : (
               <div className="rounded border border-border p-3 space-y-2">
-                <Label htmlFor="new-batch-label">New batch label</Label>
+                <Label htmlFor="new-batch-label">New relay label</Label>
                 <Input
                   id="new-batch-label"
                   value={newBatchLabel}
@@ -410,7 +410,7 @@ export function GenerateContentDialog({
                       })
                     }
                   >
-                    {isFinalizing ? <Loader2 className="size-4 animate-spin" /> : 'Create batch'}
+                    {isFinalizing ? <Loader2 className="size-4 animate-spin" /> : 'Create relay'}
                   </Button>
                 </div>
               </div>

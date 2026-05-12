@@ -37,7 +37,7 @@ export default async function AdminDashboardPage() {
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <PageHeader
         title="Admin"
-        description="Onboarding queue, stuck batch watchlist, and failed runs."
+        description="Onboarding queue, stuck relay watchlist, and failed runs."
       />
 
       <div className="mt-6">
@@ -47,7 +47,7 @@ export default async function AdminDashboardPage() {
       <div className="mt-10 space-y-8">
         <PageSection
           title={`Onboarding queue · ${onboardingQueue.length}`}
-          description="Clients waiting on you to finish onboarding before their first batch can start."
+          description="Clients waiting on you to finish onboarding before their first relay can start."
         >
           {onboardingQueue.length === 0 ? (
             <EmptyState
@@ -67,12 +67,12 @@ export default async function AdminDashboardPage() {
 
         <PageSection
           title={`Stuck watchlist · ${stuckBatches.length}`}
-          description="Batches idle on the same step for more than 48 hours."
+          description="Relays idle on the same step for more than 48 hours."
         >
           {stuckBatches.length === 0 ? (
             <EmptyState
               title="Nothing's stuck"
-              description="Every active batch is moving."
+              description="Every active relay is moving."
             />
           ) : (
             <ul className="divide-y divide-border rounded-md border border-border bg-background">

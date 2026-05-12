@@ -170,12 +170,12 @@ async function purgeContentRun(runId: string, actorUserId: string): Promise<void
 async function purgeBatch(batchId: string, actorUserId: string): Promise<void> {
   // Two-query pattern.
   const batch = await db.batch.withArchived().findFirst({ where: { id: batchId } })
-  if (!batch) throw new Error(`Batch ${batchId} not found`)
+  if (!batch) throw new Error(`Relay ${batchId} not found`)
   if (!batch.deletedAt)
-    throw new Error(`Batch ${batchId} is not archived — cannot purge a live row`)
+    throw new Error(`Relay ${batchId} is not archived, cannot purge a live row`)
 
   const client = await db.client.withArchived().findFirst({ where: { id: batch.clientId } })
-  if (!client) throw new Error(`Client ${batch.clientId} not found for Batch ${batchId}`)
+  if (!client) throw new Error(`Client ${batch.clientId} not found for Relay ${batchId}`)
 
   const organizationId = client.organizationId
   await assertIsOrgAdmin(actorUserId, organizationId)

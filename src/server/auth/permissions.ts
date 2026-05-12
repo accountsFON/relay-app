@@ -40,11 +40,11 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'admin.portal': 'Access admin portal',
   'team.manage': 'Manage team (roles, assignments)',
   'team.editPermissions': 'Edit role and user permissions',
-  'relay.pass': 'Pass the baton (forward) on a batch',
-  'relay.sendBack': 'Send a batch back to a previous step',
+  'relay.pass': 'Pass the baton (forward) on a relay',
+  'relay.sendBack': 'Send a relay back to a previous step',
   'relay.composeRevisionPlan': 'Compose a revision plan (step 11b)',
   'relay.completeRevisionItem': 'Mark a revision item complete',
-  'relay.takeOver': 'Take over a stuck batch from another holder',
+  'relay.takeOver': 'Take over a stuck relay from another holder',
   'relay.completeOnboarding': 'Mark a client onboarding gate complete',
 }
 

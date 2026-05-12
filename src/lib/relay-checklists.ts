@@ -40,13 +40,13 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
     { label: 'Posting dates correct' },
   ],
   [RelayStep.sent_to_client]: [
-    { label: 'Client opened the batch' },
+    { label: 'Client opened the relay' },
   ],
   [RelayStep.client_decision]: [
     { label: 'Client decision recorded (approve or revisions)' },
   ],
   [RelayStep.ready_to_schedule]: [
-    { label: 'AM confirmed batch ready to schedule' },
+    { label: 'AM confirmed relay ready to schedule' },
   ],
   [RelayStep.implementing_revisions]: [
     { label: 'Revision plan composed' },
