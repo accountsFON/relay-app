@@ -9,6 +9,7 @@ const TABS = [
   { href: '/admin/users', label: 'Team' },
   { href: '/admin/clients', label: 'Clients' },
   { href: '/admin/roles', label: 'Role defaults' },
+  { href: '/admin/trash', label: 'Trash' },
 ]
 
 /**
