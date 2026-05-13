@@ -14,6 +14,7 @@ import { MobileSearchSheet } from '@/components/search/mobile-search-sheet'
 import { InFlightRunsProvider } from '@/components/relay/in-flight-runs-provider'
 import { InFlightRunsPill } from '@/components/relay/in-flight-runs-pill'
 import { InFlightChoiceModal } from '@/components/relay/in-flight-choice-modal'
+import { InFlightAutoFinalizer } from '@/components/relay/in-flight-auto-finalizer'
 
 type BadgeKey = 'unreadMentions'
 type NavItem = {
@@ -231,6 +232,7 @@ export function AppShell({
       </div>
     </div>
     <InFlightChoiceModal />
+    <InFlightAutoFinalizer />
     </InFlightRunsProvider>
   )
 }
