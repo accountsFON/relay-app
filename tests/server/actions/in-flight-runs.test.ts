@@ -73,6 +73,7 @@ type RowOverrides = Partial<{
   createdAt: Date
   client: { name: string }
   _count: { posts: number }
+  targetBatchId: string | null
 }>
 
 function makeRow(overrides: RowOverrides = {}) {
@@ -88,6 +89,7 @@ function makeRow(overrides: RowOverrides = {}) {
     createdAt: new Date('2026-05-12T10:00:00Z'),
     client: { name: 'Acme Corp' },
     _count: { posts: 0 },
+    targetBatchId: null,
     ...overrides,
   }
 }
@@ -356,6 +358,48 @@ describe('retryFailedRunAction', () => {
     expect(vi.mocked(db.post.deleteMany)).not.toHaveBeenCalled()
     expect(vi.mocked(db.contentRun.delete)).not.toHaveBeenCalled()
     expect(vi.mocked(triggerGeneration)).not.toHaveBeenCalled()
+  })
+})
+
+// ---- listInFlightRuns targetBatchId field --------------------------------
+
+describe('listInFlightRuns targetBatchId field', () => {
+  it('exposes targetBatchId when the run has one set', async () => {
+    vi.mocked(db.contentRun.findMany).mockResolvedValue([
+      makeRow({
+        id: 'run_tbid_1',
+        clientId: 'client_1',
+        targetMonth: '2026-06',
+        status: 'running',
+        client: { name: 'Acme Corp' },
+        _count: { posts: 2 },
+        targetBatchId: 'batch_xyz',
+      }),
+    ] as never)
+
+    const result = await listInFlightRuns()
+
+    expect(result).toHaveLength(1)
+    expect(result[0].targetBatchId).toBe('batch_xyz')
+  })
+
+  it('exposes targetBatchId as null when the run has none', async () => {
+    vi.mocked(db.contentRun.findMany).mockResolvedValue([
+      makeRow({
+        id: 'run_tbid_2',
+        clientId: 'client_1',
+        targetMonth: '2026-06',
+        status: 'running',
+        client: { name: 'Acme Corp' },
+        _count: { posts: 0 },
+        targetBatchId: null,
+      }),
+    ] as never)
+
+    const result = await listInFlightRuns()
+
+    expect(result).toHaveLength(1)
+    expect(result[0].targetBatchId).toBeNull()
   })
 })
 
