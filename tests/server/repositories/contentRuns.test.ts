@@ -34,7 +34,7 @@ const { db, pool } = await vi.hoisted(async () => {
 vi.mock('@/db/client', () => ({ db }))
 
 // Import after vi.mock so the mock is in place.
-import { createContentRun, findMatchingBatchForRun } from '@/server/repositories/contentRuns'
+import { createContentRun, findMatchingBatchForRun, findMatchingBatchForClientMonth } from '@/server/repositories/contentRuns'
 
 afterAll(async () => {
   await pool.end()
@@ -194,5 +194,43 @@ describe('findMatchingBatchForRun', () => {
     })
     const match = await findMatchingBatchForRun(probeRun.id)
     expect(match).toBeNull()
+  })
+})
+
+describe('findMatchingBatchForClientMonth', () => {
+  it('returns null when no batch matches', async () => {
+    const match = await findMatchingBatchForClientMonth(clientId, '2026-05')
+    expect(match).toBeNull()
+  })
+
+  it('returns the matching batch with post count', async () => {
+    const batch = await db.batch.create({ data: { clientId, label: 'May 2026', currentStep: 'copy', currentHolder: userId, currentRole: 'am' } })
+    const run = await createContentRun({ clientId, triggeredById: userId, targetMonth: '2026-05' })
+    await db.post.create({ data: { contentRunId: run.id, clientId, batchId: batch.id, postDate: new Date('2026-05-01'), caption: 'p1' } })
+    await db.post.create({ data: { contentRunId: run.id, clientId, batchId: batch.id, postDate: new Date('2026-05-02'), caption: 'p2' } })
+
+    const match = await findMatchingBatchForClientMonth(clientId, '2026-05')
+    expect(match).toEqual({ id: batch.id, label: 'May 2026', postCount: 2 })
+  })
+
+  it('matches the Client Name Month Year label format (PR #32)', async () => {
+    const batch = await db.batch.create({ data: { clientId, label: 'Test Client May 2026', currentStep: 'copy', currentHolder: userId, currentRole: 'am' } })
+    const match = await findMatchingBatchForClientMonth(clientId, '2026-05')
+    expect(match?.id).toBe(batch.id)
+  })
+
+  it('excludes archived batches', async () => {
+    await db.batch.create({ data: { clientId, label: 'May 2026', currentStep: 'copy', currentHolder: userId, currentRole: 'am', deletedAt: new Date() } })
+    const match = await findMatchingBatchForClientMonth(clientId, '2026-05')
+    expect(match).toBeNull()
+  })
+
+  it('prefers populated batch over empty when both match', async () => {
+    await db.batch.create({ data: { clientId, label: 'Client A May 2026', currentStep: 'copy', currentHolder: userId, currentRole: 'am' } })
+    const populated = await db.batch.create({ data: { clientId, label: 'Client B May 2026', currentStep: 'copy', currentHolder: userId, currentRole: 'am' } })
+    const run = await createContentRun({ clientId, triggeredById: userId, targetMonth: '2026-05' })
+    await db.post.create({ data: { contentRunId: run.id, clientId, batchId: populated.id, postDate: new Date('2026-05-01'), caption: 'p' } })
+    const match = await findMatchingBatchForClientMonth(clientId, '2026-05')
+    expect(match?.id).toBe(populated.id)
   })
 })

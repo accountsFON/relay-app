@@ -179,6 +179,48 @@ export async function findMatchingBatchForRun(
   }
 }
 
+/**
+ * Pre-flight sibling of findMatchingBatchForRun. Takes clientId and
+ * targetMonth directly so it can be called before any ContentRun exists.
+ *
+ * Used by the pre-flight Replace flow in generateContentAction (probe phase).
+ * Same matching rules: parseLabel on the batch label, archive exclusion,
+ * prefer most-populated then most-recent.
+ */
+export async function findMatchingBatchForClientMonth(
+  clientId: string,
+  targetMonth: string,
+): Promise<{ id: string; label: string; postCount: number } | null> {
+  const candidates = await db.batch.findMany({
+    where: { clientId, deletedAt: null },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: { id: true, label: true, createdAt: true },
+  })
+
+  const matches = candidates.filter((b) => {
+    const parsed = parseLabel(b.label, b.createdAt)
+    return parsed === targetMonth
+  })
+
+  if (matches.length === 0) return null
+
+  const withCounts = await Promise.all(
+    matches.map(async (b) => ({
+      ...b,
+      postCount: await db.post.count({ where: { batchId: b.id, deletedAt: null } }),
+    })),
+  )
+
+  withCounts.sort((a, b) => {
+    if (a.postCount !== b.postCount) return b.postCount - a.postCount
+    return b.createdAt.getTime() - a.createdAt.getTime()
+  })
+
+  const best = withCounts[0]
+  return { id: best.id, label: best.label, postCount: best.postCount }
+}
+
 export async function getMonthlyCostSummary(
   organizationId: string,
   opts: { dateScope?: DateScope } = {},
