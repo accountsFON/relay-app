@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
@@ -119,18 +120,38 @@ export function InFlightRunsPill() {
             <p className="text-[14px] font-semibold">{label} in flight</p>
           </div>
           <ul className="py-2 max-h-[400px] overflow-auto">
-            {sorted.map((run) => (
-              <li key={run.id} data-testid="inflight-row" className="px-4 py-2 text-[13px]">
-                <p className="font-medium text-foreground">{run.clientName}</p>
-                <p
-                  className="text-muted-foreground truncate"
-                  title={run.intent === 'failed' && run.errorMessage ? `Failed: ${run.errorMessage}` : undefined}
-                >
-                  {stepLabel(run)}
-                </p>
-                {run.intent === 'failed' && <FailedRunActions runId={run.id} />}
-              </li>
-            ))}
+            {sorted.map((run) => {
+              const isFailed = run.intent === 'failed'
+              const rowBody = (
+                <>
+                  <p className="font-medium text-foreground">{run.clientName}</p>
+                  <p
+                    className="text-muted-foreground truncate"
+                    title={isFailed && run.errorMessage ? `Failed: ${run.errorMessage}` : undefined}
+                  >
+                    {stepLabel(run)}
+                  </p>
+                </>
+              )
+              return (
+                <li key={run.id} data-testid="inflight-row" className="text-[13px]">
+                  {isFailed ? (
+                    <div className="px-4 py-2">
+                      {rowBody}
+                      <FailedRunActions runId={run.id} />
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/clients/${run.clientId}`}
+                      onClick={() => setOpen(false)}
+                      className="block px-4 py-2 hover:bg-cream-warm/60 transition-colors"
+                    >
+                      {rowBody}
+                    </Link>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
