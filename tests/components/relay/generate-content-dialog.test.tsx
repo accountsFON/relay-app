@@ -1,91 +1,104 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
 
-const triggerGenerationMock = vi.fn()
-const getClientCrawlInfoMock = vi.fn()
-const refreshMock = vi.fn()
-
-vi.mock('@/app/(app)/clients/[id]/generate/actions', () => ({
-  triggerGeneration: (...args: unknown[]) => triggerGenerationMock(...args),
-  getClientCrawlInfo: (...args: unknown[]) => getClientCrawlInfoMock(...args),
+vi.mock('@/server/actions/generate-content', () => ({
+  generateContentAction: vi.fn(),
 }))
-
 vi.mock('@/components/relay/in-flight-runs-provider', () => ({
-  useInFlightRuns: () => ({
-    runs: [],
-    isLoading: false,
-    error: null,
-    refresh: refreshMock,
-  }),
+  useInFlightRuns: () => ({ refresh: vi.fn() }),
+}))
+vi.mock('@/app/(app)/clients/[id]/generate/actions', () => ({
+  getClientCrawlInfo: async () => ({ autoCrawl: 'never', hasCrawledData: false, crawledDataAt: null }),
 }))
 
-const defaultProps = {
-  clientId: 'client-1',
-  clientName: 'Test Client',
-  targetMonth: '2026-05',
+import { generateContentAction } from '@/server/actions/generate-content'
+const mockAction = generateContentAction as unknown as ReturnType<typeof vi.fn>
+
+beforeEach(() => mockAction.mockReset())
+
+async function openDialog() {
+  render(<GenerateContentDialog clientId="c1" targetMonth="2026-05" />)
+  fireEvent.click(screen.getByRole('button', { name: /generate content/i }))
 }
 
 describe('GenerateContentDialog', () => {
-  beforeEach(() => {
-    triggerGenerationMock.mockReset()
-    getClientCrawlInfoMock.mockReset().mockResolvedValue({
-      autoCrawl: 'when_empty',
-      hasCrawledData: true,
-      crawledDataAt: null,
-    })
-    refreshMock.mockReset().mockResolvedValue(undefined)
+  it('renders the picker view on open', async () => {
+    await openDialog()
+    expect(await screen.findByLabelText(/month/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/re-crawl/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /start generation/i })).toBeInTheDocument()
   })
 
-  it('opens the dialog when the trigger button is clicked', async () => {
-    const user = userEvent.setup()
-    render(<GenerateContentDialog {...defaultProps} />)
-    await user.click(screen.getByRole('button', { name: /generate content/i }))
-    expect(screen.getByRole('button', { name: /start generation/i })).toBeInTheDocument()
+  it('on Generate, no_match probe transitions to firing then closes', async () => {
+    mockAction.mockResolvedValueOnce({ kind: 'no_match' })
+    mockAction.mockResolvedValueOnce({ kind: 'fired', runId: 'r1' })
+    await openDialog()
+    fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
+    await waitFor(() => expect(mockAction).toHaveBeenCalledTimes(2))
+    const calls = mockAction.mock.calls
+    expect(calls[0][0]).toMatchObject({ kind: 'probe' })
+    expect(calls[1][0]).toMatchObject({ kind: 'fire', targetBatchId: null })
+  })
+
+  it('on Generate, empty_batch probe auto-fires with targetBatchId: null (server resolves)', async () => {
+    mockAction.mockResolvedValueOnce({ kind: 'empty_batch', batchId: 'b1', label: 'May 2026' })
+    mockAction.mockResolvedValueOnce({ kind: 'fired', runId: 'r1' })
+    await openDialog()
+    fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
+    await waitFor(() => expect(mockAction).toHaveBeenCalledTimes(2))
+    expect(mockAction.mock.calls[1][0]).toMatchObject({ kind: 'fire', targetBatchId: null })
+  })
+
+  it('on Generate, needs_confirm probe shows confirm view', async () => {
+    mockAction.mockResolvedValueOnce({ kind: 'needs_confirm', batchId: 'b1', label: 'May 2026', postCount: 12 })
+    await openDialog()
+    fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
+    expect(await screen.findByText(/replace/i)).toBeInTheDocument()
+    expect(screen.getByText(/12 post/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^replace$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
   })
 
-  it('calls triggerGeneration, refresh, and closes the dialog on success', async () => {
-    const user = userEvent.setup()
-    triggerGenerationMock.mockResolvedValue(undefined)
-    render(<GenerateContentDialog {...defaultProps} />)
+  it('confirm Cancel returns to picker preserving the month', async () => {
+    mockAction.mockResolvedValueOnce({ kind: 'needs_confirm', batchId: 'b1', label: 'May 2026', postCount: 12 })
+    await openDialog()
+    fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
+    await screen.findByRole('button', { name: /^replace$/i })
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(await screen.findByLabelText(/month/i)).toBeInTheDocument()
+    expect(screen.getByLabelText<HTMLInputElement>(/month/i).value).toBe('2026-05')
+  })
 
-    await user.click(screen.getByRole('button', { name: /generate content/i }))
-    await user.click(screen.getByRole('button', { name: /start generation/i }))
-
-    await waitFor(() => {
-      expect(triggerGenerationMock).toHaveBeenCalledWith('client-1', '2026-05', expect.any(Boolean))
-      expect(refreshMock).toHaveBeenCalledTimes(1)
-    })
-
-    // Dialog should close (Start generation button gone)
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /start generation/i })).not.toBeInTheDocument()
+  it('confirm Replace calls fire with targetBatchId set', async () => {
+    mockAction.mockResolvedValueOnce({ kind: 'needs_confirm', batchId: 'b1', label: 'May 2026', postCount: 12 })
+    mockAction.mockResolvedValueOnce({ kind: 'fired', runId: 'r1' })
+    await openDialog()
+    fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
+    await screen.findByRole('button', { name: /^replace$/i })
+    fireEvent.click(screen.getByRole('button', { name: /^replace$/i }))
+    await waitFor(() => expect(mockAction).toHaveBeenCalledTimes(2))
+    expect(mockAction.mock.calls[1][0]).toMatchObject({
+      kind: 'fire',
+      targetBatchId: 'b1',
     })
   })
 
-  it('shows an inline error and does not close when triggerGeneration throws', async () => {
-    const user = userEvent.setup()
-    triggerGenerationMock.mockRejectedValue(new Error('quota exceeded'))
-    render(<GenerateContentDialog {...defaultProps} />)
-
-    await user.click(screen.getByRole('button', { name: /generate content/i }))
-    await user.click(screen.getByRole('button', { name: /start generation/i }))
-
-    expect(await screen.findByText(/quota exceeded/i)).toBeInTheDocument()
-    // Dialog remains open
-    expect(screen.getByRole('button', { name: /start generation/i })).toBeInTheDocument()
-    expect(refreshMock).not.toHaveBeenCalled()
+  it('drift response returns to confirm with refreshed state', async () => {
+    mockAction.mockResolvedValueOnce({ kind: 'needs_confirm', batchId: 'b1', label: 'May 2026', postCount: 12 })
+    mockAction.mockResolvedValueOnce({ kind: 'drift', current: { batchId: 'b2', label: 'May 2026', postCount: 7 } })
+    await openDialog()
+    fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
+    await screen.findByText(/12 post/i)
+    fireEvent.click(screen.getByRole('button', { name: /^replace$/i }))
+    expect(await screen.findByText(/7 post/i)).toBeInTheDocument()
   })
 
-  it('disables the month picker when lockMonth is true', async () => {
-    const user = userEvent.setup()
-    render(<GenerateContentDialog {...defaultProps} lockMonth />)
-
-    await user.click(screen.getByRole('button', { name: /generate content/i }))
-
-    expect(screen.queryByLabelText(/month/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/locked to this relay/i)).toBeInTheDocument()
+  it('error response shows error view with Retry', async () => {
+    mockAction.mockResolvedValueOnce({ kind: 'error', message: 'Network down' })
+    await openDialog()
+    fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
+    expect(await screen.findByText(/network down/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
   })
 })

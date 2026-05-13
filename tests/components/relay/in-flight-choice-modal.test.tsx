@@ -32,6 +32,7 @@ function mkAwaiting(id: string, clientName: string, startedAt: string): InFlight
     postCount: 0,
     errorMessage: null,
     startedAt,
+    targetBatchId: null,
     matchingBatch: { batchId: 'b1', label: 'June 2026', postCount: 5 },
   }
 }

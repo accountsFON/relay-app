@@ -11,12 +11,14 @@ export async function createContentRun(input: {
   clientId: string
   triggeredById: string
   targetMonth: string
+  targetBatchId?: string | null
 }) {
   return db.contentRun.create({
     data: {
       clientId: input.clientId,
       triggeredById: input.triggeredById,
       targetMonth: input.targetMonth,
+      targetBatchId: input.targetBatchId ?? null,
       status: 'queued',
     },
   })
@@ -133,8 +135,11 @@ export async function findMatchingBatchForRun(
   if (!run) return null
 
   // Pull candidate batches for the client (cap at 50 most recent).
+  // Exclude archived batches (deletedAt: null) so a retired batch can never
+  // surface as a replace target — the soft-delete extension also enforces
+  // this, but we make the intent explicit here.
   const candidates = await db.batch.findMany({
-    where: { clientId: run.clientId },
+    where: { clientId: run.clientId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: {
@@ -156,7 +161,7 @@ export async function findMatchingBatchForRun(
   const matchesWithCounts = await Promise.all(
     matches.map(async (b) => ({
       ...b,
-      postCount: await db.post.count({ where: { batchId: b.id } }),
+      postCount: await db.post.count({ where: { batchId: b.id, deletedAt: null } }),
     })),
   )
 
@@ -172,6 +177,48 @@ export async function findMatchingBatchForRun(
     label: best.label,
     postCount: best.postCount,
   }
+}
+
+/**
+ * Pre-flight sibling of findMatchingBatchForRun. Takes clientId and
+ * targetMonth directly so it can be called before any ContentRun exists.
+ *
+ * Used by the pre-flight Replace flow in generateContentAction (probe phase).
+ * Same matching rules: parseLabel on the batch label, archive exclusion,
+ * prefer most-populated then most-recent.
+ */
+export async function findMatchingBatchForClientMonth(
+  clientId: string,
+  targetMonth: string,
+): Promise<{ id: string; label: string; postCount: number } | null> {
+  const candidates = await db.batch.findMany({
+    where: { clientId, deletedAt: null },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: { id: true, label: true, createdAt: true },
+  })
+
+  const matches = candidates.filter((b) => {
+    const parsed = parseLabel(b.label, b.createdAt)
+    return parsed === targetMonth
+  })
+
+  if (matches.length === 0) return null
+
+  const withCounts = await Promise.all(
+    matches.map(async (b) => ({
+      ...b,
+      postCount: await db.post.count({ where: { batchId: b.id, deletedAt: null } }),
+    })),
+  )
+
+  withCounts.sort((a, b) => {
+    if (a.postCount !== b.postCount) return b.postCount - a.postCount
+    return b.createdAt.getTime() - a.createdAt.getTime()
+  })
+
+  const best = withCounts[0]
+  return { id: best.id, label: best.label, postCount: best.postCount }
 }
 
 export async function getMonthlyCostSummary(

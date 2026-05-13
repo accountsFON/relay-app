@@ -120,7 +120,7 @@ export async function findDefaultMatchingBatch(
   targetMonth: string,
 ): Promise<{ batchId: string } | null> {
   const candidates = await db.batch.findMany({
-    where: { clientId },
+    where: { clientId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: { id: true, label: true, createdAt: true },
