@@ -135,8 +135,11 @@ export async function findMatchingBatchForRun(
   if (!run) return null
 
   // Pull candidate batches for the client (cap at 50 most recent).
+  // Exclude archived batches (deletedAt: null) so a retired batch can never
+  // surface as a replace target — the soft-delete extension also enforces
+  // this, but we make the intent explicit here.
   const candidates = await db.batch.findMany({
-    where: { clientId: run.clientId },
+    where: { clientId: run.clientId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: {

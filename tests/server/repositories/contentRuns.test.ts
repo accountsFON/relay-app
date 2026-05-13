@@ -34,7 +34,7 @@ const { db, pool } = await vi.hoisted(async () => {
 vi.mock('@/db/client', () => ({ db }))
 
 // Import after vi.mock so the mock is in place.
-import { createContentRun } from '@/server/repositories/contentRuns'
+import { createContentRun, findMatchingBatchForRun } from '@/server/repositories/contentRuns'
 
 afterAll(async () => {
   await pool.end()
@@ -119,5 +119,80 @@ describe('createContentRun', () => {
       targetBatchId: batch.id,
     })
     expect(run.targetBatchId).toBe(batch.id)
+  })
+})
+
+describe('findMatchingBatchForRun', () => {
+  it('excludes archived batches and returns the live one', async () => {
+    // Create an archived batch for the same client+month — this one has a post
+    // attached so it would win the tiebreaker if archive exclusion were missing.
+    const archived = await db.batch.create({
+      data: {
+        clientId,
+        label: 'May 2026',
+        currentStep: 'copy',
+        currentHolder: userId,
+        currentRole: 'am',
+        deletedAt: new Date(),
+      },
+    })
+
+    // Create the live batch.
+    const live = await db.batch.create({
+      data: {
+        clientId,
+        label: 'May 2026',
+        currentStep: 'copy',
+        currentHolder: userId,
+        currentRole: 'am',
+      },
+    })
+
+    // Attach a post to the archived batch so it would score higher on post
+    // count if not excluded.
+    const seedRun = await createContentRun({
+      clientId,
+      triggeredById: userId,
+      targetMonth: '2026-05',
+    })
+    await db.post.create({
+      data: {
+        contentRunId: seedRun.id,
+        clientId,
+        batchId: archived.id,
+        postDate: new Date('2026-05-01'),
+        caption: 'old post in archived batch',
+      },
+    })
+
+    // The probe run should match only the live batch.
+    const probeRun = await createContentRun({
+      clientId,
+      triggeredById: userId,
+      targetMonth: '2026-05',
+    })
+    const match = await findMatchingBatchForRun(probeRun.id)
+    expect(match?.id).toBe(live.id)
+  })
+
+  it('returns null when only archived batches match', async () => {
+    await db.batch.create({
+      data: {
+        clientId,
+        label: 'May 2026',
+        currentStep: 'copy',
+        currentHolder: userId,
+        currentRole: 'am',
+        deletedAt: new Date(),
+      },
+    })
+
+    const probeRun = await createContentRun({
+      clientId,
+      triggeredById: userId,
+      targetMonth: '2026-05',
+    })
+    const match = await findMatchingBatchForRun(probeRun.id)
+    expect(match).toBeNull()
   })
 })
