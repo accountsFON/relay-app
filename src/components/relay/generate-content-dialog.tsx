@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
 import {
   Dialog,
@@ -41,9 +41,11 @@ export function GenerateContentDialog({
   const [reCrawl, setReCrawl] = useState(false)
   const [lastCrawled, setLastCrawled] = useState<string | null>(null)
   const [view, setView] = useState<View>({ kind: 'picker' })
+  const generationRef = useRef(0)
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
+      generationRef.current += 1  // invalidate any in-flight calls
       setView({ kind: 'picker' })
     }
     setOpen(next)
@@ -64,6 +66,7 @@ export function GenerateContentDialog({
   const monthToUse = lockMonth ? targetMonth : pickedMonth
 
   async function probeThenFire(targetBatchId: string | null) {
+    const gen = generationRef.current
     setView({ kind: 'firing' })
     const fire = await generateContentAction({
       kind: 'fire',
@@ -72,14 +75,15 @@ export function GenerateContentDialog({
       targetBatchId,
       recrawl: reCrawl,
     })
-    return handleFireResult(fire)
+    if (gen !== generationRef.current) return  // stale, dialog was closed
+    return handleFireResult(fire, gen)
   }
 
-  function handleFireResult(result: GenerateContentResult) {
+  function handleFireResult(result: GenerateContentResult, gen: number) {
+    if (gen !== generationRef.current) return  // stale, dialog was closed
     if (result.kind === 'fired') {
       refresh()
       setOpen(false)
-      setView({ kind: 'picker' })
       return
     }
     if (result.kind === 'drift') {
@@ -103,12 +107,14 @@ export function GenerateContentDialog({
   }
 
   async function runProbe() {
+    const gen = generationRef.current
     setView({ kind: 'checking' })
     const probe = await generateContentAction({
       kind: 'probe',
       clientId,
       targetMonth: monthToUse,
     })
+    if (gen !== generationRef.current) return  // stale, dialog was closed
     if (probe.kind === 'error') {
       setView({ kind: 'error', message: probe.message })
       return
@@ -124,7 +130,10 @@ export function GenerateContentDialog({
         label: probe.label,
         postCount: probe.postCount,
       })
+      return
     }
+    // Unexpected probe response (fired/drift shouldn't reach here)
+    setView({ kind: 'error', message: 'Unexpected response from server' })
   }
 
   async function handleReplace() {

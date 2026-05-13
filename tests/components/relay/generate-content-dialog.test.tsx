@@ -41,7 +41,7 @@ describe('GenerateContentDialog', () => {
     expect(calls[1][0]).toMatchObject({ kind: 'fire', targetBatchId: null })
   })
 
-  it('on Generate, empty_batch probe transitions to firing with batchId set', async () => {
+  it('on Generate, empty_batch probe auto-fires with targetBatchId: null (server resolves)', async () => {
     mockAction.mockResolvedValueOnce({ kind: 'empty_batch', batchId: 'b1', label: 'May 2026' })
     mockAction.mockResolvedValueOnce({ kind: 'fired', runId: 'r1' })
     await openDialog()
