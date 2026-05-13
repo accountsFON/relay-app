@@ -11,12 +11,14 @@ export async function createContentRun(input: {
   clientId: string
   triggeredById: string
   targetMonth: string
+  targetBatchId?: string | null
 }) {
   return db.contentRun.create({
     data: {
       clientId: input.clientId,
       triggeredById: input.triggeredById,
       targetMonth: input.targetMonth,
+      targetBatchId: input.targetBatchId ?? null,
       status: 'queued',
     },
   })
