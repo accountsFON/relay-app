@@ -161,7 +161,7 @@ export async function findMatchingBatchForRun(
   const matchesWithCounts = await Promise.all(
     matches.map(async (b) => ({
       ...b,
-      postCount: await db.post.count({ where: { batchId: b.id } }),
+      postCount: await db.post.count({ where: { batchId: b.id, deletedAt: null } }),
     })),
   )
 
