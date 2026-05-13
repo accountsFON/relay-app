@@ -116,4 +116,75 @@ describe('InFlightAutoFinalizer', () => {
     await new Promise((r) => setTimeout(r, 50))
     expect(finalizePostGenerationAction).toHaveBeenCalledTimes(1)
   })
+
+  it('calls finalize with choice=replace when run has targetBatchId set', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({
+        intent: 'awaiting_choice',
+        status: 'complete',
+        postCount: 5,
+        targetBatchId: 'b1',
+        matchingBatch: { batchId: 'b1', label: 'May 2026', postCount: 3 },
+      })],
+      isLoading: false,
+      error: null,
+      refresh,
+    })
+
+    render(<InFlightAutoFinalizer />)
+
+    await waitFor(() => {
+      expect(finalizePostGenerationAction).toHaveBeenCalledWith({
+        choice: 'replace',
+        runId: 'r1',
+        batchId: 'b1',
+      })
+    })
+  })
+
+  it('preserves auto-new behavior when targetBatchId is null and no matching batch', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({
+        intent: 'awaiting_choice',
+        status: 'complete',
+        postCount: 5,
+        targetBatchId: null,
+      })],
+      isLoading: false,
+      error: null,
+      refresh,
+    })
+
+    render(<InFlightAutoFinalizer />)
+
+    await waitFor(() => {
+      expect(finalizePostGenerationAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          choice: 'new',
+          runId: 'r1',
+          label: expect.any(String),
+        })
+      )
+    })
+  })
+
+  it('does not auto-finalize when targetBatchId is null but matchingBatch exists (legacy modal path)', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({
+        intent: 'awaiting_choice',
+        status: 'complete',
+        postCount: 5,
+        targetBatchId: null,
+        matchingBatch: { batchId: 'b1', label: 'May 2026', postCount: 5 },
+      })],
+      isLoading: false,
+      error: null,
+      refresh,
+    })
+
+    render(<InFlightAutoFinalizer />)
+
+    await new Promise((r) => setTimeout(r, 50))
+    expect(finalizePostGenerationAction).not.toHaveBeenCalled()
+  })
 })
