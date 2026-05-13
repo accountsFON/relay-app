@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InFlightRunsPill } from '@/components/relay/in-flight-runs-pill'
 import type { InFlightRun } from '@/server/actions/in-flight-runs'
@@ -8,6 +8,12 @@ vi.mock('@/components/relay/in-flight-runs-provider', () => ({
   useInFlightRuns: vi.fn(),
 }))
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
+
+vi.mock('@/server/actions/in-flight-runs', () => ({
+  retryFailedRunAction: vi.fn(),
+  acknowledgeFailedRunAction: vi.fn(),
+}))
+import { retryFailedRunAction, acknowledgeFailedRunAction } from '@/server/actions/in-flight-runs'
 
 function mkRun(overrides: Partial<InFlightRun>): InFlightRun {
   return {
@@ -108,5 +114,133 @@ describe('InFlightRunsPill', () => {
     const outside = screen.getByTestId('outside')
     await user.pointer({ target: outside, keys: '[MouseLeft]' })
     expect(screen.queryByText('Cedar Creek')).not.toBeInTheDocument()
+  })
+
+  it('failed run row renders Retry and Dismiss buttons', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ intent: 'failed', status: 'failed', errorMessage: 'Timeout' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    expect(screen.getByRole('button', { name: /^Retry$/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Dismiss$/ })).toBeInTheDocument()
+  })
+
+  it('active run row does NOT render Retry or Dismiss buttons', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ intent: 'active', status: 'running' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    expect(screen.queryByRole('button', { name: /^Retry$/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Dismiss$/ })).not.toBeInTheDocument()
+  })
+
+  it('awaiting_choice run row does NOT render Retry or Dismiss buttons', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ intent: 'awaiting_choice', status: 'complete' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    expect(screen.queryByRole('button', { name: /^Retry$/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Dismiss$/ })).not.toBeInTheDocument()
+  })
+
+  it('clicking Retry calls retryFailedRunAction(runId) and refresh', async () => {
+    const refresh = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(retryFailedRunAction).mockResolvedValue({ newRunId: 'r-new' })
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', intent: 'failed', status: 'failed', errorMessage: 'Oops' })],
+      isLoading: false,
+      error: null,
+      refresh,
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    await user.click(screen.getByRole('button', { name: /^Retry$/ }))
+
+    await waitFor(() => expect(retryFailedRunAction).toHaveBeenCalledWith('r1'))
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it('clicking Dismiss calls acknowledgeFailedRunAction(runId) and refresh', async () => {
+    const refresh = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(acknowledgeFailedRunAction).mockResolvedValue({ success: true })
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', intent: 'failed', status: 'failed', errorMessage: 'Oops' })],
+      isLoading: false,
+      error: null,
+      refresh,
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    await user.click(screen.getByRole('button', { name: /^Dismiss$/ }))
+
+    await waitFor(() => expect(acknowledgeFailedRunAction).toHaveBeenCalledWith('r1'))
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it('shows inline error when Retry throws', async () => {
+    const refresh = vi.fn()
+    vi.mocked(retryFailedRunAction).mockRejectedValue(new Error('Server error'))
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', intent: 'failed', status: 'failed', errorMessage: 'Oops' })],
+      isLoading: false,
+      error: null,
+      refresh,
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    await user.click(screen.getByRole('button', { name: /^Retry$/ }))
+
+    await waitFor(() => expect(screen.getByText('Server error')).toBeInTheDocument())
+  })
+
+  it('disables both buttons while a retry is in flight', async () => {
+    let resolveRetry!: (value: { newRunId: string }) => void
+    vi.mocked(retryFailedRunAction).mockImplementation(
+      () =>
+        new Promise<{ newRunId: string }>((resolve) => {
+          resolveRetry = resolve
+        }),
+    )
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', intent: 'failed', status: 'failed', errorMessage: 'Oops' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn().mockResolvedValue(undefined),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    const retryBtn = screen.getByRole('button', { name: /^Retry$/ })
+    const dismissBtn = screen.getByRole('button', { name: /^Dismiss$/ })
+
+    await user.click(retryBtn)
+
+    await waitFor(() => expect(screen.getByText('Retrying…')).toBeInTheDocument())
+    expect(screen.getByText('Retrying…').closest('button')).toBeDisabled()
+    expect(dismissBtn).toBeDisabled()
+
+    resolveRetry({ newRunId: 'r-new' })
   })
 })
