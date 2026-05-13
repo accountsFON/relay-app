@@ -32,6 +32,7 @@ import { parseDateScope } from '@/lib/date-scope'
 import { findRunForBatch } from '@/server/repositories/contentRuns'
 import { listVersionsForPost } from '@/server/services/postVersions'
 import { resolveBatchTargetMonth } from '@/lib/batch-target-month'
+import { resolveCanvaUrl } from '@/lib/canva'
 import { PostCard } from '@/components/posts/post-card'
 import {
   PostListCollapseProvider,
@@ -323,18 +324,16 @@ export default async function BatchDetailPage({
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
         actions={
           <>
-            {client.canvaUrl && (
-              <Link
-                href={client.canvaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
-              >
-                <Palette className="size-3.5 shrink-0 text-muted-foreground" />
-                <span>Open in Canva</span>
-                <ExternalLink className="size-3 shrink-0 opacity-60" />
-              </Link>
-            )}
+            <Link
+              href={resolveCanvaUrl(client.canvaUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+            >
+              <Palette className="size-3.5 shrink-0 text-muted-foreground" />
+              <span>Open in Canva</span>
+              <ExternalLink className="size-3 shrink-0 opacity-60" />
+            </Link>
             {isLive && canAct && (
               <>
                 {batch.currentStep !== RelayStep.final_qa_schedule && (

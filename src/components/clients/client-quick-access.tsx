@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Link2, FolderOpen, ExternalLink, Palette } from 'lucide-react'
 import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { resolveCanvaUrl } from '@/lib/canva'
 
 function hostnameOf(url: string): string {
   try {
@@ -19,8 +20,9 @@ export function ClientQuickAccess({
   assetsFolderUrl: string | null | undefined
   canvaUrl?: string | null | undefined
 }) {
-  const hasAnything = urls.length > 0 || !!assetsFolderUrl || !!canvaUrl
-  if (!hasAnything) return null
+  // Canva chip always renders via the resolveCanvaUrl fallback, so the
+  // card always has at least one affordance and is never null.
+  const canvaHref = resolveCanvaUrl(canvaUrl)
 
   return (
     <section
@@ -66,25 +68,29 @@ export function ClientQuickAccess({
           </div>
         )}
 
-        {canvaUrl && (
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground shrink-0">
-              Canva
-            </span>
-            <SimpleTooltip content="Open the client's Canva folder in a new tab">
-              <Link
-                href={canvaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1 text-[12px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
-              >
-                <Palette className="size-3 shrink-0 text-muted-foreground" />
-                <span className="truncate">Open in Canva</span>
-                <ExternalLink className="size-3 shrink-0 opacity-60" />
-              </Link>
-            </SimpleTooltip>
-          </div>
-        )}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground shrink-0">
+            Canva
+          </span>
+          <SimpleTooltip
+            content={
+              canvaUrl
+                ? "Open the client's Canva folder in a new tab"
+                : 'No per-client Canva folder set — opens the shared agency folder. Set a per-client URL on the profile.'
+            }
+          >
+            <Link
+              href={canvaHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1 text-[12px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
+            >
+              <Palette className="size-3 shrink-0 text-muted-foreground" />
+              <span className="truncate">Open in Canva</span>
+              <ExternalLink className="size-3 shrink-0 opacity-60" />
+            </Link>
+          </SimpleTooltip>
+        </div>
       </div>
     </section>
   )

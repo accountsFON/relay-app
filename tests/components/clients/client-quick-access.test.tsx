@@ -1,16 +1,18 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ClientQuickAccess } from '@/components/clients/client-quick-access'
+import { FALLBACK_CANVA_FOLDER_URL } from '@/lib/canva'
 
 describe('ClientQuickAccess', () => {
-  it('renders nothing when all three sources are empty', () => {
-    const { container } = render(
+  it('renders the Canva fallback pill even when all three sources are empty', () => {
+    render(
       <ClientQuickAccess urls={[]} assetsFolderUrl={null} canvaUrl={null} />,
     )
-    expect(container.firstChild).toBeNull()
+    const link = screen.getByRole('link', { name: /open in canva/i })
+    expect(link).toHaveAttribute('href', FALLBACK_CANVA_FOLDER_URL)
   })
 
-  it('renders an "Open in Canva" link when canvaUrl is set', () => {
+  it('renders an "Open in Canva" link with the per-client URL when canvaUrl is set', () => {
     render(
       <ClientQuickAccess
         urls={[]}
@@ -24,11 +26,10 @@ describe('ClientQuickAccess', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('omits the Canva pill when canvaUrl is empty string', () => {
+  it('falls back to the agency Canva folder when canvaUrl is empty string', () => {
     render(<ClientQuickAccess urls={[]} assetsFolderUrl={null} canvaUrl="" />)
-    expect(
-      screen.queryByRole('link', { name: /open in canva/i }),
-    ).not.toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /open in canva/i })
+    expect(link).toHaveAttribute('href', FALLBACK_CANVA_FOLDER_URL)
   })
 
   it('renders Canva alongside the other affordances when all are set', () => {
