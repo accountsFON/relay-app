@@ -12,9 +12,11 @@ import { Button } from '@/components/ui/button'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { finalizePostGenerationAction } from '@/server/actions/finalize-post-generation'
 import { buildBatchLabel, formatMonthYear } from '@/lib/batch-target-month'
+import { useCompletionNotifications } from '@/components/relay/completion-notifications'
 
 export function InFlightChoiceModal() {
   const { runs, refresh } = useInFlightRuns()
+  const { push } = useCompletionNotifications()
   // Per-session set of run IDs the user has dismissed (ESC / click-outside / X).
   // Stored in a ref so it persists across re-renders without causing extra renders.
   // Per-component-instance memory. Not persisted to localStorage — intentionally
@@ -52,17 +54,26 @@ export function InFlightChoiceModal() {
     setIsFinalizing(true)
     setError(null)
     try {
+      let result: { batchId: string; alreadyFinalized?: true }
       if (choice === 'new') {
-        await finalizePostGenerationAction({
+        result = await finalizePostGenerationAction({
           choice: 'new',
           runId: current.id,
           label: buildBatchLabel(current.clientName, current.targetMonth),
         })
       } else {
-        await finalizePostGenerationAction({
+        result = await finalizePostGenerationAction({
           choice,
           runId: current.id,
           batchId: current.matchingBatch.batchId,
+        })
+      }
+      if (!result.alreadyFinalized) {
+        push({
+          clientName: current.clientName,
+          targetMonth: current.targetMonth,
+          clientId: current.clientId,
+          batchId: result.batchId,
         })
       }
       // Close immediately on success. If refresh fails, the user is not stranded.

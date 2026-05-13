@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { finalizePostGenerationAction } from '@/server/actions/finalize-post-generation'
 import { buildBatchLabel } from '@/lib/batch-target-month'
+import { useCompletionNotifications } from '@/components/relay/completion-notifications'
 
 /**
  * Watches for completed runs that have no matching batch (first-time generation
@@ -15,6 +16,7 @@ import { buildBatchLabel } from '@/lib/batch-target-month'
  */
 export function InFlightAutoFinalizer() {
   const { runs, refresh } = useInFlightRuns()
+  const { push } = useCompletionNotifications()
   const finalizingRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
@@ -28,11 +30,19 @@ export function InFlightAutoFinalizer() {
     needsAutoNew.forEach(async (run) => {
       finalizingRef.current.add(run.id)
       try {
-        await finalizePostGenerationAction({
+        const result = await finalizePostGenerationAction({
           choice: 'new',
           runId: run.id,
           label: buildBatchLabel(run.clientName, run.targetMonth),
         })
+        if (!result.alreadyFinalized) {
+          push({
+            clientName: run.clientName,
+            targetMonth: run.targetMonth,
+            clientId: run.clientId,
+            batchId: result.batchId,
+          })
+        }
         await refresh()
       } catch (e) {
         console.error('Auto-finalize failed for run', run.id, e)

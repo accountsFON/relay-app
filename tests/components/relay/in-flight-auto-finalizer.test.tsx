@@ -13,6 +13,10 @@ vi.mock('@/server/actions/finalize-post-generation', () => ({
 }))
 import { finalizePostGenerationAction } from '@/server/actions/finalize-post-generation'
 
+vi.mock('@/components/relay/completion-notifications', () => ({
+  useCompletionNotifications: vi.fn(() => ({ push: vi.fn(), dismiss: vi.fn(), notifications: [] })),
+}))
+
 function mkRun(overrides: Partial<InFlightRun>): InFlightRun {
   return {
     id: 'r1',
