@@ -96,12 +96,28 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
 
   const allSelected = selected.size > 0 && selected.size === activeClients.length
 
+  const allSelectedReCrawl =
+    selected.size > 0 &&
+    Array.from(selected.values()).every((s) => s.reCrawl)
+
   const selectAll = () => {
     if (allSelected) {
       setSelected(new Map())
     } else {
       setSelected(new Map(activeClients.map((c) => [c.id, { reCrawl: true }])))
     }
+  }
+
+  const toggleReCrawlAll = () => {
+    if (selected.size === 0) return
+    setSelected((prev) => {
+      const next = new Map(prev)
+      const targetValue = !allSelectedReCrawl
+      next.forEach((_, clientId) => {
+        next.set(clientId, { reCrawl: targetValue })
+      })
+      return next
+    })
   }
 
   const handleBulkGenerate = () => {
@@ -164,12 +180,20 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
       )}
 
       {activeClients.length > 0 && (
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-3 px-1">
           <button
             onClick={selectAll}
             className="text-[13px] text-muted-foreground hover:text-foreground"
           >
             {allSelected ? 'Deselect all' : 'Select all active'}
+          </button>
+          <span className="text-muted-foreground/40">·</span>
+          <button
+            onClick={toggleReCrawlAll}
+            disabled={selected.size === 0}
+            className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
+          >
+            {allSelectedReCrawl ? 'Re-crawl none' : 'Re-crawl all'}
           </button>
         </div>
       )}
