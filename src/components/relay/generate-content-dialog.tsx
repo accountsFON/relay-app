@@ -31,7 +31,7 @@ export function GenerateContentDialog({
   const { refresh } = useInFlightRuns()
   const [open, setOpen] = useState(false)
   const [pickedMonth, setPickedMonth] = useState(targetMonth)
-  const [reCrawl, setReCrawl] = useState(true)
+  const [reCrawl, setReCrawl] = useState(false)
   const [lastCrawled, setLastCrawled] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -43,16 +43,14 @@ export function GenerateContentDialog({
     setOpen(next)
   }
 
-  // Pull crawl preferences when the dialog opens.
+  // Show the last-crawled timestamp when the dialog opens, so the user
+  // can decide whether to opt in to a fresh crawl. The Re-crawl checkbox
+  // itself stays opt-in regardless of the client's autoCrawl setting.
   useEffect(() => {
     if (!open) return
     let cancelled = false
     getClientCrawlInfo(clientId).then((info) => {
       if (cancelled || !info) return
-      const shouldCrawl =
-        info.autoCrawl === 'always' ||
-        (info.autoCrawl === 'when_empty' && !info.hasCrawledData)
-      setReCrawl(shouldCrawl)
       setLastCrawled(info.crawledDataAt)
     })
     return () => {
