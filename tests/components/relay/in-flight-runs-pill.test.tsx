@@ -243,4 +243,66 @@ describe('InFlightRunsPill', () => {
 
     resolveRetry({ newRunId: 'r-new' })
   })
+
+  it('wraps active rows in a Link to the client page', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', clientId: 'c1', intent: 'active' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    const link = screen.getByRole('link', { name: /Cedar Creek/i })
+    expect(link).toHaveAttribute('href', '/clients/c1')
+  })
+
+  it('wraps awaiting_choice rows in a Link to the client page', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', clientId: 'c2', intent: 'awaiting_choice' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    const link = screen.getByRole('link', { name: /Cedar Creek/i })
+    expect(link).toHaveAttribute('href', '/clients/c2')
+  })
+
+  it('failed rows are not links (Retry/Dismiss buttons present instead)', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', clientId: 'c1', intent: 'failed', errorMessage: 'boom' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    expect(screen.queryByRole('link', { name: /Cedar Creek/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Retry$/i })).toBeInTheDocument()
+  })
+
+  it('clicking an active row closes the popover', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', clientId: 'c1', intent: 'active' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    const link = screen.getByRole('link', { name: /Cedar Creek/i })
+    await user.click(link)
+
+    expect(screen.queryByText(/1 run in flight/i)).not.toBeInTheDocument()
+  })
 })
