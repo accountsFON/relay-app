@@ -313,13 +313,13 @@ export default async function BatchDetailPage({
           items={[
             { href: '/dashboard', label: 'My Relay' },
             { href: `/clients/${client.id}`, label: client.name },
-            { label: `Relay ${batch.label}` },
+            { label: batch.label },
           ]}
         />
       </div>
 
       <PageHeader
-        title={`Relay ${batch.label}`}
+        title={batch.label}
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
         actions={
           <>
