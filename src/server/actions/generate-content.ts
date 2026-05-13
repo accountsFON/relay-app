@@ -35,7 +35,12 @@ export async function generateContentAction(
   if (!client) return { kind: 'error', message: 'Client not found' }
 
   // Re-validate the match on every call. This is the single source of truth.
-  const match = await findMatchingBatchForClientMonth(input.clientId, input.targetMonth)
+  let match: Awaited<ReturnType<typeof findMatchingBatchForClientMonth>>
+  try {
+    match = await findMatchingBatchForClientMonth(input.clientId, input.targetMonth)
+  } catch (e) {
+    return { kind: 'error', message: e instanceof Error ? e.message : 'Failed to load batch data' }
+  }
 
   if (input.kind === 'probe') {
     if (!match) return { kind: 'no_match' }

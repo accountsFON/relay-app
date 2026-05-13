@@ -45,6 +45,22 @@ beforeEach(() => {
 })
 
 // ---------------------------------------------------------------------------
+// Auth / client lookup
+// ---------------------------------------------------------------------------
+
+describe('generateContentAction — auth & client lookup', () => {
+  it('returns error when client not found for user', async () => {
+    vi.mocked(findClientForUser).mockResolvedValueOnce(null)
+    const result = await generateContentAction({
+      kind: 'probe',
+      clientId: 'nonexistent-client-id',
+      targetMonth: '2026-05',
+    })
+    expect(result).toEqual({ kind: 'error', message: 'Client not found' })
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Probe phase
 // ---------------------------------------------------------------------------
 
