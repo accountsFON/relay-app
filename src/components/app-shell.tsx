@@ -15,6 +15,7 @@ import { InFlightRunsProvider } from '@/components/relay/in-flight-runs-provider
 import { InFlightRunsPill } from '@/components/relay/in-flight-runs-pill'
 import { InFlightChoiceModal } from '@/components/relay/in-flight-choice-modal'
 import { InFlightAutoFinalizer } from '@/components/relay/in-flight-auto-finalizer'
+import { CompletionNotificationsProvider, CompletionNotificationsBanner } from '@/components/relay/completion-notifications'
 
 type BadgeKey = 'unreadMentions'
 type NavItem = {
@@ -93,6 +94,7 @@ export function AppShell({
 
   return (
     <InFlightRunsProvider>
+    <CompletionNotificationsProvider>
     <div className="flex h-dvh flex-col md:flex-row bg-background">
       {sidebarOpen && (
         <div
@@ -233,6 +235,8 @@ export function AppShell({
     </div>
     <InFlightChoiceModal />
     <InFlightAutoFinalizer />
+    <CompletionNotificationsBanner />
+    </CompletionNotificationsProvider>
     </InFlightRunsProvider>
   )
 }
