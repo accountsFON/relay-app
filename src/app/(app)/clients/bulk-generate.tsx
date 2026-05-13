@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge, StatusDot } from '@/components/ui/badge'
 import { DataRowGroup, RowAvatar } from '@/components/ui/data-row'
 import { bulkGenerateContent } from './run-actions'
-import { getClientCrawlInfo } from '@/app/(app)/clients/[id]/generate/actions'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { stepLabel } from '@/components/relay/in-flight-runs-utils'
 import { formatMonthYear } from '@/lib/batch-target-month'
@@ -33,53 +32,16 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
   const [submittedRunIds, setSubmittedRunIds] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
   const { runs, refresh } = useInFlightRuns()
-  const enrichedRef = useRef<Set<string>>(new Set())
 
   const activeClients = clients.filter((c) => c.status === 'active' && !c.isArchived)
-
-  // Stable primitive derived from selected client IDs.
-  // Keyed on IDs only so that toggleReCrawl (which changes values, not keys)
-  // does not re-trigger the fetch effect unnecessarily.
-  const selectedKeys = Array.from(selected.keys()).sort().join(',')
-
-  // When a client is freshly selected, fetch its crawl defaults to set the initial Re-crawl state.
-  // enrichedRef prevents re-fetching for the same client within the same session.
-  useEffect(() => {
-    let cancelled = false
-    selected.forEach(async (_, clientId) => {
-      if (enrichedRef.current.has(clientId)) return
-      enrichedRef.current.add(clientId)
-      const info = await getClientCrawlInfo(clientId)
-      if (cancelled || !info) return
-      const shouldCrawl =
-        info.autoCrawl === 'always' ||
-        (info.autoCrawl === 'when_empty' && !info.hasCrawledData)
-      setSelected((prev) => {
-        const next = new Map(prev)
-        // Re-check it's still selected; user may have deselected in flight.
-        if (!next.has(clientId)) return prev
-        next.set(clientId, { reCrawl: shouldCrawl })
-        return next
-      })
-    })
-    return () => {
-      cancelled = true
-    }
-    // `selected` is intentionally excluded: we only want to re-run when the set
-    // of selected IDs changes, not when reCrawl values are toggled.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedKeys])
 
   const toggleClient = (id: string) => {
     setSelected((prev) => {
       const next = new Map(prev)
       if (next.has(id)) {
         next.delete(id)
-        enrichedRef.current.delete(id) // allow re-fetch if client is reselected later
       } else {
-        // Default to reCrawl=true until the effect fetches the per-client preference.
-        // The effect updates this to the client's actual preference on the next tick.
-        next.set(id, { reCrawl: true })
+        next.set(id, { reCrawl: false })
       }
       return next
     })
@@ -96,12 +58,28 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
 
   const allSelected = selected.size > 0 && selected.size === activeClients.length
 
+  const allSelectedReCrawl =
+    selected.size > 0 &&
+    Array.from(selected.values()).every((s) => s.reCrawl)
+
   const selectAll = () => {
     if (allSelected) {
       setSelected(new Map())
     } else {
-      setSelected(new Map(activeClients.map((c) => [c.id, { reCrawl: true }])))
+      setSelected(new Map(activeClients.map((c) => [c.id, { reCrawl: false }])))
     }
+  }
+
+  const toggleReCrawlAll = () => {
+    if (selected.size === 0) return
+    setSelected((prev) => {
+      const next = new Map(prev)
+      const targetValue = !allSelectedReCrawl
+      next.forEach((_, clientId) => {
+        next.set(clientId, { reCrawl: targetValue })
+      })
+      return next
+    })
   }
 
   const handleBulkGenerate = () => {
@@ -164,12 +142,20 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
       )}
 
       {activeClients.length > 0 && (
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex items-center gap-3 px-1">
           <button
             onClick={selectAll}
             className="text-[13px] text-muted-foreground hover:text-foreground"
           >
             {allSelected ? 'Deselect all' : 'Select all active'}
+          </button>
+          <span className="text-muted-foreground/40">·</span>
+          <button
+            onClick={toggleReCrawlAll}
+            disabled={selected.size === 0}
+            className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
+          >
+            {allSelectedReCrawl ? 'Re-crawl none' : 'Re-crawl all'}
           </button>
         </div>
       )}
