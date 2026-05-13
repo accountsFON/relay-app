@@ -9,7 +9,12 @@ import {
 } from '@/server/repositories/contentRuns'
 import { db } from '@/db/client'
 
-export async function triggerGeneration(clientId: string, targetMonth: string, reCrawl?: boolean) {
+export async function triggerGeneration(
+  clientId: string,
+  targetMonth: string,
+  reCrawl?: boolean,
+  opts?: { targetBatchId?: string | null },
+) {
   const ctx = await requireClientEditor()
 
   const client = await findClientForUser(ctx, clientId)
@@ -20,14 +25,21 @@ export async function triggerGeneration(clientId: string, targetMonth: string, r
     if (existing.status === 'running') {
       throw new Error('A run is currently in progress for this month. Wait for it to finish.')
     }
-    await db.post.deleteMany({ where: { contentRunId: existing.id } })
-    await db.contentRun.delete({ where: { id: existing.id } })
+    // Pre-delete the previous run only when there's no replace plan.
+    // When targetBatchId is set, the atomic swap at finalize handles cleanup
+    // of the existing posts in the target batch. Pre-deleting here would
+    // empty the batch before the new run completes, violating atomic swap.
+    if (!opts?.targetBatchId) {
+      await db.post.deleteMany({ where: { contentRunId: existing.id } })
+      await db.contentRun.delete({ where: { id: existing.id } })
+    }
   }
 
   const contentRun = await createContentRun({
     clientId,
     triggeredById: ctx.userDbId,
     targetMonth,
+    targetBatchId: opts?.targetBatchId ?? null,
   })
 
   try {
