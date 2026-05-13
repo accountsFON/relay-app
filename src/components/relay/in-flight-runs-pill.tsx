@@ -5,6 +5,61 @@ import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { INTENT_PRIORITY, stepLabel } from '@/components/relay/in-flight-runs-utils'
+import { retryFailedRunAction, acknowledgeFailedRunAction } from '@/server/actions/in-flight-runs'
+
+function FailedRunActions({ runId }: { runId: string }) {
+  const { refresh } = useInFlightRuns()
+  const [pending, setPending] = useState<'retry' | 'dismiss' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleRetry = async () => {
+    setPending('retry')
+    setError(null)
+    try {
+      await retryFailedRunAction(runId)
+      await refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Retry failed')
+      setPending(null)
+    }
+    // On success, the run drops + a new run appears; component unmounts. No setPending(null) needed.
+  }
+
+  const handleDismiss = async () => {
+    setPending('dismiss')
+    setError(null)
+    try {
+      await acknowledgeFailedRunAction(runId)
+      await refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Dismiss failed')
+      setPending(null)
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-center gap-2 mt-1">
+        <button
+          onClick={handleRetry}
+          disabled={pending !== null}
+          className="text-[12px] text-foreground hover:underline disabled:opacity-50 disabled:no-underline"
+        >
+          {pending === 'retry' ? 'Retrying…' : 'Retry'}
+        </button>
+        <span className="text-muted-foreground">·</span>
+        <button
+          onClick={handleDismiss}
+          disabled={pending !== null}
+          className="text-[12px] text-muted-foreground hover:underline disabled:opacity-50 disabled:no-underline"
+        >
+          {pending === 'dismiss' ? 'Dismissing…' : 'Dismiss'}
+        </button>
+      </div>
+      {error && <p className="text-[12px] text-destructive mt-1">{error}</p>}
+    </>
+  )
+}
 
 export function InFlightRunsPill() {
   const { runs } = useInFlightRuns()
@@ -67,7 +122,13 @@ export function InFlightRunsPill() {
             {sorted.map((run) => (
               <li key={run.id} data-testid="inflight-row" className="px-4 py-2 text-[13px]">
                 <p className="font-medium text-foreground">{run.clientName}</p>
-                <p className="text-muted-foreground">{stepLabel(run)}</p>
+                <p
+                  className="text-muted-foreground truncate"
+                  title={run.intent === 'failed' && run.errorMessage ? `Failed: ${run.errorMessage}` : undefined}
+                >
+                  {stepLabel(run)}
+                </p>
+                {run.intent === 'failed' && <FailedRunActions runId={run.id} />}
               </li>
             ))}
           </ul>
