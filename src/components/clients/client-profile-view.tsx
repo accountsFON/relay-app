@@ -75,6 +75,7 @@ export function ClientProfileView({
         <FieldStack>
           <UrlListField clientId={client.id} label="URLs" urls={client.urls} canEdit={canEdit} />
           <LinkField clientId={client.id} fieldKey="assetsFolderUrl" label="Assets folder" href={client.assetsFolderUrl} canEdit={canEdit} />
+          <LinkField clientId={client.id} fieldKey="canvaUrl" label="Canva" href={client.canvaUrl} canEdit={canEdit} />
         </FieldStack>
       </PageSection>
     </div>
