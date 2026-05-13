@@ -305,4 +305,57 @@ describe('InFlightRunsPill', () => {
 
     expect(screen.queryByText(/1 run in flight/i)).not.toBeInTheDocument()
   })
+
+  it('clicking an awaiting_choice row removes it from the pill', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', clientId: 'c1', clientName: 'Cedar Creek', intent: 'awaiting_choice' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    const { container } = render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    const link = screen.getByRole('link', { name: /Cedar Creek/i })
+    await user.click(link)
+
+    // After acknowledging the only run, the pill should render null.
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('clicking an active row keeps it in the pill (still in flight)', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', clientId: 'c1', clientName: 'Cedar Creek', intent: 'active' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    const link = screen.getByRole('link', { name: /Cedar Creek/i })
+    await user.click(link)
+    // Re-open the popover.
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    expect(screen.getByText('Cedar Creek')).toBeInTheDocument()
+  })
+
+  it('the pill count drops by 1 when an awaiting_choice row is acknowledged', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [
+        mkRun({ id: 'r1', clientId: 'c1', clientName: 'Cedar Creek', intent: 'awaiting_choice' }),
+        mkRun({ id: 'r2', clientId: 'c2', clientName: 'Apex', intent: 'active' }),
+      ],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /2 runs/i }))
+    await user.click(screen.getByRole('link', { name: /Cedar Creek/i }))
+    // Pill now shows 1 run (Apex) only.
+    expect(screen.getByRole('button', { name: /1 run/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /2 runs/i })).not.toBeInTheDocument()
+  })
 })
