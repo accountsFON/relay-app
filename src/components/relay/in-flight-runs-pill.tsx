@@ -65,6 +65,7 @@ function FailedRunActions({ runId }: { runId: string }) {
 export function InFlightRunsPill() {
   const { runs } = useInFlightRuns()
   const [open, setOpen] = useState(false)
+  const [clickedAcknowledged, setClickedAcknowledged] = useState<Set<string>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -85,15 +86,17 @@ export function InFlightRunsPill() {
     }
   }, [open])
 
-  if (runs.length === 0) return null
+  const sorted = [...runs]
+    .filter((r) => !(r.intent === 'awaiting_choice' && clickedAcknowledged.has(r.id)))
+    .sort((a, b) => {
+      const p = INTENT_PRIORITY[a.intent] - INTENT_PRIORITY[b.intent]
+      if (p !== 0) return p
+      return a.startedAt.localeCompare(b.startedAt)
+    })
 
-  const sorted = [...runs].sort((a, b) => {
-    const p = INTENT_PRIORITY[a.intent] - INTENT_PRIORITY[b.intent]
-    if (p !== 0) return p
-    return a.startedAt.localeCompare(b.startedAt)
-  })
+  if (sorted.length === 0) return null
 
-  const label = runs.length === 1 ? '1 run' : `${runs.length} runs`
+  const label = sorted.length === 1 ? '1 run' : `${sorted.length} runs`
 
   return (
     <div ref={containerRef} className="relative">
@@ -143,7 +146,16 @@ export function InFlightRunsPill() {
                   ) : (
                     <Link
                       href={`/clients/${run.clientId}`}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        if (run.intent === 'awaiting_choice') {
+                          setClickedAcknowledged((prev) => {
+                            const next = new Set(prev)
+                            next.add(run.id)
+                            return next
+                          })
+                        }
+                        setOpen(false)
+                      }}
                       className="block px-4 py-2 hover:bg-cream-warm/60 transition-colors"
                     >
                       {rowBody}
