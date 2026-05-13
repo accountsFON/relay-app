@@ -245,17 +245,24 @@ model ContentRun {
   /// generation dialog to "run in background".
   autoFinalize     Boolean   @default(false)
   acknowledgedAt   DateTime?
+  /// When set, pipeline completion replaces this batch's posts with the
+  /// run's posts in an atomic swap. Null means "create a new batch" on
+  /// completion (today's auto-new path). Set by the pre-flight Replace
+  /// flow in GenerateContentDialog. See projects/relay-app/2026-05-12-pre-flight-replace-design.md.
+  targetBatchId    String?
   createdAt        DateTime  @default(now())
   deletedAt        DateTime?
   deletedBy        String?
 
   client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   triggeredBy    User            @relation("TriggeredBy", fields: [triggeredById], references: [id])
+  targetBatch    Batch?          @relation("ContentRunTargetBatch", fields: [targetBatchId], references: [id], onDelete: SetNull)
   posts          Post[]
   activityEvents ActivityEvent[]
 
   @@index([clientId])
   @@index([deletedAt])
+  @@index([targetBatchId])
   @@map("content_runs")
 }
 
@@ -381,7 +388,8 @@ model Batch {
   posts        Post[]
   checklists   ChecklistItem[]
   relayEvents  RelayEvent[]
-  revisionPlan RevisionPlan?
+  revisionPlan          RevisionPlan?
+  targetedByContentRuns ContentRun[] @relation("ContentRunTargetBatch")
 
   @@index([clientId, currentStep])
   @@index([currentHolder, currentStep])
