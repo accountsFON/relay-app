@@ -23,7 +23,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { RelayStep } from '@prisma/client'
+import { RelayStep } from '@prisma/client'
 import { ArrowRight, ChevronDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -38,6 +38,7 @@ import { STEP_LABEL } from './labels'
 import type { BatchSummary, ChecklistItem } from './types'
 import { SimpleTooltip } from './relay-tooltips'
 import {
+  finishBatchAction,
   passBatonAction,
   sendBackBatonAction,
   tickChecklistItemAction,
@@ -97,6 +98,19 @@ export function ChecklistPanel({
       }
     })
   }
+
+  function finish() {
+    startTransition(async () => {
+      try {
+        await finishBatchAction({ batchId: batch.id })
+        router.refresh()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Finish failed')
+      }
+    })
+  }
+
+  const isFinishStep = nextStep === RelayStep.completed
 
   function confirmSendBack() {
     if (!sendBackTarget || reasonText.trim().length === 0) return
@@ -170,17 +184,31 @@ export function ChecklistPanel({
           {error && (
             <p className="text-[11px] text-destructive">{error}</p>
           )}
-          <SimpleTooltip content="Hand the baton to the next person on the relay.">
-            <Button
-              type="button"
-              disabled={!allRequiredChecked || !nextStep || isPending}
-              className="w-full"
-              onClick={pass}
-            >
-              {isPending ? 'Passing…' : `Pass to ${nextStep ? STEP_LABEL[nextStep] : 'next step'}`}
-              <ArrowRight />
-            </Button>
-          </SimpleTooltip>
+          {isFinishStep ? (
+            <SimpleTooltip content="Mark this relay finished. Archive it later from the My Relay dashboard.">
+              <Button
+                type="button"
+                disabled={!allRequiredChecked || isPending}
+                className="w-full"
+                onClick={finish}
+              >
+                {isPending ? 'Finishing…' : 'Finish'}
+                <Check />
+              </Button>
+            </SimpleTooltip>
+          ) : (
+            <SimpleTooltip content="Hand the baton to the next person on the relay.">
+              <Button
+                type="button"
+                disabled={!allRequiredChecked || !nextStep || isPending}
+                className="w-full"
+                onClick={pass}
+              >
+                {isPending ? 'Passing…' : `Pass to ${nextStep ? STEP_LABEL[nextStep] : 'next step'}`}
+                <ArrowRight />
+              </Button>
+            </SimpleTooltip>
+          )}
 
           {legalSendBackTargets.length > 0 && (
             <DropdownMenu>

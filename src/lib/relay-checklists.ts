@@ -59,4 +59,5 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
     { label: 'All posts scheduled in destination platform' },
     { label: 'Posting dates double-checked' },
   ],
+  [RelayStep.completed]: [],
 }

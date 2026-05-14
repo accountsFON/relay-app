@@ -22,6 +22,7 @@ export const STEP_LABEL: Record<RelayStep, string> = {
   [RelayStep.implementing_revisions]: 'Implementing revisions',
   [RelayStep.revisions_complete]: 'Revisions complete',
   [RelayStep.final_qa_schedule]: 'Final QA',
+  [RelayStep.completed]: 'Completed',
 }
 
 /**
@@ -81,6 +82,7 @@ export const STEP_ROLE: Record<RelayStep, RelayRole> = {
   [RelayStep.implementing_revisions]: RelayRole.am,
   [RelayStep.revisions_complete]: RelayRole.am,
   [RelayStep.final_qa_schedule]: RelayRole.am,
+  [RelayStep.completed]: RelayRole.am,
 }
 
 /** Sub-state labels for step `copy`. Phase 1 only step that has sub-states. */

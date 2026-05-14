@@ -276,6 +276,87 @@ export async function passBaton(input: PassBatonInput) {
   })
 }
 
+/**
+ * Terminal-state transition: advances a batch from final_qa_schedule to
+ * completed. Emits batch_completed ActivityEvent with public visibility so
+ * clients see "Cedar Creek May 2026 finished by Julio" in their activity
+ * thread.
+ *
+ * Checklist completion is gated at the action layer (matches passBatonAction
+ * pattern). The service itself only validates the transition.
+ */
+export interface FinishBatchInput {
+  batchId: string
+  actorId: string
+  actorOrganizationId: string
+}
+
+export async function finishBatch(input: FinishBatchInput) {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({
+      where: { id: input.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        currentHolder: true,
+        label: true,
+        client: { select: { organizationId: true } },
+      },
+    })
+    if (!batch) throw new RelayServiceError('Relay not found')
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
+
+    const result = validateTransition(batch.currentStep, RelayStep.completed)
+    if (!result.ok) throw new RelayServiceError(result.reason ?? 'Illegal transition')
+
+    const completedByName = await loadUserName(tx, input.actorId)
+    const previousHolder = batch.currentHolder
+
+    await tx.batch.update({
+      where: { id: batch.id },
+      data: {
+        currentStep: RelayStep.completed,
+        currentSubState: null,
+        currentHolder: input.actorId,
+        currentRole: RelayRole.am,
+      },
+    })
+
+    await tx.relayEvent.create({
+      data: {
+        batchId: batch.id,
+        type: RelayEventType.pass_forward,
+        fromStep: batch.currentStep,
+        toStep: RelayStep.completed,
+        fromUser: previousHolder,
+        toUser: input.actorId,
+      },
+    })
+
+    await reseedChecklistForStep(tx, batch.id, RelayStep.completed)
+
+    await recordActivity(
+      {
+        clientId: batch.clientId,
+        actorId: input.actorId,
+        kind: ActivityKind.batch_completed,
+        visibility: EventVisibility.public,
+        payload: {
+          batchId: batch.id,
+          batchLabel: batch.label,
+          completedByName,
+        },
+      },
+      tx,
+    )
+
+    return { batchId: batch.id }
+  })
+}
+
 export async function sendBackBaton(input: SendBackBatonInput) {
   if (!input.reason || input.reason.trim().length === 0) {
     throw new RelayServiceError('Send-back requires a reason note')

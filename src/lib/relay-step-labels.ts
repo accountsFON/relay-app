@@ -24,6 +24,7 @@ export const RELAY_STEP_LABELS: Record<RelayStep, string> = {
   [RelayStep.implementing_revisions]: 'Client revisions in progress',
   [RelayStep.revisions_complete]: 'Revisions complete',
   [RelayStep.final_qa_schedule]: 'Final QA and schedule',
+  [RelayStep.completed]: 'Completed',
 }
 
 /**
@@ -62,6 +63,7 @@ export const RELAY_STEP_DESCRIPTIONS: Record<RelayStep, string> = {
   [RelayStep.implementing_revisions]: 'Client revisions in progress',
   [RelayStep.revisions_complete]: 'Revisions are done and headed back for final QA',
   [RelayStep.final_qa_schedule]: 'Final QA before posts ship',
+  [RelayStep.completed]: 'Relay is finished and ready to archive',
 }
 
 /**

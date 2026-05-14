@@ -94,6 +94,9 @@ export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
 
     case RelayStep.onboarding_gate:
       return { label: 'Awaiting onboarding', tone: 'attention', daysHere }
+
+    case RelayStep.completed:
+      return { label: 'Finished', tone: 'success', daysHere }
   }
 }
 
@@ -130,6 +133,9 @@ export function amKanbanColumn(step: RelayStep): AmKanbanColumn | null {
     case RelayStep.final_qa_schedule:
       return 'Schedule'
     case RelayStep.onboarding_gate:
+      return null
+    case RelayStep.completed:
+      // Completed batches surface on the dashboard Completed station, not in the legacy kanban.
       return null
   }
 }
@@ -168,6 +174,9 @@ export function clientKanbanColumn(step: RelayStep): ClientKanbanColumn | null {
     case RelayStep.final_qa_schedule:
       return 'In Production'
     case RelayStep.onboarding_gate:
+      return null
+    case RelayStep.completed:
+      // Completed batches surface on the dashboard Completed station, not in the legacy kanban.
       return null
   }
 }

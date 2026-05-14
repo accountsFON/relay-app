@@ -69,6 +69,12 @@ export type ModeledActivityPayload =
       fromSubState: string
       toSubState: string
     }
+  | {
+      kind: 'batch_completed'
+      batchId: string
+      batchLabel: string
+      completedByName: string
+    }
 
 type ModeledKind = ModeledActivityPayload['kind']
 type UnmodeledKind = Exclude<ActivityKind, ModeledKind>

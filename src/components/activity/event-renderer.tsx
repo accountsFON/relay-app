@@ -161,6 +161,13 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         tone: 'success',
         message: `completed ${p.itemType} revision: "${truncate(p.itemDescription, 50)}"`,
       }
+    case 'batch_completed':
+      if (p.kind !== 'batch_completed') break
+      return {
+        icon: Check,
+        tone: 'success',
+        message: `finished ${p.batchLabel}`,
+      }
     case 'batch_step_advanced':
       if (p.kind !== 'batch_step_advanced') break
       return {

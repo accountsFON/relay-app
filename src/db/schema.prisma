@@ -47,6 +47,7 @@ enum RelayStep {
   implementing_revisions
   revisions_complete
   final_qa_schedule
+  completed
 }
 
 enum RelayRole {
@@ -109,6 +110,7 @@ enum ActivityKind {
   member_removed
 
   batch_created
+  batch_completed
   batch_passed
   batch_sent_back
   batch_revision_dispatched

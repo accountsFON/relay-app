@@ -140,3 +140,46 @@ describe('isChecklistComplete', () => {
     ).toBe(true)
   })
 })
+
+describe('completed terminal step', () => {
+  it('allows forward transition from final_qa_schedule to completed', () => {
+    const result = validateTransition(
+      RelayStep.final_qa_schedule,
+      RelayStep.completed,
+    )
+    expect(result.ok).toBe(true)
+    expect(result.direction).toBe('forward')
+  })
+
+  it('rejects any transition out of completed (terminal step)', () => {
+    const result = validateTransition(RelayStep.completed, RelayStep.copy)
+    expect(result.ok).toBe(false)
+  })
+
+  it('exposes completed as a legal next step from final_qa_schedule', () => {
+    const next = legalNextSteps(RelayStep.final_qa_schedule)
+    expect(next).toContainEqual({
+      from: RelayStep.final_qa_schedule,
+      to: RelayStep.completed,
+      direction: 'forward',
+    })
+  })
+
+  it('returns no legal next steps from completed', () => {
+    const next = legalNextSteps(RelayStep.completed)
+    expect(next).toEqual([])
+  })
+
+  it('returns no legal send-back targets from completed', () => {
+    const targets = legalSendBackTargets(RelayStep.completed)
+    expect(targets).toEqual([])
+  })
+
+  it('HOLDER_ROLE has am role for completed step', () => {
+    expect(HOLDER_ROLE[RelayStep.completed]).toBe(RelayRole.am)
+  })
+
+  it('holderRoleForStep returns am for completed', () => {
+    expect(holderRoleForStep(RelayStep.completed)).toBe(RelayRole.am)
+  })
+})
