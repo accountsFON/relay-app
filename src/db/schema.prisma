@@ -232,7 +232,9 @@ model ContentRun {
   postingDates     String[]
   openaiCostUsd    Decimal?  @db.Decimal(10, 4)
   anthropicCostUsd Decimal?  @db.Decimal(10, 4)
-  apifyCostUsd     Decimal?  @db.Decimal(10, 4)
+  /// Crawler cost (currently Firecrawl). Renamed from apifyCostUsd
+  /// after migrating off Apify; the value is the same dollar cost.
+  crawlerCostUsd   Decimal?  @db.Decimal(10, 4)
   totalCostUsd     Decimal?  @db.Decimal(10, 4)
   creditsConsumed  Int?
   tokenUsage       Json?
