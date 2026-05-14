@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, act } from '@testing-library/react'
 import { RunProgressLine } from '@/components/relay/run-progress-line'
 import type { InFlightRun } from '@/server/actions/in-flight-runs'
 
@@ -102,5 +102,76 @@ describe('RunProgressLine', () => {
   it('falls back to "unknown error" when errorMessage is null on a failed run', () => {
     render(<RunProgressLine run={mkRun({ intent: 'failed', errorMessage: null })} />)
     expect(screen.getByText(/Failed: unknown error/i)).toBeInTheDocument()
+  })
+
+  describe('check-flash on phase transition', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('flashes "Brief written" when brief flips false → true', () => {
+      const { rerender } = render(<RunProgressLine run={mkRun()} />)
+      expect(screen.getByText(/Starting up/i)).toBeInTheDocument()
+
+      rerender(<RunProgressLine run={mkRun({ brief: true })} />)
+      expect(screen.getByText('Brief written')).toBeInTheDocument()
+    })
+
+    it('flashes "Crawled" when crawledContent flips false → true', () => {
+      const { rerender } = render(<RunProgressLine run={mkRun({ brief: true })} />)
+      rerender(<RunProgressLine run={mkRun({ brief: true, crawledContent: true })} />)
+      expect(screen.getByText('Crawled')).toBeInTheDocument()
+    })
+
+    it('flashes "Facts extracted" when supportingFacts flips false → true', () => {
+      const { rerender } = render(
+        <RunProgressLine run={mkRun({ brief: true, crawledContent: true })} />,
+      )
+      rerender(
+        <RunProgressLine
+          run={mkRun({ brief: true, crawledContent: true, supportingFacts: true })}
+        />,
+      )
+      expect(screen.getByText('Facts extracted')).toBeInTheDocument()
+    })
+
+    it('shows "Posts ready" when postCount goes 0 → >0', () => {
+      const { rerender } = render(
+        <RunProgressLine
+          run={mkRun({ brief: true, crawledContent: true, supportingFacts: true, postCount: 0 })}
+        />,
+      )
+      rerender(
+        <RunProgressLine
+          run={mkRun({ brief: true, crawledContent: true, supportingFacts: true, postCount: 13 })}
+        />,
+      )
+      // Both the flash and the persistent terminal say "Posts ready"
+      expect(screen.getByText('Posts ready')).toBeInTheDocument()
+    })
+
+    it('clears the flash after 300ms and advances to next active step', () => {
+      const { rerender } = render(<RunProgressLine run={mkRun()} />)
+      rerender(<RunProgressLine run={mkRun({ brief: true })} />)
+      expect(screen.getByText('Brief written')).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+
+      expect(screen.queryByText('Brief written')).not.toBeInTheDocument()
+      expect(screen.getByText(/Crawling websites/i)).toBeInTheDocument()
+    })
+
+    it('latest-flip wins when two phases flip in a single rerender', () => {
+      const { rerender } = render(<RunProgressLine run={mkRun()} />)
+      rerender(<RunProgressLine run={mkRun({ brief: true, crawledContent: true })} />)
+      // The component checks transitions in order brief → crawl → facts → posts,
+      // and the latest wins. We expect "Crawled" since crawl is later in the chain.
+      expect(screen.getByText('Crawled')).toBeInTheDocument()
+    })
   })
 })
