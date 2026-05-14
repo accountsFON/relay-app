@@ -207,11 +207,15 @@ describe('listInFlightRuns', () => {
       errorMessage: 'OpenAI timeout',
     })
 
-    // Verify the query included the right WHERE conditions for org scoping and failed filter
+    // Verify the query included the right WHERE conditions for org scoping and failed filter.
+    // The client filter is objectContaining because Phase 9 added getClientScopeFilter spread —
+    // for an account_manager ctx the filter also includes { assignedAmId: ctx.userDbId }.
     expect(vi.mocked(db.contentRun.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          client: { organizationId: mockCtx.organizationDbId },
+          client: expect.objectContaining({
+            organizationId: mockCtx.organizationDbId,
+          }),
           OR: expect.arrayContaining([
             { status: 'failed', acknowledgedAt: null },
           ]),
@@ -230,11 +234,35 @@ describe('listInFlightRuns', () => {
 
     await listInFlightRuns()
 
-    // Confirm the WHERE clause scopes to the current org's DB id
+    // Confirm the WHERE clause scopes to the current org's DB id.
+    // The client filter is objectContaining because Phase 9 added
+    // getClientScopeFilter spread — for an account_manager ctx the
+    // filter also includes { assignedAmId: ctx.userDbId }.
     expect(vi.mocked(db.contentRun.findMany)).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          client: { organizationId: 'cuid_org_1' },
+          client: expect.objectContaining({
+            organizationId: 'cuid_org_1',
+          }),
+        }),
+      }),
+    )
+  })
+
+  it('passes the role/assignment scope filter alongside the org id (Phase 9)', async () => {
+    // For account_manager role, getClientScopeFilter returns
+    // { assignedAmId: ctx.userDbId }. Verify it's included.
+    vi.mocked(db.contentRun.findMany).mockResolvedValue([] as never)
+
+    await listInFlightRuns()
+
+    expect(vi.mocked(db.contentRun.findMany)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          client: expect.objectContaining({
+            organizationId: 'cuid_org_1',
+            assignedAmId: 'cuid_user_1',
+          }),
         }),
       }),
     )

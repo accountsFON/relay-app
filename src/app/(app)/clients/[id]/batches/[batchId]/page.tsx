@@ -19,6 +19,7 @@ import {
 import { PageHeader } from '@/components/page-header'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PageSection } from '@/components/ui/page-section'
+import { EmptyState } from '@/components/ui/empty-state'
 import { RelayTrack } from '@/components/relay/relay-track'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
 import { ClientDecisionPanel } from '@/components/relay/client-decision-panel'
@@ -443,12 +444,20 @@ export default async function BatchDetailPage({
               }
             >
               {posts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {batchSummary.currentStep === 'onboarding_gate' ||
-                  batchSummary.currentStep === 'copy'
-                    ? 'No posts yet. Click Generate content to start.'
-                    : 'No posts on this relay. The relay may pre-date the content run, or posts may have been moved to a different relay.'}
-                </p>
+                batchSummary.currentStep === 'onboarding_gate' ||
+                batchSummary.currentStep === 'copy' ? (
+                  <EmptyState
+                    title="No posts yet"
+                    description="Click Generate content to start."
+                    className="py-12"
+                  />
+                ) : (
+                  <EmptyState
+                    title="No posts on this relay"
+                    description="The relay may pre-date the content run, or posts may have been moved to a different relay."
+                    className="py-12"
+                  />
+                )
               ) : (
                 <div className="space-y-4">
                   {await Promise.all(

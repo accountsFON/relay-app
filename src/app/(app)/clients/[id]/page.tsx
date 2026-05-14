@@ -254,7 +254,7 @@ export default async function ClientDetailPage({
       <div className="mt-10">
         <PageSection
           title="Activity"
-          description="Comments and system events for this client. Composer wires up in Phase 2."
+          description="Comments and system events for this client."
         >
           <ActivityThread
             clientId={client.id}
