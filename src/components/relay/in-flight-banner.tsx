@@ -3,7 +3,7 @@
 import { Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
-import { stepLabel } from '@/components/relay/in-flight-runs-utils'
+import { RunProgressLine } from '@/components/relay/run-progress-line'
 import { formatMonthYear } from '@/lib/batch-target-month'
 
 export function InFlightBanner({ clientId }: { clientId: string }) {
@@ -27,7 +27,8 @@ export function InFlightBanner({ clientId }: { clientId: string }) {
           {matching.map((run) => (
             <li key={run.id} data-testid="banner-row" className="text-[13px]">
               <span className="font-medium text-foreground">{formatMonthYear(run.targetMonth)}</span>
-              <span className="text-muted-foreground"> · {stepLabel(run)}</span>
+              <span className="text-muted-foreground"> · </span>
+              <RunProgressLine run={run} />
             </li>
           ))}
         </ul>

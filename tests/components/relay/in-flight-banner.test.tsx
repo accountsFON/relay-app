@@ -56,4 +56,24 @@ describe('InFlightBanner', () => {
     expect(screen.getByText('June 2026')).toBeInTheDocument()
     expect(screen.getByText('July 2026')).toBeInTheDocument()
   })
+
+  it('renders a RunProgressLine per matched run instead of static stepLabel text', () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [
+        mkRun({
+          id: 'r1',
+          clientId: 'c1',
+          targetMonth: '2026-06',
+          brief: true,
+          crawledContent: false,
+        }),
+      ],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightBanner clientId="c1" />)
+    // RunProgressLine derives this from brief=true, crawledContent=false
+    expect(screen.getByText(/Crawling websites/i)).toBeInTheDocument()
+  })
 })
