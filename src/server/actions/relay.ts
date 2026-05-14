@@ -7,6 +7,7 @@ import { requireCan } from '@/server/middleware/permissions'
 import {
   completeRevisionItem,
   dispatchRevisions,
+  finishBatch,
   passBaton,
   sendBackBaton,
 } from '@/server/services/relay'
@@ -19,6 +20,25 @@ export async function passBatonAction(input: {
   const result = await passBaton({
     batchId: input.batchId,
     toStep: input.toStep,
+    actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
+  })
+  revalidatePath('/', 'layout')
+  return result
+}
+
+/**
+ * Terminal-state action: advances a batch from final_qa_schedule to completed.
+ *
+ * Permission: relay.pass (same as a regular forward Pass Baton — completing
+ * is a forward direction in the state machine).
+ * Checklist gating: UI-side only (ChecklistPanel disables the Finish button
+ * until isChecklistComplete returns true). Matches passBatonAction pattern.
+ */
+export async function finishBatchAction(input: { batchId: string }) {
+  const ctx = await requireCan('relay.pass')
+  const result = await finishBatch({
+    batchId: input.batchId,
     actorId: ctx.userDbId,
     actorOrganizationId: ctx.organizationDbId,
   })
