@@ -13,7 +13,6 @@ import { SearchBar } from '@/components/search-bar'
 import { MobileSearchSheet } from '@/components/search/mobile-search-sheet'
 import { InFlightRunsProvider } from '@/components/relay/in-flight-runs-provider'
 import { InFlightRunsPill } from '@/components/relay/in-flight-runs-pill'
-import { InFlightChoiceModal } from '@/components/relay/in-flight-choice-modal'
 import { InFlightAutoFinalizer } from '@/components/relay/in-flight-auto-finalizer'
 import { CompletionNotificationsProvider, CompletionNotificationsBanner } from '@/components/relay/completion-notifications'
 
@@ -233,7 +232,6 @@ export function AppShell({
         </main>
       </div>
     </div>
-    <InFlightChoiceModal />
     <InFlightAutoFinalizer />
     <CompletionNotificationsBanner />
     </CompletionNotificationsProvider>

@@ -154,9 +154,7 @@ export async function retryFailedRunAction(runId: string): Promise<{ newRunId: s
   // Pre-flight Replace resolution: if there's a matching batch for this
   // client + month, retry attaches into it (atomic swap at completion).
   // No matching batch -> targetBatchId stays null and the AutoFinalizer
-  // takes the auto-new path. Either way, the legacy InFlightChoiceModal
-  // is not reached, which is the prerequisite for removing it in a
-  // follow-up PR.
+  // takes the auto-new path.
   const matching = await findMatchingBatchForClientMonth(
     run.clientId,
     run.targetMonth,

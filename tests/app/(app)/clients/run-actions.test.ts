@@ -174,10 +174,8 @@ describe('bulkGenerateContent: soft-delete displacement (Phase 4)', () => {
 
 // ---------------------------------------------------------------------------
 // Phase 6: pre-flight Replace resolution. Resolving targetBatchId at the
-// kickoff step means the InFlightAutoFinalizer can route completions to
-// replace (atomic swap) or auto-new without falling back to the legacy
-// InFlightChoiceModal. Removing that modal becomes possible once these
-// flows stop minting legacy-shaped runs.
+// kickoff step means the InFlightAutoFinalizer routes completions to
+// replace (atomic swap) or auto-new without any user popup.
 // ---------------------------------------------------------------------------
 
 describe('regenerateContentRun: pre-flight Replace resolution (Phase 6)', () => {

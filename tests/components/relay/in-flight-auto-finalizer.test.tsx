@@ -66,12 +66,18 @@ describe('InFlightAutoFinalizer', () => {
     })
   })
 
-  it('does not fire for awaiting_choice runs WITH matchingBatch', () => {
+  it('fires choice=replace against the matchingBatch when targetBatchId is null but a match exists', async () => {
+    // Updated behavior after the InFlightChoiceModal removal: the legacy
+    // "defer to modal" branch is gone, and the AutoFinalizer now defaults
+    // to replacing the matching batch (matching the pre-flight Replace
+    // flow's intent). Covers the rare race where a matching batch appears
+    // between probe and completion.
     vi.mocked(useInFlightRuns).mockReturnValue({
       runs: [mkRun({
         intent: 'awaiting_choice',
         status: 'complete',
         postCount: 5,
+        targetBatchId: null,
         matchingBatch: { batchId: 'b1', label: 'June 2026', postCount: 3 },
       })],
       isLoading: false,
@@ -81,7 +87,14 @@ describe('InFlightAutoFinalizer', () => {
 
     render(<InFlightAutoFinalizer />)
 
-    expect(finalizePostGenerationAction).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(finalizePostGenerationAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          choice: 'replace',
+          batchId: 'b1',
+        }),
+      )
+    })
   })
 
   it('does not fire for active or failed runs', () => {
@@ -168,23 +181,4 @@ describe('InFlightAutoFinalizer', () => {
     })
   })
 
-  it('does not auto-finalize when targetBatchId is null but matchingBatch exists (legacy modal path)', async () => {
-    vi.mocked(useInFlightRuns).mockReturnValue({
-      runs: [mkRun({
-        intent: 'awaiting_choice',
-        status: 'complete',
-        postCount: 5,
-        targetBatchId: null,
-        matchingBatch: { batchId: 'b1', label: 'May 2026', postCount: 5 },
-      })],
-      isLoading: false,
-      error: null,
-      refresh,
-    })
-
-    render(<InFlightAutoFinalizer />)
-
-    await new Promise((r) => setTimeout(r, 50))
-    expect(finalizePostGenerationAction).not.toHaveBeenCalled()
-  })
 })

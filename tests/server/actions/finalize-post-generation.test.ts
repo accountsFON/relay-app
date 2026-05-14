@@ -82,31 +82,6 @@ beforeEach(() => {
 })
 
 describe('finalizePostGenerationAction', () => {
-  it("'add' attaches new posts to existing batch and advances sub-state", async () => {
-    const result = await finalizePostGenerationAction({
-      choice: 'add',
-      runId: 'run_1',
-      batchId: 'batch_existing',
-    })
-
-    expect(result).toEqual({ batchId: 'batch_existing' })
-
-    // Posts attached to the existing batch
-    expect(db.post.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ['post_1', 'post_2', 'post_3'] } },
-      data: { batchId: 'batch_existing' },
-    })
-
-    // Batch sub-state advanced to drafted
-    expect(db.batch.update).toHaveBeenCalledWith({
-      where: { id: 'batch_existing' },
-      data: { currentSubState: 'drafted' },
-    })
-
-    // No posts deleted
-    expect(db.post.deleteMany).not.toHaveBeenCalled()
-  })
-
   it("'replace' deletes existing batch posts then attaches new ones", async () => {
     const result = await finalizePostGenerationAction({
       choice: 'replace',
@@ -210,7 +185,7 @@ describe('finalizePostGenerationAction idempotency', () => {
     vi.mocked(db.post.findFirst).mockResolvedValue({ batchId: 'b1' } as never)
 
     const result = await finalizePostGenerationAction({
-      choice: 'add',
+      choice: 'replace',
       runId: 'run_1',
       batchId: 'b1',
     })
@@ -265,21 +240,6 @@ describe('finalizePostGenerationAction cross-tenant guards', () => {
     expect(db.post.deleteMany).not.toHaveBeenCalled()
   })
 
-  it("'add' refuses when the user-supplied batchId belongs to a different client", async () => {
-    vi.mocked(db.batch.findUnique).mockResolvedValue({
-      clientId: 'different_client',
-    } as never)
-
-    await expect(
-      finalizePostGenerationAction({
-        choice: 'add',
-        runId: 'run_1',
-        batchId: 'batch_in_other_client',
-      }),
-    ).rejects.toThrow(/batch not found/i)
-
-    expect(db.post.updateMany).not.toHaveBeenCalled()
-  })
 })
 
 describe('findMatchingBatchForRunAction cross-tenant guard', () => {

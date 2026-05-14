@@ -7,15 +7,19 @@ import { buildBatchLabel } from '@/lib/batch-target-month'
 import { useCompletionNotifications } from '@/components/relay/completion-notifications'
 
 /**
- * Watches for completed runs and auto-finalizes them based on targetBatchId:
+ * Watches for completed runs and auto-finalizes them. The legacy
+ * InFlightChoiceModal was removed in a follow-up to PR #76 once retry,
+ * regenerate, and bulk-gen all started resolving targetBatchId at
+ * kickoff via findMatchingBatchForClientMonth. With no flow producing
+ * `targetBatchId=null + matchingBatch` as an intentional state, this
+ * component is now the only finalization path for completed runs.
  *
- *   - targetBatchId set     -> finalize choice='replace' against that batch (atomic swap)
- *   - targetBatchId null, no matchingBatch -> finalize choice='new' (auto-label)
- *   - targetBatchId null, matchingBatch exists -> defer to InFlightChoiceModal (legacy path)
- *
- * The third case preserves the rolling deprecation window: existing sessions
- * that opened the choice modal before targetBatchId was introduced will not
- * have their modal silently bypassed.
+ *   - targetBatchId set                  -> 'replace' against that batch
+ *   - targetBatchId null + matching      -> 'replace' against the match
+ *     (covers the rare race where a matching batch appears between
+ *     probe and completion; mirrors what the user would have picked
+ *     in the pre-flight Replace flow)
+ *   - targetBatchId null + no matching   -> 'new' (auto-label)
  */
 export function InFlightAutoFinalizer() {
   const { runs, refresh } = useInFlightRuns()
@@ -28,26 +32,28 @@ export function InFlightAutoFinalizer() {
     )
 
     awaitingComplete.forEach(async (run) => {
-      // Route by targetBatchId:
-      //   - set     -> finalize choice='replace' against the target (atomic swap)
-      //   - null    -> if no matching batch, finalize choice='new' (auto-label)
-      //   - null    -> if matchingBatch exists, defer to InFlightChoiceModal (legacy)
       let payload:
         | { choice: 'replace'; runId: string; batchId: string }
         | { choice: 'new'; runId: string; label: string }
-        | null = null
 
       if (run.targetBatchId) {
         payload = { choice: 'replace', runId: run.id, batchId: run.targetBatchId }
-      } else if (!run.matchingBatch) {
+      } else if (run.matchingBatch) {
+        // No explicit targetBatchId (rare race between probe and
+        // completion). Default to replacing the matching batch — this
+        // matches the user's intent in the pre-flight Replace flow.
+        payload = {
+          choice: 'replace',
+          runId: run.id,
+          batchId: run.matchingBatch.batchId,
+        }
+      } else {
         payload = {
           choice: 'new',
           runId: run.id,
           label: buildBatchLabel(run.clientName, run.targetMonth),
         }
       }
-
-      if (!payload) return // legacy modal handles this case
 
       finalizingRef.current.add(run.id)
       try {

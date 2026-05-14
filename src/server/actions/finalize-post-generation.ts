@@ -12,11 +12,6 @@ import { finalizePostGeneration } from '@/server/services/finalize-post-generati
 
 const ChoiceSchema = z.discriminatedUnion('choice', [
   z.object({
-    choice: z.literal('add'),
-    runId: z.string(),
-    batchId: z.string(),
-  }),
-  z.object({
     choice: z.literal('replace'),
     runId: z.string(),
     batchId: z.string(),
@@ -59,8 +54,9 @@ export async function finalizePostGenerationAction(
   if (!run) throw new Error('Run not found')
 
   // Idempotency guard: if this run's posts are already attached to a batch,
-  // return the existing batchId rather than throwing. This handles the
-  // cross-tab race where two InFlightChoiceModals fire simultaneously.
+  // return the existing batchId rather than throwing. Handles cross-tab
+  // races where two auto-finalize attempts (or AutoFinalizer + a manual
+  // user click) fire simultaneously.
   const existingPost = await db.post.findFirst({
     where: { contentRunId: input.runId, batchId: { not: null } },
     select: { batchId: true },

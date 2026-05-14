@@ -232,15 +232,9 @@ export const generateContentTask = task({
       // the inbox notification can deep-link straight to the populated batch.
       //
       // Routing matches the client-side InFlightAutoFinalizer:
-      //   - targetBatchId set -> 'replace' (atomic swap against that batch)
-      //   - targetBatchId null + match    -> 'add'      (legacy behavior)
-      //   - targetBatchId null + no match -> 'auto-new' (legacy behavior)
-      //
-      // Without the targetBatchId check, a user who picked Replace via the
-      // pre-flight flow (PR #63) and then dismissed the dialog would have
-      // their choice silently downgraded to 'add' or 'auto-new' here.
-      // Latent today because autoFinalize is rarely set in the post-PR-#63
-      // world, but a footgun if anyone re-enables the defer path.
+      //   - targetBatchId set             -> 'replace' (atomic swap)
+      //   - targetBatchId null + match    -> 'replace' against the match
+      //   - targetBatchId null + no match -> 'auto-new'
       const refreshed = await db.contentRun.findUnique({
         where: { id: contentRunId },
         select: { autoFinalize: true, targetBatchId: true },
@@ -250,7 +244,6 @@ export const generateContentTask = task({
         try {
           let payload:
             | { choice: 'replace'; runId: string; batchId: string }
-            | { choice: 'add'; runId: string; batchId: string }
             | { choice: 'auto-new'; runId: string }
           if (refreshed.targetBatchId) {
             payload = {
@@ -263,8 +256,12 @@ export const generateContentTask = task({
               client.id,
               contentRun.targetMonth,
             )
+            // 'add' was removed with the InFlightChoiceModal. The pipeline
+            // path now mirrors the client-side AutoFinalizer: if a match
+            // exists with no explicit target, replace it (matches the
+            // pre-flight Replace flow's intent).
             payload = match
-              ? { choice: 'add', runId: contentRunId, batchId: match.batchId }
+              ? { choice: 'replace', runId: contentRunId, batchId: match.batchId }
               : { choice: 'auto-new', runId: contentRunId }
           }
           const result = await finalizePostGeneration({
