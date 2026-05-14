@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
+  ActivityKind,
   RelayRole,
   RelayStep,
   RevisionItemStatus,
@@ -143,6 +144,7 @@ import {
   RelayServiceError,
   completeRevisionItem,
   dispatchRevisions,
+  finishBatch,
   getNotifyTargetsForStep,
   passBaton,
   sendBackBaton,
@@ -634,5 +636,98 @@ describe('cross-tenant scope guards', () => {
     // check moves the batch lookup before the update specifically so a
     // cross-org caller cannot mutate item state before the check.
     expect(currentTx.tx.revisionItem.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('finishBatch', () => {
+  it('throws if batch not found', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce(null)
+    await expect(
+      finishBatch({
+        batchId: 'b1',
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(RelayServiceError)
+  })
+
+  it('rejects if batch is in another org', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.final_qa_schedule,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_OTHER' },
+    })
+    await expect(
+      finishBatch({
+        batchId: 'b1',
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/relay not found/i)
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects if current step is not final_qa_schedule', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await expect(
+      finishBatch({
+        batchId: 'b1',
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(RelayServiceError)
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('advances batch + emits RelayEvent + ActivityEvent + reseeds (empty) checklist', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.final_qa_schedule,
+      currentHolder: 'u_am_prior',
+      label: 'Cedar Creek May 2026',
+      client: { organizationId: 'org_1' },
+    })
+    const result = await finishBatch({
+      batchId: 'b1',
+      actorId: 'u_am_now',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.batchId).toBe('b1')
+    expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
+    const batchUpdateCall = currentTx.tx.batch.update.mock.calls[0][0]
+    expect(batchUpdateCall.data.currentStep).toBe(RelayStep.completed)
+    expect(batchUpdateCall.data.currentSubState).toBeNull()
+    expect(batchUpdateCall.data.currentHolder).toBe('u_am_now')
+    expect(batchUpdateCall.data.currentRole).toBe(RelayRole.am)
+
+    expect(currentTx.tx.relayEvent.create).toHaveBeenCalledOnce()
+    const relayEventCall = currentTx.tx.relayEvent.create.mock.calls[0][0]
+    expect(relayEventCall.data.toStep).toBe(RelayStep.completed)
+    expect(relayEventCall.data.fromStep).toBe(RelayStep.final_qa_schedule)
+    expect(relayEventCall.data.fromUser).toBe('u_am_prior')
+    expect(relayEventCall.data.toUser).toBe('u_am_now')
+
+    expect(currentTx.tx.activityEvent.create).toHaveBeenCalledOnce()
+    const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
+    expect(activityCall.data.kind).toBe(ActivityKind.batch_completed)
+    expect(activityCall.data.visibility).toBe('public')
+    expect(activityCall.data.payload).toMatchObject({
+      batchId: 'b1',
+      batchLabel: 'Cedar Creek May 2026',
+    })
+
+    // Checklist is reseeded to an empty list (deleteMany fires; createMany doesn't because there's nothing to seed)
+    expect(currentTx.tx.checklistItem.deleteMany).toHaveBeenCalledOnce()
   })
 })
