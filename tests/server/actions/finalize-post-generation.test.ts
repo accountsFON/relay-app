@@ -4,6 +4,7 @@ vi.mock('@/db/client', () => ({
   db: {
     contentRun: {
       findUnique: vi.fn(),
+      update: vi.fn(),
     },
     post: {
       count: vi.fn(),
@@ -12,6 +13,7 @@ vi.mock('@/db/client', () => ({
       findFirst: vi.fn(),
     },
     batch: {
+      findUnique: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
@@ -25,7 +27,7 @@ vi.mock('@/server/middleware/permissions', () => ({
 }))
 
 vi.mock('@/server/repositories/contentRuns', () => ({
-  findContentRun: vi.fn(),
+  findContentRunForOrg: vi.fn(),
   findMatchingBatchForRun: vi.fn(),
 }))
 
@@ -35,10 +37,14 @@ vi.mock('next/cache', () => ({
 
 import { db } from '@/db/client'
 import { requireClientEditor } from '@/server/middleware/permissions'
-import { findContentRun, findMatchingBatchForRun } from '@/server/repositories/contentRuns'
+import {
+  findContentRunForOrg,
+  findMatchingBatchForRun,
+} from '@/server/repositories/contentRuns'
 import {
   finalizePostGenerationAction,
   findMatchingBatchForRunAction,
+  deferFinalizeAction,
 } from '@/server/actions/finalize-post-generation'
 
 const mockCtx = {
@@ -60,16 +66,19 @@ const mockRun = {
   targetMonth: '2026-05',
   status: 'complete',
   posts: [{ id: 'post_1' }, { id: 'post_2' }, { id: 'post_3' }],
+  client: { organizationId: 'cuid_org_1' },
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireClientEditor).mockResolvedValue(mockCtx)
-  vi.mocked(findContentRun).mockResolvedValue(mockRun as never)
-  // Default: run exists.
-  vi.mocked(db.contentRun.findUnique).mockResolvedValue({ id: 'run_1' } as never)
+  // In-scope: run resolves to the actor's org.
+  vi.mocked(findContentRunForOrg).mockResolvedValue(mockRun as never)
   // Default: no posts are attached yet (run not finalized).
   vi.mocked(db.post.findFirst).mockResolvedValue(null)
+  // Default: any user-supplied batchId belongs to the run's client (so the
+  // add/replace happy paths pass the new batch-scope check).
+  vi.mocked(db.batch.findUnique).mockResolvedValue({ clientId: 'client_1' } as never)
 })
 
 describe('finalizePostGenerationAction', () => {
@@ -214,5 +223,96 @@ describe('finalizePostGenerationAction idempotency', () => {
     expect(db.post.deleteMany).not.toHaveBeenCalled()
     expect(db.batch.update).not.toHaveBeenCalled()
     expect(db.batch.create).not.toHaveBeenCalled()
+  })
+})
+
+describe('finalizePostGenerationAction cross-tenant guards', () => {
+  it('refuses when the runId belongs to a different organization', async () => {
+    // The run lookup returns null for cross-org runs, matching findClientForUser.
+    vi.mocked(findContentRunForOrg).mockResolvedValue(null)
+
+    await expect(
+      finalizePostGenerationAction({
+        choice: 'replace',
+        runId: 'run_in_other_org',
+        batchId: 'victim_batch',
+      }),
+    ).rejects.toThrow(/run not found/i)
+
+    // The dangerous deleteMany on the victim batch must NOT have fired.
+    expect(db.post.deleteMany).not.toHaveBeenCalled()
+    expect(db.post.updateMany).not.toHaveBeenCalled()
+    expect(db.post.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("'replace' refuses when the user-supplied batchId belongs to a different client", async () => {
+    // Run is in scope, but the batchId points to a batch in a sibling client.
+    // Even within the same org this is the wrong target; cross-client should
+    // never be allowed because finalize is a per-client operation.
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      clientId: 'different_client',
+    } as never)
+
+    await expect(
+      finalizePostGenerationAction({
+        choice: 'replace',
+        runId: 'run_1',
+        batchId: 'batch_in_other_client',
+      }),
+    ).rejects.toThrow(/batch not found/i)
+
+    // The dangerous deleteMany must NOT have fired.
+    expect(db.post.deleteMany).not.toHaveBeenCalled()
+  })
+
+  it("'add' refuses when the user-supplied batchId belongs to a different client", async () => {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      clientId: 'different_client',
+    } as never)
+
+    await expect(
+      finalizePostGenerationAction({
+        choice: 'add',
+        runId: 'run_1',
+        batchId: 'batch_in_other_client',
+      }),
+    ).rejects.toThrow(/batch not found/i)
+
+    expect(db.post.updateMany).not.toHaveBeenCalled()
+  })
+})
+
+describe('findMatchingBatchForRunAction cross-tenant guard', () => {
+  it('returns null when the run is in a different organization', async () => {
+    vi.mocked(findContentRunForOrg).mockResolvedValue(null)
+
+    const result = await findMatchingBatchForRunAction('run_in_other_org')
+
+    expect(result).toBeNull()
+    // The underlying lookup must NOT have run, so cross-org batchId/label
+    // can't leak through.
+    expect(findMatchingBatchForRun).not.toHaveBeenCalled()
+  })
+})
+
+describe('deferFinalizeAction cross-tenant guard', () => {
+  it('refuses when the runId belongs to a different organization', async () => {
+    vi.mocked(findContentRunForOrg).mockResolvedValue(null)
+
+    await expect(deferFinalizeAction('run_in_other_org')).rejects.toThrow(
+      /run not found/i,
+    )
+
+    // The autoFinalize write must NOT have happened on a foreign run.
+    expect(db.contentRun.update).not.toHaveBeenCalled()
+  })
+
+  it('flips autoFinalize for in-scope runs', async () => {
+    await deferFinalizeAction('run_1')
+
+    expect(db.contentRun.update).toHaveBeenCalledWith({
+      where: { id: 'run_1' },
+      data: { autoFinalize: true },
+    })
   })
 })

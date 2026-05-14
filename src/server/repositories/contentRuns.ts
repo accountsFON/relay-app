@@ -31,6 +31,32 @@ export async function findContentRun(id: string) {
   })
 }
 
+/**
+ * Returns the run (with posts) if `actorOrganizationId` matches the run's
+ * organization, else null. Mirrors the findClientForUser convention:
+ * out-of-scope returns null so callers can treat the run as "not found"
+ * rather than 403, avoiding existence leaks across org boundaries.
+ *
+ * Use this anywhere a server action receives a user-supplied runId. Without
+ * the scope check, any authenticated user can read a run's brief, costs,
+ * post count, and error message from any other agency by passing its id.
+ */
+export async function findContentRunForOrg(
+  id: string,
+  actorOrganizationId: string,
+) {
+  const run = await db.contentRun.findUnique({
+    where: { id },
+    include: {
+      posts: { orderBy: { postDate: 'asc' } },
+      client: { select: { organizationId: true } },
+    },
+  })
+  if (!run) return null
+  if (run.client.organizationId !== actorOrganizationId) return null
+  return run
+}
+
 export async function findExistingRun(clientId: string, targetMonth: string) {
   return db.contentRun.findFirst({
     where: {
