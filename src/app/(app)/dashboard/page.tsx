@@ -23,6 +23,7 @@ import {
 import type { RunnerRelay } from '@/components/relay/relay-runner-card'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
+import { DashboardSelectMode } from '@/components/relay/dashboard-select-mode'
 
 /**
  * Full relay track, left to right. The dashboard surfaces every step so the
@@ -43,6 +44,7 @@ const AM_TRACK_STEPS: RelayStep[] = [
   RelayStep.implementing_revisions,
   RelayStep.revisions_complete,
   RelayStep.final_qa_schedule,
+  RelayStep.completed,
 ]
 
 /**
@@ -212,6 +214,11 @@ async function AmDashboard({
 
   const transitions = await lastTransitionByBatch(myBatches.map((b) => b.id))
   const stations = bucketRunners(myBatches, AM_TRACK_STEPS, transitions)
+  const selectableRelays = myBatches.map((b) => ({
+    id: b.id,
+    clientName: b.client?.name,
+    deletedAt: b.deletedAt,
+  }))
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-[1600px]">
@@ -226,12 +233,14 @@ async function AmDashboard({
       <div className="mt-4">
         <ShowArchivedToggle countArchived={archivedBatchCount} />
       </div>
-      <div className="mt-8">
-        <DashboardRelayTrack
-          stations={stations}
-          viewerRole={ctx.role === 'admin' ? 'admin' : 'am'}
-        />
-      </div>
+      <DashboardSelectMode relays={selectableRelays}>
+        <div className="mt-8">
+          <DashboardRelayTrack
+            stations={stations}
+            viewerRole={ctx.role === 'admin' ? 'admin' : 'am'}
+          />
+        </div>
+      </DashboardSelectMode>
     </div>
   )
 }

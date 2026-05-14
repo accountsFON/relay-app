@@ -12,10 +12,12 @@
  * Sibling: relay-track.tsx (the per-batch progress timeline, a different
  * concept used on the batch detail page).
  */
+import { useContext } from 'react'
 import { useRouter } from 'next/navigation'
 import { Repeat } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { SelectModeContext } from '@/components/relay/dashboard-select-mode'
 
 export interface RunnerHolder {
   id: string
@@ -52,12 +54,20 @@ export interface RelayRunnerCardProps {
 export function RelayRunnerCard({
   relay,
   now,
-  selectable = false,
-  selected = false,
-  onToggleSelect,
+  selectable: selectableProp,
+  selected: selectedProp,
+  onToggleSelect: onToggleSelectProp,
 }: RelayRunnerCardProps) {
   const router = useRouter()
   const href = `/clients/${relay.clientId}/batches/${relay.id}`
+
+  // When no explicit selectable prop, fall back to the DashboardSelectMode
+  // context if available. Lets the dashboard turn every card into a select
+  // target with a single provider wrap.
+  const ctx = useContext(SelectModeContext)
+  const selectable = selectableProp ?? ctx?.isSelectMode ?? false
+  const selected = selectedProp ?? ctx?.selectedIds.has(relay.id) ?? false
+  const onToggleSelect = onToggleSelectProp ?? ctx?.toggleSelect
 
   const reference = (now ?? new Date()).getTime()
   const recentlyPassed =
