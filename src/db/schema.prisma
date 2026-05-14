@@ -289,6 +289,10 @@ model Post {
   activityEvents ActivityEvent[]
   versions       PostVersion[]
 
+  /// Prevents Trigger.dev retries (or any future code path) from creating
+  /// duplicate posts for the same (contentRunId, postDate). Belt-and-
+  /// suspenders alongside maxAttempts: 1 in generateContent.ts.
+  @@unique([contentRunId, postDate])
   @@index([contentRunId])
   @@index([clientId])
   @@index([batchId])
