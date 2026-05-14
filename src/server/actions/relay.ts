@@ -20,6 +20,7 @@ export async function passBatonAction(input: {
     batchId: input.batchId,
     toStep: input.toStep,
     actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
   })
   revalidatePath('/', 'layout')
   return result
@@ -36,6 +37,7 @@ export async function sendBackBatonAction(input: {
     toStep: input.toStep,
     reason: input.reason,
     actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
   })
   revalidatePath('/', 'layout')
   return result
@@ -50,6 +52,7 @@ export async function dispatchRevisionsAction(input: {
     batchId: input.batchId,
     items: input.items,
     actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
   })
   revalidatePath('/', 'layout')
   return result
@@ -60,6 +63,7 @@ export async function completeRevisionItemAction(input: { itemId: string }) {
   const result = await completeRevisionItem({
     itemId: input.itemId,
     actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
   })
   revalidatePath('/', 'layout')
   return result

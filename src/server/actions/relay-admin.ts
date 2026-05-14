@@ -18,9 +18,17 @@ export async function nudgeStuckBatchAction(input: { batchId: string }) {
       currentHolder: true,
       currentStep: true,
       label: true,
+      client: { select: { organizationId: true } },
     },
   })
   if (!batch) throw new Error('Relay not found')
+  // Cross-tenant scope: mirror the check used in completeOnboardingAction
+  // and createBatchAction below. Without this an admin in Org A could
+  // nudge a stuck batch belonging to Org B and write a misleading
+  // activity event into the victim's audit trail.
+  if (batch.client.organizationId !== ctx.organizationDbId && !ctx.platformOwner) {
+    throw new Error('Relay not found')
+  }
 
   await recordActivity({
     clientId: batch.clientId,
@@ -57,9 +65,14 @@ export async function takeOverBatchAction(input: {
       currentRole: true,
       currentStep: true,
       label: true,
+      client: { select: { organizationId: true } },
     },
   })
   if (!batch) throw new Error('Relay not found')
+  // Cross-tenant scope: see nudgeStuckBatchAction above.
+  if (batch.client.organizationId !== ctx.organizationDbId && !ctx.platformOwner) {
+    throw new Error('Relay not found')
+  }
   if (batch.currentHolder === input.newHolderId) {
     return { ok: true as const, changed: false }
   }

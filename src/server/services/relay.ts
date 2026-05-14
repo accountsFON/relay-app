@@ -33,6 +33,13 @@ export interface PassBatonInput {
   toStep: RelayStep
   /** Acting user's DB id. */
   actorId: string
+  /**
+   * The actor's current organization (DB id). Used to scope the
+   * batchId lookup so a caller cannot advance a batch in another org by
+   * passing its id. Treat mismatch as "Relay not found" (404 semantics)
+   * to avoid existence leaks.
+   */
+  actorOrganizationId: string
 }
 
 export interface SendBackBatonInput {
@@ -40,11 +47,13 @@ export interface SendBackBatonInput {
   toStep: RelayStep
   reason: string
   actorId: string
+  actorOrganizationId: string
 }
 
 export interface DispatchRevisionsInput {
   batchId: string
   actorId: string
+  actorOrganizationId: string
   items: {
     type: RevisionItemType
     description: string
@@ -56,6 +65,7 @@ export interface DispatchRevisionsInput {
 export interface CompleteRevisionItemInput {
   itemId: string
   actorId: string
+  actorOrganizationId: string
 }
 
 export class RelayServiceError extends Error {
@@ -184,9 +194,15 @@ export async function passBaton(input: PassBatonInput) {
         currentStep: true,
         currentHolder: true,
         label: true,
+        client: { select: { organizationId: true } },
       },
     })
     if (!batch) throw new RelayServiceError('Relay not found')
+    // Cross-tenant scope: a passBaton call for a batch in a different org is
+    // treated as "not found" to avoid leaking existence across tenants.
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
 
     const result = validateTransition(batch.currentStep, input.toStep)
     if (!result.ok) throw new RelayServiceError(result.reason ?? 'Illegal transition')
@@ -274,9 +290,14 @@ export async function sendBackBaton(input: SendBackBatonInput) {
         currentStep: true,
         currentHolder: true,
         label: true,
+        client: { select: { organizationId: true } },
       },
     })
     if (!batch) throw new RelayServiceError('Relay not found')
+    // Cross-tenant scope: see passBaton above.
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
 
     const result = validateTransition(batch.currentStep, input.toStep)
     if (!result.ok) throw new RelayServiceError(result.reason ?? 'Illegal transition')
@@ -357,9 +378,19 @@ export async function dispatchRevisions(input: DispatchRevisionsInput) {
   return db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
       where: { id: input.batchId },
-      select: { id: true, clientId: true, currentStep: true, label: true },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        label: true,
+        client: { select: { organizationId: true } },
+      },
     })
     if (!batch) throw new RelayServiceError('Relay not found')
+    // Cross-tenant scope: see passBaton above.
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
     if (batch.currentStep !== RelayStep.implementing_revisions) {
       throw new RelayServiceError(
         `dispatchRevisions called on relay at step ${batch.currentStep}; must be implementing_revisions`,
@@ -438,16 +469,29 @@ export async function completeRevisionItem(input: CompleteRevisionItemInput) {
       return { itemId: item.id, alreadyComplete: true, autoAdvanced: false }
     }
 
+    // Resolve the batch (and its org) BEFORE the revisionItem.update so a
+    // cross-org caller cannot mutate item state before the scope check.
+    const batch = await tx.batch.findUnique({
+      where: { id: item.plan.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        label: true,
+        client: { select: { organizationId: true } },
+      },
+    })
+    if (!batch) throw new RelayServiceError('Relay not found')
+    // Cross-tenant scope: a revision item whose batch is in another org is
+    // treated as "not found" to avoid existence leaks.
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
+
     await tx.revisionItem.update({
       where: { id: item.id },
       data: { status: RevisionItemStatus.complete, completedAt: new Date() },
     })
-
-    const batch = await tx.batch.findUnique({
-      where: { id: item.plan.batchId },
-      select: { id: true, clientId: true, currentStep: true, label: true },
-    })
-    if (!batch) throw new RelayServiceError('Relay not found')
 
     const completedByName = await loadUserName(tx, input.actorId)
 
