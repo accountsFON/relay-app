@@ -110,10 +110,47 @@ export async function findPostsByRun(contentRunId: string) {
   })
 }
 
-export async function findPostById(id: string) {
-  return db.post.findUnique({ where: { id } })
+/**
+ * Returns the post if `actorUserId` has membership in the post's
+ * organization, else null. Mirrors the existing findClientForUser
+ * convention: out-of-scope returns null so callers can `notFound()`
+ * (404, not 403) and avoid leaking existence across org boundaries.
+ *
+ * Without the scope check, any authenticated user who knew (or guessed)
+ * a post id could read post bodies from any other agency.
+ */
+export async function findPostById(id: string, actorUserId: string) {
+  const post = await db.post.findUnique({ where: { id } })
+  if (!post) return null
+
+  const client = await db.client.findUnique({
+    where: { id: post.clientId },
+    select: { organizationId: true },
+  })
+  if (!client) return null
+
+  const membership = await db.membership.findUnique({
+    where: {
+      userId_organizationId: {
+        userId: actorUserId,
+        organizationId: client.organizationId,
+      },
+    },
+  })
+  if (!membership) return null
+
+  return post
 }
 
+/**
+ * Updates a post after verifying `actorUserId` has post.edit permission
+ * inside the post's organization. Throws if cross-org or if the role
+ * lacks the permission.
+ *
+ * Without this check, any user with client.edit in their own org could
+ * rewrite captions, hashtags, designer notes, and graphic hooks on any
+ * post in any other agency by passing the post id directly.
+ */
 export async function updatePost(
   id: string,
   data: {
@@ -121,7 +158,19 @@ export async function updatePost(
     hashtags?: string[]
     graphicHook?: string | null
     designerNotes?: string | null
-  }
+  },
+  actorUserId: string,
 ) {
+  const post = await db.post.findUnique({ where: { id } })
+  if (!post) throw new Error(`Post ${id} not found`)
+
+  const client = await db.client.findUnique({
+    where: { id: post.clientId },
+    select: { organizationId: true },
+  })
+  if (!client) throw new Error(`Client ${post.clientId} not found for post ${id}`)
+
+  await assertCanEditPost(actorUserId, client.organizationId)
+
   return db.post.update({ where: { id }, data })
 }
