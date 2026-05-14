@@ -58,4 +58,35 @@ describe('RunProgressLine', () => {
     )
     expect(screen.getByText(/Writing captions/i)).toBeInTheDocument()
   })
+
+  it('renders persistent "Posts ready" with check when postCount > 0', () => {
+    render(
+      <RunProgressLine
+        run={mkRun({
+          brief: true,
+          crawledContent: true,
+          supportingFacts: true,
+          postCount: 13,
+        })}
+      />,
+    )
+    expect(screen.getByText('Posts ready')).toBeInTheDocument()
+  })
+
+  it('renders persistent "Posts ready" for awaiting_choice intent', () => {
+    render(
+      <RunProgressLine
+        run={mkRun({
+          intent: 'awaiting_choice',
+          brief: true,
+          crawledContent: true,
+          supportingFacts: true,
+          postCount: 13,
+        })}
+      />,
+    )
+    expect(screen.getByText('Posts ready')).toBeInTheDocument()
+    // Should NOT show the legacy decision prompt copy
+    expect(screen.queryByText(/decide where posts go/i)).not.toBeInTheDocument()
+  })
 })
