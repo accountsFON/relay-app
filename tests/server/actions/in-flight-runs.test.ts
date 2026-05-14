@@ -31,6 +31,8 @@ vi.mock('@/app/(app)/clients/[id]/generate/actions', () => ({
 }))
 
 vi.mock('@/server/repositories/contentRuns', () => ({
+  archiveContentRun: vi.fn(),
+  findMatchingBatchForClientMonth: vi.fn(),
   findMatchingBatchForRun: vi.fn(),
 }))
 
@@ -39,7 +41,11 @@ import { requireOrgContext } from '@/server/middleware/auth'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { triggerGeneration } from '@/app/(app)/clients/[id]/generate/actions'
-import { findMatchingBatchForRun } from '@/server/repositories/contentRuns'
+import {
+  archiveContentRun,
+  findMatchingBatchForClientMonth,
+  findMatchingBatchForRun,
+} from '@/server/repositories/contentRuns'
 import {
   listInFlightRuns,
   acknowledgeFailedRunAction,
@@ -304,33 +310,71 @@ describe('acknowledgeFailedRunAction', () => {
 // ---- retryFailedRunAction ------------------------------------------------
 
 describe('retryFailedRunAction', () => {
-  it('deletes the old run and creates a fresh one with the same client + targetMonth', async () => {
+  it('soft-deletes the old run via archiveContentRun and fires a fresh generation', async () => {
     vi.mocked(db.contentRun.findUnique).mockResolvedValue(
       { clientId: 'client_1', targetMonth: '2026-05', status: 'failed' } as never,
     )
     vi.mocked(findClientForUser).mockResolvedValue({ id: 'client_1' } as never)
-    vi.mocked(db.post.deleteMany).mockResolvedValue({ count: 2 } as never)
-    vi.mocked(db.contentRun.delete).mockResolvedValue({} as never)
+    vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue(null)
     vi.mocked(triggerGeneration).mockResolvedValue({ contentRunId: 'run_new_1' })
 
     const result = await retryFailedRunAction('run_old_1')
 
     expect(result.newRunId).toBe('run_new_1')
-    expect(vi.mocked(db.post.deleteMany)).toHaveBeenCalledWith({
-      where: { contentRunId: 'run_old_1' },
+    // Soft-delete (Phase 6 extension of Phase 4) — hard-delete must NOT fire
+    expect(archiveContentRun).toHaveBeenCalledWith({
+      runId: 'run_old_1',
+      actorUserId: 'cuid_user_1',
     })
-    expect(vi.mocked(db.contentRun.delete)).toHaveBeenCalledWith({
-      where: { id: 'run_old_1' },
+    expect(vi.mocked(db.post.deleteMany)).not.toHaveBeenCalled()
+    expect(vi.mocked(db.contentRun.delete)).not.toHaveBeenCalled()
+  })
+
+  it('attaches into the matching batch when one exists for the client + month', async () => {
+    vi.mocked(db.contentRun.findUnique).mockResolvedValue(
+      { clientId: 'client_1', targetMonth: '2026-05', status: 'failed' } as never,
+    )
+    vi.mocked(findClientForUser).mockResolvedValue({ id: 'client_1' } as never)
+    vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue({
+      id: 'batch_existing',
+      label: 'Client May 2026',
+      postCount: 12,
     })
-    expect(vi.mocked(triggerGeneration)).toHaveBeenCalledWith('client_1', '2026-05')
+    vi.mocked(triggerGeneration).mockResolvedValue({ contentRunId: 'run_new' })
+
+    await retryFailedRunAction('run_old_1')
+
+    expect(triggerGeneration).toHaveBeenCalledWith(
+      'client_1',
+      '2026-05',
+      undefined,
+      { targetBatchId: 'batch_existing' },
+    )
+  })
+
+  it('passes targetBatchId: null when no matching batch exists', async () => {
+    vi.mocked(db.contentRun.findUnique).mockResolvedValue(
+      { clientId: 'client_1', targetMonth: '2026-05', status: 'failed' } as never,
+    )
+    vi.mocked(findClientForUser).mockResolvedValue({ id: 'client_1' } as never)
+    vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue(null)
+    vi.mocked(triggerGeneration).mockResolvedValue({ contentRunId: 'run_new' })
+
+    await retryFailedRunAction('run_old_1')
+
+    expect(triggerGeneration).toHaveBeenCalledWith(
+      'client_1',
+      '2026-05',
+      undefined,
+      { targetBatchId: null },
+    )
   })
 
   it('refuses to retry a run that does not exist', async () => {
     vi.mocked(db.contentRun.findUnique).mockResolvedValue(null as never)
 
     await expect(retryFailedRunAction('run_missing')).rejects.toThrow('Run not found')
-    expect(vi.mocked(db.post.deleteMany)).not.toHaveBeenCalled()
-    expect(vi.mocked(db.contentRun.delete)).not.toHaveBeenCalled()
+    expect(archiveContentRun).not.toHaveBeenCalled()
     expect(vi.mocked(triggerGeneration)).not.toHaveBeenCalled()
   })
 
@@ -341,8 +385,7 @@ describe('retryFailedRunAction', () => {
     vi.mocked(findClientForUser).mockResolvedValue(null as never)
 
     await expect(retryFailedRunAction('run_other_org')).rejects.toThrow('Run not in this org')
-    expect(vi.mocked(db.post.deleteMany)).not.toHaveBeenCalled()
-    expect(vi.mocked(db.contentRun.delete)).not.toHaveBeenCalled()
+    expect(archiveContentRun).not.toHaveBeenCalled()
     expect(vi.mocked(triggerGeneration)).not.toHaveBeenCalled()
   })
 
@@ -355,8 +398,7 @@ describe('retryFailedRunAction', () => {
     await expect(retryFailedRunAction('run_running')).rejects.toThrow(
       'Only failed runs can be retried',
     )
-    expect(vi.mocked(db.post.deleteMany)).not.toHaveBeenCalled()
-    expect(vi.mocked(db.contentRun.delete)).not.toHaveBeenCalled()
+    expect(archiveContentRun).not.toHaveBeenCalled()
     expect(vi.mocked(triggerGeneration)).not.toHaveBeenCalled()
   })
 })
