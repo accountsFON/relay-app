@@ -7,6 +7,7 @@ import {
   archiveContentRun,
   createContentRun,
   findExistingRun,
+  findMatchingBatchForClientMonth,
 } from '@/server/repositories/contentRuns'
 import { db } from '@/db/client'
 
@@ -61,10 +62,19 @@ export async function regenerateContentRun(
     await archiveContentRun({ runId: run.id, actorUserId: ctx.userDbId })
   }
 
+  // Pre-flight Replace resolution: if a matching batch exists for this
+  // client + month, regenerate attaches into it on completion (atomic swap
+  // via the InFlightAutoFinalizer). No match -> targetBatchId stays null
+  // and auto-finalizer takes the auto-new path. Either way the legacy
+  // InFlightChoiceModal is not reached, which is the prerequisite for
+  // removing it in a follow-up PR.
+  const matching = await findMatchingBatchForClientMonth(clientId, targetMonth)
+
   const contentRun = await createContentRun({
     clientId,
     triggeredById: ctx.userDbId,
     targetMonth,
+    targetBatchId: matching?.id ?? null,
   })
 
   try {
@@ -112,10 +122,16 @@ export async function bulkGenerateContent(
       await archiveContentRun({ runId: existing.id, actorUserId: ctx.userDbId })
     }
 
+    // Pre-flight Replace resolution per client. See regenerateContentRun
+    // above for the full rationale. Done per client because bulk-gen
+    // iterates and each client has its own matching batch (or doesn't).
+    const matching = await findMatchingBatchForClientMonth(clientId, targetMonth)
+
     const contentRun = await createContentRun({
       clientId,
       triggeredById: ctx.userDbId,
       targetMonth,
+      targetBatchId: matching?.id ?? null,
     })
 
     try {

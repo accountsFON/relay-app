@@ -8,6 +8,7 @@ vi.mock('@/server/repositories/contentRuns', () => ({
   archiveContentRun: vi.fn(),
   createContentRun: vi.fn(),
   findExistingRun: vi.fn(),
+  findMatchingBatchForClientMonth: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/clients', () => ({
@@ -39,6 +40,7 @@ import {
   archiveContentRun,
   createContentRun,
   findExistingRun,
+  findMatchingBatchForClientMonth,
 } from '@/server/repositories/contentRuns'
 import { findClientForUser } from '@/server/repositories/clients'
 import { db } from '@/db/client'
@@ -68,6 +70,9 @@ beforeEach(() => {
     name: 'Client One',
   } as never)
   vi.mocked(createContentRun).mockResolvedValue({ id: 'run_new' } as never)
+  // Default: no matching batch. Tests that exercise the match path
+  // override this.
+  vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue(null)
 })
 
 describe('regenerateContentRun: soft-delete displacement (Phase 4)', () => {
@@ -164,5 +169,82 @@ describe('bulkGenerateContent: soft-delete displacement (Phase 4)', () => {
     )
 
     expect(archiveContentRun).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 6: pre-flight Replace resolution. Resolving targetBatchId at the
+// kickoff step means the InFlightAutoFinalizer can route completions to
+// replace (atomic swap) or auto-new without falling back to the legacy
+// InFlightChoiceModal. Removing that modal becomes possible once these
+// flows stop minting legacy-shaped runs.
+// ---------------------------------------------------------------------------
+
+describe('regenerateContentRun: pre-flight Replace resolution (Phase 6)', () => {
+  it('passes targetBatchId when a matching batch exists for the client + month', async () => {
+    vi.mocked(db.contentRun.findMany).mockResolvedValue([] as never)
+    vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue({
+      id: 'batch_existing',
+      label: 'Client One May 2026',
+      postCount: 12,
+    })
+
+    await regenerateContentRun('client_1', '2026-05')
+
+    expect(createContentRun).toHaveBeenCalledWith({
+      clientId: 'client_1',
+      triggeredById: 'cuid_user_1',
+      targetMonth: '2026-05',
+      targetBatchId: 'batch_existing',
+    })
+  })
+
+  it('passes targetBatchId: null when there is no matching batch', async () => {
+    vi.mocked(db.contentRun.findMany).mockResolvedValue([] as never)
+    vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue(null)
+
+    await regenerateContentRun('client_1', '2026-05')
+
+    expect(createContentRun).toHaveBeenCalledWith({
+      clientId: 'client_1',
+      triggeredById: 'cuid_user_1',
+      targetMonth: '2026-05',
+      targetBatchId: null,
+    })
+  })
+})
+
+describe('bulkGenerateContent: pre-flight Replace resolution (Phase 6)', () => {
+  it('resolves matching batch per client independently', async () => {
+    vi.mocked(findClientForUser)
+      .mockResolvedValueOnce({ id: 'client_a', name: 'A' } as never)
+      .mockResolvedValueOnce({ id: 'client_b', name: 'B' } as never)
+    vi.mocked(findExistingRun).mockResolvedValue(null)
+    vi.mocked(findMatchingBatchForClientMonth)
+      .mockResolvedValueOnce({ id: 'batch_a', label: 'A May 2026', postCount: 5 })
+      .mockResolvedValueOnce(null)
+
+    await bulkGenerateContent(
+      [
+        { clientId: 'client_a', reCrawl: false },
+        { clientId: 'client_b', reCrawl: false },
+      ],
+      '2026-05',
+    )
+
+    // First client got the matched batch as targetBatchId
+    expect(createContentRun).toHaveBeenNthCalledWith(1, {
+      clientId: 'client_a',
+      triggeredById: 'cuid_user_1',
+      targetMonth: '2026-05',
+      targetBatchId: 'batch_a',
+    })
+    // Second client (no match) got null
+    expect(createContentRun).toHaveBeenNthCalledWith(2, {
+      clientId: 'client_b',
+      triggeredById: 'cuid_user_1',
+      targetMonth: '2026-05',
+      targetBatchId: null,
+    })
   })
 })

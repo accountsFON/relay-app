@@ -4,7 +4,11 @@ import { db } from '@/db/client'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
-import { findMatchingBatchForRun } from '@/server/repositories/contentRuns'
+import {
+  archiveContentRun,
+  findMatchingBatchForClientMonth,
+  findMatchingBatchForRun,
+} from '@/server/repositories/contentRuns'
 import { triggerGeneration } from '@/app/(app)/clients/[id]/generate/actions'
 
 const TERMINAL_STATUSES = ['complete', 'failed'] as const
@@ -132,10 +136,29 @@ export async function retryFailedRunAction(runId: string): Promise<{ newRunId: s
 
   if (run.status !== 'failed') throw new Error('Only failed runs can be retried')
 
-  await db.post.deleteMany({ where: { contentRunId: runId } })
-  await db.contentRun.delete({ where: { id: runId } })
+  // Soft-delete the failed run via the trash module instead of hard-deleting.
+  // Preserves the failed run's partial brief + crawl + error context for the
+  // FailedRunBanner to display (and for support/audit lookups). Matches the
+  // soft-delete pattern shipped in PR #74 for the other Generate paths.
+  await archiveContentRun({ runId, actorUserId: ctx.userDbId })
 
-  const { contentRunId } = await triggerGeneration(run.clientId, run.targetMonth)
+  // Pre-flight Replace resolution: if there's a matching batch for this
+  // client + month, retry attaches into it (atomic swap at completion).
+  // No matching batch -> targetBatchId stays null and the AutoFinalizer
+  // takes the auto-new path. Either way, the legacy InFlightChoiceModal
+  // is not reached, which is the prerequisite for removing it in a
+  // follow-up PR.
+  const matching = await findMatchingBatchForClientMonth(
+    run.clientId,
+    run.targetMonth,
+  )
+
+  const { contentRunId } = await triggerGeneration(
+    run.clientId,
+    run.targetMonth,
+    undefined,
+    { targetBatchId: matching?.id ?? null },
+  )
   return { newRunId: contentRunId }
 }
 
