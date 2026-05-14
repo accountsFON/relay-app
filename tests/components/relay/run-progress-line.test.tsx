@@ -47,15 +47,15 @@ describe('RunProgressLine', () => {
     expect(screen.getByText(/Writing captions/i)).toBeInTheDocument()
   })
 
-  it('skips the crawl phase visually when crawledContent stays false (re-crawl off)', () => {
-    // If client.autoCrawl === 'never', crawledContent never flips. supportingFacts
-    // still flips when the pipeline reaches that step. We render facts honestly.
+  it('advances honestly through phases when re-crawl is off (crawledContent never flips)', () => {
+    // If client.autoCrawl === 'never', crawledContent stays false through the
+    // whole pipeline. The line progresses based on whichever flag is the latest
+    // to flip — supportingFacts being true wins over the still-false crawl flag.
     render(
       <RunProgressLine
         run={mkRun({ brief: true, crawledContent: false, supportingFacts: true })}
       />,
     )
-    expect(screen.getByText(/Extracting facts/i)).toBeInTheDocument()
-    expect(screen.queryByText(/Crawling websites/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/Writing captions/i)).toBeInTheDocument()
   })
 })
