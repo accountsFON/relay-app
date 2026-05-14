@@ -206,8 +206,8 @@ export function ChecklistPanel({
           )}
 
           {sendBackTarget && (
-            <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3">
-              <p className="text-[12px] font-medium text-amber-900">
+            <div className="space-y-2 rounded-md border border-ink/20 bg-cream-warm p-3">
+              <p className="text-[12px] font-medium text-foreground">
                 Sending back to {STEP_LABEL[sendBackTarget]}. Required reason:
               </p>
               <textarea

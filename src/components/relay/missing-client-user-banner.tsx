@@ -87,18 +87,18 @@ export function MissingClientUserBanner({
   return (
     <Card
       size="sm"
-      className="border-amber-300 bg-amber-50 px-4 py-3"
+      className="border-ink/20 bg-cream-warm px-4 py-3"
       data-component="missing-client-user-banner"
       data-step={currentStep}
     >
       <div className="flex items-start gap-3">
-        <UserPlus className="mt-0.5 size-4 shrink-0 text-amber-700" />
+        <UserPlus className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <div className="flex-1 space-y-2">
           <div className="space-y-1">
-            <p className="text-[13px] font-semibold text-amber-900">
+            <p className="text-[13px] font-semibold text-foreground">
               No client user linked to {clientName}
             </p>
-            <p className="text-[12px] leading-snug text-amber-900/80">
+            <p className="text-[12px] leading-snug text-muted-foreground">
               {mode.description}
             </p>
           </div>

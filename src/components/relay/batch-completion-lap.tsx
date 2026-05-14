@@ -74,7 +74,7 @@ export function BatchCompletionLap({
       <div className="relative" style={{ width: `${radius * 2 + 96}px`, height: `${radius * 2 + 96}px` }}>
         <div className="absolute inset-0 grid place-items-center">
           <div className="flex flex-col items-center gap-2 text-foreground">
-            <Trophy className="size-12 text-amber-500" />
+            <Trophy className="size-12 text-foreground" />
             <p className="text-lg font-semibold">Relay complete!</p>
             <p className="text-[13px] text-muted-foreground">
               {participants.length === 1
