@@ -1,6 +1,7 @@
 import { listActiveBatchesForClient, listArchivedBatchesForClient } from '@/server/repositories/batches'
 import { PageSection } from '@/components/ui/page-section'
 import { DataRowGroup, DataRow } from '@/components/ui/data-row'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ActiveBatchHero } from '@/components/relay/active-batch-hero'
 import { ActiveBatchRow } from '@/components/relay/active-batch-row'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
@@ -43,7 +44,11 @@ export async function ActiveBatchesSection({
     // No live batches but there are archived ones (toggle is off)
     return (
       <PageSection title="Active relays" action={toggle}>
-        <p className="text-sm text-muted-foreground">No active relays.</p>
+        <EmptyState
+          title="Nothing in flight"
+          description="There are no active relays for this client. Archived relays are still available — toggle them on to review."
+          className="py-12"
+        />
       </PageSection>
     )
   }

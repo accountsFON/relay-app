@@ -3,6 +3,7 @@
 import { db } from '@/db/client'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { requireClientEditor } from '@/server/middleware/permissions'
+import { getClientScopeFilter } from '@/server/auth/scope'
 import { findClientForUser } from '@/server/repositories/clients'
 import {
   archiveContentRun,
@@ -48,9 +49,17 @@ export type InFlightRun = {
 export async function listInFlightRuns(): Promise<InFlightRun[]> {
   const ctx = await requireOrgContext()
 
+  // Apply both the org filter AND the role/assignment scope filter on the
+  // client side of the runs lookup. Without getClientScopeFilter, an AM
+  // would see every other AM's in-flight runs in the same org, and a
+  // designer or client would see runs they have no business knowing
+  // about. Admin and platformOwner get an empty filter (see them all).
   const rows = await db.contentRun.findMany({
     where: {
-      client: { organizationId: ctx.organizationDbId },
+      client: {
+        organizationId: ctx.organizationDbId,
+        ...getClientScopeFilter(ctx),
+      },
       OR: [
         { status: { notIn: [...TERMINAL_STATUSES] } },
         { status: 'complete', posts: { some: { batchId: null } } },

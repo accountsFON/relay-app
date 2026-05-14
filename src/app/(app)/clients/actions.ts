@@ -41,21 +41,25 @@ export async function updateClientAction(id: string, input: ClientUpdate) {
   const ctx = await requireClientEditor()
   const parsed = clientUpdateSchema.parse(input)
 
-  // Snapshot the prior values so we can emit a single client_profile_edited
-  // event with `fieldsChanged`.
+  // Within-org scope guard: findClientForUser returns null if the actor
+  // has no scope into this client (AM not assigned, designer not
+  // assigned, client not linked). Treat null as "not found" rather
+  // than 403 to avoid existence leak. Previously the write fired
+  // regardless of this lookup; an AM could update any client in their
+  // org by passing its id, even ones they weren't assigned to.
   const before = await findClientForUser(ctx, id)
+  if (!before) return
+
   await updateClient(id, ctx.organizationDbId, parsed)
 
-  if (before) {
-    const fieldsChanged = diffFields(before as Record<string, unknown>, parsed)
-    if (fieldsChanged.length > 0) {
-      await recordActivity({
-        clientId: id,
-        actorId: ctx.userDbId,
-        kind: ActivityKind.client_profile_edited,
-        payload: { fieldsChanged },
-      })
-    }
+  const fieldsChanged = diffFields(before as Record<string, unknown>, parsed)
+  if (fieldsChanged.length > 0) {
+    await recordActivity({
+      clientId: id,
+      actorId: ctx.userDbId,
+      kind: ActivityKind.client_profile_edited,
+      payload: { fieldsChanged },
+    })
   }
 
   revalidatePath(`/clients/${id}`)
@@ -64,6 +68,13 @@ export async function updateClientAction(id: string, input: ClientUpdate) {
 
 export async function deactivateClientAction(id: string) {
   const ctx = await requireClientEditor()
+
+  // Same within-org scope guard as updateClientAction. Previously this
+  // action had no scope check at all beyond requireClientEditor (role),
+  // so an AM could deactivate any client in their org.
+  const client = await findClientForUser(ctx, id)
+  if (!client) return
+
   await deactivateClient(id, ctx.organizationDbId)
 
   await recordActivity({

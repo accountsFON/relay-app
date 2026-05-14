@@ -1,5 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
-import { findContentRun } from '@/server/repositories/contentRuns'
+import { requireOrgContext } from '@/server/middleware/auth'
+import { findClientForUser } from '@/server/repositories/clients'
+import { findContentRunForOrg } from '@/server/repositories/contentRuns'
 import { db } from '@/db/client'
 
 /**
@@ -9,9 +11,16 @@ import { db } from '@/db/client'
  *  - If the run has posts but no batchId (rare legacy data), → client page
  *  - If the run has zero posts, look up a batch matching this client +
  *    targetMonth via label heuristic; else fall back to client page
- *  - If the run does not exist, 404
+ *  - If the run does not exist OR is not in the actor's scope, 404
  *
  * Per spec § Section A routing table.
+ *
+ * Auth + scope: previously this page had no auth call at all, so an
+ * authenticated user with any runId could probe other agencies' runs
+ * (notFound vs redirect leaked existence; the redirect Location header
+ * leaked the matching batchId). Now requires the actor to be in the
+ * run's org AND have scope to the client (findClientForUser handles
+ * the role/assignment filter).
  */
 export default async function RunRedirectPage({
   params,
@@ -20,7 +29,15 @@ export default async function RunRedirectPage({
 }) {
   const { id, runId } = await params
 
-  const run = await findContentRun(runId)
+  const ctx = await requireOrgContext()
+
+  // Scope-check the client first via findClientForUser; same convention
+  // used by every other route inside (app)/clients/[id]/. Out-of-scope
+  // returns null so we notFound() rather than 403.
+  const client = await findClientForUser(ctx, id)
+  if (!client) notFound()
+
+  const run = await findContentRunForOrg(runId, ctx.organizationDbId)
   if (!run || run.clientId !== id) notFound()
 
   const postWithBatch = await db.post.findFirst({

@@ -35,6 +35,7 @@ import {
   createClient,
   updateClient,
   deactivateClient,
+  findClientForUser,
 } from '@/server/repositories/clients'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -60,6 +61,13 @@ const mockCtx = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireClientEditor).mockResolvedValue(mockCtx)
+  // Phase 9: updateClientAction + deactivateClientAction now call
+  // findClientForUser to enforce within-org AM-assignment scope. Default
+  // to "in scope" so existing happy-path tests still pass.
+  vi.mocked(findClientForUser).mockResolvedValue({
+    id: 'cuid_client_1',
+    name: 'Akkoo Coffee',
+  } as never)
 })
 
 describe('createClientAction', () => {
@@ -128,5 +136,24 @@ describe('deactivateClientAction', () => {
 
     expect(deactivateClient).toHaveBeenCalledWith('cuid_client_1', 'cuid_org_1')
     expect(revalidatePath).toHaveBeenCalledWith('/clients')
+  })
+})
+
+describe('within-org scope guards (Phase 9)', () => {
+  it('updateClientAction returns silently when findClientForUser returns null (AM not assigned)', async () => {
+    vi.mocked(findClientForUser).mockResolvedValue(null)
+
+    await updateClientAction('cuid_client_other', { name: 'Should not land' })
+
+    // Write must NOT have fired against a client the actor is not assigned to.
+    expect(updateClient).not.toHaveBeenCalled()
+  })
+
+  it('deactivateClientAction returns silently when findClientForUser returns null', async () => {
+    vi.mocked(findClientForUser).mockResolvedValue(null)
+
+    await deactivateClientAction('cuid_client_other')
+
+    expect(deactivateClient).not.toHaveBeenCalled()
   })
 })

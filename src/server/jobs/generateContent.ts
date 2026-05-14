@@ -122,6 +122,19 @@ export const generateContentTask = task({
           urlsCrawled: crawlResult.urlsCrawled,
         }
 
+        // Surface crawler failures as a usable error instead of silently
+        // producing a 'complete' run with placeholder facts. websiteCrawler
+        // warn-and-continues on per-URL failures; if the client supplied
+        // URLs but NONE of them came back with content, the brief, facts,
+        // and posts downstream are all built on emptiness. Throwing here
+        // lets the existing catch block mark the run failed with a
+        // useful errorMessage for the FailedRunBanner.
+        if (client.urls.length > 0 && crawlResult.urlsCrawled === 0) {
+          throw new Error(
+            `Website crawl failed: 0 of ${client.urls.length} URLs returned content. Check the client's URLs and Firecrawl logs for the per-URL warnings.`,
+          )
+        }
+
         await db.client.update({
           where: { id: client.id },
           data: { crawledData: crawledContent, crawledDataAt: new Date() },
