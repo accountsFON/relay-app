@@ -15,7 +15,7 @@ export function RunProgressLine({ run }: { run: InFlightRun }) {
     return (
       <span className="inline-flex items-center gap-1.5">
         <XCircle className="size-3.5 shrink-0 text-destructive" />
-        <span>Failed: {run.errorMessage ?? 'unknown error'}</span>
+        <span>{`Failed: ${run.errorMessage ?? 'unknown error'}`}</span>
       </span>
     )
   }
