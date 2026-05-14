@@ -18,7 +18,15 @@ type TokenUsageLog = Record<string, { input: number; output: number }>
 
 export const generateContentTask = task({
   id: 'generate-content',
-  retry: { maxAttempts: 2 },
+  // No automatic retries. The pipeline is not idempotent: postParser
+  // calls createMany without an attemptNumber gate, so a retry after a
+  // transient mid-pipeline error would double the post set and double
+  // the AI spend. The Post.@@unique([contentRunId, postDate]) constraint
+  // is the database-level guard if retries ever get re-enabled, but
+  // dropping maxAttempts to 1 removes the source entirely. Failures
+  // surface immediately to the user via the in-flight pill's Retry
+  // button, which goes through the auth + scope path correctly.
+  retry: { maxAttempts: 1 },
   run: async ({ contentRunId, reCrawl = true }: { contentRunId: string; reCrawl?: boolean }) => {
     const pipelineStart = Date.now()
 
