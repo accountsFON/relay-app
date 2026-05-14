@@ -55,6 +55,13 @@ export function RunProgressLine({ run }: { run: InFlightRun }) {
         timerRef.current = null
       }, FLASH_MS)
     }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+    }
   }, [run.brief, run.crawledContent, run.supportingFacts, run.postCount])
 
   if (run.intent === 'failed') {

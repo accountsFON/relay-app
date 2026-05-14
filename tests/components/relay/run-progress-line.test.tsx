@@ -174,4 +174,45 @@ describe('RunProgressLine', () => {
       expect(screen.getByText('Crawled')).toBeInTheDocument()
     })
   })
+
+  describe('safety: cleanup and abort', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('does not throw or warn when unmounted mid-flash', () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { rerender, unmount } = render(<RunProgressLine run={mkRun()} />)
+      rerender(<RunProgressLine run={mkRun({ brief: true })} />)
+      expect(screen.getByText('Brief written')).toBeInTheDocument()
+
+      unmount()
+
+      act(() => {
+        vi.advanceTimersByTime(300)
+      })
+
+      expect(consoleError).not.toHaveBeenCalled()
+      consoleError.mockRestore()
+    })
+
+    it('failed intent during a flash immediately wins over the check', () => {
+      const { rerender } = render(<RunProgressLine run={mkRun()} />)
+      rerender(<RunProgressLine run={mkRun({ brief: true })} />)
+      expect(screen.getByText('Brief written')).toBeInTheDocument()
+
+      // Mid-flash, the pipeline fails. Failed render must take precedence.
+      rerender(
+        <RunProgressLine
+          run={mkRun({ brief: true, intent: 'failed', errorMessage: 'boom' })}
+        />,
+      )
+
+      expect(screen.queryByText('Brief written')).not.toBeInTheDocument()
+      expect(screen.getByText(/Failed: boom/i)).toBeInTheDocument()
+    })
+  })
 })
