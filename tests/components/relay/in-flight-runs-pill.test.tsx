@@ -359,4 +359,18 @@ describe('InFlightRunsPill', () => {
     expect(screen.getByRole('button', { name: /1 run/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /2 runs/i })).not.toBeInTheDocument()
   })
+
+  it('renders a RunProgressLine for active runs in the popover', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ brief: true, crawledContent: false })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    const user = userEvent.setup()
+    render(<InFlightRunsPill />)
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    // RunProgressLine derives this from brief=true, crawledContent=false
+    expect(screen.getByText(/Crawling websites/i)).toBeInTheDocument()
+  })
 })
