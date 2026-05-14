@@ -3,6 +3,7 @@
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import {
+  archiveContentRun,
   createContentRun,
   findExistingRun,
   findContentRunForOrg,
@@ -25,13 +26,18 @@ export async function triggerGeneration(
     if (existing.status === 'running') {
       throw new Error('A run is currently in progress for this month. Wait for it to finish.')
     }
-    // Pre-delete the previous run only when there's no replace plan.
+    // Pre-displace the previous run only when there's no replace plan.
     // When targetBatchId is set, the atomic swap at finalize handles cleanup
-    // of the existing posts in the target batch. Pre-deleting here would
+    // of the existing posts in the target batch. Pre-displacing here would
     // empty the batch before the new run completes, violating atomic swap.
+    //
+    // Use archiveContentRun (soft-delete with cascade + trash audit log)
+    // rather than db.contentRun.delete (hard-delete). Without this, a user
+    // who clicks Generate over a previously-attached batch loses ~$0.40 of
+    // AI spend and the attached posts with no recovery path. Soft-delete
+    // preserves the run and posts in the trash UI for restore.
     if (!opts?.targetBatchId) {
-      await db.post.deleteMany({ where: { contentRunId: existing.id } })
-      await db.contentRun.delete({ where: { id: existing.id } })
+      await archiveContentRun({ runId: existing.id, actorUserId: ctx.userDbId })
     }
   }
 
