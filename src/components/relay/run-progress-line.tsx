@@ -1,6 +1,6 @@
 'use client'
 
-import { Loader2, Check } from 'lucide-react'
+import { Loader2, Check, XCircle } from 'lucide-react'
 import type { InFlightRun } from '@/server/actions/in-flight-runs'
 
 function currentActiveStep(run: InFlightRun): string {
@@ -11,7 +11,15 @@ function currentActiveStep(run: InFlightRun): string {
 }
 
 export function RunProgressLine({ run }: { run: InFlightRun }) {
-  // Persistent terminal: posts arrived or run is awaiting user choice
+  if (run.intent === 'failed') {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <XCircle className="size-3.5 shrink-0 text-destructive" />
+        <span>Failed: {run.errorMessage ?? 'unknown error'}</span>
+      </span>
+    )
+  }
+
   if (run.postCount > 0 || run.intent === 'awaiting_choice') {
     return (
       <span className="inline-flex items-center gap-1.5">

@@ -89,4 +89,26 @@ describe('RunProgressLine', () => {
     // Should NOT show the legacy decision prompt copy
     expect(screen.queryByText(/decide where posts go/i)).not.toBeInTheDocument()
   })
+
+  it('renders XCircle + full error message when intent is failed', () => {
+    render(
+      <RunProgressLine
+        run={mkRun({
+          intent: 'failed',
+          errorMessage:
+            "Invalid prisma.post.createMany() invocation: column 'approvalStatus' does not exist",
+        })}
+      />,
+    )
+    expect(
+      screen.getByText(
+        /Failed: Invalid prisma\.post\.createMany.*approvalStatus does not exist/i,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('falls back to "unknown error" when errorMessage is null on a failed run', () => {
+    render(<RunProgressLine run={mkRun({ intent: 'failed', errorMessage: null })} />)
+    expect(screen.getByText(/Failed: unknown error/i)).toBeInTheDocument()
+  })
 })
