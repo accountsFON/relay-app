@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
-import { INTENT_PRIORITY, stepLabel } from '@/components/relay/in-flight-runs-utils'
+import { INTENT_PRIORITY } from '@/components/relay/in-flight-runs-utils'
+import { RunProgressLine } from '@/components/relay/run-progress-line'
 import { retryFailedRunAction, acknowledgeFailedRunAction } from '@/server/actions/in-flight-runs'
 
 function FailedRunActions({ runId }: { runId: string }) {
@@ -128,12 +129,12 @@ export function InFlightRunsPill() {
               const rowBody = (
                 <>
                   <p className="font-medium text-foreground">{run.clientName}</p>
-                  <p
-                    className="text-muted-foreground truncate"
+                  <div
+                    className={`text-muted-foreground ${isFailed ? '' : 'truncate'}`}
                     title={isFailed && run.errorMessage ? `Failed: ${run.errorMessage}` : undefined}
                   >
-                    {stepLabel(run)}
-                  </p>
+                    <RunProgressLine run={run} />
+                  </div>
                 </>
               )
               return (
