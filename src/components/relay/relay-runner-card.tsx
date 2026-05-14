@@ -41,9 +41,21 @@ export interface RelayRunnerCardProps {
   relay: RunnerRelay
   /** Override "now" for tests so the 24h window is deterministic. */
   now?: Date
+  /** When true, render a checkbox in the upper-left and disable navigation on card-body click. */
+  selectable?: boolean
+  /** Whether this card is currently selected. */
+  selected?: boolean
+  /** Fired when the checkbox toggles. */
+  onToggleSelect?: (id: string) => void
 }
 
-export function RelayRunnerCard({ relay, now }: RelayRunnerCardProps) {
+export function RelayRunnerCard({
+  relay,
+  now,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}: RelayRunnerCardProps) {
   const router = useRouter()
   const href = `/clients/${relay.clientId}/batches/${relay.id}`
 
@@ -54,28 +66,50 @@ export function RelayRunnerCard({ relay, now }: RelayRunnerCardProps) {
       24 * 60 * 60 * 1000
 
   function navigate() {
+    if (selectable) {
+      onToggleSelect?.(relay.id)
+      return
+    }
     router.push(href)
   }
 
   return (
     <div
-      role="link"
-      tabIndex={0}
+      role={selectable ? undefined : 'link'}
+      tabIndex={selectable ? -1 : 0}
       aria-label={`Open relay ${relay.clientName} ${relay.label}`}
       data-recent={recentlyPassed ? 'true' : undefined}
       onClick={navigate}
       onKeyDown={(e) => {
+        if (selectable) return
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           navigate()
         }
       }}
       className={cn(
-        'block w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left cursor-pointer transition-colors',
+        'relative block w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left cursor-pointer transition-colors',
         'hover:bg-cream-warm/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        recentlyPassed && 'ring-1 ring-[var(--orange)]/60'
+        recentlyPassed && 'ring-1 ring-[var(--orange)]/60',
+        selectable && selected && 'ring-2 ring-foreground'
       )}
     >
+      {selectable && (
+        <span
+          className="absolute top-1.5 left-1.5 z-10"
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect?.(relay.id)}
+            aria-label={`Select ${relay.clientName} ${relay.label}`}
+            className="size-3.5 cursor-pointer"
+          />
+        </span>
+      )}
       <div className="flex items-center justify-between gap-1.5">
         <p className="text-[13px] font-medium text-foreground truncate">
           {relay.clientName}

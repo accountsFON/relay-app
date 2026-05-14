@@ -83,4 +83,66 @@ describe('RelayRunnerCard', () => {
     await user.keyboard('{Enter}')
     expect(pushMock).toHaveBeenCalledWith('/clients/client-1/batches/batch-1')
   })
+
+  it('renders a checkbox when selectable is true', () => {
+    render(
+      <RelayRunnerCard
+        relay={baseRelay()}
+        selectable={true}
+        selected={false}
+        onToggleSelect={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('checkbox')).toBeInTheDocument()
+  })
+
+  it('does not render a checkbox when selectable is undefined', () => {
+    render(<RelayRunnerCard relay={baseRelay()} />)
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('checked state reflects the selected prop', () => {
+    render(
+      <RelayRunnerCard
+        relay={baseRelay()}
+        selectable={true}
+        selected={true}
+        onToggleSelect={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('checkbox')).toBeChecked()
+  })
+
+  it('clicking the checkbox calls onToggleSelect with the relay id', async () => {
+    const onToggle = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <RelayRunnerCard
+        relay={baseRelay({ id: 'relay-abc' })}
+        selectable={true}
+        selected={false}
+        onToggleSelect={onToggle}
+      />,
+    )
+    await user.click(screen.getByRole('checkbox'))
+    expect(onToggle).toHaveBeenCalledWith('relay-abc')
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+
+  it('clicking the card body in select mode toggles selection instead of navigating', async () => {
+    const onToggle = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <RelayRunnerCard
+        relay={baseRelay({ id: 'relay-abc' })}
+        selectable={true}
+        selected={false}
+        onToggleSelect={onToggle}
+      />,
+    )
+    // No role="link" in select mode — click the card by its accessible name
+    await user.click(screen.getByLabelText(/Open relay Cedar Creek Dental/i))
+    expect(onToggle).toHaveBeenCalledWith('relay-abc')
+    expect(pushMock).not.toHaveBeenCalled()
+  })
 })
