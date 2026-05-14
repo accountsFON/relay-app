@@ -8,7 +8,7 @@ export async function GET() {
   checks.env_clerk_secret = process.env.CLERK_SECRET_KEY ? 'set' : 'MISSING'
   checks.env_openai = process.env.OPENAI_API_KEY ? 'set' : 'MISSING'
   checks.env_anthropic = process.env.ANTHROPIC_API_KEY ? 'set' : 'MISSING'
-  checks.env_apify = process.env.APIFY_TOKEN ? 'set' : 'MISSING'
+  checks.env_firecrawl = process.env.FIRECRAWL_API_KEY ? 'set' : 'MISSING'
 
   try {
     await db.$queryRawUnsafe('SELECT 1')

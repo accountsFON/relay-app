@@ -40,7 +40,7 @@ export const generateContentTask = task({
     const tokenUsage: TokenUsageLog = {}
     let openaiCost = 0
     let anthropicCost = 0
-    let apifyCost = 0
+    let crawlerCost = 0
     let briefCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
     let factsCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
     let captionsCost: CostResult = { inputTokens: 0, outputTokens: 0, usd: 0 }
@@ -115,7 +115,7 @@ export const generateContentTask = task({
         const crawlResult = await crawlWebsites(client.urls, briefResult.brief)
 
         crawledContent = crawlResult.crawledContent
-        apifyCost = crawlResult.cost.usd
+        crawlerCost = crawlResult.cost.usd
         crawlCostDetail = {
           credits: crawlResult.cost.credits,
           usd: crawlResult.cost.usd,
@@ -148,7 +148,7 @@ export const generateContentTask = task({
         where: { id: contentRunId },
         data: {
           crawledContent,
-          apifyCostUsd: apifyCost,
+          crawlerCostUsd: crawlerCost,
         },
       })
 
@@ -215,7 +215,7 @@ export const generateContentTask = task({
           status: 'complete',
           openaiCostUsd: breakdown.openai.total,
           anthropicCostUsd: breakdown.anthropic.total,
-          apifyCostUsd: breakdown.crawl.usd,
+          crawlerCostUsd: breakdown.crawl.usd,
           totalCostUsd: breakdown.total,
           creditsConsumed: breakdown.credits,
           tokenUsage: {
@@ -347,7 +347,7 @@ export const generateContentTask = task({
           errorMessage: message,
           openaiCostUsd: partialBreakdown.openai.total || undefined,
           anthropicCostUsd: partialBreakdown.anthropic.total || undefined,
-          apifyCostUsd: partialBreakdown.crawl.usd || undefined,
+          crawlerCostUsd: partialBreakdown.crawl.usd || undefined,
           totalCostUsd: partialBreakdown.total || undefined,
           tokenUsage: tokenUsageForFailed,
         },
