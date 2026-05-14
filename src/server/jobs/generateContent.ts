@@ -217,21 +217,45 @@ export const generateContentTask = task({
       // Background auto-finalize: if the user dismissed the dialog while
       // the pipeline was running, attach posts to the default target now so
       // the inbox notification can deep-link straight to the populated batch.
+      //
+      // Routing matches the client-side InFlightAutoFinalizer:
+      //   - targetBatchId set -> 'replace' (atomic swap against that batch)
+      //   - targetBatchId null + match    -> 'add'      (legacy behavior)
+      //   - targetBatchId null + no match -> 'auto-new' (legacy behavior)
+      //
+      // Without the targetBatchId check, a user who picked Replace via the
+      // pre-flight flow (PR #63) and then dismissed the dialog would have
+      // their choice silently downgraded to 'add' or 'auto-new' here.
+      // Latent today because autoFinalize is rarely set in the post-PR-#63
+      // world, but a footgun if anyone re-enables the defer path.
       const refreshed = await db.contentRun.findUnique({
         where: { id: contentRunId },
-        select: { autoFinalize: true },
+        select: { autoFinalize: true, targetBatchId: true },
       })
       let attachedBatchId: string | null = null
       if (refreshed?.autoFinalize) {
         try {
-          const match = await findDefaultMatchingBatch(
-            client.id,
-            contentRun.targetMonth,
-          )
-          const result = await finalizePostGeneration({
-            input: match
+          let payload:
+            | { choice: 'replace'; runId: string; batchId: string }
+            | { choice: 'add'; runId: string; batchId: string }
+            | { choice: 'auto-new'; runId: string }
+          if (refreshed.targetBatchId) {
+            payload = {
+              choice: 'replace',
+              runId: contentRunId,
+              batchId: refreshed.targetBatchId,
+            }
+          } else {
+            const match = await findDefaultMatchingBatch(
+              client.id,
+              contentRun.targetMonth,
+            )
+            payload = match
               ? { choice: 'add', runId: contentRunId, batchId: match.batchId }
-              : { choice: 'auto-new', runId: contentRunId },
+              : { choice: 'auto-new', runId: contentRunId }
+          }
+          const result = await finalizePostGeneration({
+            input: payload,
             actorUserId: contentRun.triggeredById,
             // Pipeline runs in the run's own org context. The service's
             // cross-tenant scope check passes naturally because the
