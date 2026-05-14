@@ -20,6 +20,7 @@ export const HOLDER_ROLE: Record<RelayStep, RelayRole> = {
   [RelayStep.implementing_revisions]: RelayRole.am,
   [RelayStep.revisions_complete]: RelayRole.am,
   [RelayStep.final_qa_schedule]: RelayRole.am,
+  [RelayStep.completed]: RelayRole.am,
 }
 
 export type TransitionDirection = 'forward' | 'send_back' | 'revision' | 'auto'
@@ -61,6 +62,8 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
 
   { from: RelayStep.revisions_complete, to: RelayStep.sent_to_client, direction: 'forward' },
   { from: RelayStep.revisions_complete, to: RelayStep.final_qa_schedule, direction: 'forward' },
+
+  { from: RelayStep.final_qa_schedule, to: RelayStep.completed, direction: 'forward' },
 ] as const
 
 export interface ValidateTransitionResult {
