@@ -91,20 +91,12 @@ describe('RunProgressLine', () => {
   })
 
   it('renders XCircle + full error message when intent is failed', () => {
-    render(
-      <RunProgressLine
-        run={mkRun({
-          intent: 'failed',
-          errorMessage:
-            "Invalid prisma.post.createMany() invocation: column 'approvalStatus' does not exist",
-        })}
-      />,
-    )
-    expect(
-      screen.getByText(
-        /Failed: Invalid prisma\.post\.createMany.*approvalStatus does not exist/i,
-      ),
-    ).toBeInTheDocument()
+    const errorMessage =
+      "Invalid prisma.post.createMany() invocation: column 'approvalStatus' does not exist"
+    render(<RunProgressLine run={mkRun({ intent: 'failed', errorMessage })} />)
+    // Match against the live text content directly so quotes and punctuation
+    // don't trip up the regex matcher.
+    expect(screen.getByText(`Failed: ${errorMessage}`)).toBeInTheDocument()
   })
 
   it('falls back to "unknown error" when errorMessage is null on a failed run', () => {
