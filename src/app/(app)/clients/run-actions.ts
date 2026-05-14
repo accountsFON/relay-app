@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import {
+  archiveContentRun,
   createContentRun,
   findExistingRun,
 } from '@/server/repositories/contentRuns'
@@ -54,8 +55,10 @@ export async function regenerateContentRun(
     if (run.status === 'running') {
       throw new Error('A run is currently in progress for this month')
     }
-    await db.post.deleteMany({ where: { contentRunId: run.id } })
-    await db.contentRun.delete({ where: { id: run.id } })
+    // Soft-delete via archiveContentRun (cascades to posts + writes
+    // trash audit). Replaces a previous hard-delete that lost ~$0.40 of
+    // AI spend and any attached batch's posts without warning.
+    await archiveContentRun({ runId: run.id, actorUserId: ctx.userDbId })
   }
 
   const contentRun = await createContentRun({
@@ -105,8 +108,8 @@ export async function bulkGenerateContent(
     }
 
     if (existing) {
-      await db.post.deleteMany({ where: { contentRunId: existing.id } })
-      await db.contentRun.delete({ where: { id: existing.id } })
+      // Soft-delete via archiveContentRun. See regenerateContentRun above.
+      await archiveContentRun({ runId: existing.id, actorUserId: ctx.userDbId })
     }
 
     const contentRun = await createContentRun({

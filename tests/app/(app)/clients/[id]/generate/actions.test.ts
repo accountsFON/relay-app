@@ -5,6 +5,7 @@ vi.mock('@/server/middleware/permissions', () => ({
 }))
 
 vi.mock('@/server/repositories/contentRuns', () => ({
+  archiveContentRun: vi.fn(),
   createContentRun: vi.fn(),
   findExistingRun: vi.fn(),
   findContentRunForOrg: vi.fn(),
@@ -12,6 +13,10 @@ vi.mock('@/server/repositories/contentRuns', () => ({
 
 vi.mock('@/server/repositories/clients', () => ({
   findClientForUser: vi.fn(),
+}))
+
+vi.mock('@/server/jobs/generateContent', () => ({
+  generateContentTask: { trigger: vi.fn() },
 }))
 
 vi.mock('@/db/client', () => ({
@@ -22,8 +27,17 @@ vi.mock('@/db/client', () => ({
 }))
 
 import { requireClientEditor } from '@/server/middleware/permissions'
-import { findContentRunForOrg } from '@/server/repositories/contentRuns'
-import { getRunStatus } from '@/app/(app)/clients/[id]/generate/actions'
+import {
+  archiveContentRun,
+  createContentRun,
+  findContentRunForOrg,
+  findExistingRun,
+} from '@/server/repositories/contentRuns'
+import { findClientForUser } from '@/server/repositories/clients'
+import {
+  getRunStatus,
+  triggerGeneration,
+} from '@/app/(app)/clients/[id]/generate/actions'
 
 const mockCtx = {
   userId: 'user_clerk_123',
@@ -93,5 +107,74 @@ describe('getRunStatus', () => {
     await getRunStatus('any_run')
 
     expect(requireClientEditor).toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// triggerGeneration: previous-run displacement must soft-delete via
+// archiveContentRun rather than hard-delete via db.contentRun.delete +
+// db.post.deleteMany. Without soft-delete, a user who clicks Generate over
+// a previously-attached batch loses ~$0.40 of AI spend with no recovery.
+// ---------------------------------------------------------------------------
+
+describe('triggerGeneration: existing-run displacement (Phase 4)', () => {
+  beforeEach(() => {
+    // Default mocks for happy-path triggerGeneration calls.
+    vi.mocked(findClientForUser).mockResolvedValue({
+      id: 'client_1',
+      autoCrawl: 'never',
+      crawledData: null,
+    } as never)
+    vi.mocked(createContentRun).mockResolvedValue({ id: 'run_new' } as never)
+  })
+
+  it('soft-deletes the previous run via archiveContentRun when no targetBatchId is provided', async () => {
+    vi.mocked(findExistingRun).mockResolvedValue({
+      id: 'run_prev',
+      status: 'complete',
+    } as never)
+
+    await triggerGeneration('client_1', '2026-05')
+
+    // archiveContentRun was called with the previous run + actor user id
+    expect(archiveContentRun).toHaveBeenCalledWith({
+      runId: 'run_prev',
+      actorUserId: 'cuid_user_1',
+    })
+  })
+
+  it('does NOT archive when targetBatchId is set (atomic swap path)', async () => {
+    vi.mocked(findExistingRun).mockResolvedValue({
+      id: 'run_prev',
+      status: 'complete',
+    } as never)
+
+    await triggerGeneration('client_1', '2026-05', undefined, {
+      targetBatchId: 'batch_target',
+    })
+
+    // Atomic swap at finalize handles cleanup; archive must NOT run here
+    // or the target batch would be emptied before the new run completes.
+    expect(archiveContentRun).not.toHaveBeenCalled()
+  })
+
+  it('does NOT archive when there is no existing run', async () => {
+    vi.mocked(findExistingRun).mockResolvedValue(null)
+
+    await triggerGeneration('client_1', '2026-05')
+
+    expect(archiveContentRun).not.toHaveBeenCalled()
+  })
+
+  it('throws and does NOT archive when the existing run is still running', async () => {
+    vi.mocked(findExistingRun).mockResolvedValue({
+      id: 'run_prev',
+      status: 'running',
+    } as never)
+
+    await expect(triggerGeneration('client_1', '2026-05')).rejects.toThrow(
+      /in progress/i,
+    )
+    expect(archiveContentRun).not.toHaveBeenCalled()
   })
 })
