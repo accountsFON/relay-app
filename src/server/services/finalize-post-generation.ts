@@ -4,7 +4,6 @@ import { findContentRunForOrg } from '@/server/repositories/contentRuns'
 import { parseLabel, buildBatchLabel } from '@/lib/batch-target-month'
 
 export type FinalizeChoice =
-  | { choice: 'add'; runId: string; batchId: string }
   | { choice: 'replace'; runId: string; batchId: string }
   | { choice: 'new'; runId: string; label: string }
   | { choice: 'auto-new'; runId: string }
@@ -21,7 +20,7 @@ export interface FinalizeResult {
  *
  * Cross-tenant scope: `actorOrganizationId` is the actor's CURRENT active
  * org (from OrgContext). The service verifies the run belongs to that org
- * AND, for add/replace, that the user-supplied batchId belongs to the
+ * AND, for replace, that the user-supplied batchId belongs to the
  * run's client. Without these checks an authenticated AM in Org A could
  * pass a runId from Org B (read others' state) or a batchId from Org B
  * with choice='replace' (wipe their posts).
@@ -45,12 +44,11 @@ export async function finalizePostGeneration({
     throw new Error('Run has no posts to attach')
   }
 
-  // For add/replace, the user supplies the target batchId directly. Verify
+  // For replace, the user supplies the target batchId directly. Verify
   // it belongs to the run's client (and therefore the run's org). Without
-  // this an AM could pass a batchId from a sibling client in the same org,
-  // or worse, choice='replace' on any batchId and the deleteMany would wipe
-  // it. The check below catches both.
-  if (input.choice === 'add' || input.choice === 'replace') {
+  // this an AM could pass a batchId from a sibling client in the same org
+  // and the deleteMany would wipe it.
+  if (input.choice === 'replace') {
     const targetBatch = await db.batch.findUnique({
       where: { id: input.batchId },
       select: { clientId: true },
@@ -62,9 +60,7 @@ export async function finalizePostGeneration({
 
   let targetBatchId: string
 
-  if (input.choice === 'add') {
-    targetBatchId = input.batchId
-  } else if (input.choice === 'replace') {
+  if (input.choice === 'replace') {
     targetBatchId = input.batchId
     // Delete existing posts in the batch (excluding the just-generated ones,
     // which currently have batchId=null so they're not in this set anyway).
@@ -100,8 +96,9 @@ export async function finalizePostGeneration({
     data: { batchId: targetBatchId },
   })
 
-  // For 'add' / 'replace', advance the batch sub-state to drafted.
-  if (input.choice === 'add' || input.choice === 'replace') {
+  // For 'replace', advance the batch sub-state to drafted (the existing
+  // posts in the target were displaced; the new set is the working draft).
+  if (input.choice === 'replace') {
     await db.batch.update({
       where: { id: targetBatchId },
       data: { currentSubState: 'drafted' },

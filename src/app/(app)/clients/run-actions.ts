@@ -65,9 +65,7 @@ export async function regenerateContentRun(
   // Pre-flight Replace resolution: if a matching batch exists for this
   // client + month, regenerate attaches into it on completion (atomic swap
   // via the InFlightAutoFinalizer). No match -> targetBatchId stays null
-  // and auto-finalizer takes the auto-new path. Either way the legacy
-  // InFlightChoiceModal is not reached, which is the prerequisite for
-  // removing it in a follow-up PR.
+  // and auto-finalizer takes the auto-new path.
   const matching = await findMatchingBatchForClientMonth(clientId, targetMonth)
 
   const contentRun = await createContentRun({
