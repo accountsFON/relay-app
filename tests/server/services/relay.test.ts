@@ -217,7 +217,7 @@ describe('passBaton', () => {
   it('throws if batch not found', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce(null)
     await expect(
-      passBaton({ batchId: 'b1', toStep: RelayStep.in_design, actorId: 'u1' }),
+      passBaton({ batchId: 'b1', toStep: RelayStep.in_design, actorId: 'u1', actorOrganizationId: 'org_1' }),
     ).rejects.toThrow(RelayServiceError)
   })
 
@@ -228,12 +228,14 @@ describe('passBaton', () => {
       currentStep: RelayStep.copy,
       currentHolder: 'u1',
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     await expect(
       passBaton({
         batchId: 'b1',
         toStep: RelayStep.sent_to_client,
         actorId: 'u1',
+        actorOrganizationId: 'org_1',
       }),
     ).rejects.toThrow(RelayServiceError)
   })
@@ -245,12 +247,14 @@ describe('passBaton', () => {
       currentStep: RelayStep.am_review_design,
       currentHolder: 'u1',
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     await expect(
       passBaton({
         batchId: 'b1',
         toStep: RelayStep.design_revisions,
         actorId: 'u1',
+        actorOrganizationId: 'org_1',
       }),
     ).rejects.toThrow(/non-forward/)
   })
@@ -262,11 +266,13 @@ describe('passBaton', () => {
       currentStep: RelayStep.copy,
       currentHolder: 'u_am',
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     const result = await passBaton({
       batchId: 'b1',
       toStep: RelayStep.in_design,
       actorId: 'u_am',
+      actorOrganizationId: 'org_1',
     })
     expect(result.toStep).toBe(RelayStep.in_design)
     expect(result.newHolderId).toBe('user_designer')
@@ -284,11 +290,13 @@ describe('passBaton', () => {
       currentStep: RelayStep.copy,
       currentHolder: 'u_am',
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     await passBaton({
       batchId: 'b1',
       toStep: RelayStep.in_design,
       actorId: 'u_am',
+      actorOrganizationId: 'org_1',
     })
     const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
     expect(activityCall.data.mentions.create).toEqual([
@@ -308,11 +316,13 @@ describe('passBaton', () => {
       currentStep: RelayStep.am_qa_pre_client,
       currentHolder: 'u_am',
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     await passBaton({
       batchId: 'b1',
       toStep: RelayStep.sent_to_client,
       actorId: 'u_am',
+      actorOrganizationId: 'org_1',
     })
     const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
     expect(activityCall.data.mentions.create).toEqual([
@@ -328,11 +338,13 @@ describe('passBaton', () => {
       currentStep: RelayStep.am_qa_pre_client,
       currentHolder: 'u_am',
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     await passBaton({
       batchId: 'b1',
       toStep: RelayStep.sent_to_client,
       actorId: 'u_am',
+      actorOrganizationId: 'org_1',
     })
     const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
     expect(activityCall.data.visibility).toBe('public')
@@ -347,6 +359,7 @@ describe('sendBackBaton', () => {
         toStep: RelayStep.design_revisions,
         reason: '',
         actorId: 'u1',
+        actorOrganizationId: 'org_1',
       }),
     ).rejects.toThrow(/reason note/)
   })
@@ -358,6 +371,7 @@ describe('sendBackBaton', () => {
       currentStep: RelayStep.copy,
       currentHolder: 'u1',
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     await expect(
       sendBackBaton({
@@ -365,6 +379,7 @@ describe('sendBackBaton', () => {
         toStep: RelayStep.in_design,
         reason: 'because',
         actorId: 'u1',
+        actorOrganizationId: 'org_1',
       }),
     ).rejects.toThrow(/non-send_back/)
   })
@@ -376,12 +391,14 @@ describe('sendBackBaton', () => {
       currentStep: RelayStep.am_qa_pre_client,
       currentHolder: 'u_am',
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     const result = await sendBackBaton({
       batchId: 'b1',
       toStep: RelayStep.design_revisions,
       reason: 'logo too small',
       actorId: 'u_am',
+      actorOrganizationId: 'org_1',
     })
     expect(result.toStep).toBe(RelayStep.design_revisions)
     expect(currentTx.tx.relayEvent.create.mock.calls[0][0].data.reason).toBe(
@@ -394,7 +411,7 @@ describe('sendBackBaton', () => {
 describe('dispatchRevisions', () => {
   it('refuses empty plans', async () => {
     await expect(
-      dispatchRevisions({ batchId: 'b1', actorId: 'u1', items: [] }),
+      dispatchRevisions({ batchId: 'b1', actorId: 'u1', actorOrganizationId: 'org_1', items: [] }),
     ).rejects.toThrow(/at least one/)
   })
 
@@ -403,11 +420,13 @@ describe('dispatchRevisions', () => {
       id: 'b1',
       clientId: 'c1',
       currentStep: RelayStep.copy,
+      client: { organizationId: 'org_1' },
     })
     await expect(
       dispatchRevisions({
         batchId: 'b1',
         actorId: 'u_am',
+        actorOrganizationId: 'org_1',
         items: [
           {
             type: RevisionItemType.copy,
@@ -425,10 +444,12 @@ describe('dispatchRevisions', () => {
       clientId: 'c1',
       currentStep: RelayStep.implementing_revisions,
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     const result = await dispatchRevisions({
       batchId: 'b1',
       actorId: 'u_am',
+      actorOrganizationId: 'org_1',
       items: [
         {
           type: RevisionItemType.copy,
@@ -454,7 +475,7 @@ describe('completeRevisionItem', () => {
   it('throws if item not found', async () => {
     currentTx.tx.revisionItem.findUnique.mockResolvedValueOnce(null)
     await expect(
-      completeRevisionItem({ itemId: 'i1', actorId: 'u1' }),
+      completeRevisionItem({ itemId: 'i1', actorId: 'u1', actorOrganizationId: 'org_1' }),
     ).rejects.toThrow(/not found/)
   })
 
@@ -465,7 +486,7 @@ describe('completeRevisionItem', () => {
       status: RevisionItemStatus.complete,
       plan: { batchId: 'b1' },
     })
-    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u1' })
+    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u1', actorOrganizationId: 'org_1' })
     expect(result.alreadyComplete).toBe(true)
     expect(result.autoAdvanced).toBe(false)
   })
@@ -482,9 +503,10 @@ describe('completeRevisionItem', () => {
       clientId: 'c1',
       currentStep: RelayStep.implementing_revisions,
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     currentTx.tx.revisionItem.count.mockResolvedValueOnce(1)
-    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u_am' })
+    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u_am', actorOrganizationId: 'org_1' })
     expect(result.autoAdvanced).toBe(false)
     expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
   })
@@ -501,13 +523,116 @@ describe('completeRevisionItem', () => {
       clientId: 'c1',
       currentStep: RelayStep.implementing_revisions,
       label: '2026-05',
+      client: { organizationId: 'org_1' },
     })
     currentTx.tx.revisionItem.count.mockResolvedValueOnce(0)
-    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u_am' })
+    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u_am', actorOrganizationId: 'org_1' })
     expect(result.autoAdvanced).toBe(true)
     expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
     const updateArgs = currentTx.tx.batch.update.mock.calls[0][0]
     expect(updateArgs.data.currentStep).toBe(RelayStep.revisions_complete)
     expect(updateArgs.data.currentRole).toBe(RelayRole.am)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Cross-tenant scope: each service function must reject batches whose
+// organization does not match the caller's `actorOrganizationId`. Treated
+// as "Relay not found" to avoid existence leaks across tenants.
+// ---------------------------------------------------------------------------
+
+describe('cross-tenant scope guards', () => {
+  it('passBaton refuses when the batch is in a different org', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_OTHER' },
+    })
+    await expect(
+      passBaton({
+        batchId: 'b1',
+        toStep: RelayStep.in_design,
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/relay not found/i)
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+    expect(currentTx.tx.relayEvent.create).not.toHaveBeenCalled()
+  })
+
+  it('sendBackBaton refuses when the batch is in a different org', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_OTHER' },
+    })
+    await expect(
+      sendBackBaton({
+        batchId: 'b1',
+        toStep: RelayStep.in_design,
+        reason: 'logo too small',
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/relay not found/i)
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('dispatchRevisions refuses when the batch is in a different org', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.implementing_revisions,
+      label: '2026-05',
+      client: { organizationId: 'org_OTHER' },
+    })
+    await expect(
+      dispatchRevisions({
+        batchId: 'b1',
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+        items: [
+          {
+            type: RevisionItemType.copy,
+            description: 'tighten',
+            assignedTo: 'u_am',
+          },
+        ],
+      }),
+    ).rejects.toThrow(/relay not found/i)
+    expect(currentTx.tx.revisionPlan.create).not.toHaveBeenCalled()
+  })
+
+  it('completeRevisionItem refuses when the batch is in a different org', async () => {
+    currentTx.tx.revisionItem.findUnique.mockResolvedValueOnce({
+      id: 'i1',
+      type: RevisionItemType.copy,
+      status: RevisionItemStatus.pending,
+      plan: { batchId: 'b1' },
+    })
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.implementing_revisions,
+      label: '2026-05',
+      client: { organizationId: 'org_OTHER' },
+    })
+    await expect(
+      completeRevisionItem({
+        itemId: 'i1',
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/relay not found/i)
+    // CRITICAL: the revisionItem.update must NOT have fired. The scope
+    // check moves the batch lookup before the update specifically so a
+    // cross-org caller cannot mutate item state before the check.
+    expect(currentTx.tx.revisionItem.update).not.toHaveBeenCalled()
   })
 })

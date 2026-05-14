@@ -90,6 +90,7 @@ export default async function BatchDetailPage({
         batchId: batch.id,
         toStep: RelayStep.client_decision,
         actorId: ctx.userDbId,
+        actorOrganizationId: ctx.organizationDbId,
       })
       const refreshed = await findBatch(batchId)
       if (refreshed) batch = refreshed
