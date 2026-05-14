@@ -1,6 +1,6 @@
 import { RelayRole } from '@prisma/client'
 import { db } from '@/db/client'
-import { findContentRun } from '@/server/repositories/contentRuns'
+import { findContentRunForOrg } from '@/server/repositories/contentRuns'
 import { parseLabel, buildBatchLabel } from '@/lib/batch-target-month'
 
 export type FinalizeChoice =
@@ -18,20 +18,46 @@ export interface FinalizeResult {
  * Attaches a completed ContentRun's posts to a batch. Pure service: no
  * auth, no revalidation. Callers (foreground action, background pipeline)
  * handle those.
+ *
+ * Cross-tenant scope: `actorOrganizationId` is the actor's CURRENT active
+ * org (from OrgContext). The service verifies the run belongs to that org
+ * AND, for add/replace, that the user-supplied batchId belongs to the
+ * run's client. Without these checks an authenticated AM in Org A could
+ * pass a runId from Org B (read others' state) or a batchId from Org B
+ * with choice='replace' (wipe their posts).
  */
 export async function finalizePostGeneration({
   input,
   actorUserId,
+  actorOrganizationId,
 }: {
   input: FinalizeChoice
   actorUserId: string
+  actorOrganizationId: string
 }): Promise<FinalizeResult> {
-  const run = await findContentRun(input.runId)
+  // Scoped lookup: returns null if the run belongs to a different org.
+  // Treat as "not found" rather than 403 to avoid existence leak.
+  const run = await findContentRunForOrg(input.runId, actorOrganizationId)
   if (!run) throw new Error('Run not found')
 
   const newPostIds = run.posts.map((p) => p.id)
   if (newPostIds.length === 0) {
     throw new Error('Run has no posts to attach')
+  }
+
+  // For add/replace, the user supplies the target batchId directly. Verify
+  // it belongs to the run's client (and therefore the run's org). Without
+  // this an AM could pass a batchId from a sibling client in the same org,
+  // or worse, choice='replace' on any batchId and the deleteMany would wipe
+  // it. The check below catches both.
+  if (input.choice === 'add' || input.choice === 'replace') {
+    const targetBatch = await db.batch.findUnique({
+      where: { id: input.batchId },
+      select: { clientId: true },
+    })
+    if (!targetBatch || targetBatch.clientId !== run.clientId) {
+      throw new Error('Batch not found')
+    }
   }
 
   let targetBatchId: string

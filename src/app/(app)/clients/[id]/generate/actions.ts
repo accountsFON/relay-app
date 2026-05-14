@@ -5,7 +5,7 @@ import { findClientForUser } from '@/server/repositories/clients'
 import {
   createContentRun,
   findExistingRun,
-  findContentRun,
+  findContentRunForOrg,
 } from '@/server/repositories/contentRuns'
 import { db } from '@/db/client'
 
@@ -72,8 +72,16 @@ export async function getClientCrawlInfo(clientId: string) {
   }
 }
 
+/**
+ * Returns run status for the polling dialog. Auth + scope are both
+ * required: previously this endpoint had no auth call at all (any caller
+ * with the runId could read it) and no scope check (any authenticated
+ * user could read runs from any other agency, including error messages
+ * and brief snippets).
+ */
 export async function getRunStatus(contentRunId: string) {
-  const run = await findContentRun(contentRunId)
+  const ctx = await requireClientEditor()
+  const run = await findContentRunForOrg(contentRunId, ctx.organizationDbId)
   if (!run) return null
 
   return {

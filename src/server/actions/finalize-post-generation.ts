@@ -4,7 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
-import { findMatchingBatchForRun } from '@/server/repositories/contentRuns'
+import {
+  findContentRunForOrg,
+  findMatchingBatchForRun,
+} from '@/server/repositories/contentRuns'
 import { finalizePostGeneration } from '@/server/services/finalize-post-generation'
 
 const ChoiceSchema = z.discriminatedUnion('choice', [
@@ -49,11 +52,15 @@ export async function finalizePostGenerationAction(
   // existence via the idempotency path.
   const ctx = await requireClientEditor()
 
+  // Scope-check the run BEFORE the idempotency probe. Otherwise a cross-org
+  // caller could pass a runId from another agency and the idempotency path
+  // would leak whether that run's posts are attached (plus the batchId).
+  const run = await findContentRunForOrg(input.runId, ctx.organizationDbId)
+  if (!run) throw new Error('Run not found')
+
   // Idempotency guard: if this run's posts are already attached to a batch,
   // return the existing batchId rather than throwing. This handles the
   // cross-tab race where two InFlightChoiceModals fire simultaneously.
-  // Not-found guard is handled by the service; we only need to check whether
-  // posts are already attached.
   const existingPost = await db.post.findFirst({
     where: { contentRunId: input.runId, batchId: { not: null } },
     select: { batchId: true },
@@ -62,7 +69,11 @@ export async function finalizePostGenerationAction(
     return { batchId: existingPost.batchId, alreadyFinalized: true }
   }
 
-  const result = await finalizePostGeneration({ input, actorUserId: ctx.userDbId })
+  const result = await finalizePostGeneration({
+    input,
+    actorUserId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
+  })
   // Revalidate any pages that show the batch.
   revalidatePath(`/clients/${result.clientId}/batches/${result.batchId}`)
   revalidatePath(`/clients/${result.clientId}`)
@@ -74,9 +85,15 @@ export async function finalizePostGenerationAction(
  * autoFinalize flag on the run so the pipeline auto-attaches posts on
  * completion. Called when the user dismisses the generation dialog while
  * the pipeline is still running.
+ *
+ * Cross-tenant guard: refuses if the run belongs to a different
+ * organization than the actor's current active org. Without this an AM in
+ * Org A could flip autoFinalize on any run id from Org B.
  */
 export async function deferFinalizeAction(runId: string): Promise<void> {
-  await requireClientEditor()
+  const ctx = await requireClientEditor()
+  const run = await findContentRunForOrg(runId, ctx.organizationDbId)
+  if (!run) throw new Error('Run not found')
   await db.contentRun.update({
     where: { id: runId },
     data: { autoFinalize: true },
@@ -92,11 +109,17 @@ export async function deferFinalizeAction(runId: string): Promise<void> {
  * also used by `listInFlightRuns` for the same lookup. The action wrapper
  * adds the auth gate and translates the `id` field to `batchId` for the
  * client-facing shape.
+ *
+ * Cross-tenant guard: returns null if the run is in a different
+ * organization. Without this an AM in Org A could probe Org B's runs for
+ * matching batches and leak batchId + label + postCount across tenants.
  */
 export async function findMatchingBatchForRunAction(
   runId: string,
 ): Promise<{ batchId: string; label: string; postCount: number } | null> {
-  await requireClientEditor()
+  const ctx = await requireClientEditor()
+  const run = await findContentRunForOrg(runId, ctx.organizationDbId)
+  if (!run) return null
   const match = await findMatchingBatchForRun(runId)
   if (!match) return null
   return { batchId: match.id, label: match.label, postCount: match.postCount }

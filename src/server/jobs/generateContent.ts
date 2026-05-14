@@ -233,6 +233,11 @@ export const generateContentTask = task({
               ? { choice: 'add', runId: contentRunId, batchId: match.batchId }
               : { choice: 'auto-new', runId: contentRunId },
             actorUserId: contentRun.triggeredById,
+            // Pipeline runs in the run's own org context. The service's
+            // cross-tenant scope check passes naturally because the
+            // "actor" here is implicitly the original triggering user
+            // operating inside their own org.
+            actorOrganizationId: client.organizationId,
           })
           attachedBatchId = result.batchId
         } catch (err) {
