@@ -20,7 +20,10 @@ export async function updatePostAction(
 ) {
   const ctx = await requireClientEditor()
 
-  const before = await findPostById(postId)
+  // findPostById is now scoped: returns null if the actor has no membership
+  // in the post's org. Treat null as "post does not exist" (404 semantics)
+  // to avoid leaking existence across org boundaries.
+  const before = await findPostById(postId, ctx.userDbId)
   if (!before) return
 
   // Snapshot the prior body BEFORE the update so we can restore to it.
@@ -35,7 +38,10 @@ export async function updatePostAction(
     },
   })
 
-  await updatePost(postId, data)
+  // updatePost is also scoped via assertCanEditPost as defense in depth.
+  // Since `before` is non-null above, this should not throw under normal
+  // flow; a throw here would indicate a race or an exotic membership state.
+  await updatePost(postId, data, ctx.userDbId)
 
   const fieldsChanged: string[] = []
   if (data.caption !== undefined && data.caption !== before.caption) {
@@ -85,7 +91,10 @@ export async function restorePostVersionAction(versionId: string) {
   const version = await findVersion(versionId)
   if (!version) throw new Error('Post version not found')
 
-  const current = await findPostById(version.postId)
+  // Scope-check the post before reading or writing. If the actor has no
+  // membership in the post's org, treat it as "not found" (404 semantics
+  // matching findClientForUser).
+  const current = await findPostById(version.postId, ctx.userDbId)
   if (!current) throw new Error('Post not found')
 
   await snapshotPostVersion({
@@ -99,12 +108,16 @@ export async function restorePostVersionAction(versionId: string) {
     },
   })
 
-  await updatePost(version.postId, {
-    caption: version.caption,
-    hashtags: version.hashtags,
-    graphicHook: version.graphicHook,
-    designerNotes: version.designerNotes,
-  })
+  await updatePost(
+    version.postId,
+    {
+      caption: version.caption,
+      hashtags: version.hashtags,
+      graphicHook: version.graphicHook,
+      designerNotes: version.designerNotes,
+    },
+    ctx.userDbId,
+  )
 
   await recordActivity({
     clientId: current.clientId,
