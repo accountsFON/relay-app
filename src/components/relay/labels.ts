@@ -25,8 +25,15 @@ export const STEP_LABEL: Record<RelayStep, string> = {
 }
 
 /**
- * Role colors per spec § UI Direction.
- * Admin gray, AM blue, Designer purple, Client green.
+ * Role colors aligned with the cream-and-ink brand system.
+ * Hue-based distinctions (blue/purple/green) were retired in the brand
+ * sweep — they broke the "orange is logo-only" rule by introducing
+ * non-brand chromatic backgrounds on every relay surface. Roles are now
+ * distinguished by lightness/inversion within the ink scale:
+ *   admin   — muted gray (least emphasis, internal-only role)
+ *   am      — cream-warm tint (warm, the working-default role)
+ *   designer— light ink tint (cooler emphasis)
+ *   client  — inverse dark (strongest visual weight, signals "external")
  * Tailwind utility class triples to keep JSX readable.
  */
 export const ROLE_COLOR: Record<RelayRole, { bg: string; text: string; ring: string }> = {
@@ -36,19 +43,19 @@ export const ROLE_COLOR: Record<RelayRole, { bg: string; text: string; ring: str
     ring: 'ring-muted-foreground/30',
   },
   [RelayRole.am]: {
-    bg: 'bg-blue-100',
-    text: 'text-blue-900',
-    ring: 'ring-blue-400',
+    bg: 'bg-cream-warm',
+    text: 'text-foreground',
+    ring: 'ring-ink/40',
   },
   [RelayRole.designer]: {
-    bg: 'bg-purple-100',
-    text: 'text-purple-900',
-    ring: 'ring-purple-400',
+    bg: 'bg-ink/10',
+    text: 'text-foreground',
+    ring: 'ring-ink/40',
   },
   [RelayRole.client]: {
-    bg: 'bg-green-100',
-    text: 'text-green-900',
-    ring: 'ring-green-500',
+    bg: 'bg-foreground',
+    text: 'text-background',
+    ring: 'ring-foreground',
   },
 }
 
