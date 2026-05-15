@@ -23,6 +23,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import { randomUUID } from 'crypto'
+import { cleanupLeakedTestOrgs } from '../../helpers/cleanup-leaked-test-orgs'
 
 // ---------------------------------------------------------------------------
 // vi.hoisted: runs before vi.mock factories — create the real db here so the
@@ -53,6 +54,7 @@ vi.mock('@/db/client', () => ({ db }))
 import { archiveBatch, restoreBatch } from '@/server/repositories/batches'
 
 afterAll(async () => {
+  await cleanupLeakedTestOrgs(db, 'test-batches-archive-org-')
   await pool.end()
 })
 

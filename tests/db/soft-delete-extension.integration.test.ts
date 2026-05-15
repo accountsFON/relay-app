@@ -22,6 +22,7 @@
  * Unique UUIDs in names/clerkOrgId ensure concurrent runs don't collide.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest'
+import { cleanupLeakedTestOrgs } from '../helpers/cleanup-leaked-test-orgs'
 import { randomUUID } from 'crypto'
 import path from 'path'
 import dotenv from 'dotenv'
@@ -50,6 +51,7 @@ beforeAll(() => {
 })
 
 afterAll(async () => {
+  await cleanupLeakedTestOrgs(db, 'test-soft-delete-org-')
   await pool.end()
 })
 

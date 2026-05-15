@@ -14,6 +14,7 @@
  *   5. Clean up all created rows in afterEach so the DB stays clean.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from 'vitest'
+import { cleanupLeakedTestOrgs } from '../../helpers/cleanup-leaked-test-orgs'
 import { randomUUID } from 'crypto'
 import path from 'path'
 import dotenv from 'dotenv'
@@ -43,6 +44,7 @@ beforeAll(() => {
 })
 
 afterAll(async () => {
+  await cleanupLeakedTestOrgs(db, 'test-trash-audit-org-')
   await pool.end()
 })
 

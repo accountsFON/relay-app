@@ -21,6 +21,7 @@
  *   4. afterEach cleans up all rows in FK-safe order.
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
+import { cleanupLeakedTestOrgs } from '../../helpers/cleanup-leaked-test-orgs'
 import { randomUUID } from 'crypto'
 
 // ---------------------------------------------------------------------------
@@ -52,6 +53,7 @@ vi.mock('@/db/client', () => ({ db }))
 import { purgeEntity } from '@/server/repositories/trashPurge'
 
 afterAll(async () => {
+  await cleanupLeakedTestOrgs(db, 'test-purge-org-')
   await pool.end()
 })
 
