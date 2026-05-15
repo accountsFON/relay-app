@@ -22,15 +22,12 @@ if (!testUrl) {
 assertNotProdDb(testUrl)
 
 const passthroughArgs = process.argv.slice(2)
+// Vitest 4 treats positional filter args as filename substring matches
+// (not globs). 'integration.test' uniquely identifies *.integration.test.ts
+// files without grabbing any unit tests.
 const result = spawnSync(
   'npx',
-  [
-    'vitest',
-    'run',
-    '--passWithNoTests',
-    '**/*.integration.test.ts',
-    ...passthroughArgs,
-  ],
+  ['vitest', 'run', '--passWithNoTests', 'integration.test', ...passthroughArgs],
   {
     env: { ...process.env, DATABASE_URL: testUrl },
     stdio: 'inherit',
