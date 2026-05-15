@@ -21,7 +21,6 @@ describe('validateTransition', () => {
 
   it('rejects illegal jumps', () => {
     expect(validateTransition(RelayStep.copy, RelayStep.sent_to_client).ok).toBe(false)
-    expect(validateTransition(RelayStep.in_design, RelayStep.copy).ok).toBe(false)
     expect(validateTransition(RelayStep.am_qa_pre_client, RelayStep.copy).ok).toBe(false)
     expect(validateTransition(RelayStep.client_decision, RelayStep.copy).ok).toBe(false)
     expect(
@@ -56,9 +55,8 @@ describe('legalSendBackTargets', () => {
     ])
   })
 
-  it('returns empty for steps with no legal send-back', () => {
-    expect(legalSendBackTargets(RelayStep.copy)).toEqual([])
-    expect(legalSendBackTargets(RelayStep.client_decision)).toEqual([])
+  it('returns empty only for onboarding_gate (no predecessor)', () => {
+    expect(legalSendBackTargets(RelayStep.onboarding_gate)).toEqual([])
   })
 })
 
@@ -151,9 +149,10 @@ describe('completed terminal step', () => {
     expect(result.direction).toBe('forward')
   })
 
-  it('rejects any transition out of completed (terminal step)', () => {
-    const result = validateTransition(RelayStep.completed, RelayStep.copy)
-    expect(result.ok).toBe(false)
+  it('rejects forward jumps out of completed; only send_back to final_qa_schedule is legal', () => {
+    expect(validateTransition(RelayStep.completed, RelayStep.copy).ok).toBe(false)
+    expect(validateTransition(RelayStep.completed, RelayStep.in_design).ok).toBe(false)
+    expect(validateTransition(RelayStep.completed, RelayStep.final_qa_schedule).ok).toBe(true)
   })
 
   it('exposes completed as a legal next step from final_qa_schedule', () => {
@@ -165,14 +164,21 @@ describe('completed terminal step', () => {
     })
   })
 
-  it('returns no legal next steps from completed', () => {
+  it('returns one send-back next step from completed (the un-finish path)', () => {
     const next = legalNextSteps(RelayStep.completed)
-    expect(next).toEqual([])
+    expect(next).toEqual([
+      {
+        from: RelayStep.completed,
+        to: RelayStep.final_qa_schedule,
+        direction: 'send_back',
+      },
+    ])
   })
 
-  it('returns no legal send-back targets from completed', () => {
-    const targets = legalSendBackTargets(RelayStep.completed)
-    expect(targets).toEqual([])
+  it('returns final_qa_schedule as send-back target from completed (un-finish)', () => {
+    expect(legalSendBackTargets(RelayStep.completed)).toEqual([
+      RelayStep.final_qa_schedule,
+    ])
   })
 
   it('HOLDER_ROLE has am role for completed step', () => {
@@ -181,5 +187,73 @@ describe('completed terminal step', () => {
 
   it('holderRoleForStep returns am for completed', () => {
     expect(holderRoleForStep(RelayStep.completed)).toBe(RelayRole.am)
+  })
+})
+
+describe('go back on every step', () => {
+  it('every RelayStep except onboarding_gate has at least one legal send-back target', () => {
+    for (const step of Object.values(RelayStep)) {
+      if (step === RelayStep.onboarding_gate) {
+        expect(legalSendBackTargets(step as RelayStep)).toEqual([])
+        continue
+      }
+      const targets = legalSendBackTargets(step as RelayStep)
+      expect(
+        targets.length,
+        `${step} should have at least one back target`,
+      ).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  it('copy can go back to onboarding_gate', () => {
+    expect(legalSendBackTargets(RelayStep.copy)).toEqual([
+      RelayStep.onboarding_gate,
+    ])
+  })
+
+  it('in_design can go back to copy', () => {
+    expect(legalSendBackTargets(RelayStep.in_design)).toEqual([RelayStep.copy])
+  })
+
+  it('design_revisions can go back to am_qa_pre_client (am_review_design is already the forward path)', () => {
+    expect(legalSendBackTargets(RelayStep.design_revisions)).toEqual([
+      RelayStep.am_qa_pre_client,
+    ])
+  })
+
+  it('sent_to_client can go back to both am_qa_pre_client and revisions_complete', () => {
+    const targets = legalSendBackTargets(RelayStep.sent_to_client)
+    expect(targets).toContain(RelayStep.am_qa_pre_client)
+    expect(targets).toContain(RelayStep.revisions_complete)
+  })
+
+  it('client_decision can go back to sent_to_client', () => {
+    expect(legalSendBackTargets(RelayStep.client_decision)).toEqual([
+      RelayStep.sent_to_client,
+    ])
+  })
+
+  it('ready_to_schedule can go back to client_decision', () => {
+    expect(legalSendBackTargets(RelayStep.ready_to_schedule)).toEqual([
+      RelayStep.client_decision,
+    ])
+  })
+
+  it('implementing_revisions can go back to client_decision', () => {
+    expect(legalSendBackTargets(RelayStep.implementing_revisions)).toEqual([
+      RelayStep.client_decision,
+    ])
+  })
+
+  it('revisions_complete can go back to implementing_revisions', () => {
+    expect(legalSendBackTargets(RelayStep.revisions_complete)).toEqual([
+      RelayStep.implementing_revisions,
+    ])
+  })
+
+  it('final_qa_schedule can go back to both ready_to_schedule and revisions_complete', () => {
+    const targets = legalSendBackTargets(RelayStep.final_qa_schedule)
+    expect(targets).toContain(RelayStep.ready_to_schedule)
+    expect(targets).toContain(RelayStep.revisions_complete)
   })
 })
