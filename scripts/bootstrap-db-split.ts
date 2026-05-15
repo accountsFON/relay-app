@@ -25,6 +25,7 @@ import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
 
 const REPO_FILES = ['package.json', 'src/db/schema.prisma']
 const PROD_HOSTNAME = 'ep-odd-math-a4uda3vs.us-east-1.aws.neon.tech'
+const NEON_PROJECT_ID = 'purple-flower-31732050'
 
 function sh(cmd: string, args: string[], opts: { silent?: boolean } = {}):
   SpawnSyncReturns<string> {
@@ -68,9 +69,11 @@ function sanityCheck(): void {
 
 // 2. Create branches
 function createBranch(name: string): void {
-  const result = sh('neonctl', ['branches', 'create', '--name', name], {
-    silent: true,
-  })
+  const result = sh(
+    'neonctl',
+    ['branches', 'create', '--name', name, '--project-id', NEON_PROJECT_ID],
+    { silent: true },
+  )
   if (result.status === 0) {
     console.log(`  created branch: ${name}`)
     return
@@ -92,7 +95,7 @@ function createBranches(): void {
 function connectionString(branch: string): string {
   const result = sh(
     'neonctl',
-    ['connection-string', branch, '--pooled'],
+    ['connection-string', branch, '--project-id', NEON_PROJECT_ID],
     { silent: true },
   )
   if (result.status !== 0) {
