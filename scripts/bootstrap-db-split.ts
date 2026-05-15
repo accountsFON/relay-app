@@ -60,7 +60,10 @@ function sanityCheck(): void {
         '  Auth:    neonctl auth',
     )
   }
-  const gh = sh('gh', ['auth', 'status'], { silent: true })
+  // gh auth status exits non-zero if any account in the keyring is broken,
+  // even when the active account is valid. Use gh api user as a clean
+  // API-reachability test instead.
+  const gh = sh('gh', ['api', 'user', '--silent'], { silent: true })
   if (gh.status !== 0) fail('gh is not authenticated. Run: gh auth login')
   console.log('  neonctl: ok')
   console.log('  gh: ok')
