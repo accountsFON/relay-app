@@ -155,33 +155,58 @@ function rewriteEnvLocal(strings: ConnStrings): void {
   console.log('  .env.local updated with DATABASE_URL, TEST_DATABASE_URL, PROD_DATABASE_HOSTNAME')
 }
 
-// 6. Migrate + seed dev
-function migrateAndSeedDev(strings: ConnStrings): void {
-  step(6, 'migrate + seed dev branch')
-  const env = { ...process.env, DATABASE_URL: strings.dev }
-  let result = spawnSync(
-    'npx',
-    ['prisma', 'migrate', 'deploy', '--schema=src/db/schema.prisma'],
-    { env, stdio: 'inherit' },
-  )
-  if (result.status !== 0) fail('prisma migrate deploy failed against dev')
-
-  result = spawnSync('npm', ['run', 'seed:demo'], {
-    env: { ...env, DEMO_SEED_ALLOW: 'true' },
-    stdio: 'inherit',
-  })
-  if (result.status !== 0) fail('seed:demo failed against dev')
+// Defensive double-check before any destructive operation. Connection
+// strings come from neonctl so they should never match prod, but reset
+// is destructive enough to deserve a belt-and-suspenders guard.
+function refuseIfProd(branchLabel: string, url: string): void {
+  if (new URL(url).hostname === PROD_HOSTNAME) {
+    fail(
+      `${branchLabel} URL hostname matches PROD_HOSTNAME (${PROD_HOSTNAME}). ` +
+        `Refusing to reset.`,
+    )
+  }
 }
 
-// 7. Migrate test
-function migrateTest(strings: ConnStrings): void {
-  step(7, 'migrate test branch')
+// 6. Reset dev (wipe + recreate schema). Neon branches are copy-on-write
+// of production, so a freshly created branch contains a copy of prod
+// data. Reset wipes that. Skip seed (broken on this branch; tracked
+// separately) so the bootstrap stays green.
+function resetDev(strings: ConnStrings): void {
+  step(6, 'reset dev branch (wipe data, schema only)')
+  refuseIfProd('dev', strings.dev)
   const result = spawnSync(
     'npx',
-    ['prisma', 'migrate', 'deploy', '--schema=src/db/schema.prisma'],
+    [
+      'prisma',
+      'migrate',
+      'reset',
+      '--force',
+      '--skip-seed',
+      '--schema=src/db/schema.prisma',
+    ],
+    { env: { ...process.env, DATABASE_URL: strings.dev }, stdio: 'inherit' },
+  )
+  if (result.status !== 0) fail('prisma migrate reset failed against dev')
+}
+
+// 7. Reset test (same reason: wipe the prod data carried over by the
+// branch's copy-on-write).
+function resetTest(strings: ConnStrings): void {
+  step(7, 'reset test branch (wipe data, schema only)')
+  refuseIfProd('test', strings.test)
+  const result = spawnSync(
+    'npx',
+    [
+      'prisma',
+      'migrate',
+      'reset',
+      '--force',
+      '--skip-seed',
+      '--schema=src/db/schema.prisma',
+    ],
     { env: { ...process.env, DATABASE_URL: strings.test }, stdio: 'inherit' },
   )
-  if (result.status !== 0) fail('prisma migrate deploy failed against test')
+  if (result.status !== 0) fail('prisma migrate reset failed against test')
 }
 
 // 8. Smoke run integration tests
@@ -210,6 +235,12 @@ function summary(strings: ConnStrings): void {
   console.log('  https://cloud.trigger.dev → relay-app project → env vars')
   console.log(`  DATABASE_URL there must still contain "${PROD_HOSTNAME}".`)
   console.log('')
+  console.log('Known follow-up:')
+  console.log('  Dev branch is empty (schema only). seed:demo currently')
+  console.log('  references apifyCostUsd which PR #80 renamed to')
+  console.log('  crawlerCostUsd. Patch scripts/seed/content-runs.ts then')
+  console.log('  run: DEMO_SEED_ALLOW=true npm run seed:demo')
+  console.log('')
   console.log('Ready to: git push -u origin chore/neon-db-split && gh pr create')
 }
 
@@ -218,8 +249,8 @@ function main(): void {
   createBranches()
   const strings = captureConnectionStrings()
   rewriteEnvLocal(strings)
-  migrateAndSeedDev(strings)
-  migrateTest(strings)
+  resetDev(strings)
+  resetTest(strings)
   smokeRun()
   summary(strings)
 }
