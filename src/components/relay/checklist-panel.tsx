@@ -196,19 +196,19 @@ export function ChecklistPanel({
                 <Check />
               </Button>
             </SimpleTooltip>
-          ) : (
+          ) : nextStep ? (
             <SimpleTooltip content="Hand the baton to the next person on the relay.">
               <Button
                 type="button"
-                disabled={!allRequiredChecked || !nextStep || isPending}
+                disabled={!allRequiredChecked || isPending}
                 className="w-full"
                 onClick={pass}
               >
-                {isPending ? 'Passing…' : `Pass to ${nextStep ? STEP_LABEL[nextStep] : 'next step'}`}
+                {isPending ? 'Passing…' : `Pass to ${STEP_LABEL[nextStep]}`}
                 <ArrowRight />
               </Button>
             </SimpleTooltip>
-          )}
+          ) : null}
 
           {legalSendBackTargets.length > 0 && (
             <DropdownMenu>
