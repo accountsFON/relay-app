@@ -36,10 +36,26 @@ cp .env.example .env.local
 
 ### 4. Set up the database
 
+The app uses three Neon branches: `main` (prod), `dev` (your local app),
+and `test` (integration tests). Get all three connection strings from
+1Password ("Relay App").
+
+Then run the bootstrap script once per machine:
+
 ```bash
-npx prisma generate
-npx prisma db push
+npm install -g neonctl
+neonctl auth                # one-time browser flow
+npx tsx scripts/bootstrap-db-split.ts
 ```
+
+The script provisions branches if missing, rewrites your `.env.local`,
+applies migrations, seeds demo data, and runs the integration suite as
+a smoke check. It is idempotent (safe to re-run).
+
+`PROD_DATABASE_HOSTNAME` in your `.env.local` exists as a guardrail:
+destructive scripts (`seed:demo`, `cleanup-leaked-test-orgs`) refuse to
+run if the hostname they're about to write to matches it. Pass
+`--i-know-this-is-prod` to override (recovery cleanups only).
 
 ### 5. Run it
 
