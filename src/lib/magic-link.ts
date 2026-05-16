@@ -14,23 +14,25 @@
  *     reviewer. 30-day expiry baked into the signed payload so the
  *     cookie outlives the JS session but never the link itself.
  *
- * Both use HMAC-SHA256 with MAGIC_LINK_SECRET. We deliberately fail
- * fast at module load if the env is missing so a misconfigured deploy
- * does not silently issue tokens that nobody can verify.
+ * Both use HMAC-SHA256 with MAGIC_LINK_SECRET. The env check is lazy
+ * (first function call, not module load) so a Vercel preview build can
+ * compile without the secret being set in that environment. Any actual
+ * sign/verify call without the secret throws loudly.
  *
  * See projects/relay-app/2026-05-16-post-preview-feedback-system-design.md
  * § Magic link auth model for the full spec.
  */
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 
-const SECRET = process.env.MAGIC_LINK_SECRET
-if (!SECRET || SECRET.length < 32) {
-  throw new Error(
-    'MAGIC_LINK_SECRET is unset or shorter than 32 chars. Generate with `openssl rand -base64 32` and set it in .env.local + Vercel project env.',
-  )
+function getSecret(): string {
+  const s = process.env.MAGIC_LINK_SECRET
+  if (!s || s.length < 32) {
+    throw new Error(
+      'MAGIC_LINK_SECRET is unset or shorter than 32 chars. Generate with `openssl rand -base64 32` and set it in .env.local + Vercel project env.',
+    )
+  }
+  return s
 }
-// Type narrowing: SECRET is non-undefined past the guard above.
-const MAGIC_LINK_SECRET: string = SECRET
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
 
@@ -82,7 +84,7 @@ export function signToken({ magicLinkId, expiresAt }: SignTokenInput): string {
     throw new Error('signToken: expiresAt must be a positive epoch ms')
   }
   const payload = `${magicLinkId}.${expiresAt}`
-  const sig = createHmac('sha256', MAGIC_LINK_SECRET).update(payload).digest()
+  const sig = createHmac("sha256", getSecret()).update(payload).digest()
   return `${base64urlEncode(sig)}.${payload}`
 }
 
@@ -103,7 +105,7 @@ export function verifyToken(token: string): VerifiedToken | null {
   if (!Number.isFinite(expiresAt)) return null
 
   const payload = `${magicLinkId}.${expiresAtPart}`
-  const expected = createHmac('sha256', MAGIC_LINK_SECRET).update(payload).digest()
+  const expected = createHmac("sha256", getSecret()).update(payload).digest()
 
   let provided: Buffer
   try {
@@ -167,7 +169,7 @@ export function signSession({ magicLinkId, reviewerId }: SignSessionInput): stri
     exp: Date.now() + SESSION_TTL_MS,
   }
   const payloadEncoded = base64urlEncode(JSON.stringify(payload))
-  const sig = createHmac('sha256', MAGIC_LINK_SECRET).update(payloadEncoded).digest()
+  const sig = createHmac("sha256", getSecret()).update(payloadEncoded).digest()
   return `${base64urlEncode(sig)}.${payloadEncoded}`
 }
 
@@ -184,7 +186,7 @@ export function verifySession(value: string): VerifiedSession | null {
   const [sigPart, payloadEncoded] = parts
   if (!sigPart || !payloadEncoded) return null
 
-  const expected = createHmac('sha256', MAGIC_LINK_SECRET).update(payloadEncoded).digest()
+  const expected = createHmac("sha256", getSecret()).update(payloadEncoded).digest()
   let provided: Buffer
   try {
     provided = base64urlDecodeToBuffer(sigPart)
