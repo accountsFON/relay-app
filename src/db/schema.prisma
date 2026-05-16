@@ -116,6 +116,17 @@ enum ActivityKind {
   batch_revision_dispatched
   batch_revision_completed
   batch_step_advanced
+
+  post_thread_opened
+  post_thread_resolved
+  post_caption_ai_fixed
+  magic_link_created
+  magic_link_visited
+}
+
+enum ThreadStatus {
+  open
+  resolved
 }
 
 model Organization {
@@ -164,6 +175,10 @@ model User {
   firedActivity     ActivityEvent[]      @relation("ActivityActor")
   mentions          Mention[]
   postVersions      PostVersion[]        @relation("PostVersionAuthor")
+  threadsResolved   PostThread[]         @relation("ThreadResolver")
+  threadsAuthored   PostThread[]         @relation("ThreadAuthor")
+  commentsAuthored  PostComment[]        @relation("CommentAuthor")
+  magicLinksCreated MagicLink[]          @relation("MagicLinkCreator")
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -203,15 +218,15 @@ model Client {
   deletedAt          DateTime?
   deletedBy          String?
 
-  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assignedAm        User?        @relation("AssignedAM", fields: [assignedAmId], references: [id])
-  assignedDesigner  User?        @relation("AssignedDesigner", fields: [assignedDesignerId], references: [id])
-  linkedClientUsers      User[]          @relation("LinkedClient")
-  contentRuns            ContentRun[]
-  posts                  Post[]
-  batches                Batch[]
-  activityEvents         ActivityEvent[]
-  onboardingCompletedAt  DateTime?
+  organization          Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedAm            User?           @relation("AssignedAM", fields: [assignedAmId], references: [id])
+  assignedDesigner      User?           @relation("AssignedDesigner", fields: [assignedDesignerId], references: [id])
+  linkedClientUsers     User[]          @relation("LinkedClient")
+  contentRuns           ContentRun[]
+  posts                 Post[]
+  batches               Batch[]
+  activityEvents        ActivityEvent[]
+  onboardingCompletedAt DateTime?
 
   @@index([organizationId])
   @@index([assignedAmId])
@@ -271,28 +286,29 @@ model ContentRun {
 }
 
 model Post {
-  id             String         @id @default(cuid())
-  contentRunId   String
-  clientId       String
-  batchId        String?
-  postDate       DateTime
-  caption        String         @db.Text
-  preQaCaption   String?        @db.Text
-  hashtags       String[]
-  graphicHook    String?
-  designerNotes  String?
-  mediaUrls      String[]
-  scheduledAt    DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  deletedAt      DateTime?
-  deletedBy      String?
+  id            String    @id @default(cuid())
+  contentRunId  String
+  clientId      String
+  batchId       String?
+  postDate      DateTime
+  caption       String    @db.Text
+  preQaCaption  String?   @db.Text
+  hashtags      String[]
+  graphicHook   String?
+  designerNotes String?
+  mediaUrls     String[]
+  scheduledAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  deletedBy     String?
 
   contentRun     ContentRun      @relation(fields: [contentRunId], references: [id], onDelete: Cascade)
   client         Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   batch          Batch?          @relation(fields: [batchId], references: [id], onDelete: SetNull)
   activityEvents ActivityEvent[]
   versions       PostVersion[]
+  threads        PostThread[]
 
   /// Prevents Trigger.dev retries (or any future code path) from creating
   /// duplicate posts for the same (contentRunId, postDate). Belt-and-
@@ -392,13 +408,14 @@ model Batch {
   deletedAt       DateTime?
   deletedBy       String?
 
-  client       Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  holder       User            @relation("BatchHolder", fields: [currentHolder], references: [id])
-  posts        Post[]
-  checklists   ChecklistItem[]
-  relayEvents  RelayEvent[]
+  client                Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  holder                User            @relation("BatchHolder", fields: [currentHolder], references: [id])
+  posts                 Post[]
+  checklists            ChecklistItem[]
+  relayEvents           RelayEvent[]
   revisionPlan          RevisionPlan?
-  targetedByContentRuns ContentRun[] @relation("ContentRunTargetBatch")
+  targetedByContentRuns ContentRun[]    @relation("ContentRunTargetBatch")
+  magicLinks            MagicLink[]
 
   @@index([clientId, currentStep])
   @@index([currentHolder, currentStep])
@@ -523,8 +540,8 @@ model TrashAuditLog {
   id             String   @id @default(cuid())
   organizationId String
   actorUserId    String
-  action         String   // 'archive' | 'restore' | 'purge'
-  entityType     String   // 'client' | 'batch' | 'contentRun' | 'post'
+  action         String // 'archive' | 'restore' | 'purge'
+  entityType     String // 'client' | 'batch' | 'contentRun' | 'post'
   entityId       String
   parentContext  Json     @default("{}")
   cascadeCount   Int
@@ -537,4 +554,91 @@ model TrashAuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("trash_audit_logs")
+}
+
+model PostThread {
+  id     String       @id @default(cuid())
+  postId String
+  status ThreadStatus @default(open)
+
+  // Pin location. Mutually exclusive: either both image coords set, OR both
+  // caption offsets set, OR all four null (post-level thread).
+  imageX      Float? // 0..100 percent of image width
+  imageY      Float? // 0..100 percent of image height
+  captionFrom Int? // char offset (inclusive) into Post.caption
+  captionTo   Int? // char offset (exclusive) into Post.caption
+
+  resolvedAt     DateTime?
+  resolvedBy     String?
+  resolvedReason String?
+
+  // Dual-attribution: createdBy is a Clerk user OR reviewerToken is a magic link visitor.
+  createdAt     DateTime @default(now())
+  createdBy     String?
+  reviewerToken String?
+
+  post     Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  resolver User?         @relation("ThreadResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+  author   User?         @relation("ThreadAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
+  comments PostComment[]
+
+  @@index([postId, status])
+  @@index([reviewerToken])
+  @@map("post_threads")
+}
+
+model PostComment {
+  id       String @id @default(cuid())
+  threadId String
+  body     String @db.Text
+
+  // Same dual-attribution shape as PostThread.
+  authorId      String?
+  reviewerToken String?
+  reviewerName  String? // snapshot at comment time (in case the reviewer renames later)
+
+  createdAt DateTime @default(now())
+
+  thread PostThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User?      @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([threadId, createdAt])
+  @@map("post_comments")
+}
+
+model MagicLink {
+  id                   String    @id @default(cuid())
+  batchId              String
+  tokenHash            String    @unique // sha256 of the signed token, for revocation lookup
+  defaultReviewerName  String
+  defaultReviewerEmail String
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  createdBy            String
+  createdAt            DateTime  @default(now())
+  lastVisitedAt        DateTime?
+
+  batch     Batch               @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  creator   User                @relation("MagicLinkCreator", fields: [createdBy], references: [id])
+  reviewers MagicLinkReviewer[]
+
+  @@index([batchId])
+  @@map("magic_links")
+}
+
+model MagicLinkReviewer {
+  id          String @id @default(cuid())
+  magicLinkId String
+
+  name      String
+  email     String?
+  sessionId String  @unique // signed-cookie session ID; identifies same reviewer across visits
+
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @default(now())
+
+  magicLink MagicLink @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
+
+  @@index([magicLinkId])
+  @@map("magic_link_reviewers")
 }
