@@ -196,13 +196,18 @@ async function runVerification(db: DbClient): Promise<{
     where: { post: { clientId: { in: clientIds } } },
   })
 
+  // Ranges for Clients/ContentRuns/Posts/Batches accept either the
+  // pre-trash-demo full seed or the post-trash-demo state where Step 7
+  // soft-deletes one client (Maple & Oak Furnishings) plus a batch and
+  // 17 posts. Verification queries here filter by `clientId IN <active>`,
+  // so the soft-deleted client's children naturally drop from the count.
   const rows: VerifyTarget[] = [
     { label: 'Demo users in org', actual: userCount, min: 9, max: 9 },
     { label: 'Memberships in demo org', actual: membershipCount, min: 9, max: 9 },
-    { label: 'Clients', actual: clientCount, min: 20, max: 20 },
-    { label: 'ContentRuns', actual: runCount, min: 54, max: 54 },
-    { label: 'Posts', actual: postCount, min: 540, max: 540 },
-    { label: 'Batches', actual: batchCount, min: 31, max: 31 },
+    { label: 'Clients', actual: clientCount, min: 19, max: 20 },
+    { label: 'ContentRuns', actual: runCount, min: 53, max: 54 },
+    { label: 'Posts', actual: postCount, min: 510, max: 540 },
+    { label: 'Batches', actual: batchCount, min: 29, max: 31 },
     { label: 'Distinct RelayStep values', actual: distinctSteps, min: 13, max: 13 },
     { label: 'Stuck batches (>48h)', actual: stuckBatchCount, min: 3, max: 3 },
     { label: 'ActivityEvents', actual: activityCount, min: 150, max: 320 },

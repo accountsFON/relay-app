@@ -164,7 +164,7 @@ export async function seedContentRuns(
         select: { id: true },
       })
 
-      const runData = {
+      const createData = {
         clientId: client.id,
         triggeredById,
         targetMonth,
@@ -175,7 +175,7 @@ export async function seedContentRuns(
         postingDates: [] as string[],
         openaiCostUsd: 0.42,
         anthropicCostUsd: 0.18,
-        apifyCostUsd: 0,
+        crawlerCostUsd: 0,
         totalCostUsd: 0.6,
         creditsConsumed: 1,
         startedAt,
@@ -201,18 +201,24 @@ export async function seedContentRuns(
           },
         },
       }
+      // Update payload omits FK relation fields. Prisma 7 requires the
+      // `client: { connect: { id } }` form for relations in update(), and
+      // these never change for an existing run anyway.
+      const { clientId: _c, triggeredById: _t, ...updateData } = createData
+      void _c
+      void _t
 
       let runId: string
       if (existingRun) {
         await db.contentRun.update({
           where: { id: existingRun.id },
-          data: runData,
+          data: updateData,
         })
         runId = existingRun.id
         await db.post.deleteMany({ where: { contentRunId: runId } })
       } else {
         const created = await db.contentRun.create({
-          data: runData,
+          data: createData,
           select: { id: true },
         })
         runId = created.id
