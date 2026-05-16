@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useTransition } from 'react'
 import { upload } from '@vercel/blob/client'
 import { Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { matchFilenameToPost, type MatchablePost } from '@/lib/media'
+import { matchFilenameToPost, type MatchablePost } from '@/lib/media-match'
 import { cn } from '@/lib/utils'
 
 /**
