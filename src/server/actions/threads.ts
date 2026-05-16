@@ -62,7 +62,9 @@ async function tryGetMagicLinkReviewer(): Promise<
   return { token: reviewer.magicLink.tokenHash, name: reviewer.name }
 }
 
-export class UnauthorizedError extends Error {
+// Internal-only: not exported because a 'use server' module can only export
+// async functions (Next.js client-import constraint).
+class UnauthorizedError extends Error {
   constructor(message = 'Unauthorized') {
     super(message)
     this.name = 'UnauthorizedError'

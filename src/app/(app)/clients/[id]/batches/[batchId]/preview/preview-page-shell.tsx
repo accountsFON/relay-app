@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
@@ -8,6 +8,8 @@ import { InstagramFeedPost } from '@/components/preview/instagram-post'
 import { FacebookPost } from '@/components/preview/facebook-post'
 import { MediaUpload } from '@/components/posts/media-upload'
 import { BulkMediaTray } from '@/components/posts/bulk-media-tray'
+import { PostApprovalBadge } from '@/components/preview/post-approval-badge'
+import { BulkResolveButton } from '@/components/preview/bulk-resolve-button'
 import type { HydratedThread } from '@/server/repositories/threads'
 
 export type PreviewShellPost = {
@@ -24,6 +26,13 @@ export type PreviewPageShellProps = {
   client: { id: string; name: string }
   posts: ReadonlyArray<PreviewShellPost>
   canEdit: boolean
+  /**
+   * 'internal' = AM Clerk-authenticated; 'review' = magic-link client view.
+   * Defaults to 'internal' for backwards compatibility with the existing
+   * batch preview page. Approval badge renders in both modes; bulk-resolve
+   * action is internal-only.
+   */
+  mode?: 'internal' | 'review'
 }
 
 /**
@@ -44,6 +53,7 @@ export function PreviewPageShell({
   client,
   posts,
   canEdit,
+  mode = 'internal',
 }: PreviewPageShellProps) {
   const router = useRouter()
   const [platform, setPlatform] = useState<Platform>('instagram')
@@ -51,6 +61,21 @@ export function PreviewPageShell({
   const handleRefresh = () => {
     router.refresh()
   }
+
+  // Approval derivation runs per-render against the props (which the host
+  // page hydrates from listThreadsForBatch). Open thread count drives both
+  // the badge state and the bulk-resolve trigger.
+  const approvalByPostId = useMemo(() => {
+    const map = new Map<string, { openCount: number; status: 'ready' | 'pending' }>()
+    for (const p of posts) {
+      const openCount = p.threads.filter((t) => t.status === 'open').length
+      map.set(p.id, {
+        openCount,
+        status: openCount === 0 ? 'ready' : 'pending',
+      })
+    }
+    return map
+  }, [posts])
 
   // Bulk tray needs the post date + a caption snippet for the per-post slot
   // labels. Pre-shape the props so the tray doesn't have to know about the
@@ -72,48 +97,71 @@ export function PreviewPageShell({
             No posts in this relay yet.
           </div>
         ) : (
-          posts.map((post) => (
-            <div
-              key={post.id}
-              className="flex flex-col gap-3"
-              data-testid="preview-page-post"
-              data-post-id={post.id}
-            >
-              {canEdit && (
-                <MediaUpload
-                  postId={post.id}
-                  currentMediaUrl={post.mediaUrl}
-                  onUploaded={handleRefresh}
-                />
-              )}
+          posts.map((post) => {
+            const approval = approvalByPostId.get(post.id) ?? {
+              openCount: 0,
+              status: 'ready' as const,
+            }
+            return (
+              <div
+                key={post.id}
+                className="flex flex-col gap-3"
+                data-testid="preview-page-post"
+                data-post-id={post.id}
+              >
+                <div
+                  className="mx-auto flex w-full max-w-[470px] items-center justify-between gap-2 px-1"
+                  data-testid="preview-page-post-header"
+                >
+                  <PostApprovalBadge
+                    status={approval.status}
+                    openThreadCount={approval.openCount}
+                  />
+                  {mode === 'internal' && canEdit && approval.openCount > 0 && (
+                    <BulkResolveButton
+                      postId={post.id}
+                      openThreadCount={approval.openCount}
+                      onResolved={handleRefresh}
+                    />
+                  )}
+                </div>
 
-              {platform === 'instagram' ? (
-                <InstagramFeedPost
-                  post={{
-                    id: post.id,
-                    caption: post.caption,
-                    hashtags: post.hashtags,
-                    mediaUrl: post.mediaUrl,
-                  }}
-                  client={{ name: client.name }}
-                  threads={post.threads}
-                  mode="internal"
-                />
-              ) : (
-                <FacebookPost
-                  post={{
-                    id: post.id,
-                    caption: post.caption,
-                    hashtags: post.hashtags,
-                    mediaUrl: post.mediaUrl,
-                  }}
-                  client={{ name: client.name }}
-                  threads={post.threads}
-                  mode="internal"
-                />
-              )}
-            </div>
-          ))
+                {canEdit && (
+                  <MediaUpload
+                    postId={post.id}
+                    currentMediaUrl={post.mediaUrl}
+                    onUploaded={handleRefresh}
+                  />
+                )}
+
+                {platform === 'instagram' ? (
+                  <InstagramFeedPost
+                    post={{
+                      id: post.id,
+                      caption: post.caption,
+                      hashtags: post.hashtags,
+                      mediaUrl: post.mediaUrl,
+                    }}
+                    client={{ name: client.name }}
+                    threads={post.threads}
+                    mode={mode}
+                  />
+                ) : (
+                  <FacebookPost
+                    post={{
+                      id: post.id,
+                      caption: post.caption,
+                      hashtags: post.hashtags,
+                      mediaUrl: post.mediaUrl,
+                    }}
+                    client={{ name: client.name }}
+                    threads={post.threads}
+                    mode={mode}
+                  />
+                )}
+              </div>
+            )
+          })
         )}
       </FeedShell>
 
