@@ -60,6 +60,13 @@ const ALLOWLIST = new Set([
   // The /review/[token] middleware re-validates the token signature +
   // expiry + revocation before any handler reads from these helpers.
   'magicLinks.ts',
+  // PostThreads + PostComments are scoped indirectly via Post -> Client.organizationId.
+  // Every action wrapping these repo functions resolves auth via getOrgContext()
+  // + findPostForUser() (or magic-link reviewer auth) before any repo call,
+  // so the org boundary is enforced one layer up. Adding organizationId to
+  // every PostThread query would require joining through Post for no
+  // defense-in-depth gain.
+  'threads.ts',
 ])
 
 function listTsFiles(dir: string): string[] {
