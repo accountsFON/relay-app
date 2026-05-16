@@ -1,5 +1,11 @@
 import { db } from '@/db/client'
 
+// Re-export the pure matcher from its dedicated server-free module so existing
+// consumers of `@/lib/media` keep their import paths. New code (especially
+// client components) should import directly from `@/lib/media-match` to avoid
+// pulling in the Prisma client.
+export { matchFilenameToPost, type MatchablePost } from './media-match'
+
 /**
  * Vercel Blob adapter for the post preview + feedback system. v1 ships
  * single-image upload only; carousels (mediaUrls[1..N]) land in v2.
@@ -119,62 +125,3 @@ export async function attachMediaToPost({
   })
 }
 
-/**
- * Pure function for filename auto-matching in the bulk upload tray.
- * Extracted from the component so it can be unit-tested without DOM.
- *
- * Patterns:
- *  - "MM-DD.{ext}" matches the post whose postDate falls on month MM,
- *    day DD (year-agnostic, since a batch is scoped to a single month
- *    in practice).
- *  - "N.{ext}" or "0N.{ext}" matches the Nth post when posts are sorted
- *    by postDate ascending (1-indexed). Leading zeros are stripped.
- *
- * Returns the matching post id, or null if no match.
- */
-export type MatchablePost = {
-  id: string
-  postDate: Date
-}
-
-export function matchFilenameToPost(
-  filename: string,
-  posts: ReadonlyArray<MatchablePost>,
-): string | null {
-  if (!filename || posts.length === 0) return null
-
-  const dot = filename.lastIndexOf('.')
-  const stem = dot >= 0 ? filename.slice(0, dot) : filename
-
-  // Pattern 1: MM-DD (e.g., 05-12)
-  const mmddMatch = stem.match(/^(\d{1,2})-(\d{1,2})$/)
-  if (mmddMatch) {
-    const month = parseInt(mmddMatch[1], 10)
-    const day = parseInt(mmddMatch[2], 10)
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      const found = posts.find((p) => {
-        // Use UTC components since postDate is stored as UTC.
-        return (
-          p.postDate.getUTCMonth() + 1 === month &&
-          p.postDate.getUTCDate() === day
-        )
-      })
-      if (found) return found.id
-    }
-  }
-
-  // Pattern 2: N or 0N (1-indexed position when sorted by postDate asc)
-  const nMatch = stem.match(/^0*(\d+)$/)
-  if (nMatch) {
-    const n = parseInt(nMatch[1], 10)
-    if (n >= 1) {
-      const sorted = [...posts].sort(
-        (a, b) => a.postDate.getTime() - b.postDate.getTime(),
-      )
-      const target = sorted[n - 1]
-      if (target) return target.id
-    }
-  }
-
-  return null
-}

@@ -49,7 +49,7 @@ import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { MissingClientUserBanner } from '@/components/relay/missing-client-user-banner'
 import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
-import { Palette, ExternalLink } from 'lucide-react'
+import { Palette, ExternalLink, Eye } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function BatchDetailPage({
@@ -326,6 +326,14 @@ export default async function BatchDetailPage({
         description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
         actions={
           <>
+            <Link
+              href={`/clients/${client.id}/batches/${batch.id}/preview`}
+              data-testid="batch-preview-link"
+              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+            >
+              <Eye className="size-3.5 shrink-0 text-muted-foreground" />
+              <span>Preview</span>
+            </Link>
             <Link
               href={resolveCanvaUrl(client.canvaUrl)}
               target="_blank"

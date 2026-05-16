@@ -1,0 +1,108 @@
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
+import { requireClientViewer, canEditClients } from '@/server/middleware/permissions'
+import { findClientForUser } from '@/server/repositories/clients'
+import { findBatch } from '@/server/repositories/batches'
+import { listThreadsForBatch } from '@/server/repositories/threads'
+import { derivePostApprovalForBatch } from '@/server/services/approval'
+import { db } from '@/db/client'
+import { Breadcrumbs } from '@/components/breadcrumbs'
+import { PageHeader } from '@/components/page-header'
+import { PreviewPageShell } from './preview-page-shell'
+
+/**
+ * Internal batch preview page (Layer 2 / Task 2.1).
+ *
+ * Composes the Layer 1 preview components (FeedShell, IG/FB feed posts,
+ * per-post media upload, bulk media tray) into a single AM-facing surface.
+ *
+ * Auth: standard client.view gate via requireClientViewer + findClientForUser
+ * scoping. Mode is always 'internal' here — magic-link client view ships in
+ * Task 2.2 at /review/[token] reusing the same preview shell with mode='review'.
+ */
+export default async function BatchPreviewPage({
+  params,
+}: {
+  params: Promise<{ id: string; batchId: string }>
+}) {
+  const ctx = await requireClientViewer()
+  const { id, batchId } = await params
+
+  const client = await findClientForUser(ctx, id)
+  if (!client) notFound()
+
+  const batch = await findBatch(batchId)
+  if (!batch || batch.clientId !== client.id) notFound()
+
+  const posts = await db.post.findMany({
+    where: { batchId: batch.id },
+    orderBy: { postDate: 'asc' },
+    select: {
+      id: true,
+      postDate: true,
+      caption: true,
+      hashtags: true,
+      mediaUrls: true,
+    },
+  })
+
+  const [threadsByPost, approvalCounts] = await Promise.all([
+    listThreadsForBatch({ batchId: batch.id }),
+    derivePostApprovalForBatch(batch.id),
+  ])
+
+  // Hydrate posts with media + threads for the client shell.
+  const hydratedPosts = posts.map((p) => ({
+    id: p.id,
+    caption: p.caption,
+    hashtags: p.hashtags,
+    mediaUrl: p.mediaUrls?.[0] ?? null,
+    postDate: p.postDate,
+    threads: threadsByPost.get(p.id) ?? [],
+  }))
+
+  // Drive the bulk tray visibility off the same canEdit gate the batch page uses.
+  const canEdit = canEditClients(ctx)
+
+  return (
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
+      <div className="mb-5">
+        <Breadcrumbs
+          items={[
+            { href: '/dashboard', label: 'My Relay' },
+            { href: `/clients/${client.id}`, label: client.name },
+            {
+              href: `/clients/${client.id}/batches/${batch.id}`,
+              label: batch.label,
+            },
+            { label: 'Preview' },
+          ]}
+        />
+      </div>
+
+      <PageHeader
+        title={`${batch.label} preview`}
+        description={`${client.name} · ${approvalCounts.ready} ready · ${approvalCounts.pending} pending`}
+        actions={
+          <Link
+            href={`/clients/${client.id}/batches/${batch.id}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+          >
+            <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
+            <span>Back to relay</span>
+          </Link>
+        }
+      />
+
+      <div className="mt-8">
+        <PreviewPageShell
+          batchId={batch.id}
+          client={{ id: client.id, name: client.name }}
+          posts={hydratedPosts}
+          canEdit={canEdit}
+        />
+      </div>
+    </div>
+  )
+}
