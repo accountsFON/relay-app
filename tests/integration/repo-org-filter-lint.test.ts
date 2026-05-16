@@ -53,6 +53,13 @@ const ALLOWLIST = new Set([
   // long Prisma where clauses, but every search.ts call has explicit
   // `client: { organizationId: ctx.organizationDbId, ...scopeFilter }`.
   'search.ts',
+  // Magic links are intentionally cross-org at the repository layer: the
+  // security model is "knowing the signed token = access to the batch"
+  // (Figma/Loom/Notion shared-link pattern). Every lookup is keyed by
+  // tokenHash or sessionId, both of which are unguessable random secrets.
+  // The /review/[token] middleware re-validates the token signature +
+  // expiry + revocation before any handler reads from these helpers.
+  'magicLinks.ts',
   // PostThreads + PostComments are scoped indirectly via Post -> Client.organizationId.
   // Every action wrapping these repo functions resolves auth via getOrgContext()
   // + findPostForUser() (or magic-link reviewer auth) before any repo call,
