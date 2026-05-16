@@ -1,4 +1,6 @@
 import { db } from '@/db/client'
+import { ActivityKind } from '@prisma/client'
+import { recordActivity } from '@/server/services/activity'
 import type { PinLocation, ThreadAuthor, FeedPostProps } from '@/types/preview'
 
 /**
@@ -146,7 +148,7 @@ export async function createThread(
   const threadAuthorCols = authorFieldsForCreate(author)
   const commentAuthorCols = commentAuthorFieldsForCreate(author)
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const thread = await tx.postThread.create({
       data: {
         postId,
@@ -180,6 +182,30 @@ export async function createThread(
       },
     }
   })
+
+  // Emit ActivityEvent for the client thread. recordActivity swallows
+  // errors internally so an activity write failure cannot abort the
+  // thread create. clientId is required for activity rollup; load it
+  // from the post (post must exist since the thread was created above).
+  const post = await db.post.findUnique({
+    where: { id: postId },
+    select: { clientId: true },
+  })
+  if (post) {
+    await recordActivity({
+      clientId: post.clientId,
+      postId,
+      actorId: author.kind === 'am' ? author.userId : null,
+      kind: ActivityKind.post_thread_opened,
+      payload: {
+        threadId: result.threadId,
+        postId,
+        pinLocation: pin.kind,
+      },
+    })
+  }
+
+  return result
 }
 
 export interface AddCommentInput {
@@ -248,7 +274,12 @@ export async function resolveThread(input: ResolveThreadInput): Promise<void> {
 
   const thread = await db.postThread.findUnique({
     where: { id: threadId },
-    select: { id: true, status: true },
+    select: {
+      id: true,
+      status: true,
+      postId: true,
+      post: { select: { clientId: true } },
+    },
   })
   if (!thread) throw new ThreadNotFoundError(threadId)
   if (thread.status === 'resolved') return // idempotent
@@ -262,6 +293,23 @@ export async function resolveThread(input: ResolveThreadInput): Promise<void> {
       resolvedReason,
     },
   })
+
+  // Emit ActivityEvent for the client thread. recordActivity swallows
+  // errors internally so an activity write failure cannot abort the
+  // resolve.
+  if (thread.post?.clientId) {
+    await recordActivity({
+      clientId: thread.post.clientId,
+      postId: thread.postId,
+      actorId: resolvedBy,
+      kind: ActivityKind.post_thread_resolved,
+      payload: {
+        threadId,
+        postId: thread.postId,
+        resolvedReason,
+      },
+    })
+  }
 }
 
 export interface ReopenThreadInput {

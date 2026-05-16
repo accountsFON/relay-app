@@ -24,7 +24,10 @@ import {
   ArrowLeft,
   Check,
   CircleDot,
+  Eye,
+  Link as LinkIcon,
   MessageCircle,
+  MessageSquarePlus,
   Sparkles,
   Pencil,
   Plus,
@@ -41,6 +44,7 @@ import { cn } from '@/lib/utils'
 import { tokenizeBody } from '@/lib/mentions'
 import { relayStepLabel } from '@/lib/relay-step-labels'
 import type { ActivityEventView } from './types'
+import { CaptionAiFixedRow } from './caption-ai-fixed-row'
 
 export interface EventRendererProps {
   event: ActivityEventView
@@ -50,6 +54,21 @@ export interface EventRendererProps {
 export function EventRenderer({ event, className }: EventRendererProps) {
   if (event.kind === 'comment') {
     return <CommentRow event={event} className={className} />
+  }
+  if (
+    event.kind === 'post_caption_ai_fixed' &&
+    event.payload.kind === 'post_caption_ai_fixed'
+  ) {
+    return (
+      <CaptionAiFixedRow
+        actorName={event.actor?.name ?? 'Someone'}
+        postRef={shortPostRef(event.payload.postId)}
+        oldCaption={event.payload.oldCaption}
+        newCaption={event.payload.newCaption}
+        createdAtLabel={formatRelative(event.createdAt)}
+        className={className}
+      />
+    )
   }
   return <SystemEventRow event={event} className={className} />
 }
@@ -281,6 +300,47 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         message: month ? `${month} content generation failed` : 'content generation failed',
       }
     }
+    case 'post_thread_opened': {
+      if (p.kind !== 'post_thread_opened') break
+      const postRef = shortPostRef(p.postId)
+      return {
+        icon: MessageSquarePlus,
+        tone: 'default',
+        message: `opened a thread on ${postRef}${pinLocationSummary(p.pinLocation)}`,
+      }
+    }
+    case 'post_thread_resolved': {
+      if (p.kind !== 'post_thread_resolved') break
+      const postRef = shortPostRef(p.postId)
+      const reason = p.resolvedReason
+      return {
+        icon: Check,
+        tone: 'success',
+        message: reason
+          ? `resolved a thread on ${postRef}. Reason: "${truncate(reason, 60)}"`
+          : `resolved a thread on ${postRef}`,
+      }
+    }
+    case 'magic_link_created': {
+      if (p.kind !== 'magic_link_created') break
+      const expires = formatDateShort(p.expiresAt)
+      return {
+        icon: LinkIcon,
+        tone: 'default',
+        message: `sent a review link to ${p.recipientName}, expires ${expires}`,
+      }
+    }
+    case 'magic_link_visited': {
+      if (p.kind !== 'magic_link_visited') break
+      const suffix = p.isFirstVisit ? 'first visit' : 'returning'
+      return {
+        icon: Eye,
+        tone: 'default',
+        // Reviewer name is the actor here; lead with the name rather than
+        // the actor prefix the SystemEventRow adds.
+        message: `${p.reviewerName} opened the review link (${suffix})`,
+      }
+    }
   }
   // Fallback for not-yet-modeled kinds.
   return {
@@ -326,6 +386,32 @@ function initials(name: string): string {
 
 function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max)}…` : s
+}
+
+/**
+ * Compact post reference used in event copy. The activity surface doesn't
+ * have post titles, so we use a short id slice — readable enough to scan,
+ * unique enough to dedupe.
+ */
+function shortPostRef(postId: string): string {
+  return `post ${postId.slice(0, 6)}`
+}
+
+function pinLocationSummary(loc: 'post' | 'image' | 'caption'): string {
+  switch (loc) {
+    case 'image':
+      return ' (image pin)'
+    case 'caption':
+      return ' (caption)'
+    default:
+      return ''
+  }
+}
+
+function formatDateShort(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return 'soon'
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function humanizeKind(kind: ActivityKind): string {
