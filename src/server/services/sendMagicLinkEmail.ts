@@ -130,6 +130,11 @@ export async function sendMagicLinkEmail(
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${secret}`,
+      // Worker requires X-Mailbox to know which @fonmarketing.com Gmail
+      // mailbox to send FROM. accounts@ is the canonical FON accounts
+      // mailbox (matches the "all client platform access goes to accounts@"
+      // convention). Hardcoded for v1; could become per-AM later.
+      'x-mailbox': 'accounts@fonmarketing.com',
     },
     body: JSON.stringify(body),
   })
