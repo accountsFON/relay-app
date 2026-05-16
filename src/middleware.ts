@@ -3,6 +3,11 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { hashToken, verifyToken } from '@/lib/magic-link'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 
+// Node.js runtime so middleware can use node:crypto (magic-link HMAC) and
+// Prisma (revocation lookup). Paired with experimental.nodeMiddleware in
+// next.config.ts. Without this, Edge runtime rejects the node:crypto import.
+export const runtime = 'nodejs'
+
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
