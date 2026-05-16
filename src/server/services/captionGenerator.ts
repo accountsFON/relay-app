@@ -9,6 +9,7 @@ export type ParsedPost = {
   postNumber: number
   date: string
   caption: string
+  originalCaption?: string  // Set only when QA modified the caption
   ctaIndex?: number
   hashtags: string[]
   graphicHook: string
