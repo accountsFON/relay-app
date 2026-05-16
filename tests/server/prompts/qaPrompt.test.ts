@@ -21,9 +21,9 @@ describe('buildQaPrompt', () => {
       { dos: 'always include price range', donts: null, brandVoice: '   ' },
       [{ postNumber: 1, caption: 'hi' }]
     )
-    // Two of three fields should render the sentinel
-    const matches = user.match(/\(none provided\)/g) ?? []
-    expect(matches.length).toBe(2)
+    expect(user).toContain('Dos: always include price range')
+    expect(user).toContain("Don'ts: (none provided)")
+    expect(user).toContain('Brand voice: (none provided)')
   })
 
   it('serializes captions as JSON in the user prompt', () => {
