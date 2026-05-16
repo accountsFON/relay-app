@@ -9,6 +9,7 @@ import { derivePostApprovalForBatch } from '@/server/services/approval'
 import { db } from '@/db/client'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PageHeader } from '@/components/page-header'
+import { MarkBatchReviewedButton } from '@/components/preview/mark-batch-reviewed-button'
 import { PreviewPageShell } from './preview-page-shell'
 
 /**
@@ -65,6 +66,13 @@ export default async function BatchPreviewPage({
   // Drive the bulk tray visibility off the same canEdit gate the batch page uses.
   const canEdit = canEditClients(ctx)
 
+  // Total open thread count across the whole batch powers the
+  // Mark batch reviewed confirm dialog copy.
+  const totalOpenThreads = hydratedPosts.reduce(
+    (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
+    0,
+  )
+
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
       <div className="mb-5">
@@ -85,13 +93,21 @@ export default async function BatchPreviewPage({
         title={`${batch.label} preview`}
         description={`${client.name} · ${approvalCounts.ready} ready · ${approvalCounts.pending} pending`}
         actions={
-          <Link
-            href={`/clients/${client.id}/batches/${batch.id}`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
-          >
-            <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
-            <span>Back to relay</span>
-          </Link>
+          <>
+            {canEdit && (
+              <MarkBatchReviewedButton
+                batchId={batch.id}
+                openThreadCount={totalOpenThreads}
+              />
+            )}
+            <Link
+              href={`/clients/${client.id}/batches/${batch.id}`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+            >
+              <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
+              <span>Back to relay</span>
+            </Link>
+          </>
         }
       />
 
