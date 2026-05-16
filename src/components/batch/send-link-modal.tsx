@@ -1,0 +1,246 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { Check, Copy } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { createAndSendMagicLinkAction } from '@/server/actions/magicLink'
+
+interface Props {
+  batchId: string
+  clientName: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+interface SuccessState {
+  reviewUrl: string
+  emailSent: boolean
+  emailError: string | null
+}
+
+const MIN_DAYS = 1
+const MAX_DAYS = 90
+const DEFAULT_DAYS = 30
+
+export function SendLinkModal({ batchId, clientName, open, onOpenChange }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [days, setDays] = useState(String(DEFAULT_DAYS))
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<SuccessState | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  function reset() {
+    setName('')
+    setEmail('')
+    setDays(String(DEFAULT_DAYS))
+    setError(null)
+    setSuccess(null)
+    setCopied(false)
+  }
+
+  function handleClose(next: boolean) {
+    if (!next) {
+      // Refresh the host page if a link was minted so the list updates.
+      if (success) router.refresh()
+      reset()
+    }
+    onOpenChange(next)
+  }
+
+  function validate(): string | null {
+    if (!name.trim()) return 'Recipient name is required'
+    if (!email.trim()) return 'Recipient email is required'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return 'Recipient email is not a valid address'
+    }
+    const d = Number(days)
+    if (!Number.isFinite(d) || d < MIN_DAYS || d > MAX_DAYS) {
+      return `Expiry must be between ${MIN_DAYS} and ${MAX_DAYS} days`
+    }
+    return null
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const err = validate()
+    if (err) {
+      setError(err)
+      return
+    }
+    setError(null)
+
+    startTransition(async () => {
+      try {
+        const result = await createAndSendMagicLinkAction({
+          batchId,
+          recipientName: name.trim(),
+          recipientEmail: email.trim(),
+          expiresInDays: Number(days),
+        })
+        setSuccess({
+          reviewUrl: result.reviewUrl,
+          emailSent: result.emailSent,
+          emailError: result.emailError,
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to create link')
+      }
+    })
+  }
+
+  async function handleCopy() {
+    if (!success) return
+    try {
+      await navigator.clipboard.writeText(success.reviewUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Could not copy to clipboard; select the URL manually')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Send review link</DialogTitle>
+          <DialogDescription>
+            Mints a magic link for {clientName} and emails it to the recipient.
+            No login required on their end.
+          </DialogDescription>
+        </DialogHeader>
+
+        {success ? (
+          <div className="space-y-4">
+            <div
+              className="rounded-xl bg-cream-warm p-4 space-y-2"
+              data-testid="send-link-success"
+            >
+              <p className="text-sm font-medium">
+                {success.emailSent
+                  ? 'Link created and emailed.'
+                  : 'Link created. Email failed — copy and send manually.'}
+              </p>
+              {!success.emailSent && success.emailError && (
+                <p className="text-xs text-destructive">{success.emailError}</p>
+              )}
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={success.reviewUrl}
+                  data-testid="send-link-url"
+                  className="font-mono text-[12px]"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  data-testid="copy-link-button"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="size-3.5" />
+                      <span>Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="size-3.5" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => handleClose(false)}>
+                Done
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="send-link-name">Recipient name</Label>
+              <Input
+                id="send-link-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Jane Doe"
+                disabled={isPending}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="send-link-email">Recipient email</Label>
+              <Input
+                id="send-link-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jane@client.com"
+                disabled={isPending}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="send-link-days">Expires in (days)</Label>
+              <Input
+                id="send-link-days"
+                type="number"
+                min={MIN_DAYS}
+                max={MAX_DAYS}
+                value={days}
+                onChange={(e) => setDays(e.target.value)}
+                disabled={isPending}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Between {MIN_DAYS} and {MAX_DAYS} days. Default is {DEFAULT_DAYS}.
+              </p>
+            </div>
+
+            {error && (
+              <p
+                className="text-sm text-destructive"
+                data-testid="send-link-error"
+                role="alert"
+              >
+                {error}
+              </p>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleClose(false)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? 'Sending…' : 'Generate and send'}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
