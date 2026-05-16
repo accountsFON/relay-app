@@ -34,8 +34,10 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import dotenv from 'dotenv'
+import { assertNotProdDb } from '@/lib/db-guardrail'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
+assertNotProdDb(process.env.DATABASE_URL ?? '')
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const adapter = new PrismaPg(pool)

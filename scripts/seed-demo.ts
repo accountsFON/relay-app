@@ -33,8 +33,10 @@ import { seedBatches } from './seed/batches'
 import { seedActivity } from './seed/activity'
 import { seedPostVersions } from './seed/post-versions'
 import { seedArchivedItems } from './seed/archived-items'
+import { assertNotProdDb } from '@/lib/db-guardrail'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
+assertNotProdDb(process.env.DATABASE_URL ?? '')
 
 interface CliFlags {
   clean: boolean
