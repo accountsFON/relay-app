@@ -277,6 +277,7 @@ model Post {
   batchId        String?
   postDate       DateTime
   caption        String         @db.Text
+  preQaCaption   String?        @db.Text
   hashtags       String[]
   graphicHook    String?
   designerNotes  String?
