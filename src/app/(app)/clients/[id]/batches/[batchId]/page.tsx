@@ -45,6 +45,8 @@ import { FailedRunBanner } from '@/components/runs/failed-run-banner'
 import { ExportButton } from '@/components/runs/export-button'
 import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
+import { SendLinkButton } from '@/components/batch/send-link-button'
+import { MagicLinkRow } from '@/components/batch/magic-link-row'
 import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { MissingClientUserBanner } from '@/components/relay/missing-client-user-banner'
@@ -115,7 +117,7 @@ export default async function BatchDetailPage({
   // the toggle remains the user's explicit control.
   const postQuery = showArchived ? db.post.withArchived() : db.post
 
-  const [events, posts, archivedCount, memberships] = await Promise.all([
+  const [events, posts, archivedCount, memberships, magicLinks] = await Promise.all([
     listActivityForClient(client.id, {
       limit: 30,
       visibilityFilter: visibilityForViewer(ctx),
@@ -137,6 +139,17 @@ export default async function BatchDetailPage({
     }),
     db.post.onlyArchived().count({ where: { batchId: batch.id } }),
     listMembershipsForOrg(ctx.organizationDbId),
+    db.magicLink.findMany({
+      where: { batchId: batch.id, revokedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        defaultReviewerName: true,
+        defaultReviewerEmail: true,
+        expiresAt: true,
+        lastVisitedAt: true,
+      },
+    }),
   ])
   const canManageTeam = can(ctx, 'admin.portal')
   const mentionTargets = buildMentionRoster(memberships)
@@ -344,6 +357,9 @@ export default async function BatchDetailPage({
               <span>Open in Canva</span>
               <ExternalLink className="size-3 shrink-0 opacity-60" />
             </Link>
+            {isLive && canEdit && (
+              <SendLinkButton batchId={batch.id} clientName={client.name} />
+            )}
             {isLive && canAct && (
               <>
                 {batch.currentStep !== RelayStep.final_qa_schedule && (
@@ -441,6 +457,22 @@ export default async function BatchDetailPage({
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6 lg:order-1">
+          {magicLinks.length > 0 && (
+            <PageSection title={`Review links (${magicLinks.length})`}>
+              <div className="space-y-2">
+                {magicLinks.map((link) => (
+                  <MagicLinkRow
+                    key={link.id}
+                    id={link.id}
+                    recipientName={link.defaultReviewerName}
+                    recipientEmail={link.defaultReviewerEmail}
+                    expiresAt={link.expiresAt}
+                    lastVisitedAt={link.lastVisitedAt}
+                  />
+                ))}
+              </div>
+            </PageSection>
+          )}
           <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
             <PageSection
               title={`Posts (${posts.length})`}
