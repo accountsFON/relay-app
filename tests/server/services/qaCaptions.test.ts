@@ -124,4 +124,106 @@ describe('qaCaptions', () => {
     expect(result.posts[1].caption).toBe('fine')
     expect(result.posts[1].originalCaption).toBeUndefined()
   })
+
+  it('falls back to original captions when QA call throws', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCreate.mockRejectedValueOnce(new Error('OpenAI timeout'))
+
+    const captions = [
+      {
+        postNumber: 1,
+        date: '2026-05-01',
+        caption: 'hi',
+        hashtags: [],
+        graphicHook: '',
+        designerNotes: '',
+      },
+    ]
+    const result = await qaCaptions(captions, {
+      dos: 'rule',
+      donts: null,
+      brandVoice: null,
+    })
+
+    expect(result.posts).toEqual(captions)
+    expect(result.cost).toEqual({ inputTokens: 0, outputTokens: 0, usd: 0 })
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
+  it('treats byte-equal correction as no-op (does not set originalCaption)', async () => {
+    mockCreate.mockResolvedValueOnce({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              corrections: [{ postNumber: 1, correctedCaption: 'hi' }],
+            }),
+          },
+        },
+      ],
+      usage: { prompt_tokens: 50, completion_tokens: 5 },
+    })
+
+    const captions = [
+      {
+        postNumber: 1,
+        date: '2026-05-01',
+        caption: 'hi',
+        hashtags: [],
+        graphicHook: '',
+        designerNotes: '',
+      },
+    ]
+    const result = await qaCaptions(captions, {
+      dos: 'rule',
+      donts: null,
+      brandVoice: null,
+    })
+
+    expect(result.posts[0].caption).toBe('hi')
+    expect(result.posts[0].originalCaption).toBeUndefined()
+  })
+
+  it('warns and ignores corrections referencing unknown postNumbers', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    mockCreate.mockResolvedValueOnce({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              corrections: [
+                { postNumber: 1, correctedCaption: 'fixed' },
+                { postNumber: 99, correctedCaption: 'ghost' },
+              ],
+            }),
+          },
+        },
+      ],
+      usage: { prompt_tokens: 100, completion_tokens: 10 },
+    })
+
+    const captions = [
+      {
+        postNumber: 1,
+        date: '2026-05-01',
+        caption: 'broken',
+        hashtags: [],
+        graphicHook: '',
+        designerNotes: '',
+      },
+    ]
+    const result = await qaCaptions(captions, {
+      dos: null,
+      donts: 'fix me',
+      brandVoice: null,
+    })
+
+    expect(result.posts).toHaveLength(1)
+    expect(result.posts[0].caption).toBe('fixed')
+    expect(result.posts[0].originalCaption).toBe('broken')
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('postNumber=99'))
+    warnSpy.mockRestore()
+  })
 })
