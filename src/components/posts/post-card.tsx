@@ -28,6 +28,7 @@ import { archivePostAction, restorePostAction } from '@/app/(app)/trash/actions'
 import { cn } from '@/lib/utils'
 import { usePostListCollapse } from '@/components/posts/post-list-collapse'
 import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { QaEditedIndicator } from '@/components/posts/qa-edited-indicator'
 
 type Post = {
   id: string
@@ -36,6 +37,7 @@ type Post = {
   hashtags: string[]
   graphicHook: string | null
   designerNotes: string | null
+  preQaCaption?: string | null
   deletedAt?: Date | null
 }
 
@@ -290,6 +292,7 @@ export function PostCard({
                 <p className="text-[15px] text-foreground whitespace-pre-line leading-relaxed">
                   {caption}
                 </p>
+                <QaEditedIndicator preQaCaption={post.preQaCaption} />
                 {post.hashtags.length > 0 && (
                   <p className="text-[14px] text-ink-50">{post.hashtags.join(' ')}</p>
                 )}

@@ -65,6 +65,7 @@ export async function createPostsFromCaptions(
       batchId: batchId ?? null,
       postDate: parsePostDate(p.date),
       caption: `${p.caption.trimEnd()}${ctaSuffix}`,
+      preQaCaption: p.originalCaption ?? null,
       hashtags: p.hashtags,
       graphicHook: p.graphicHook || null,
       designerNotes: p.designerNotes || null,

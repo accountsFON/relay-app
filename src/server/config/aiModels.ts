@@ -17,10 +17,16 @@ export const AI_MODELS = {
     temperature: 0.5,
     maxTokens: 32000,
   },
+  qa: {
+    provider: 'openai' as const,
+    model: 'gpt-5',
+    temperature: 0.1,
+  },
 } as const
 
 export const TOKEN_PRICING: Record<string, { input: number; output: number }> = {
   'gpt-4.1': { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
+  'gpt-5': { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
   'claude-opus-4-7': { input: 15.0 / 1_000_000, output: 75.0 / 1_000_000 },
   'claude-sonnet-4-6': { input: 3.0 / 1_000_000, output: 15.0 / 1_000_000 },
 }

@@ -4,11 +4,13 @@ import { calculateCost, type CostResult } from '@/server/services/costTracker'
 import { buildCaptionPrompt } from '@/server/prompts/captionPrompt'
 import type { PostingDate } from '@/server/services/dateCalculator'
 import type { CtaCandidate } from '@/server/services/postParser'
+import { qaCaptions } from '@/server/services/qaCaptions'
 
 export type ParsedPost = {
   postNumber: number
   date: string
   caption: string
+  originalCaption?: string  // Set only when QA modified the caption
   ctaIndex?: number
   hashtags: string[]
   graphicHook: string
@@ -22,6 +24,9 @@ export type CaptionResult = {
 
 type CaptionClient = {
   postLength?: string | null
+  dos?: string | null
+  donts?: string | null
+  brandVoice?: string | null
 }
 
 export async function generateCaptions(
@@ -97,12 +102,27 @@ export async function generateCaptions(
       outputTokens: firstUsage.output_tokens,
     })
 
+    const retryCombinedCost: CostResult = {
+      inputTokens: firstCost.inputTokens + retryCost.inputTokens,
+      outputTokens: firstCost.outputTokens + retryCost.outputTokens,
+      usd: Math.round((firstCost.usd + retryCost.usd) * 10000) / 10000,
+    }
+
+    // QA pass: silently auto-correct captions against client rules.
+    // No-op if no rules are configured. Failures fall through to
+    // original captions; the pipeline never fails due to QA.
+    const retryQaResult = await qaCaptions(posts, {
+      dos: client.dos,
+      donts: client.donts,
+      brandVoice: client.brandVoice,
+    })
+
     return {
-      posts,
+      posts: retryQaResult.posts,
       cost: {
-        inputTokens: firstCost.inputTokens + retryCost.inputTokens,
-        outputTokens: firstCost.outputTokens + retryCost.outputTokens,
-        usd: Math.round((firstCost.usd + retryCost.usd) * 10000) / 10000,
+        inputTokens: retryCombinedCost.inputTokens + retryQaResult.cost.inputTokens,
+        outputTokens: retryCombinedCost.outputTokens + retryQaResult.cost.outputTokens,
+        usd: retryCombinedCost.usd + retryQaResult.cost.usd,
       },
     }
   }
@@ -119,7 +139,22 @@ export async function generateCaptions(
     outputTokens: usage.output_tokens,
   })
 
-  return { posts, cost }
+  // QA pass: silently auto-correct captions against client rules.
+  // No-op if no rules are configured. Failures fall through to
+  // original captions; the pipeline never fails due to QA.
+  const qaResult = await qaCaptions(posts, {
+    dos: client.dos,
+    donts: client.donts,
+    brandVoice: client.brandVoice,
+  })
+
+  const totalCost: CostResult = {
+    inputTokens: cost.inputTokens + qaResult.cost.inputTokens,
+    outputTokens: cost.outputTokens + qaResult.cost.outputTokens,
+    usd: cost.usd + qaResult.cost.usd,
+  }
+
+  return { posts: qaResult.posts, cost: totalCost }
 }
 
 function tryParsePostsJSON(text: string): ParsedPost[] | null {
