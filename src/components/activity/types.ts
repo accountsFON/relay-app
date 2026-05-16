@@ -75,6 +75,41 @@ export type ModeledActivityPayload =
       batchLabel: string
       completedByName: string
     }
+  | {
+      kind: 'post_thread_opened'
+      threadId: string
+      postId: string
+      /** Where the thread was pinned. Matches PinLocation['kind']. */
+      pinLocation: 'post' | 'image' | 'caption'
+    }
+  | {
+      kind: 'post_thread_resolved'
+      threadId: string
+      postId: string
+      resolvedReason: string | null
+    }
+  | {
+      kind: 'post_caption_ai_fixed'
+      postId: string
+      threadId: string
+      oldCaption: string
+      newCaption: string
+      postVersionId: string
+    }
+  | {
+      kind: 'magic_link_created'
+      magicLinkId: string
+      batchId: string
+      recipientName: string
+      /** ISO string from the server; consumers parse to Date for formatting. */
+      expiresAt: string
+    }
+  | {
+      kind: 'magic_link_visited'
+      magicLinkId: string
+      reviewerName: string
+      isFirstVisit: boolean
+    }
 
 type ModeledKind = ModeledActivityPayload['kind']
 type UnmodeledKind = Exclude<ActivityKind, ModeledKind>

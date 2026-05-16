@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ActivityKind } from '@prisma/client'
 import { EventRenderer } from '@/components/activity/event-renderer'
 import type { ActivityEventView } from '@/components/activity/types'
@@ -114,6 +114,84 @@ describe('EventRenderer copy', () => {
     render(<EventRenderer event={event} />)
     expect(
       screen.getByText(/2026-05 content generation failed/),
+    ).toBeInTheDocument()
+  })
+
+  it('renders post_thread_opened with the post ref and pin location', () => {
+    const event = makeEvent(ActivityKind.post_thread_opened, {
+      threadId: 't1',
+      postId: 'postabc123def',
+      pinLocation: 'caption',
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/opened a thread on post postab \(caption\)/),
+    ).toBeInTheDocument()
+  })
+
+  it('renders post_thread_resolved with a quoted reason', () => {
+    const event = makeEvent(ActivityKind.post_thread_resolved, {
+      threadId: 't1',
+      postId: 'postabc123def',
+      resolvedReason: 'Caption rewritten',
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(
+        /resolved a thread on post postab\. Reason: "Caption rewritten"/,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('renders post_caption_ai_fixed with a collapsible old/new diff', () => {
+    const event = makeEvent(ActivityKind.post_caption_ai_fixed, {
+      postId: 'postabc123def',
+      threadId: 't1',
+      oldCaption: 'Welcome to our new patio space.',
+      newCaption: 'Welcome to our new outdoor seating area.',
+      postVersionId: 'pv1',
+    })
+    render(<EventRenderer event={event} />)
+    // Header always visible.
+    expect(
+      screen.getByText(/fixed caption with AI on post postab/),
+    ).toBeInTheDocument()
+    // Diff body collapsed by default.
+    expect(
+      screen.queryByText('Welcome to our new patio space.'),
+    ).not.toBeInTheDocument()
+    // Expand reveals both old + new.
+    fireEvent.click(screen.getByRole('button'))
+    expect(
+      screen.getByText('Welcome to our new patio space.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Welcome to our new outdoor seating area.'),
+    ).toBeInTheDocument()
+  })
+
+  it('renders magic_link_created with the recipient name and expiry date', () => {
+    const event = makeEvent(ActivityKind.magic_link_created, {
+      magicLinkId: 'ml1',
+      batchId: 'b1',
+      recipientName: 'Jane Doe',
+      expiresAt: '2026-06-15T00:00:00.000Z',
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/sent a review link to Jane Doe, expires Jun 1[45]/),
+    ).toBeInTheDocument()
+  })
+
+  it('renders magic_link_visited leading with the reviewer name and visit kind', () => {
+    const event = makeEvent(ActivityKind.magic_link_visited, {
+      magicLinkId: 'ml1',
+      reviewerName: 'Jane Doe',
+      isFirstVisit: true,
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/Jane Doe opened the review link \(first visit\)/),
     ).toBeInTheDocument()
   })
 
