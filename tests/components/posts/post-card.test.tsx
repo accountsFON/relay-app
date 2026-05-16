@@ -151,3 +151,17 @@ describe('PostListCollapseProvider', () => {
     expect(screen.getByRole('button', { name: 'Expand all' })).toBeInTheDocument()
   })
 })
+
+describe('PostCard QA-edited indicator', () => {
+  it('renders the QA indicator when preQaCaption is set', () => {
+    const post = { ...basePost, preQaCaption: 'original cheap version' }
+    render(<PostCard post={post} canEdit />)
+    expect(screen.getByText('Edited by QA bot')).toBeInTheDocument()
+  })
+
+  it('does not render the QA indicator when preQaCaption is null', () => {
+    const post = { ...basePost, preQaCaption: null }
+    render(<PostCard post={post} canEdit />)
+    expect(screen.queryByText('Edited by QA bot')).not.toBeInTheDocument()
+  })
+})
