@@ -67,6 +67,14 @@ const ALLOWLIST = new Set([
   // every PostThread query would require joining through Post for no
   // defense-in-depth gain.
   'threads.ts',
+  // ReviewSessions + ReviewItems are scoped indirectly via
+  // MagicLink -> Batch -> Client -> Organization. The reviewer-side
+  // action layer (src/server/actions/reviewSessions.ts) re-validates the
+  // signed URL token + the magic-link session cookie + cookie-magicLinkId
+  // == URL-token-magicLinkId on every call; the AM-side actions (landing
+  // in later Layer 2/3 tasks) use getOrgContext() then findClientForUser.
+  // Same defense-in-depth profile as threads.ts above.
+  'reviewSessions.ts',
 ])
 
 function listTsFiles(dir: string): string[] {
