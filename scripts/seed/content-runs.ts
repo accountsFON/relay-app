@@ -142,6 +142,61 @@ function monthIdx(targetMonth: TargetMonth): number {
   return TARGET_MONTHS.indexOf(targetMonth)
 }
 
+/**
+ * Deterministic 32 bit FNV 1a hash over a string. Used to seed placeholder
+ * image URLs so a given (contentRunId, postDate) pair always renders with
+ * the same image across reseeds.
+ */
+function fnv1a(input: string): number {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return hash >>> 0
+}
+
+/**
+ * Return a placeholder image URL for roughly half of demo posts so the
+ * /preview page renders visible images out of the box instead of empty
+ * dropzones. Selection is deterministic on (contentRunId, postDate) so
+ * the same post gets the same image (or empty) across reseeds.
+ *
+ * Picks from a curated set of picsum.photos seeded URLs (1080x1080,
+ * square crop matches the IG/FB feed component aspect ratio).
+ *
+ * Returns `null` for posts that should stay image less.
+ */
+function placeholderImageFor(
+  contentRunId: string,
+  postDate: Date,
+): string | null {
+  const key = `${contentRunId}:${postDate.toISOString().slice(0, 10)}`
+  const hash = fnv1a(key)
+  // ~50 percent of posts get an image. Use bit 0 for the include decision.
+  if ((hash & 1) === 0) return null
+  // 12 stable picsum seeds, square 1080. Spread across the demo so the
+  // preview shell shows visual variety, not the same stock shot twelve times.
+  const PLACEHOLDER_SEEDS = [
+    'relay-demo-01',
+    'relay-demo-02',
+    'relay-demo-03',
+    'relay-demo-04',
+    'relay-demo-05',
+    'relay-demo-06',
+    'relay-demo-07',
+    'relay-demo-08',
+    'relay-demo-09',
+    'relay-demo-10',
+    'relay-demo-11',
+    'relay-demo-12',
+  ] as const
+  // Use the upper bits (independent of the include bit) to pick the seed
+  // so include + seed selection don't correlate.
+  const seedIdx = (hash >>> 1) % PLACEHOLDER_SEEDS.length
+  return `https://picsum.photos/seed/${PLACEHOLDER_SEEDS[seedIdx]}/1080/1080`
+}
+
 export async function seedContentRuns(
   db: DbClient,
   clients: SeededClient[],
@@ -231,6 +286,8 @@ export async function seedContentRuns(
         const postDate = postDates[i]
         const tpl = pickTemplate(client.industryKey, i, monthIndex)
         const caption = appendCta(tpl.caption, client.mainCta)
+        const placeholder = placeholderImageFor(runId, postDate)
+        const mediaUrls = placeholder ? [placeholder] : []
         const created = await db.post.create({
           data: {
             contentRunId: runId,
@@ -240,7 +297,7 @@ export async function seedContentRuns(
             hashtags: tpl.hashtags,
             graphicHook: tpl.graphicHook,
             designerNotes: tpl.designerNotes,
-            mediaUrls: [],
+            mediaUrls,
           },
           select: { id: true },
         })
