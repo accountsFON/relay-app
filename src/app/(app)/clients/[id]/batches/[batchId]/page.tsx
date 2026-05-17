@@ -47,6 +47,7 @@ import { GenerateContentDialog } from '@/components/relay/generate-content-dialo
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
 import { SendLinkButton } from '@/components/batch/send-link-button'
 import { MagicLinkRow } from '@/components/batch/magic-link-row'
+import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
 import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { MissingClientUserBanner } from '@/components/relay/missing-client-user-banner'
@@ -117,7 +118,7 @@ export default async function BatchDetailPage({
   // the toggle remains the user's explicit control.
   const postQuery = showArchived ? db.post.withArchived() : db.post
 
-  const [events, posts, archivedCount, memberships, magicLinks] = await Promise.all([
+  const [events, posts, archivedCount, memberships, magicLinks, reviewSessions] = await Promise.all([
     listActivityForClient(client.id, {
       limit: 30,
       visibilityFilter: visibilityForViewer(ctx),
@@ -150,6 +151,7 @@ export default async function BatchDetailPage({
         lastVisitedAt: true,
       },
     }),
+    listSessionsForBatch(batchId),
   ])
   const canManageTeam = can(ctx, 'admin.portal')
   const mentionTargets = buildMentionRoster(memberships)
@@ -473,6 +475,24 @@ export default async function BatchDetailPage({
               </div>
             </PageSection>
           )}
+          {reviewSessions.length > 0 && (
+            <PageSection title={`Review Sessions (${reviewSessions.length})`}>
+              <div className="space-y-2">
+                {reviewSessions.map((session) => (
+                  <ReviewSessionListRow
+                    key={session.id}
+                    clientId={client.id}
+                    batchId={batch.id}
+                    sessionId={session.id}
+                    reviewerName={session.reviewer?.name ?? 'Anonymous reviewer'}
+                    round={session.round}
+                    status={session.status}
+                    submittedAt={session.submittedAt}
+                  />
+                ))}
+              </div>
+            </PageSection>
+          )}
           <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
             <PageSection
               title={`Posts (${posts.length})`}
@@ -586,6 +606,64 @@ export default async function BatchDetailPage({
         mentionTargets={mentionTargets}
         hideComposer={!canEdit || !isLive}
       />
+    </div>
+  )
+}
+
+function ReviewSessionListRow({
+  clientId,
+  batchId,
+  sessionId,
+  reviewerName,
+  round,
+  status,
+  submittedAt,
+}: {
+  clientId: string
+  batchId: string
+  sessionId: string
+  reviewerName: string
+  round: number
+  status: string
+  submittedAt: Date | null
+}) {
+  const submittedLabel = submittedAt
+    ? new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(submittedAt)
+    : 'in progress'
+
+  return (
+    <div
+      data-testid={`review-session-list-row-${sessionId}`}
+      className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3"
+    >
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="text-sm font-medium truncate">
+          {reviewerName}
+          <span className="ml-2 text-muted-foreground font-normal">
+            Round {round}
+          </span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {status === 'submitted'
+            ? `Submitted ${submittedLabel}`
+            : status === 'in_progress'
+              ? 'In progress'
+              : 'Superseded'}
+        </p>
+      </div>
+      <Link
+        href={`/clients/${clientId}/batches/${batchId}/review-sessions/${sessionId}`}
+        className="text-[13px] text-foreground underline-offset-4 hover:underline"
+        data-testid={`review-session-open-${sessionId}`}
+      >
+        Open detail →
+      </Link>
     </div>
   )
 }
