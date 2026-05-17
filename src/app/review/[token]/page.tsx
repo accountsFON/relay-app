@@ -2,28 +2,37 @@ import { cookies, headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/magic-link'
 import { db } from '@/db/client'
-import { listThreadsForBatch } from '@/server/repositories/threads'
+import {
+  findActiveSession,
+  listSessionsForBatch,
+} from '@/server/repositories/reviewSessions'
+import type {
+  ReviewItemHydrated,
+  ReviewSessionStatusType,
+  ReviewSessionSummary,
+} from '@/types/review-session'
 import { NameModal } from './name-modal'
-import { ReviewFeed } from './review-feed'
+import { ReviewSessionShell } from './review-session-shell'
 
 const SESSION_COOKIE_NAME = 'magic-link-session'
 
 /**
- * /review/[token] landing.
+ * /review/[token] landing (v2 client review surface).
  *
  * Middleware (src/middleware.ts) has already verified the token signature,
  * expiry, and DB row state. It attaches the magicLinkId + batchId to
  * request headers so this handler can skip a duplicate verify + DB lookup.
  *
  * Render branches:
- *   1. No session cookie OR cookie does not verify under MAGIC_LINK_SECRET
- *      OR cookie's magicLinkId does not match this token's magic link OR
- *      the referenced MagicLinkReviewer row is missing → render the
- *      first-visit NameModal. The reviewer confirms identity, the action
- *      sets the cookie, router.refresh re-enters here, and we fall into
- *      branch 2.
- *   2. Session valid and reviewer recognized → load batch posts + threads
- *      and render the feed in mode='review'.
+ *   1. No session cookie OR cookie does not verify OR cookie's magicLinkId
+ *      does not match this token's magic link OR the referenced
+ *      MagicLinkReviewer row is missing -> render the first-visit NameModal.
+ *   2. Session valid and reviewer recognized -> load posts + review session
+ *      state and render <ReviewSessionShell>.
+ *
+ * The v2 surface replaces the v1 thread-feed entirely. PostThread infra is
+ * still wired for the AM-internal preview page; this page no longer renders
+ * threads or per-pin markup affordances on the client surface.
  */
 export default async function ReviewPage({
   params,
@@ -36,9 +45,8 @@ export default async function ReviewPage({
   const magicLinkId = hdrs.get('x-magic-link-id')
   const batchId = hdrs.get('x-magic-link-batch-id')
 
-  // Defensive: the middleware always sets these on a validated request.
-  // If they are missing the route was reached by some path other than the
-  // guarded middleware — treat as not found rather than guess.
+  // Defensive: middleware always sets these on a validated request. If
+  // missing, the route was reached by some path other than the guard.
   if (!magicLinkId || !batchId) {
     notFound()
   }
@@ -53,9 +61,16 @@ export default async function ReviewPage({
         select: {
           id: true,
           label: true,
-          client: { select: { id: true, name: true } },
+          client: {
+            select: {
+              id: true,
+              name: true,
+              assignedAm: { select: { id: true, name: true } },
+            },
+          },
         },
       },
+      creator: { select: { id: true, name: true } },
     },
   })
   if (!link) {
@@ -72,6 +87,7 @@ export default async function ReviewPage({
   // -- Identity branch --
   const jar = await cookies()
   const cookieValue = jar.get(SESSION_COOKIE_NAME)?.value
+  let recognizedReviewerId: string | null = null
   let recognizedReviewerName: string | null = null
 
   if (cookieValue) {
@@ -82,12 +98,13 @@ export default async function ReviewPage({
         select: { id: true, name: true, magicLinkId: true },
       })
       if (reviewer && reviewer.magicLinkId === link.id) {
+        recognizedReviewerId = reviewer.id
         recognizedReviewerName = reviewer.name
       }
     }
   }
 
-  if (!recognizedReviewerName) {
+  if (!recognizedReviewerId || !recognizedReviewerName) {
     return (
       <NameModal
         token={token}
@@ -97,7 +114,66 @@ export default async function ReviewPage({
     )
   }
 
-  // -- Feed branch --
+  // -- Session resolution --
+  // Prefer the most-recent in_progress session for this reviewer. If none,
+  // fall back to the most-recent submitted/superseded session on this batch
+  // for this reviewer (so a returning client who has already submitted
+  // sees the thanks screen instead of an empty fresh feed). We DON'T start
+  // a fresh session here -- the reviewer-side `saveReviewDraftAction` will
+  // lazily create one the first time they tap a decision.
+  const activeSession = await findActiveSession({
+    magicLinkId: link.id,
+    reviewerId: recognizedReviewerId,
+  })
+
+  let sessionStatus: ReviewSessionStatusType | null = null
+  let initialItems: ReviewItemHydrated[] = []
+  let submittedSummary: ReviewSessionSummary | null = null
+
+  if (activeSession) {
+    sessionStatus = activeSession.status as ReviewSessionStatusType
+    const items = await db.reviewItem.findMany({
+      where: { reviewSessionId: activeSession.id },
+    })
+    initialItems = items.map((it) => ({
+      id: it.id,
+      postId: it.postId,
+      decision: it.decision as ReviewItemHydrated['decision'],
+      comment: it.comment,
+      suggestedCaption: it.suggestedCaption,
+      acceptedAsPostVersionId: it.acceptedAsPostVersionId,
+      updatedSinceLastReview: it.updatedSinceLastReview,
+      lastReviewedVersionId: it.lastReviewedVersionId,
+      reviewedAt: it.reviewedAt,
+    }))
+  } else {
+    // No active session: check for a prior submitted one to render the
+    // thanks screen for returning clients.
+    const allSessions = await listSessionsForBatch(link.batch.id)
+    const mineSubmitted = allSessions.find(
+      (s) =>
+        s.reviewerId === recognizedReviewerId && s.status === 'submitted',
+    )
+    if (mineSubmitted) {
+      sessionStatus = 'submitted'
+      submittedSummary =
+        (mineSubmitted.submittedSummary as unknown as ReviewSessionSummary | null) ??
+        null
+      initialItems = mineSubmitted.items.map((it) => ({
+        id: it.id,
+        postId: it.postId,
+        decision: it.decision as ReviewItemHydrated['decision'],
+        comment: it.comment,
+        suggestedCaption: it.suggestedCaption,
+        acceptedAsPostVersionId: it.acceptedAsPostVersionId,
+        updatedSinceLastReview: it.updatedSinceLastReview,
+        lastReviewedVersionId: it.lastReviewedVersionId,
+        reviewedAt: it.reviewedAt,
+      }))
+    }
+  }
+
+  // -- Feed data --
   const posts = await db.post.findMany({
     where: { batchId: link.batch.id, deletedAt: null },
     orderBy: { postDate: 'asc' },
@@ -109,8 +185,6 @@ export default async function ReviewPage({
     },
   })
 
-  const threadsByPost = await listThreadsForBatch({ batchId: link.batch.id })
-
   const feedPosts = posts.map((p) => ({
     post: {
       id: p.id,
@@ -118,16 +192,24 @@ export default async function ReviewPage({
       hashtags: p.hashtags,
       mediaUrl: p.mediaUrls[0] ?? null,
     },
-    threads: threadsByPost.get(p.id) ?? [],
   }))
 
+  // AM name for the thanks screen + reply-by-email hint. Prefer the
+  // assigned AM on the client; fall back to whoever created the link.
+  const amName =
+    link.batch.client.assignedAm?.name ?? link.creator?.name ?? 'Your team'
+
   return (
-    <ReviewFeed
+    <ReviewSessionShell
       token={token}
       clientName={link.batch.client.name}
       batchLabel={link.batch.label}
       reviewerName={recognizedReviewerName}
+      amName={amName}
       posts={feedPosts}
+      initialItems={initialItems}
+      sessionStatus={sessionStatus}
+      submittedSummary={submittedSummary}
     />
   )
 }
