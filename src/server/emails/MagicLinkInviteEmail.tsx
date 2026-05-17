@@ -178,6 +178,18 @@ const signatureStyle: React.CSSProperties = {
   color: '#666',
 }
 
+const supportLineStyle: React.CSSProperties = {
+  marginTop: 16,
+  marginBottom: 0,
+  fontSize: 12,
+  color: '#999',
+}
+
+const supportLinkStyle: React.CSSProperties = {
+  color: '#999',
+  textDecoration: 'underline',
+}
+
 export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.ReactElement {
   const {
     recipientName,
@@ -246,6 +258,9 @@ export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.Re
               {senderName}
               <br />
               Five One Nine Marketing
+            </Text>
+            <Text style={supportLineStyle}>
+              Need help? <Link href="mailto:support@fonmarketing.com" style={supportLinkStyle}>support@fonmarketing.com</Link>
             </Text>
           </Section>
           <Hr style={{ display: 'none' }} />

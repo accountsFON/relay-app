@@ -572,8 +572,11 @@ export function ReviewSubmittedDigestEmail(props: ReviewSubmittedDigestEmailProp
             <Text style={{ margin: '0 0 8px' }}>
               {reviewerName} submitted at {formatSubmittedAt(submittedAt)}.
             </Text>
-            <Text style={{ margin: 0 }}>
+            <Text style={{ margin: '0 0 12px' }}>
               Hi {amName}, reply to this email to message {reviewerName} directly.
+            </Text>
+            <Text style={{ margin: 0, fontSize: 12, color: '#999' }}>
+              Need help? <Link href="mailto:support@fonmarketing.com" style={{ color: '#999', textDecoration: 'underline' }}>support@fonmarketing.com</Link>
             </Text>
           </Section>
         </Container>
