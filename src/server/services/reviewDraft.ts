@@ -177,7 +177,11 @@ export async function saveItemDraft(
   const item = await saveDraftItem({
     reviewSessionId: activeSession.id,
     postId: input.postId,
-    decision: input.decision,
+    // PATCH semantics: client may send a comment or caption without a fresh
+    // decision (e.g. typing a follow-up comment after already approving).
+    // Fall back to not_reviewed when decision is omitted on the first
+    // upsert; subsequent calls can preserve via the repo's update branch.
+    decision: input.decision ?? 'not_reviewed',
     comment: input.comment,
     suggestedCaption: input.suggestedCaption,
   })
