@@ -29,6 +29,7 @@ vi.mock('@/lib/magic-link', () => ({
   verifyToken: vi.fn(),
   verifySession: vi.fn(),
   hashToken: vi.fn(() => 'hashed-token'),
+  signToken: vi.fn(() => 'reminted-token-abc'),
 }))
 
 vi.mock('@/server/repositories/magicLinks', () => ({
@@ -41,6 +42,26 @@ vi.mock('@/server/repositories/reviewSessions', () => ({
   saveDraftItem: vi.fn(),
   startSession: vi.fn(),
   submitSession: vi.fn(),
+}))
+
+vi.mock('@/server/services/reviewRound', () => ({
+  startNextRound: vi.fn(),
+}))
+
+vi.mock('@/server/services/postVersions', () => ({
+  snapshotPostVersion: vi.fn(),
+}))
+
+vi.mock('@/server/services/sendMagicLinkEmail', () => ({
+  sendMagicLinkEmail: vi.fn(),
+}))
+
+vi.mock('@/server/middleware/permissions', () => ({
+  requireClientEditor: vi.fn(),
+}))
+
+vi.mock('@/server/repositories/clients', () => ({
+  findClientForUser: vi.fn(),
 }))
 
 vi.mock('@/server/services/activity', async () => {
@@ -60,7 +81,9 @@ vi.mock('@/db/client', () => ({
   db: {
     magicLinkReviewer: { findUnique: vi.fn() },
     magicLink: { findUnique: vi.fn() },
-    post: { findMany: vi.fn() },
+    post: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    reviewItem: { findUnique: vi.fn(), update: vi.fn() },
+    $transaction: vi.fn(),
   },
 }))
 
@@ -75,7 +98,18 @@ import {
 import { recordActivity, ActivityKind } from '@/server/services/activity'
 import { sendEmail } from '@/lib/resend'
 import { db } from '@/db/client'
-import { submitSessionAction } from '@/server/actions/reviewSessions'
+import { startNextRound } from '@/server/services/reviewRound'
+import { snapshotPostVersion } from '@/server/services/postVersions'
+import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
+import { requireClientEditor } from '@/server/middleware/permissions'
+import { findClientForUser } from '@/server/repositories/clients'
+import {
+  acceptCaptionEditAction,
+  addressItemAction,
+  rejectCaptionEditAction,
+  startNextRoundAction,
+  submitSessionAction,
+} from '@/server/actions/reviewSessions'
 
 const TOKEN = 'raw-token-abc'
 const MAGIC_LINK_ID = 'cuid_link_1'
@@ -384,5 +418,233 @@ describe('submitSessionAction', () => {
     // Email send was attempted exactly once (single recipient, link creator
     // == assigned AM).
     expect(sendEmail).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ---- AM-side actions ----
+
+const AM_USER_DB_ID = 'user_am_1'
+const REVIEW_ITEM_ID = 'cuid_item_1'
+const POST_ID = 'cuid_post_1'
+
+function primeAmCtx(): void {
+  vi.mocked(requireClientEditor).mockResolvedValue({
+    userId: 'clerk_user_am',
+    orgId: 'clerk_org_1',
+    role: 'account_manager',
+    plan: 'smb',
+    organizationDbId: 'org_db_1',
+    userDbId: AM_USER_DB_ID,
+    platformOwner: false,
+    linkedClientId: null,
+    permissionOverrides: null,
+    roleDefaults: {},
+  } as never)
+  vi.mocked(findClientForUser).mockResolvedValue({
+    id: CLIENT_ID,
+    name: 'Akkoo Coffee',
+  } as never)
+}
+
+function primeAmReviewItem(
+  overrides: Partial<{
+    decision: string
+    comment: string | null
+    suggestedCaption: string | null
+    acceptedAsPostVersionId: string | null
+    caption: string
+    hashtags: string[]
+  }> = {},
+): void {
+  vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+    id: REVIEW_ITEM_ID,
+    reviewSessionId: SESSION_ID,
+    postId: POST_ID,
+    decision: overrides.decision ?? 'caption_edited',
+    comment: overrides.comment ?? null,
+    suggestedCaption: overrides.suggestedCaption ?? 'new caption from client',
+    acceptedAsPostVersionId: overrides.acceptedAsPostVersionId ?? null,
+    post: {
+      id: POST_ID,
+      caption: overrides.caption ?? 'old caption',
+      hashtags: overrides.hashtags ?? ['#one', '#two'],
+      graphicHook: null,
+      designerNotes: null,
+    },
+    reviewSession: {
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      magicLink: {
+        id: MAGIC_LINK_ID,
+        batchId: BATCH_ID,
+        batch: { id: BATCH_ID, clientId: CLIENT_ID },
+      },
+    },
+  } as never)
+}
+
+describe('acceptCaptionEditAction', () => {
+  it('snapshots a new PostVersion, updates Post.caption, marks the item accepted, emits activity', async () => {
+    primeAmCtx()
+    primeAmReviewItem({
+      decision: 'caption_edited',
+      suggestedCaption: 'New shiny caption.',
+      caption: 'Old boring caption.',
+    })
+    vi.mocked(snapshotPostVersion).mockResolvedValue({ id: 'pv_new' })
+    // db.$transaction([...]) just executes whatever array we give it; we
+    // do not need to actually run the updates in the mock — the action
+    // does not read their return values.
+    vi.mocked(db.$transaction).mockResolvedValue([{}, {}] as never)
+
+    const result = await acceptCaptionEditAction({ reviewItemId: REVIEW_ITEM_ID })
+
+    expect(result.ok).toBe(true)
+    expect(result.postVersionId).toBe('pv_new')
+
+    expect(snapshotPostVersion).toHaveBeenCalledWith({
+      postId: POST_ID,
+      authorId: AM_USER_DB_ID,
+      body: {
+        caption: 'New shiny caption.',
+        hashtags: ['#one', '#two'],
+        graphicHook: null,
+        designerNotes: null,
+      },
+    })
+    expect(db.$transaction).toHaveBeenCalledTimes(1)
+
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activity = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activity.kind).toBe(ActivityKind.review_caption_edit_accepted)
+    expect(activity.clientId).toBe(CLIENT_ID)
+    expect(activity.actorId).toBe(AM_USER_DB_ID)
+    expect(activity.payload).toMatchObject({
+      postId: POST_ID,
+      reviewItemId: REVIEW_ITEM_ID,
+      oldCaption: 'Old boring caption.',
+      newCaption: 'New shiny caption.',
+      postVersionId: 'pv_new',
+    })
+  })
+
+  it('throws when the item is not a caption_edited decision', async () => {
+    primeAmCtx()
+    primeAmReviewItem({ decision: 'changes_requested' })
+
+    await expect(
+      acceptCaptionEditAction({ reviewItemId: REVIEW_ITEM_ID }),
+    ).rejects.toThrow(/Cannot accept caption edit/)
+
+    expect(snapshotPostVersion).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
+    expect(recordActivity).not.toHaveBeenCalled()
+  })
+})
+
+describe('rejectCaptionEditAction', () => {
+  it('emits a review_item_addressed event and does NOT touch the post or reviewItem', async () => {
+    primeAmCtx()
+    primeAmReviewItem({ decision: 'caption_edited' })
+
+    const result = await rejectCaptionEditAction({ reviewItemId: REVIEW_ITEM_ID })
+
+    expect(result.ok).toBe(true)
+    expect(snapshotPostVersion).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
+
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activity = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activity.kind).toBe(ActivityKind.review_item_addressed)
+    expect(activity.actorId).toBe(AM_USER_DB_ID)
+    expect(activity.payload).toMatchObject({
+      reviewItemId: REVIEW_ITEM_ID,
+      postId: POST_ID,
+      decision: 'caption_edited',
+      action: 'rejected_caption_edit',
+    })
+  })
+})
+
+describe('addressItemAction', () => {
+  it('emits a review_item_addressed event for a changes_requested item', async () => {
+    primeAmCtx()
+    primeAmReviewItem({
+      decision: 'changes_requested',
+      comment: 'Tighten the intro',
+      suggestedCaption: null,
+    })
+
+    const result = await addressItemAction({ reviewItemId: REVIEW_ITEM_ID })
+
+    expect(result.ok).toBe(true)
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activity = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activity.kind).toBe(ActivityKind.review_item_addressed)
+    expect(activity.clientId).toBe(CLIENT_ID)
+    expect(activity.actorId).toBe(AM_USER_DB_ID)
+    expect(activity.payload).toMatchObject({
+      postId: POST_ID,
+      reviewItemId: REVIEW_ITEM_ID,
+      decision: 'changes_requested',
+      addressedBy: AM_USER_DB_ID,
+    })
+  })
+
+  it('throws when the item is approved or not_reviewed', async () => {
+    primeAmCtx()
+    primeAmReviewItem({ decision: 'approved' })
+
+    await expect(
+      addressItemAction({ reviewItemId: REVIEW_ITEM_ID }),
+    ).rejects.toThrow(/Cannot mark a approved item as addressed/)
+
+    expect(recordActivity).not.toHaveBeenCalled()
+  })
+})
+
+describe('startNextRoundAction', () => {
+  it('calls startNextRound, sends the magic link email, and returns the new session id', async () => {
+    primeAmCtx()
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      revokedAt: null,
+      expiresAt: new Date('2026-12-31T00:00:00Z'),
+      defaultReviewerName: 'Jane Client',
+      defaultReviewerEmail: 'jane@client.com',
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        scheduledAt: new Date('2026-06-01T00:00:00Z'),
+        label: 'June 2026',
+      },
+      creator: { id: 'user_creator', name: 'Caleb', email: 'caleb@fonmarketing.com' },
+    } as never)
+    vi.mocked(startNextRound).mockResolvedValue({
+      id: 'session_2',
+      round: 2,
+    } as never)
+    vi.mocked(sendMagicLinkEmail).mockResolvedValue({ messageId: 'm_1' } as never)
+
+    const result = await startNextRoundAction({ magicLinkId: MAGIC_LINK_ID })
+
+    expect(result.ok).toBe(true)
+    expect(result.newSessionId).toBe('session_2')
+    expect(result.newRound).toBe(2)
+    expect(result.emailError).toBeUndefined()
+
+    expect(startNextRound).toHaveBeenCalledWith({
+      magicLinkId: MAGIC_LINK_ID,
+      by: AM_USER_DB_ID,
+    })
+    expect(sendMagicLinkEmail).toHaveBeenCalledTimes(1)
+    const sendArgs = vi.mocked(sendMagicLinkEmail).mock.calls[0][0]
+    expect(sendArgs.recipientEmail).toBe('jane@client.com')
+    expect(sendArgs.recipientName).toBe('Jane Client')
+    expect(sendArgs.clientName).toBe('Akkoo Coffee')
+    // The signToken mock returns the literal 'reminted-token-abc'; the
+    // URL builder prefixes it with the `/review/` path.
+    expect(sendArgs.reviewUrl).toContain('/review/reminted-token-abc')
   })
 })

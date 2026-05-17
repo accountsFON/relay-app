@@ -84,6 +84,50 @@ describe('ReviewItemRow', () => {
     await waitFor(() => expect(onAddressed).toHaveBeenCalledTimes(1))
   })
 
+  it('invokes onAccept when the Accept Edit button is clicked', async () => {
+    const onAccept = vi.fn().mockResolvedValue(undefined)
+    const onReject = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ReviewItemRow
+        item={baseItem({
+          decision: 'caption_edited',
+          comment: null,
+          suggestedCaption: 'Original caption rewrite.',
+        })}
+        postNumber={1}
+        mode="pending"
+        onAccept={onAccept}
+        onReject={onReject}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('accept-edit-button'))
+    await waitFor(() => expect(onAccept).toHaveBeenCalledTimes(1))
+    expect(onReject).not.toHaveBeenCalled()
+  })
+
+  it('invokes onReject when the Reject Edit button is clicked', async () => {
+    const onAccept = vi.fn().mockResolvedValue(undefined)
+    const onReject = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ReviewItemRow
+        item={baseItem({
+          decision: 'caption_edited',
+          comment: null,
+          suggestedCaption: 'Original caption rewrite.',
+        })}
+        postNumber={1}
+        mode="pending"
+        onAccept={onAccept}
+        onReject={onReject}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('reject-edit-button'))
+    await waitFor(() => expect(onReject).toHaveBeenCalledTimes(1))
+    expect(onAccept).not.toHaveBeenCalled()
+  })
+
   it('hides action buttons and shows the Addressed tag in addressed mode', () => {
     render(
       <ReviewItemRow

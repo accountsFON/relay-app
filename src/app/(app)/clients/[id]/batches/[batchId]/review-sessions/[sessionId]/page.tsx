@@ -31,6 +31,12 @@ import {
   type HydratedItemWithPost,
 } from '@/components/review/review-item-row'
 import { StartNextRoundButton } from '@/components/review/start-next-round-button'
+import {
+  acceptCaptionEditAction,
+  rejectCaptionEditAction,
+  addressItemAction,
+  startNextRoundAction,
+} from '@/server/actions/reviewSessions'
 import type { ReviewSessionSummary } from '@/types/review-session'
 
 export default async function ReviewSessionDetailPage({
@@ -167,14 +173,36 @@ export default async function ReviewSessionDetailPage({
             />
           ) : (
             <div className="space-y-3">
-              {pending.map((item) => (
-                <ReviewItemRow
-                  key={item.id}
-                  item={item}
-                  postNumber={postNumberById.get(item.postId) ?? 0}
-                  mode="pending"
-                />
-              ))}
+              {pending.map((item) => {
+                const reviewItemId = item.id
+                // Bind reviewItemId into closures over the server actions.
+                // Server actions can be passed directly to client components;
+                // the closure is serialized via the action reference + the
+                // captured argument.
+                const onAccept = async () => {
+                  'use server'
+                  await acceptCaptionEditAction({ reviewItemId })
+                }
+                const onReject = async () => {
+                  'use server'
+                  await rejectCaptionEditAction({ reviewItemId })
+                }
+                const onAddressed = async () => {
+                  'use server'
+                  await addressItemAction({ reviewItemId })
+                }
+                return (
+                  <ReviewItemRow
+                    key={item.id}
+                    item={item}
+                    postNumber={postNumberById.get(item.postId) ?? 0}
+                    mode="pending"
+                    onAccept={onAccept}
+                    onReject={onReject}
+                    onAddressed={onAddressed}
+                  />
+                )
+              })}
             </div>
           )}
         </PageSection>
@@ -199,6 +227,10 @@ export default async function ReviewSessionDetailPage({
             <StartNextRoundButton
               magicLinkId={magicLink.id}
               nextRound={session.round + 1}
+              onClick={async () => {
+                'use server'
+                await startNextRoundAction({ magicLinkId: magicLink.id })
+              }}
             />
           </div>
         )}
