@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { hashToken, signSession, verifySession, verifyToken } from '@/lib/magic-link'
 import { findByTokenHash, recordReviewer } from '@/server/repositories/magicLinks'
-import { createThread } from '@/server/repositories/threads'
+import { addComment, createThread } from '@/server/repositories/threads'
 import type { PinLocation } from '@/types/preview'
 
 /**
@@ -171,6 +171,60 @@ export async function leaveCommentAsReviewer(
       // We persist the token *hash* as the reviewer token on the thread
       // row so that revoking the link transparently invalidates the
       // attribution surface (the raw token never lives in the DB).
+      reviewerToken: hashToken(input.token),
+      reviewerName: reviewerRow.name,
+    },
+  })
+
+  revalidatePath(`/review/${input.token}`)
+}
+
+/**
+ * Append a comment to an existing thread on behalf of a magic-link reviewer.
+ * Same auth shape as leaveCommentAsReviewer: re-verifies the token, the
+ * session cookie, and the cookie's bind to this link. Differs only in that
+ * the thread already exists, so we route to the repo's addComment instead
+ * of createThread.
+ *
+ * Input is inline (not an exported interface) per 'use server' constraints.
+ */
+export async function addCommentAsReviewer(
+  input: { token: string; threadId: string; body: string },
+): Promise<void> {
+  const link = await resolveLinkOrThrow(input.token)
+
+  const jar = await cookies()
+  const cookieValue = jar.get(SESSION_COOKIE_NAME)?.value
+  if (!cookieValue) {
+    throw new MagicLinkActionError('No reviewer session; confirm your name first')
+  }
+
+  const session = verifySession(cookieValue)
+  if (!session) {
+    throw new MagicLinkActionError('Reviewer session expired; refresh the page')
+  }
+  if (session.magicLinkId !== link.id) {
+    throw new MagicLinkActionError('Reviewer session does not match this link')
+  }
+
+  const { db } = await import('@/db/client')
+  const reviewerRow = await db.magicLinkReviewer.findUnique({
+    where: { id: session.reviewerId },
+  })
+  if (!reviewerRow || reviewerRow.magicLinkId !== link.id) {
+    throw new MagicLinkActionError('Reviewer no longer recognized for this link')
+  }
+
+  const body = (input.body ?? '').trim()
+  if (!body) {
+    throw new MagicLinkActionError('Comment body required')
+  }
+
+  await addComment({
+    threadId: input.threadId,
+    body,
+    author: {
+      kind: 'reviewer',
       reviewerToken: hashToken(input.token),
       reviewerName: reviewerRow.name,
     },

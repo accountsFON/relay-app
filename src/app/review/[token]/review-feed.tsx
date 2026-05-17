@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
 import { InstagramFeedPost } from '@/components/preview/instagram-post'
 import { FacebookPost } from '@/components/preview/facebook-post'
-import type { FeedPostProps } from '@/types/preview'
+import type { FeedPostProps, PinLocation } from '@/types/preview'
+import { addCommentAsReviewer, leaveCommentAsReviewer } from './_actions'
 
 export type ReviewFeedPost = {
   post: FeedPostProps['post']
@@ -27,20 +29,32 @@ export type ReviewFeedProps = {
  * statically; rendering toggles do not refetch (the same threads + posts
  * apply to both platforms — the chrome is the only thing that changes).
  *
- * onCreateThread + onOpenThread are intentionally omitted in this PR:
- * the comment composer + pin overlay components ship in Task 2.3 and
- * are wired through the FixWithAIButton + thread composer in Task 3.x.
- * For Layer 2 the page renders the feed in read mode; reviewer comment
- * creation is exercised at the server-action layer (leaveCommentAsReviewer)
- * and gets a UI surface in the markup task.
+ * Layer 2.3 wiring: each post receives onCreateThread + onComment bound
+ * to the magic-link reviewer actions. onResolveThread is intentionally
+ * omitted per design — only AMs can resolve threads.
  */
 export function ReviewFeed({
+  token,
   clientName,
   batchLabel,
   reviewerName,
   posts,
 }: ReviewFeedProps) {
+  const router = useRouter()
   const [platform, setPlatform] = useState<Platform>('instagram')
+
+  function buildPostCallbacks(postId: string) {
+    return {
+      onCreateThread: async (pin: PinLocation, body: string) => {
+        await leaveCommentAsReviewer({ token, postId, pin, body })
+        router.refresh()
+      },
+      onComment: async (threadId: string, body: string) => {
+        await addCommentAsReviewer({ token, threadId, body })
+        router.refresh()
+      },
+    }
+  }
 
   return (
     <div className="flex flex-col">
@@ -59,14 +73,17 @@ export function ReviewFeed({
             No posts in this batch yet.
           </div>
         ) : (
-          posts.map(({ post, threads }) =>
-            platform === 'instagram' ? (
+          posts.map(({ post, threads }) => {
+            const cb = buildPostCallbacks(post.id)
+            return platform === 'instagram' ? (
               <InstagramFeedPost
                 key={post.id}
                 post={post}
                 client={{ name: clientName, avatarUrl: null }}
                 threads={threads}
                 mode="review"
+                onCreateThread={cb.onCreateThread}
+                onComment={cb.onComment}
               />
             ) : (
               <FacebookPost
@@ -75,9 +92,11 @@ export function ReviewFeed({
                 client={{ name: clientName, avatarUrl: null }}
                 threads={threads}
                 mode="review"
+                onCreateThread={cb.onCreateThread}
+                onComment={cb.onComment}
               />
-            ),
-          )
+            )
+          })
         )}
       </FeedShell>
     </div>

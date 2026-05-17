@@ -31,6 +31,16 @@ export type FeedPostProps = {
   // 'internal' = AM Clerk-authenticated; 'review' = magic-link client view
   mode: 'internal' | 'review';
   // Callbacks the host page wires up (Layer 2)
+  // onCreateThread: drop a new thread (image pin, caption-range, or post-level).
+  // When omitted, the markup overlay + caption selection composer do not drop
+  // new pins on click.
   onCreateThread?: (pin: PinLocation, body: string) => Promise<void>;
+  // onComment: append a comment to an existing thread (both modes can use).
+  onComment?: (threadId: string, body: string) => Promise<void>;
+  // onResolveThread: AM-only resolve action. Reviewers omit this prop and the
+  // resolve button is hidden in the popover.
+  onResolveThread?: (threadId: string) => Promise<void>;
+  // onOpenThread: optional external open-callback fired in addition to the
+  // post component's internal openThreadId state (legacy hook for tests).
   onOpenThread?: (threadId: string) => void;
 };
