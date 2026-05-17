@@ -27,7 +27,8 @@ describe('InstagramFeedPost', () => {
     const longCaption = 'a'.repeat(200)
     render(<InstagramFeedPost {...baseProps({ post: { id: 'p', caption: longCaption, hashtags: [], mediaUrl: null } })} />)
 
-    const captionText = screen.getByTestId('instagram-post-caption-text')
+    // CaptionMarkup wraps the visible (possibly truncated) caption text.
+    const captionText = screen.getByTestId('caption-markup-text')
     // Truncated to exactly 120 chars before the "more" affordance.
     expect(captionText.textContent).toBe('a'.repeat(120))
     // The "more" button is rendered.
@@ -75,7 +76,7 @@ describe('InstagramFeedPost', () => {
     expect(hashtagsEl.textContent).toBe('#community #brunch #oldplank')
   })
 
-  it('calls onOpenThread when a pin badge is clicked', async () => {
+  it('calls onOpenThread when an image pin (rendered via MarkupOverlay) is clicked', async () => {
     const onOpenThread = vi.fn()
     const user = userEvent.setup()
 
@@ -106,12 +107,74 @@ describe('InstagramFeedPost', () => {
       />,
     )
 
-    const pin = screen.getByTestId('instagram-post-pin')
+    // Layer 2.3: image pins now render via MarkupOverlay rather than inline.
+    const pin = screen.getByTestId('markup-overlay-pin')
     expect(pin.getAttribute('data-thread-id')).toBe('thread-xyz')
 
     await user.click(pin)
 
     expect(onOpenThread).toHaveBeenCalledTimes(1)
     expect(onOpenThread).toHaveBeenCalledWith('thread-xyz')
+  })
+
+  it('composes the markup primitives (overlay + caption markup) into the post', () => {
+    render(
+      <InstagramFeedPost
+        {...baseProps({
+          post: {
+            id: 'p',
+            caption: 'Welcome to brunch.',
+            hashtags: [],
+            mediaUrl: 'https://example.com/img.jpg',
+          },
+        })}
+      />,
+    )
+
+    // MarkupOverlay sits over the image area.
+    expect(screen.getByTestId('markup-overlay')).toBeInTheDocument()
+    // CaptionMarkup wraps the caption.
+    expect(screen.getByTestId('caption-markup')).toBeInTheDocument()
+  })
+
+  it('opens the PinPopover when an image pin is clicked', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <InstagramFeedPost
+        {...baseProps({
+          post: {
+            id: 'p',
+            caption: 'Image with a pin.',
+            hashtags: [],
+            mediaUrl: 'https://example.com/img.jpg',
+          },
+          threads: [
+            {
+              id: 'thread-xyz',
+              status: 'open',
+              pin: { kind: 'image', x: 25, y: 75 },
+              firstComment: {
+                author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+                body: 'Tighten the crop.',
+                createdAt: new Date('2026-05-16T12:00:00Z'),
+              },
+              commentCount: 1,
+            },
+          ],
+          // Wire callbacks so the popover renders affordances.
+          onComment: async () => {},
+          onResolveThread: async () => {},
+        })}
+      />,
+    )
+
+    // No popover until the pin is clicked.
+    expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTestId('markup-overlay-pin'))
+
+    const popover = screen.getByTestId('pin-popover')
+    expect(popover.getAttribute('data-thread-id')).toBe('thread-xyz')
   })
 })

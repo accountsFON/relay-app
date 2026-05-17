@@ -11,6 +11,12 @@ import { BulkMediaTray } from '@/components/posts/bulk-media-tray'
 import { PostApprovalBadge } from '@/components/preview/post-approval-badge'
 import { BulkResolveButton } from '@/components/preview/bulk-resolve-button'
 import type { HydratedThread } from '@/server/repositories/threads'
+import {
+  createThreadAction,
+  addCommentAction,
+  resolveThreadAction,
+} from '@/server/actions/threads'
+import type { PinLocation } from '@/types/preview'
 
 export type PreviewShellPost = {
   id: string
@@ -145,6 +151,25 @@ export function PreviewPageShell({
                     client={{ name: client.name }}
                     threads={post.threads}
                     mode={mode}
+                    onCreateThread={async (pin: PinLocation, body: string) => {
+                      await createThreadAction({ postId: post.id, pin, body })
+                      handleRefresh()
+                    }}
+                    onComment={async (threadId: string, body: string) => {
+                      await addCommentAction({ threadId, body })
+                      handleRefresh()
+                    }}
+                    onResolveThread={
+                      mode === 'internal'
+                        ? async (threadId: string) => {
+                            await resolveThreadAction({
+                              threadId,
+                              resolvedReason: null,
+                            })
+                            handleRefresh()
+                          }
+                        : undefined
+                    }
                   />
                 ) : (
                   <FacebookPost
@@ -157,6 +182,25 @@ export function PreviewPageShell({
                     client={{ name: client.name }}
                     threads={post.threads}
                     mode={mode}
+                    onCreateThread={async (pin: PinLocation, body: string) => {
+                      await createThreadAction({ postId: post.id, pin, body })
+                      handleRefresh()
+                    }}
+                    onComment={async (threadId: string, body: string) => {
+                      await addCommentAction({ threadId, body })
+                      handleRefresh()
+                    }}
+                    onResolveThread={
+                      mode === 'internal'
+                        ? async (threadId: string) => {
+                            await resolveThreadAction({
+                              threadId,
+                              resolvedReason: null,
+                            })
+                            handleRefresh()
+                          }
+                        : undefined
+                    }
                   />
                 )}
               </div>

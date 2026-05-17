@@ -100,7 +100,7 @@ describe('FacebookPost', () => {
     expect(screen.queryAllByRole('button', { name: 'See more' })).toHaveLength(1)
   })
 
-  it('calls onOpenThread when a pin badge is clicked', async () => {
+  it('calls onOpenThread when an image pin (rendered via MarkupOverlay) is clicked', async () => {
     const onOpenThread = vi.fn()
     const user = userEvent.setup()
 
@@ -123,10 +123,57 @@ describe('FacebookPost', () => {
       })} />,
     )
 
-    const pin = screen.getByTestId('fb-pin-badge')
+    // Layer 2.3: image pins now render via MarkupOverlay rather than inline.
+    const pin = screen.getByTestId('markup-overlay-pin')
     await user.click(pin)
 
     expect(onOpenThread).toHaveBeenCalledTimes(1)
     expect(onOpenThread).toHaveBeenCalledWith('thread-xyz')
+  })
+
+  it('composes the markup primitives (overlay + caption markup) into the post', () => {
+    render(
+      <FacebookPost {...makeProps({
+        post: {
+          id: 'p',
+          caption: 'Welcome to brunch.',
+          hashtags: [],
+          mediaUrl: 'https://example.com/img.jpg',
+        },
+      })} />,
+    )
+
+    expect(screen.getByTestId('markup-overlay')).toBeInTheDocument()
+    expect(screen.getByTestId('caption-markup')).toBeInTheDocument()
+  })
+
+  it('opens the PinPopover when an image pin is clicked', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <FacebookPost {...makeProps({
+        threads: [
+          {
+            id: 'thread-xyz',
+            status: 'open',
+            pin: { kind: 'image', x: 25, y: 75 },
+            firstComment: {
+              author: { kind: 'am', userId: 'u', name: 'AM' },
+              body: 'fix this',
+              createdAt: new Date(),
+            },
+            commentCount: 1,
+          },
+        ],
+        onComment: async () => {},
+        onResolveThread: async () => {},
+      })} />,
+    )
+
+    expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
+    await user.click(screen.getByTestId('markup-overlay-pin'))
+
+    const popover = screen.getByTestId('pin-popover')
+    expect(popover.getAttribute('data-thread-id')).toBe('thread-xyz')
   })
 })

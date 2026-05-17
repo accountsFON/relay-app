@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Globe, ThumbsUp, MessageCircle, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { FeedPostProps } from '@/types/preview'
+import type { FeedPostProps, PinLocation } from '@/types/preview'
+import { MarkupOverlay, type OverlayPin } from './markup-overlay'
+import { CaptionMarkup, type CaptionPin } from './caption-markup'
+import { PinPopover, type PinPopoverThread } from './pin-popover'
 
 // Facebook allows visibly longer captions before "See more" than IG.
 // 280 chars is a reasonable mid fidelity threshold.
@@ -17,16 +20,31 @@ function firstLetter(name: string): string {
 
 type Thread = FeedPostProps['threads'][number]
 
-function pinAriaLabel(thread: Thread, index: number): string {
-  const base = `Open feedback thread ${index + 1}`
-  if (thread.pin.kind === 'image') return `${base} on image`
-  if (thread.pin.kind === 'caption') return `${base} on caption`
-  return base
+function pinKindLabel(pin: PinLocation): string {
+  switch (pin.kind) {
+    case 'image':
+      return 'image pin'
+    case 'caption':
+      return 'caption pin'
+    case 'post':
+      return 'post pin'
+  }
 }
 
 export function FacebookPost(props: FeedPostProps) {
-  const { post, client, threads, onOpenThread } = props
+  const {
+    post,
+    client,
+    threads,
+    mode,
+    onOpenThread,
+    onCreateThread,
+    onComment,
+    onResolveThread,
+  } = props
   const [expanded, setExpanded] = useState(false)
+  const [openThreadId, setOpenThreadId] = useState<string | null>(null)
+  const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
 
   const captionFull = post.caption ?? ''
   const needsTruncation = captionFull.length > FB_TRUNCATE_LIMIT
@@ -35,15 +53,89 @@ export function FacebookPost(props: FeedPostProps) {
       ? captionFull
       : captionFull.slice(0, FB_TRUNCATE_LIMIT).trimEnd()
 
-  const imagePins = threads.filter(
-    (t): t is Thread & { pin: { kind: 'image'; x: number; y: number } } =>
-      t.pin.kind === 'image',
+  const imagePins: OverlayPin[] = useMemo(
+    () =>
+      threads
+        .filter((t) => t.pin.kind === 'image')
+        .map((t) => {
+          const pin = t.pin as Extract<PinLocation, { kind: 'image' }>
+          return { id: t.id, x: pin.x, y: pin.y, status: t.status }
+        }),
+    [threads],
   )
+
+  const captionPins: CaptionPin[] = useMemo(
+    () =>
+      threads
+        .filter((t) => t.pin.kind === 'caption')
+        .map((t) => {
+          const pin = t.pin as Extract<PinLocation, { kind: 'caption' }>
+          return { id: t.id, from: pin.from, to: pin.to, status: t.status }
+        }),
+    [threads],
+  )
+
+  const postLevelPins = threads.filter((t) => t.pin.kind === 'post')
+  const openThread: Thread | null =
+    threads.find((t) => t.id === openThreadId) ?? null
+
+  function openThreadAt(
+    threadId: string,
+    event: ReactMouseEvent<HTMLElement> | null,
+  ) {
+    setOpenThreadId(threadId)
+    if (event && 'clientX' in event) {
+      setPopoverAnchor({ x: event.clientX, y: event.clientY })
+    } else {
+      setPopoverAnchor(null)
+    }
+    onOpenThread?.(threadId)
+  }
+
+  async function handleCreateImagePin(x: number, y: number) {
+    if (!onCreateThread) return
+    const body =
+      typeof window !== 'undefined' ? window.prompt('Add a comment') : null
+    if (!body || !body.trim()) return
+    await onCreateThread({ kind: 'image', x, y }, body.trim())
+  }
+
+  async function handleCreateCaptionPin(from: number, to: number) {
+    if (!onCreateThread) return
+    const body =
+      typeof window !== 'undefined'
+        ? window.prompt('Add a comment on selection')
+        : null
+    if (!body || !body.trim()) return
+    await onCreateThread({ kind: 'caption', from, to }, body.trim())
+  }
+
+  async function handleComment(body: string) {
+    if (!openThreadId || !onComment) return
+    await onComment(openThreadId, body)
+  }
+
+  async function handleResolve() {
+    if (!openThreadId || !onResolveThread) return
+    await onResolveThread(openThreadId)
+    setOpenThreadId(null)
+  }
+
+  const popoverThread: PinPopoverThread | null = openThread
+    ? {
+        id: openThread.id,
+        pin: openThread.pin,
+        status: openThread.status,
+        firstComment: openThread.firstComment,
+        commentCount: openThread.commentCount,
+      }
+    : null
 
   return (
     <article
       data-testid="facebook-post"
       data-post-id={post.id}
+      data-mode={mode}
       className="w-full max-w-[500px] rounded-lg border border-[#dadde1] bg-white font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[#1c1e21] shadow-sm"
     >
       {/* Header: avatar + client name + Sponsored row */}
@@ -72,11 +164,7 @@ export function FacebookPost(props: FeedPostProps) {
           <div className="mt-0.5 flex items-center gap-1 text-[12px] leading-tight text-[#65676b]">
             <span>Sponsored</span>
             <span aria-hidden="true">·</span>
-            <Globe
-              aria-label="Public"
-              className="size-3"
-              strokeWidth={2}
-            />
+            <Globe aria-label="Public" className="size-3" strokeWidth={2} />
           </div>
         </div>
       </header>
@@ -86,7 +174,12 @@ export function FacebookPost(props: FeedPostProps) {
         data-testid="fb-caption"
         className="px-3 pb-2 text-[15px] leading-[1.3333] text-[#050505] whitespace-pre-line"
       >
-        {captionDisplay}
+        <CaptionMarkup
+          caption={captionDisplay}
+          existingPins={captionPins.filter((p) => p.to <= captionDisplay.length)}
+          onPinClick={(id) => openThreadAt(id, null)}
+          onCreatePin={handleCreateCaptionPin}
+        />
         {needsTruncation && !expanded && (
           <>
             {'… '}
@@ -108,7 +201,7 @@ export function FacebookPost(props: FeedPostProps) {
         )}
       </div>
 
-      {/* Image (1.91:1 FB feed aspect) */}
+      {/* Image (1.91:1 FB feed aspect) + markup overlay */}
       <div className="relative">
         {post.mediaUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -129,26 +222,30 @@ export function FacebookPost(props: FeedPostProps) {
           </div>
         )}
 
-        {/* Image pin badges */}
-        {imagePins.map((thread, index) => (
-          <button
-            key={thread.id}
-            type="button"
-            data-testid="fb-pin-badge"
-            data-thread-id={thread.id}
-            aria-label={pinAriaLabel(thread, index)}
-            onClick={() => onOpenThread?.(thread.id)}
-            className={cn(
-              'absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-xs font-bold text-white shadow-md ring-2 ring-white transition hover:scale-110',
-              thread.status === 'resolved'
-                ? 'bg-[#65676b]/80'
-                : 'bg-[#1877f2]',
-            )}
-            style={{ left: `${thread.pin.x}%`, top: `${thread.pin.y}%` }}
-          >
-            {index + 1}
-          </button>
-        ))}
+        <MarkupOverlay
+          existingPins={imagePins}
+          onPinClick={(id) => {
+            const el =
+              typeof document !== 'undefined'
+                ? (document.querySelector(
+                    `[data-testid="markup-overlay-pin"][data-thread-id="${id}"]`,
+                  ) as HTMLElement | null)
+                : null
+            const rect = el?.getBoundingClientRect() ?? null
+            if (rect) {
+              setOpenThreadId(id)
+              setPopoverAnchor({
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+              })
+              onOpenThread?.(id)
+            } else {
+              openThreadAt(id, null)
+            }
+          }}
+          onCreatePin={handleCreateImagePin}
+          disabled={!onCreateThread}
+        />
       </div>
 
       {/* Action row: Like / Comment / Share */}
@@ -175,6 +272,51 @@ export function FacebookPost(props: FeedPostProps) {
           <span>Share</span>
         </button>
       </div>
+
+      {postLevelPins.length > 0 && (
+        <div
+          className="flex flex-wrap items-center gap-1.5 border-t border-[#ced0d4] px-3 py-2"
+          data-testid="fb-post-pins"
+        >
+          {postLevelPins.map((thread) => (
+            <button
+              key={thread.id}
+              type="button"
+              data-testid="fb-pin-badge"
+              data-thread-id={thread.id}
+              aria-label={`Open ${pinKindLabel(thread.pin)} thread`}
+              onClick={(event) => openThreadAt(thread.id, event)}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                thread.status === 'open'
+                  ? 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                  : 'bg-[#efefef] text-[#8e8e8e] hover:bg-[#e5e5e5]',
+              )}
+            >
+              <span aria-hidden="true">📍</span>
+              <span>Post · {thread.commentCount}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {popoverThread ? (
+        <PinPopover
+          thread={popoverThread}
+          anchor={popoverAnchor}
+          mode={mode}
+          postId={post.id}
+          postCaption={post.caption}
+          onComment={handleComment}
+          onResolve={
+            mode === 'internal' && onResolveThread ? handleResolve : undefined
+          }
+          onClose={() => {
+            setOpenThreadId(null)
+            setPopoverAnchor(null)
+          }}
+        />
+      ) : null}
     </article>
   )
 }
