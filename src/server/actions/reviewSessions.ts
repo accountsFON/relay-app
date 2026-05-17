@@ -4,7 +4,7 @@ import * as React from 'react'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { ActivityKind, EventVisibility } from '@prisma/client'
-import { verifySession, verifyToken, hashToken } from '@/lib/magic-link'
+import { signToken, verifySession, verifyToken, hashToken } from '@/lib/magic-link'
 import { db } from '@/db/client'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 import {
@@ -14,8 +14,13 @@ import {
   startSession,
   submitSession,
 } from '@/server/repositories/reviewSessions'
+import { startNextRound } from '@/server/services/reviewRound'
+import { snapshotPostVersion } from '@/server/services/postVersions'
 import { recordActivity } from '@/server/services/activity'
 import { sendEmail } from '@/lib/resend'
+import { requireClientEditor } from '@/server/middleware/permissions'
+import { findClientForUser } from '@/server/repositories/clients'
+import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import {
   ReviewSubmittedDigestEmail,
   buildSubject,
@@ -465,4 +470,363 @@ export async function submitSessionAction(input: {
 
   revalidateReviewerPaths(input.token, ctx.clientId, ctx.batchId)
   return emailError ? { ok: true, summary, emailError } : { ok: true, summary }
+}
+
+// ---- AM-side actions ----
+
+interface ResolvedReviewItemContext {
+  reviewItemId: string
+  reviewSessionId: string
+  postId: string
+  magicLinkId: string
+  batchId: string
+  clientId: string
+  decision: string
+  comment: string | null
+  suggestedCaption: string | null
+  acceptedAsPostVersionId: string | null
+  /** Current Post snapshot, used by acceptCaptionEdit to build the new
+   * PostVersion + emit the activity payload. */
+  post: {
+    id: string
+    caption: string
+    hashtags: string[]
+    graphicHook: string | null
+    designerNotes: string | null
+  }
+}
+
+/**
+ * AM-side analog of `resolveReviewerForToken`. Loads a ReviewItem with
+ * enough context to drive accept/reject/address actions, and validates
+ * the calling AM has client.edit on the underlying client.
+ *
+ * Walks: ReviewItem → ReviewSession → MagicLink → Batch → Client, then
+ * gates on `findClientForUser` to scope by AM/designer assignments (same
+ * pattern as `createAndSendMagicLinkAction`).
+ */
+async function resolveReviewItemForAm(
+  reviewItemId: string,
+): Promise<{ ctx: Awaited<ReturnType<typeof requireClientEditor>>; item: ResolvedReviewItemContext }> {
+  if (!reviewItemId || typeof reviewItemId !== 'string') {
+    throw new ReviewSessionActionError('reviewItemId required')
+  }
+
+  const ctx = await requireClientEditor()
+
+  const row = await db.reviewItem.findUnique({
+    where: { id: reviewItemId },
+    include: {
+      post: {
+        select: {
+          id: true,
+          caption: true,
+          hashtags: true,
+          graphicHook: true,
+          designerNotes: true,
+        },
+      },
+      reviewSession: {
+        select: {
+          id: true,
+          magicLinkId: true,
+          magicLink: {
+            select: {
+              id: true,
+              batchId: true,
+              batch: { select: { id: true, clientId: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+  if (!row) throw new ReviewSessionActionError('Review item not found')
+
+  const clientId = row.reviewSession.magicLink.batch.clientId
+  const client = await findClientForUser(ctx, clientId)
+  if (!client) throw new ReviewSessionActionError('Review item not found')
+
+  return {
+    ctx,
+    item: {
+      reviewItemId: row.id,
+      reviewSessionId: row.reviewSessionId,
+      postId: row.postId,
+      magicLinkId: row.reviewSession.magicLinkId,
+      batchId: row.reviewSession.magicLink.batchId,
+      clientId,
+      decision: row.decision,
+      comment: row.comment,
+      suggestedCaption: row.suggestedCaption,
+      acceptedAsPostVersionId: row.acceptedAsPostVersionId,
+      post: row.post,
+    },
+  }
+}
+
+function revalidateAmReviewPaths(clientId: string, batchId: string, reviewSessionId: string): void {
+  revalidatePath(`/clients/${clientId}/batches/${batchId}`)
+  revalidatePath(
+    `/clients/${clientId}/batches/${batchId}/review-sessions/${reviewSessionId}`,
+  )
+}
+
+/**
+ * AM accepts a client's suggested caption edit.
+ *
+ * Creates a new PostVersion from the suggested caption (carries over the
+ * other post body fields), updates `Post.caption`, and records the new
+ * PostVersion id on the ReviewItem so the detail page can flip the row
+ * from pending → addressed.
+ *
+ * Idempotent: if the row already has `acceptedAsPostVersionId`, returns
+ * that id without creating a duplicate version or re-emitting activity.
+ */
+export async function acceptCaptionEditAction(input: {
+  reviewItemId: string
+}): Promise<{ ok: true; postVersionId: string }> {
+  const { ctx, item } = await resolveReviewItemForAm(input.reviewItemId)
+
+  if (item.decision !== 'caption_edited') {
+    throw new ReviewSessionActionError(
+      `Cannot accept caption edit on a ${item.decision} item`,
+    )
+  }
+  if (item.acceptedAsPostVersionId) {
+    return { ok: true, postVersionId: item.acceptedAsPostVersionId }
+  }
+
+  const newCaption = item.suggestedCaption ?? ''
+  if (!newCaption) {
+    throw new ReviewSessionActionError(
+      'Caption edit has no suggested caption to accept',
+    )
+  }
+
+  const oldCaption = item.post.caption
+
+  // Snapshot the new caption as a PostVersion. Carries over the other
+  // body fields untouched so version history captures the full state at
+  // the moment of acceptance (mirrors the contract in
+  // src/server/actions/posts.ts which always passes the whole body).
+  const created = await snapshotPostVersion({
+    postId: item.postId,
+    authorId: ctx.userDbId,
+    body: {
+      caption: newCaption,
+      hashtags: item.post.hashtags,
+      graphicHook: item.post.graphicHook,
+      designerNotes: item.post.designerNotes,
+    },
+  })
+  if (!created) {
+    throw new ReviewSessionActionError(
+      'Failed to snapshot accepted caption as a PostVersion',
+    )
+  }
+
+  // Persist the new caption on the Post AND mark the ReviewItem accepted
+  // in a single transaction so the UI never sees a half-applied state.
+  await db.$transaction([
+    db.post.update({
+      where: { id: item.postId },
+      data: { caption: newCaption },
+    }),
+    db.reviewItem.update({
+      where: { id: item.reviewItemId },
+      data: { acceptedAsPostVersionId: created.id },
+    }),
+  ])
+
+  await recordActivity({
+    clientId: item.clientId,
+    postId: item.postId,
+    actorId: ctx.userDbId,
+    kind: ActivityKind.review_caption_edit_accepted,
+    visibility: EventVisibility.internal,
+    payload: {
+      postId: item.postId,
+      reviewItemId: item.reviewItemId,
+      oldCaption,
+      newCaption,
+      postVersionId: created.id,
+    },
+  })
+
+  revalidateAmReviewPaths(item.clientId, item.batchId, item.reviewSessionId)
+  return { ok: true, postVersionId: created.id }
+}
+
+/**
+ * AM rejects a client's suggested caption edit.
+ *
+ * No DB change in v2: the caption stays as-is, the ReviewItem keeps its
+ * `caption_edited` decision and `null` acceptedAsPostVersionId. The AM
+ * can re-accept later by clicking Accept Edit again. We still emit an
+ * `review_item_addressed` activity event so the audit trail shows the
+ * AM consciously dismissed the suggestion.
+ */
+export async function rejectCaptionEditAction(input: {
+  reviewItemId: string
+}): Promise<{ ok: true }> {
+  const { ctx, item } = await resolveReviewItemForAm(input.reviewItemId)
+
+  if (item.decision !== 'caption_edited') {
+    throw new ReviewSessionActionError(
+      `Cannot reject caption edit on a ${item.decision} item`,
+    )
+  }
+
+  await recordActivity({
+    clientId: item.clientId,
+    postId: item.postId,
+    actorId: ctx.userDbId,
+    kind: ActivityKind.review_item_addressed,
+    visibility: EventVisibility.internal,
+    payload: {
+      postId: item.postId,
+      reviewItemId: item.reviewItemId,
+      decision: item.decision,
+      addressedBy: ctx.userDbId,
+      action: 'rejected_caption_edit',
+    },
+  })
+
+  revalidateAmReviewPaths(item.clientId, item.batchId, item.reviewSessionId)
+  return { ok: true }
+}
+
+/**
+ * AM marks a `changes_requested` (or `caption_edited`) item as addressed.
+ *
+ * Pure audit event in v2 — Layer 0 schema has no `addressedAt` column on
+ * ReviewItem and the plan explicitly says to skip the schema bump. The
+ * detail page rolls "pending vs addressed" off the activity stream in
+ * Layer 3 task 3.4 / 3.5 (the page reads the per-item event count).
+ */
+export async function addressItemAction(input: {
+  reviewItemId: string
+}): Promise<{ ok: true }> {
+  const { ctx, item } = await resolveReviewItemForAm(input.reviewItemId)
+
+  if (item.decision !== 'changes_requested' && item.decision !== 'caption_edited') {
+    throw new ReviewSessionActionError(
+      `Cannot mark a ${item.decision} item as addressed`,
+    )
+  }
+
+  await recordActivity({
+    clientId: item.clientId,
+    postId: item.postId,
+    actorId: ctx.userDbId,
+    kind: ActivityKind.review_item_addressed,
+    visibility: EventVisibility.internal,
+    payload: {
+      postId: item.postId,
+      reviewItemId: item.reviewItemId,
+      decision: item.decision,
+      addressedBy: ctx.userDbId,
+    },
+  })
+
+  revalidateAmReviewPaths(item.clientId, item.batchId, item.reviewSessionId)
+  return { ok: true }
+}
+
+export interface StartNextRoundActionResult {
+  ok: true
+  newSessionId: string
+  newRound: number
+  /** Soft warning: round was opened but the round-2 email did not send. */
+  emailError?: string
+}
+
+/**
+ * AM opens round N+1 on a magic link. Wraps the Layer 2
+ * `startNextRound` service (which supersedes the current session,
+ * materializes carryforward items, and emits the round-started activity
+ * event) and re-sends the magic link email so the reviewer knows there
+ * is fresh work to look at. The magic link token does not rotate between
+ * rounds — same URL is reused so any past email the client has is also
+ * still valid.
+ *
+ * Email failure does NOT roll back the new round. The AM can manually
+ * copy the URL from the magic-link panel if Resend is down.
+ */
+export async function startNextRoundAction(input: {
+  magicLinkId: string
+}): Promise<StartNextRoundActionResult> {
+  const magicLinkId = input.magicLinkId
+  if (!magicLinkId || typeof magicLinkId !== 'string') {
+    throw new ReviewSessionActionError('magicLinkId required')
+  }
+
+  const ctx = await requireClientEditor()
+
+  // Walk MagicLink → Batch → Client to gate by the AM's assignments.
+  const link = await db.magicLink.findUnique({
+    where: { id: magicLinkId },
+    include: {
+      batch: { select: { id: true, clientId: true, scheduledAt: true, label: true } },
+      creator: { select: { id: true, name: true, email: true } },
+    },
+  })
+  if (!link || link.revokedAt) {
+    throw new ReviewSessionActionError('Magic link not found')
+  }
+
+  const client = await findClientForUser(ctx, link.batch.clientId)
+  if (!client) throw new ReviewSessionActionError('Magic link not found')
+
+  const newSession = await startNextRound({
+    magicLinkId,
+    by: ctx.userDbId,
+  })
+
+  // Re-send the magic link email so the reviewer pops back in. The raw
+  // token is deterministic over (magicLinkId, expiresAt) + the
+  // MAGIC_LINK_SECRET, so we can re-mint the EXACT same token the AM
+  // originally generated — no need to persist the raw value. The
+  // tokenHash on MagicLink stays valid against this re-minted token
+  // because the hash is over the same signed string.
+  let emailError: string | undefined
+  const recipientEmail = link.defaultReviewerEmail?.trim()
+  const recipientName = link.defaultReviewerName?.trim()
+  if (!recipientEmail || !recipientName) {
+    emailError = 'No recipient on magic link; share the URL manually.'
+  } else {
+    try {
+      const reMintedToken = signToken({
+        magicLinkId: link.id,
+        expiresAt: link.expiresAt.getTime(),
+      })
+      const reviewUrl = `${appBaseUrl()}/review/${reMintedToken}`
+      const senderName =
+        link.creator?.name?.trim() || link.creator?.email || 'Your Five One Nine team'
+      const month = link.batch.scheduledAt
+        ? monthLabel(link.batch.scheduledAt)
+        : link.batch.label
+      await sendMagicLinkEmail({
+        recipientName,
+        recipientEmail,
+        senderName,
+        clientName: client.name,
+        monthLabel: month,
+        reviewUrl,
+        expiresAt: link.expiresAt,
+      })
+    } catch (err) {
+      emailError = err instanceof Error ? err.message : String(err)
+      console.error('[review] startNextRoundAction email send failed', {
+        magicLinkId,
+        err: emailError,
+      })
+    }
+  }
+
+  revalidateAmReviewPaths(client.id, link.batch.id, newSession.id)
+  return emailError
+    ? { ok: true, newSessionId: newSession.id, newRound: newSession.round, emailError }
+    : { ok: true, newSessionId: newSession.id, newRound: newSession.round }
 }
