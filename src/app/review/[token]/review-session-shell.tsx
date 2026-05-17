@@ -11,6 +11,7 @@ import { SubmitReviewBar } from '@/components/review/submit-review-bar'
 import { SubmitReviewModal } from '@/components/review/submit-review-modal'
 import { ReviewSubmittedScreen } from '@/components/review/review-submitted-screen'
 import { ReturningReviewerBanner } from '@/components/review/returning-reviewer-banner'
+import { submitSessionAction } from '@/server/actions/reviewSessions'
 import type {
   ReviewDecisionType,
   ReviewItemHydrated,
@@ -196,18 +197,19 @@ export function ReviewSessionShell({
   const handleSubmitConfirm = useCallback(async () => {
     setSubmitting(true)
     try {
-      // Task 2.5 wires submitSessionAction. For now we optimistically flip
-      // local status so the UI is testable end-to-end. The page-level
-      // server data refresh below pulls the real submitted session state on
-      // the next render (no-op until 2.5 ships).
+      // Real server action from Task 2.5 (PR #118): flips session status,
+      // persists summary, sends digest email via Resend, emits activity.
+      const result = await submitSessionAction({ token })
       setLocalStatus('submitted')
-      setLocalSummary(summary)
+      setLocalSummary(result.summary ?? summary)
       setSubmitModalOpen(false)
       startTransition(() => router.refresh())
+    } catch (err) {
+      console.error('[review-session-shell] submitSessionAction failed:', err)
     } finally {
       setSubmitting(false)
     }
-  }, [summary, router, startTransition])
+  }, [token, summary, router, startTransition])
 
   const handleSubmitCancel = useCallback(() => {
     setSubmitModalOpen(false)
