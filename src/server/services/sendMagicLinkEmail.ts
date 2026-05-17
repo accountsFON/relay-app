@@ -80,19 +80,75 @@ export function buildHtml(input: SendMagicLinkEmailInput): string {
   const fname = escapeHtml(firstName(input.recipientName))
   const expires = escapeHtml(formatExpiry(input.expiresAt))
   const sender = escapeHtml(input.senderName)
+  const client = escapeHtml(input.clientName)
   const month = escapeHtml(input.monthLabel)
   const url = escapeHtml(input.reviewUrl)
 
   return `
 <!doctype html>
-<html><body style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#1a1a1a;line-height:1.5;max-width:560px;margin:0 auto;padding:24px;">
-  <p>Hi ${fname},</p>
-  <p>The ${month} posts are ready. Take a look and leave any feedback directly on each post. No login needed.</p>
-  <p style="margin:28px 0;">
-    <a href="${url}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:500;">Review the batch</a>
-  </p>
-  <p style="color:#666;font-size:13px;">Link expires ${expires}. If you have any trouble, reply to this email.</p>
-  <p style="color:#666;font-size:13px;">${sender}<br/>Five One Nine Marketing</p>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Review ${client} ${month}</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;line-height:1.5;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f3;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+
+          <tr>
+            <td style="padding:24px 32px;border-bottom:1px solid #efefee;">
+              <div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#888;">Five One Nine Marketing</div>
+              <div style="font-size:13px;color:#999;margin-top:4px;">Review request</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 32px 8px;">
+              <h1 style="margin:0 0 4px;font-size:22px;font-weight:600;letter-spacing:-0.01em;">${client}</h1>
+              <div style="font-size:15px;color:#666;">${month} posts ready for your review</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 32px 8px;">
+              <p style="margin:0 0 14px;font-size:16px;">Hi ${fname},</p>
+              <p style="margin:0 0 14px;font-size:16px;">The ${month} posts are ready. Open the link below to see each post rendered as it will appear on Instagram and Facebook, leave any feedback right on the post, and we will take it from there.</p>
+              <p style="margin:0 0 14px;font-size:16px;color:#666;">No login or account needed. The link is yours.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:18px 32px 28px;">
+              <a href="${url}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:999px;font-weight:600;font-size:16px;">Review the batch</a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 32px 24px;">
+              <div style="font-size:12px;color:#999;border-top:1px solid #efefee;padding-top:16px;word-break:break-all;">
+                Button not working? Paste this URL into your browser:<br>
+                <a href="${url}" style="color:#666;">${url}</a>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 32px 24px;border-top:1px solid #efefee;font-size:13px;color:#888;">
+              Link expires ${expires}. Questions? Just reply to this email.
+              <div style="margin-top:14px;color:#666;">
+                ${sender}<br>
+                Five One Nine Marketing
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body></html>
 `.trim()
 }
@@ -102,14 +158,17 @@ export function buildText(input: SendMagicLinkEmailInput): string {
   return [
     `Hi ${fname},`,
     '',
-    `The ${input.monthLabel} posts are ready. Take a look and leave any feedback directly on each post. No login needed.`,
+    `${input.clientName} - ${input.monthLabel} posts are ready for your review.`,
     '',
+    'Open the link below to see each post rendered as it will appear on Instagram and Facebook, leave any feedback right on the post, and we will take it from there. No login or account needed.',
+    '',
+    'Review the batch:',
     input.reviewUrl,
     '',
-    `Link expires ${formatExpiry(input.expiresAt)}. If you have any trouble, reply to this email.`,
+    `Link expires ${formatExpiry(input.expiresAt)}. Questions? Just reply to this email.`,
     '',
-    `${input.senderName}`,
-    `Five One Nine Marketing`,
+    input.senderName,
+    'Five One Nine Marketing',
   ].join('\n')
 }
 
@@ -118,11 +177,15 @@ export async function sendMagicLinkEmail(
 ): Promise<SendMagicLinkEmailResult> {
   const { url, secret } = getEnv()
 
+  // fon-email worker expects htmlBody + body field names (not html + text).
+  // Source: /Users/caleb/dev/fon-email-service/worker.js line 178:
+  // const { to, subject, body: textBody, htmlBody, cc, bcc, replyToMessageId } = body;
+  // Mismatched field names land Gmail messages with empty bodies.
   const body = {
     to: input.recipientEmail,
     subject: buildSubject(input.clientName, input.monthLabel),
-    html: buildHtml(input),
-    text: buildText(input),
+    htmlBody: buildHtml(input),
+    body: buildText(input),
   }
 
   const res = await fetch(url, {
