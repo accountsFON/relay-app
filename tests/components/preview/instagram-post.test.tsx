@@ -4,6 +4,23 @@ import userEvent from '@testing-library/user-event'
 import { InstagramFeedPost } from '@/components/preview/instagram-post'
 import type { FeedPostProps } from '@/types/preview'
 
+function mockOverlayRect() {
+  // Force a known 400x400 layout so MarkupOverlay accepts clicks under JSDOM.
+  vi.spyOn(HTMLDivElement.prototype, 'getBoundingClientRect').mockReturnValue({
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: 400,
+    bottom: 400,
+    width: 400,
+    height: 400,
+    toJSON() {
+      return {}
+    },
+  } as DOMRect)
+}
+
 function baseProps(overrides: Partial<FeedPostProps> = {}): FeedPostProps {
   return {
     post: {
@@ -135,6 +152,115 @@ describe('InstagramFeedPost', () => {
     expect(screen.getByTestId('markup-overlay')).toBeInTheDocument()
     // CaptionMarkup wraps the caption.
     expect(screen.getByTestId('caption-markup')).toBeInTheDocument()
+  })
+
+  it('shows inline composer with focused textarea when a new image pin is dropped', async () => {
+    mockOverlayRect()
+    const user = userEvent.setup()
+    const onCreateThread = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <InstagramFeedPost
+        {...baseProps({
+          post: {
+            id: 'p',
+            caption: 'Compose me.',
+            hashtags: [],
+            mediaUrl: 'https://example.com/img.jpg',
+          },
+          onCreateThread,
+        })}
+      />,
+    )
+
+    // No composer until the user clicks the image.
+    expect(screen.queryByTestId('pin-draft-composer')).not.toBeInTheDocument()
+
+    await user.pointer({
+      target: screen.getByTestId('markup-overlay'),
+      coords: { clientX: 200, clientY: 200 },
+      keys: '[MouseLeft]',
+    })
+
+    const composer = screen.getByTestId('pin-draft-composer')
+    expect(composer).toBeInTheDocument()
+
+    const textarea = screen.getByTestId('pin-draft-composer-input')
+    expect(textarea).toBe(document.activeElement)
+    // Should not have called onCreateThread yet , we wait on the user submit.
+    expect(onCreateThread).not.toHaveBeenCalled()
+  })
+
+  it('composer Cancel closes without calling onCreateThread', async () => {
+    mockOverlayRect()
+    const user = userEvent.setup()
+    const onCreateThread = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <InstagramFeedPost
+        {...baseProps({
+          post: {
+            id: 'p',
+            caption: 'Cancel me.',
+            hashtags: [],
+            mediaUrl: 'https://example.com/img.jpg',
+          },
+          onCreateThread,
+        })}
+      />,
+    )
+
+    await user.pointer({
+      target: screen.getByTestId('markup-overlay'),
+      coords: { clientX: 200, clientY: 200 },
+      keys: '[MouseLeft]',
+    })
+    expect(screen.getByTestId('pin-draft-composer')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('pin-draft-composer-cancel'))
+
+    expect(screen.queryByTestId('pin-draft-composer')).not.toBeInTheDocument()
+    expect(onCreateThread).not.toHaveBeenCalled()
+  })
+
+  it('composer Comment submit calls onCreateThread with pin + body', async () => {
+    mockOverlayRect()
+    const user = userEvent.setup()
+    const onCreateThread = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <InstagramFeedPost
+        {...baseProps({
+          post: {
+            id: 'p',
+            caption: 'Submit me.',
+            hashtags: [],
+            mediaUrl: 'https://example.com/img.jpg',
+          },
+          onCreateThread,
+        })}
+      />,
+    )
+
+    await user.pointer({
+      target: screen.getByTestId('markup-overlay'),
+      coords: { clientX: 200, clientY: 200 },
+      keys: '[MouseLeft]',
+    })
+
+    const textarea = screen.getByTestId('pin-draft-composer-input')
+    await user.type(textarea, 'Looks great')
+    await user.click(screen.getByTestId('pin-draft-composer-submit'))
+
+    expect(onCreateThread).toHaveBeenCalledTimes(1)
+    const [pin, body] = onCreateThread.mock.calls[0]
+    expect(pin.kind).toBe('image')
+    expect(typeof pin.x).toBe('number')
+    expect(typeof pin.y).toBe('number')
+    expect(body).toBe('Looks great')
+
+    // Composer closes after successful submit.
+    expect(screen.queryByTestId('pin-draft-composer')).not.toBeInTheDocument()
   })
 
   it('opens the PinPopover when an image pin is clicked', async () => {

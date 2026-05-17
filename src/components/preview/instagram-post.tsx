@@ -1,11 +1,17 @@
 'use client'
 
-import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { cn } from '@/lib/utils'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
 import { MarkupOverlay, type OverlayPin } from './markup-overlay'
 import { CaptionMarkup, type CaptionPin } from './caption-markup'
 import { PinPopover, type PinPopoverThread } from './pin-popover'
+import { PinDraftComposer } from './pin-draft-composer'
+
+type DraftPin = {
+  pin: PinLocation
+  anchor: { x: number; y: number } | null
+}
 
 /**
  * Instagram feed post (mid fidelity).
@@ -60,6 +66,16 @@ export function InstagramFeedPost({
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
+  const [draftPin, setDraftPin] = useState<DraftPin | null>(null)
+  // Track the last pointer position inside the post so we can anchor the
+  // draft composer near the click that triggered the pin creation. The
+  // MarkupOverlay/CaptionMarkup callbacks don't carry viewport coords, so
+  // we capture them here at mousedown.
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
+
+  function recordPointer(event: ReactMouseEvent<HTMLElement>) {
+    lastPointerRef.current = { x: event.clientX, y: event.clientY }
+  }
 
   const handle = useMemo(() => instagramHandle(client.name), [client.name])
 
@@ -107,22 +123,26 @@ export function InstagramFeedPost({
     onOpenThread?.(threadId)
   }
 
-  async function handleCreateImagePin(x: number, y: number) {
+  function handleCreateImagePin(x: number, y: number) {
     if (!onCreateThread) return
-    const body =
-      typeof window !== 'undefined' ? window.prompt('Add a comment') : null
-    if (!body || !body.trim()) return
-    await onCreateThread({ kind: 'image', x, y }, body.trim())
+    setDraftPin({
+      pin: { kind: 'image', x, y },
+      anchor: lastPointerRef.current,
+    })
   }
 
-  async function handleCreateCaptionPin(from: number, to: number) {
+  function handleCreateCaptionPin(from: number, to: number) {
     if (!onCreateThread) return
-    const body =
-      typeof window !== 'undefined'
-        ? window.prompt('Add a comment on selection')
-        : null
-    if (!body || !body.trim()) return
-    await onCreateThread({ kind: 'caption', from, to }, body.trim())
+    setDraftPin({
+      pin: { kind: 'caption', from, to },
+      anchor: lastPointerRef.current,
+    })
+  }
+
+  async function handleDraftSubmit(body: string) {
+    if (!draftPin || !onCreateThread) return
+    await onCreateThread(draftPin.pin, body)
+    setDraftPin(null)
   }
 
   async function handleComment(body: string) {
@@ -152,6 +172,7 @@ export function InstagramFeedPost({
       data-testid="instagram-post"
       data-post-id={post.id}
       data-mode={mode}
+      onMouseDownCapture={recordPointer}
       className="mx-auto w-full max-w-[470px] overflow-hidden rounded-lg border border-[#dbdbdb] bg-white text-[14px] text-[#262626]"
     >
       {/* Header: avatar + username + Sponsored */}
@@ -327,6 +348,14 @@ export function InstagramFeedPost({
             setOpenThreadId(null)
             setPopoverAnchor(null)
           }}
+        />
+      ) : null}
+
+      {draftPin ? (
+        <PinDraftComposer
+          anchor={draftPin.anchor}
+          onSubmit={handleDraftSubmit}
+          onCancel={() => setDraftPin(null)}
         />
       ) : null}
     </article>

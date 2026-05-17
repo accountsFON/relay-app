@@ -4,6 +4,23 @@ import userEvent from '@testing-library/user-event'
 import { FacebookPost } from '@/components/preview/facebook-post'
 import type { FeedPostProps } from '@/types/preview'
 
+function mockOverlayRect() {
+  // Force a known 400x400 layout so MarkupOverlay accepts clicks under JSDOM.
+  vi.spyOn(HTMLDivElement.prototype, 'getBoundingClientRect').mockReturnValue({
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: 400,
+    bottom: 400,
+    width: 400,
+    height: 400,
+    toJSON() {
+      return {}
+    },
+  } as DOMRect)
+}
+
 function makeProps(overrides: Partial<FeedPostProps> = {}): FeedPostProps {
   return {
     post: {
@@ -145,6 +162,73 @@ describe('FacebookPost', () => {
 
     expect(screen.getByTestId('markup-overlay')).toBeInTheDocument()
     expect(screen.getByTestId('caption-markup')).toBeInTheDocument()
+  })
+
+  it('shows inline composer with focused textarea when a new image pin is dropped', async () => {
+    mockOverlayRect()
+    const user = userEvent.setup()
+    const onCreateThread = vi.fn().mockResolvedValue(undefined)
+
+    render(<FacebookPost {...makeProps({ onCreateThread })} />)
+
+    expect(screen.queryByTestId('pin-draft-composer')).not.toBeInTheDocument()
+
+    await user.pointer({
+      target: screen.getByTestId('markup-overlay'),
+      coords: { clientX: 200, clientY: 200 },
+      keys: '[MouseLeft]',
+    })
+
+    const composer = screen.getByTestId('pin-draft-composer')
+    expect(composer).toBeInTheDocument()
+    expect(screen.getByTestId('pin-draft-composer-input')).toBe(
+      document.activeElement,
+    )
+    expect(onCreateThread).not.toHaveBeenCalled()
+  })
+
+  it('composer Cancel closes without calling onCreateThread', async () => {
+    mockOverlayRect()
+    const user = userEvent.setup()
+    const onCreateThread = vi.fn().mockResolvedValue(undefined)
+
+    render(<FacebookPost {...makeProps({ onCreateThread })} />)
+
+    await user.pointer({
+      target: screen.getByTestId('markup-overlay'),
+      coords: { clientX: 200, clientY: 200 },
+      keys: '[MouseLeft]',
+    })
+    expect(screen.getByTestId('pin-draft-composer')).toBeInTheDocument()
+
+    await user.click(screen.getByTestId('pin-draft-composer-cancel'))
+
+    expect(screen.queryByTestId('pin-draft-composer')).not.toBeInTheDocument()
+    expect(onCreateThread).not.toHaveBeenCalled()
+  })
+
+  it('composer Comment submit calls onCreateThread with pin + body', async () => {
+    mockOverlayRect()
+    const user = userEvent.setup()
+    const onCreateThread = vi.fn().mockResolvedValue(undefined)
+
+    render(<FacebookPost {...makeProps({ onCreateThread })} />)
+
+    await user.pointer({
+      target: screen.getByTestId('markup-overlay'),
+      coords: { clientX: 200, clientY: 200 },
+      keys: '[MouseLeft]',
+    })
+
+    const textarea = screen.getByTestId('pin-draft-composer-input')
+    await user.type(textarea, 'Tighten the crop')
+    await user.click(screen.getByTestId('pin-draft-composer-submit'))
+
+    expect(onCreateThread).toHaveBeenCalledTimes(1)
+    const [pin, body] = onCreateThread.mock.calls[0]
+    expect(pin.kind).toBe('image')
+    expect(body).toBe('Tighten the crop')
+    expect(screen.queryByTestId('pin-draft-composer')).not.toBeInTheDocument()
   })
 
   it('opens the PinPopover when an image pin is clicked', async () => {

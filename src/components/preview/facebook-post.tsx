@@ -1,12 +1,18 @@
 'use client'
 
-import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { Globe, ThumbsUp, MessageCircle, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
 import { MarkupOverlay, type OverlayPin } from './markup-overlay'
 import { CaptionMarkup, type CaptionPin } from './caption-markup'
 import { PinPopover, type PinPopoverThread } from './pin-popover'
+import { PinDraftComposer } from './pin-draft-composer'
+
+type DraftPin = {
+  pin: PinLocation
+  anchor: { x: number; y: number } | null
+}
 
 // Facebook allows visibly longer captions before "See more" than IG.
 // 280 chars is a reasonable mid fidelity threshold.
@@ -45,6 +51,15 @@ export function FacebookPost(props: FeedPostProps) {
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
+  const [draftPin, setDraftPin] = useState<DraftPin | null>(null)
+  // Captured at mousedown so the draft composer can anchor near the click
+  // that triggered pin creation. MarkupOverlay/CaptionMarkup callbacks
+  // don't carry viewport coords on their own.
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
+
+  function recordPointer(event: ReactMouseEvent<HTMLElement>) {
+    lastPointerRef.current = { x: event.clientX, y: event.clientY }
+  }
 
   const captionFull = post.caption ?? ''
   const needsTruncation = captionFull.length > FB_TRUNCATE_LIMIT
@@ -92,22 +107,26 @@ export function FacebookPost(props: FeedPostProps) {
     onOpenThread?.(threadId)
   }
 
-  async function handleCreateImagePin(x: number, y: number) {
+  function handleCreateImagePin(x: number, y: number) {
     if (!onCreateThread) return
-    const body =
-      typeof window !== 'undefined' ? window.prompt('Add a comment') : null
-    if (!body || !body.trim()) return
-    await onCreateThread({ kind: 'image', x, y }, body.trim())
+    setDraftPin({
+      pin: { kind: 'image', x, y },
+      anchor: lastPointerRef.current,
+    })
   }
 
-  async function handleCreateCaptionPin(from: number, to: number) {
+  function handleCreateCaptionPin(from: number, to: number) {
     if (!onCreateThread) return
-    const body =
-      typeof window !== 'undefined'
-        ? window.prompt('Add a comment on selection')
-        : null
-    if (!body || !body.trim()) return
-    await onCreateThread({ kind: 'caption', from, to }, body.trim())
+    setDraftPin({
+      pin: { kind: 'caption', from, to },
+      anchor: lastPointerRef.current,
+    })
+  }
+
+  async function handleDraftSubmit(body: string) {
+    if (!draftPin || !onCreateThread) return
+    await onCreateThread(draftPin.pin, body)
+    setDraftPin(null)
   }
 
   async function handleComment(body: string) {
@@ -136,6 +155,7 @@ export function FacebookPost(props: FeedPostProps) {
       data-testid="facebook-post"
       data-post-id={post.id}
       data-mode={mode}
+      onMouseDownCapture={recordPointer}
       className="w-full max-w-[500px] rounded-lg border border-[#dadde1] bg-white font-[system-ui,-apple-system,'Segoe_UI',sans-serif] text-[#1c1e21] shadow-sm"
     >
       {/* Header: avatar + client name + Sponsored row */}
@@ -315,6 +335,14 @@ export function FacebookPost(props: FeedPostProps) {
             setOpenThreadId(null)
             setPopoverAnchor(null)
           }}
+        />
+      ) : null}
+
+      {draftPin ? (
+        <PinDraftComposer
+          anchor={draftPin.anchor}
+          onSubmit={handleDraftSubmit}
+          onCancel={() => setDraftPin(null)}
         />
       ) : null}
     </article>
