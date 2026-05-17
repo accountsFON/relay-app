@@ -195,3 +195,219 @@ function clampDays(n: number): number {
   if (i > MAX_EXPIRY_DAYS) return MAX_EXPIRY_DAYS
   return i
 }
+
+interface RotateContext {
+  ctx: Awaited<ReturnType<typeof requireClientEditor>>
+  oldLink: {
+    id: string
+    batchId: string
+    defaultReviewerName: string
+    defaultReviewerEmail: string
+    expiresAt: Date
+  }
+  batch: NonNullable<Awaited<ReturnType<typeof findBatch>>>
+  client: NonNullable<Awaited<ReturnType<typeof findClientForUser>>>
+  newLink: { id: string }
+  token: string
+  reviewUrl: string
+}
+
+/**
+ * Shared rotation core for Copy URL / Open Preview / Resend Email.
+ *
+ * We do not store the raw token on the MagicLink row (only a sha256
+ * hash) so once the original modal closes there is no way to surface
+ * the original URL again. Rather than weaken the model, we rotate:
+ * mint a fresh MagicLink with the same recipient + expiresAt, revoke
+ * the old one, and return the new URL.
+ *
+ * Side effect: any prior reviewer sessions stay attached to the old
+ * (now revoked) link. New visits use the new link. That is acceptable
+ * because the AM only reaches for these buttons when they need to
+ * re-deliver / share the URL again, which implies the original is no
+ * longer in active use.
+ */
+async function rotateLinkForAction(id: string): Promise<RotateContext> {
+  const ctx = await requireClientEditor()
+
+  const oldLink = await db.magicLink.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      batchId: true,
+      defaultReviewerName: true,
+      defaultReviewerEmail: true,
+      expiresAt: true,
+      revokedAt: true,
+    },
+  })
+  if (!oldLink) notFound()
+  if (oldLink.revokedAt) {
+    throw new Error('This link has already been revoked. Send a new one from the batch page.')
+  }
+
+  const batch = await findBatch(oldLink.batchId)
+  if (!batch) notFound()
+  const client = await findClientForUser(ctx, batch.clientId)
+  if (!client) notFound()
+
+  // Keep the existing expiry; never silently extend a link's lifetime
+  // just because the AM clicked Copy. If the link has already expired
+  // we still rotate (the recipient hit a wall and the AM wants to fix
+  // it) by pushing the expiry out one default cycle.
+  let expiresAt = oldLink.expiresAt
+  if (expiresAt.getTime() <= Date.now()) {
+    expiresAt = new Date(Date.now() + DEFAULT_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+  }
+
+  const { link: newLink, token } = await createMagicLink({
+    batchId: batch.id,
+    defaultReviewerName: oldLink.defaultReviewerName,
+    defaultReviewerEmail: oldLink.defaultReviewerEmail,
+    expiresAt,
+    createdBy: ctx.userDbId,
+  })
+
+  // Revoke the old row only after the new one is minted so an interruption
+  // never leaves the AM with zero usable links.
+  await revokeLink({ id: oldLink.id, by: ctx.userDbId })
+
+  const reviewUrl = `${appBaseUrl()}/review/${token}`
+
+  return {
+    ctx,
+    oldLink: {
+      id: oldLink.id,
+      batchId: oldLink.batchId,
+      defaultReviewerName: oldLink.defaultReviewerName,
+      defaultReviewerEmail: oldLink.defaultReviewerEmail,
+      expiresAt: oldLink.expiresAt,
+    },
+    batch,
+    client,
+    newLink: { id: newLink.id },
+    token,
+    reviewUrl,
+  }
+}
+
+export interface GetFreshUrlForLinkInput {
+  id: string
+}
+
+export interface GetFreshUrlForLinkResult {
+  url: string
+  magicLinkId: string
+  expiresAt: Date
+}
+
+/**
+ * Rotates the MagicLink and returns a fresh usable URL without sending
+ * email. Backs the Copy URL and Open Preview buttons on MagicLinkRow.
+ */
+export async function getFreshUrlForLinkAction(
+  input: GetFreshUrlForLinkInput,
+): Promise<GetFreshUrlForLinkResult> {
+  const rotated = await rotateLinkForAction(input.id)
+
+  await recordActivity({
+    clientId: rotated.batch.clientId,
+    actorId: rotated.ctx.userDbId,
+    kind: ActivityKind.magic_link_created,
+    visibility: EventVisibility.internal,
+    payload: {
+      magicLinkId: rotated.newLink.id,
+      batchId: rotated.batch.id,
+      recipientName: rotated.oldLink.defaultReviewerName,
+      recipientEmail: rotated.oldLink.defaultReviewerEmail,
+      rotatedFrom: rotated.oldLink.id,
+      reason: 'fresh_url',
+    },
+  })
+
+  revalidatePath(`/clients/${rotated.batch.clientId}/batches/${rotated.batch.id}`)
+
+  return {
+    url: rotated.reviewUrl,
+    magicLinkId: rotated.newLink.id,
+    expiresAt: rotated.oldLink.expiresAt,
+  }
+}
+
+export interface ResendMagicLinkEmailInput {
+  id: string
+}
+
+export interface ResendMagicLinkEmailResult {
+  ok: boolean
+  newUrl: string
+  magicLinkId: string
+  emailSent: boolean
+  emailError: string | null
+}
+
+/**
+ * Rotates the MagicLink and re-sends the MagicLinkInviteEmail to the
+ * same recipient. The new URL is also returned so the AM can copy it
+ * if they prefer not to rely on the email.
+ *
+ * Email failure does NOT roll back the new link; same recovery model
+ * as createAndSendMagicLinkAction.
+ */
+export async function resendMagicLinkEmailAction(
+  input: ResendMagicLinkEmailInput,
+): Promise<ResendMagicLinkEmailResult> {
+  const rotated = await rotateLinkForAction(input.id)
+
+  await recordActivity({
+    clientId: rotated.batch.clientId,
+    actorId: rotated.ctx.userDbId,
+    kind: ActivityKind.magic_link_created,
+    visibility: EventVisibility.internal,
+    payload: {
+      magicLinkId: rotated.newLink.id,
+      batchId: rotated.batch.id,
+      recipientName: rotated.oldLink.defaultReviewerName,
+      recipientEmail: rotated.oldLink.defaultReviewerEmail,
+      rotatedFrom: rotated.oldLink.id,
+      reason: 'resend',
+    },
+  })
+
+  const am = await db.user.findUnique({
+    where: { id: rotated.ctx.userDbId },
+    select: { name: true, email: true },
+  })
+  const senderName = am?.name?.trim() || am?.email || 'Your Five One Nine team'
+
+  let emailSent = false
+  let emailError: string | null = null
+  try {
+    await sendMagicLinkEmail({
+      recipientName: rotated.oldLink.defaultReviewerName,
+      recipientEmail: rotated.oldLink.defaultReviewerEmail,
+      senderName,
+      clientName: rotated.client.name,
+      monthLabel: monthLabel(rotated.batch.scheduledAt ?? rotated.batch.createdAt),
+      reviewUrl: rotated.reviewUrl,
+      expiresAt: rotated.oldLink.expiresAt,
+    })
+    emailSent = true
+  } catch (err) {
+    emailError = err instanceof Error ? err.message : String(err)
+    console.error('[magic-link] resend sendMagicLinkEmail failed', {
+      magicLinkId: rotated.newLink.id,
+      err: emailError,
+    })
+  }
+
+  revalidatePath(`/clients/${rotated.batch.clientId}/batches/${rotated.batch.id}`)
+
+  return {
+    ok: true,
+    newUrl: rotated.reviewUrl,
+    magicLinkId: rotated.newLink.id,
+    emailSent,
+    emailError,
+  }
+}
