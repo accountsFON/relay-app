@@ -1,17 +1,24 @@
 /**
- * Unit tests for src/app/review/[token]/page.tsx.
+ * Unit tests for src/app/review/[token]/page.tsx (v2 rewrite).
  *
  * The middleware (src/middleware.ts) is the gate that decides whether the
- * page runs at all. We do NOT exercise the middleware here — its behavior
+ * page runs at all. We do NOT exercise the middleware here -- its behavior
  * is covered by tests/middleware.test.ts and tests/lib/magic-link.test.ts.
  * Instead, we simulate the two outcomes:
  *
- *   - middleware passes → attaches x-magic-link-id + x-magic-link-batch-id
+ *   - middleware passes -> attaches x-magic-link-id + x-magic-link-batch-id
  *     headers + the page renders the appropriate branch based on the
  *     session cookie.
- *   - middleware rejects (404 or 410) → page is never invoked; we model
+ *   - middleware rejects (404 or 410) -> page is never invoked; we model
  *     this by either omitting the headers (the page treats that as 404)
  *     or having findUnique return null (modeled 410).
+ *
+ * Coverage:
+ *   1. No cookie -> NameModal
+ *   2. Valid cookie -> ReviewSessionShell renders (v2 surface)
+ *   3. Missing middleware headers -> notFound (404 path)
+ *   4. Missing magic link row -> notFound (410 path)
+ *   5. Cookie + existing in_progress session -> shell hydrated with items
  */
 process.env.MAGIC_LINK_SECRET = 'test-secret-base64-min-32-bytes-xxxxxxxxxxx'
 
@@ -33,7 +40,9 @@ const mocks = vi.hoisted(() => {
     updateMagicLink: vi.fn().mockResolvedValue({}),
     findManyPosts: vi.fn().mockResolvedValue([]),
     findUniqueReviewer: vi.fn(),
-    listThreadsForBatch: vi.fn().mockResolvedValue(new Map()),
+    findActiveSession: vi.fn(),
+    listSessionsForBatch: vi.fn(),
+    findManyReviewItems: vi.fn(),
   }
 })
 
@@ -58,24 +67,43 @@ vi.mock('@/db/client', () => ({
     post: {
       findMany: (...args: unknown[]) => mocks.findManyPosts(...args),
     },
+    reviewItem: {
+      findMany: (...args: unknown[]) => mocks.findManyReviewItems(...args),
+    },
   },
 }))
 
-vi.mock('@/server/repositories/threads', () => ({
-  listThreadsForBatch: (...args: unknown[]) => mocks.listThreadsForBatch(...args),
+vi.mock('@/server/repositories/reviewSessions', () => ({
+  findActiveSession: (...args: unknown[]) => mocks.findActiveSession(...args),
+  listSessionsForBatch: (...args: unknown[]) =>
+    mocks.listSessionsForBatch(...args),
 }))
 
-// Render-only stubs for the child components — we are testing the page's
-// branching logic, not the visual output of the modal or feed.
+// Render-only stubs for the child components -- we are testing the page's
+// branching logic, not the visual output of the modal or shell.
 vi.mock('@/app/review/[token]/name-modal', () => ({
   NameModal: ({ token }: { token: string }) => (
     <div data-testid="name-modal">modal:{token}</div>
   ),
 }))
 
-vi.mock('@/app/review/[token]/review-feed', () => ({
-  ReviewFeed: ({ reviewerName }: { reviewerName: string }) => (
-    <div data-testid="review-feed">feed:{reviewerName}</div>
+vi.mock('@/app/review/[token]/review-session-shell', () => ({
+  ReviewSessionShell: ({
+    reviewerName,
+    initialItems,
+    sessionStatus,
+  }: {
+    reviewerName: string
+    initialItems: ReadonlyArray<{ postId: string; decision: string }>
+    sessionStatus: string | null
+  }) => (
+    <div
+      data-testid="review-session-shell"
+      data-session-status={sessionStatus ?? 'null'}
+      data-items-count={initialItems.length}
+    >
+      shell:{reviewerName}
+    </div>
   ),
 }))
 
@@ -123,26 +151,33 @@ beforeEach(() => {
     batch: {
       id: FAKE_BATCH_ID,
       label: 'Sept Wk 1',
-      client: { id: 'client_1', name: 'Acme Co' },
+      client: {
+        id: 'client_1',
+        name: 'Acme Co',
+        assignedAm: { id: 'user_am', name: 'Caleb AM' },
+      },
     },
+    creator: { id: 'user_am', name: 'Caleb AM' },
   })
   mocks.updateMagicLink.mockResolvedValue({})
   mocks.findManyPosts.mockResolvedValue([])
-  mocks.listThreadsForBatch.mockResolvedValue(new Map())
+  mocks.findActiveSession.mockResolvedValue(null)
+  mocks.listSessionsForBatch.mockResolvedValue([])
+  mocks.findManyReviewItems.mockResolvedValue([])
   mocks.notFoundMock.mockImplementation(() => {
     throw new Error('NEXT_NOT_FOUND')
   })
 })
 
-describe('ReviewPage /review/[token]', () => {
+describe('ReviewPage /review/[token] (v2 surface)', () => {
   it('renders the name modal when no session cookie is present', async () => {
     mocks.cookiesMock.mockResolvedValue(makeCookieJar({}))
     const html = await renderPage()
     expect(html).toContain('data-testid="name-modal"')
-    expect(html).not.toContain('data-testid="review-feed"')
+    expect(html).not.toContain('data-testid="review-session-shell"')
   })
 
-  it('renders the feed when a valid session cookie is present', async () => {
+  it('renders the v2 ReviewSessionShell when a valid session cookie is present', async () => {
     const cookieValue = signSession({
       magicLinkId: FAKE_MAGIC_LINK_ID,
       reviewerId: 'reviewer_1',
@@ -157,7 +192,7 @@ describe('ReviewPage /review/[token]', () => {
     })
 
     const html = await renderPage()
-    expect(html).toContain('data-testid="review-feed"')
+    expect(html).toContain('data-testid="review-session-shell"')
     expect(html).toContain('Jordan Reviewer')
     expect(html).not.toContain('data-testid="name-modal"')
   })
@@ -173,13 +208,65 @@ describe('ReviewPage /review/[token]', () => {
 
   it('returns notFound when the magic link is missing/expired (modeled 410)', async () => {
     // The middleware attached headers from a valid signature check, but the
-    // DB row has since vanished (e.g. revoked between middleware and render
-    // — race) or is otherwise unfetchable. Model 410 by returning null
-    // from findUnique. Page should bail with notFound rather than render
-    // partial chrome.
+    // DB row has since vanished (e.g. revoked between middleware and render).
+    // Page should bail with notFound rather than render partial chrome.
     mocks.findUniqueMagicLink.mockResolvedValue(null)
 
     await expect(renderPage()).rejects.toThrow('NEXT_NOT_FOUND')
     expect(mocks.notFoundMock).toHaveBeenCalled()
+  })
+
+  it('hydrates the shell with existing in_progress session items', async () => {
+    const cookieValue = signSession({
+      magicLinkId: FAKE_MAGIC_LINK_ID,
+      reviewerId: 'reviewer_2',
+    })
+    mocks.cookiesMock.mockResolvedValue(
+      makeCookieJar({ 'magic-link-session': cookieValue }),
+    )
+    mocks.findUniqueReviewer.mockResolvedValue({
+      id: 'reviewer_2',
+      name: 'Sarah',
+      magicLinkId: FAKE_MAGIC_LINK_ID,
+    })
+    mocks.findActiveSession.mockResolvedValue({
+      id: 'rs_1',
+      magicLinkId: FAKE_MAGIC_LINK_ID,
+      reviewerId: 'reviewer_2',
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+    })
+    mocks.findManyReviewItems.mockResolvedValue([
+      {
+        id: 'ri_1',
+        postId: 'post_1',
+        decision: 'approved',
+        comment: null,
+        suggestedCaption: null,
+        acceptedAsPostVersionId: null,
+        updatedSinceLastReview: false,
+        lastReviewedVersionId: null,
+        reviewedAt: new Date(),
+      },
+      {
+        id: 'ri_2',
+        postId: 'post_2',
+        decision: 'changes_requested',
+        comment: 'Tweak the headline',
+        suggestedCaption: null,
+        acceptedAsPostVersionId: null,
+        updatedSinceLastReview: false,
+        lastReviewedVersionId: null,
+        reviewedAt: new Date(),
+      },
+    ])
+
+    const html = await renderPage()
+    expect(html).toContain('data-testid="review-session-shell"')
+    expect(html).toContain('data-session-status="in_progress"')
+    expect(html).toContain('data-items-count="2"')
   })
 })
