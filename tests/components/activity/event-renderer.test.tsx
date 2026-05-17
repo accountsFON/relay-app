@@ -206,4 +206,73 @@ describe('EventRenderer copy', () => {
       ),
     ).toBeInTheDocument()
   })
+
+  it('renders review_session_started with the round number', () => {
+    const event = makeEvent(ActivityKind.review_session_started, {
+      reviewSessionId: 'rs1',
+      reviewerId: 'u9',
+      round: 1,
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/started review, round 1/),
+    ).toBeInTheDocument()
+  })
+
+  it('renders review_session_submitted with inline summary chips', () => {
+    const event = makeEvent(ActivityKind.review_session_submitted, {
+      reviewSessionId: 'rs1',
+      round: 1,
+      summary: {
+        approved: 8,
+        changesRequested: 4,
+        captionEdited: 1,
+        totalPosts: 13,
+      },
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(
+        /submitted review, round 1 \(8 approved, 4 changes, 1 edits\)/,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('renders review_caption_edit_accepted with the post ref', () => {
+    const event = makeEvent(ActivityKind.review_caption_edit_accepted, {
+      postId: 'postabc123def',
+      reviewItemId: 'ri1',
+      oldCaption: 'Old',
+      newCaption: 'New',
+      postVersionId: 'pv1',
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/accepted client caption edit on post postab/),
+    ).toBeInTheDocument()
+  })
+
+  it('renders review_item_addressed with the post ref', () => {
+    const event = makeEvent(ActivityKind.review_item_addressed, {
+      postId: 'postabc123def',
+      reviewItemId: 'ri1',
+      decision: 'changes_requested',
+      addressedBy: 'u1',
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/marked feedback addressed on post postab/),
+    ).toBeInTheDocument()
+  })
+
+  it('renders review_round_started with the round number', () => {
+    const event = makeEvent(ActivityKind.review_round_started, {
+      magicLinkId: 'ml2',
+      round: 2,
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/opened round 2 for re-review/),
+    ).toBeInTheDocument()
+  })
 })

@@ -110,6 +110,44 @@ export type ModeledActivityPayload =
       reviewerName: string
       isFirstVisit: boolean
     }
+  | {
+      kind: 'review_session_started'
+      reviewSessionId: string
+      reviewerId: string | null
+      round: number
+    }
+  | {
+      kind: 'review_session_submitted'
+      reviewSessionId: string
+      summary: {
+        approved: number
+        changesRequested: number
+        captionEdited: number
+        totalPosts: number
+      }
+      round: number
+    }
+  | {
+      kind: 'review_caption_edit_accepted'
+      postId: string
+      reviewItemId: string
+      oldCaption: string
+      newCaption: string
+      postVersionId: string
+    }
+  | {
+      kind: 'review_item_addressed'
+      postId: string
+      reviewItemId: string
+      decision: 'changes_requested' | 'caption_edited'
+      /** userId of the AM who addressed the item. */
+      addressedBy: string
+    }
+  | {
+      kind: 'review_round_started'
+      magicLinkId: string
+      round: number
+    }
 
 type ModeledKind = ModeledActivityPayload['kind']
 type UnmodeledKind = Exclude<ActivityKind, ModeledKind>

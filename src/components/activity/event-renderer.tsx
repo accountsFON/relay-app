@@ -341,6 +341,54 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         message: `${p.reviewerName} opened the review link (${suffix})`,
       }
     }
+    case 'review_session_started': {
+      if (p.kind !== 'review_session_started') break
+      return {
+        icon: PlayCircle,
+        tone: 'default',
+        message: `started review, round ${p.round}`,
+      }
+    }
+    case 'review_session_submitted': {
+      if (p.kind !== 'review_session_submitted') break
+      const s = p.summary
+      const chips = [
+        `${s.approved} approved`,
+        `${s.changesRequested} changes`,
+        `${s.captionEdited} edits`,
+      ].join(', ')
+      return {
+        icon: CheckCircle2,
+        tone: 'success',
+        message: `submitted review, round ${p.round} (${chips})`,
+      }
+    }
+    case 'review_caption_edit_accepted': {
+      if (p.kind !== 'review_caption_edit_accepted') break
+      const postRef = shortPostRef(p.postId)
+      return {
+        icon: Check,
+        tone: 'success',
+        message: `accepted client caption edit on ${postRef}`,
+      }
+    }
+    case 'review_item_addressed': {
+      if (p.kind !== 'review_item_addressed') break
+      const postRef = shortPostRef(p.postId)
+      return {
+        icon: Check,
+        tone: 'success',
+        message: `marked feedback addressed on ${postRef}`,
+      }
+    }
+    case 'review_round_started': {
+      if (p.kind !== 'review_round_started') break
+      return {
+        icon: ArrowRight,
+        tone: 'default',
+        message: `opened round ${p.round} for re-review`,
+      }
+    }
   }
   // Fallback for not-yet-modeled kinds.
   return {
