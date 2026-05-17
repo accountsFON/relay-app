@@ -98,10 +98,12 @@ export async function confirmReviewerIdentity(
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    // Scoped to this token's URL so two reviewers on two different links
-    // don't trample each other's cookies. The `name` collision is fine
-    // because browsers key cookies by (path, name) under the same host.
-    path: `/review/${input.token}`,
+    // Cookie path is `/` because the v2 surface fires API calls from
+    // /api/review/[token]/draft which would not receive a /review/[token]
+    // scoped cookie. Multi-reviewer isolation is enforced by the signed
+    // JWT (magicLinkId + reviewerId) being verified against the URL token
+    // on every request, not by cookie path scoping.
+    path: '/',
     maxAge: SESSION_TTL_SECONDS,
   })
 
