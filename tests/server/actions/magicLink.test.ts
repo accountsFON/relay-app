@@ -61,6 +61,8 @@ import { db } from '@/db/client'
 import {
   createAndSendMagicLinkAction,
   revokeMagicLinkAction,
+  getFreshUrlForLinkAction,
+  resendMagicLinkEmailAction,
 } from '@/server/actions/magicLink'
 
 const mockCtx = {
@@ -231,5 +233,160 @@ describe('revokeMagicLinkAction', () => {
       /NEXT_NOT_FOUND/,
     )
     expect(revokeLink).not.toHaveBeenCalled()
+  })
+})
+
+describe('getFreshUrlForLinkAction', () => {
+  it('rotates the link (mints new, revokes old) and returns the fresh URL', async () => {
+    const futureExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: 'cuid_link_old',
+      batchId: mockBatch.id,
+      defaultReviewerName: 'Jane Doe',
+      defaultReviewerEmail: 'jane@client.com',
+      expiresAt: futureExpiry,
+      revokedAt: null,
+    } as never)
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+    vi.mocked(createMagicLink).mockResolvedValue({
+      link: { id: 'cuid_link_new', batchId: mockBatch.id } as never,
+      token: 'fresh-token-xyz',
+    })
+
+    const result = await getFreshUrlForLinkAction({ id: 'cuid_link_old' })
+
+    expect(result.url).toContain('/review/fresh-token-xyz')
+    expect(result.magicLinkId).toBe('cuid_link_new')
+
+    // New link minted with same recipient + expiry.
+    const createInput = vi.mocked(createMagicLink).mock.calls[0][0]
+    expect(createInput.defaultReviewerName).toBe('Jane Doe')
+    expect(createInput.defaultReviewerEmail).toBe('jane@client.com')
+    expect(createInput.expiresAt.getTime()).toBe(futureExpiry.getTime())
+    expect(createInput.createdBy).toBe(mockCtx.userDbId)
+
+    // Old link revoked.
+    expect(revokeLink).toHaveBeenCalledWith({
+      id: 'cuid_link_old',
+      by: mockCtx.userDbId,
+    })
+
+    // Activity recorded with rotation metadata.
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activityInput = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activityInput.payload).toMatchObject({
+      magicLinkId: 'cuid_link_new',
+      rotatedFrom: 'cuid_link_old',
+      reason: 'fresh_url',
+    })
+
+    // No email side effect on getFreshUrl.
+    expect(sendMagicLinkEmail).not.toHaveBeenCalled()
+  })
+
+  it('refuses to rotate an already revoked link', async () => {
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: 'cuid_link_revoked',
+      batchId: mockBatch.id,
+      defaultReviewerName: 'Jane',
+      defaultReviewerEmail: 'jane@client.com',
+      expiresAt: new Date(Date.now() + 86_400_000),
+      revokedAt: new Date(),
+    } as never)
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+
+    await expect(
+      getFreshUrlForLinkAction({ id: 'cuid_link_revoked' }),
+    ).rejects.toThrow(/revoked/i)
+
+    expect(createMagicLink).not.toHaveBeenCalled()
+    expect(revokeLink).not.toHaveBeenCalled()
+  })
+})
+
+describe('resendMagicLinkEmailAction', () => {
+  it('rotates the link, sends a new email, and returns the new URL', async () => {
+    const futureExpiry = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: 'cuid_link_old',
+      batchId: mockBatch.id,
+      defaultReviewerName: 'Jane Doe',
+      defaultReviewerEmail: 'jane@client.com',
+      expiresAt: futureExpiry,
+      revokedAt: null,
+    } as never)
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+    vi.mocked(createMagicLink).mockResolvedValue({
+      link: { id: 'cuid_link_new', batchId: mockBatch.id } as never,
+      token: 'resend-token-abc',
+    })
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      name: 'Caleb Cody',
+      email: 'caleb@fonmarketing.com',
+    } as never)
+    vi.mocked(sendMagicLinkEmail).mockResolvedValue({ messageId: 'msg_resend' })
+
+    const result = await resendMagicLinkEmailAction({ id: 'cuid_link_old' })
+
+    expect(result.ok).toBe(true)
+    expect(result.newUrl).toContain('/review/resend-token-abc')
+    expect(result.magicLinkId).toBe('cuid_link_new')
+    expect(result.emailSent).toBe(true)
+    expect(result.emailError).toBeNull()
+
+    // Email went to the same recipient + carried the new URL.
+    const emailInput = vi.mocked(sendMagicLinkEmail).mock.calls[0][0]
+    expect(emailInput.recipientEmail).toBe('jane@client.com')
+    expect(emailInput.recipientName).toBe('Jane Doe')
+    expect(emailInput.reviewUrl).toContain('/review/resend-token-abc')
+    expect(emailInput.senderName).toBe('Caleb Cody')
+    expect(emailInput.clientName).toBe('Akkoo Coffee')
+
+    // Old link revoked, activity emitted with reason=resend.
+    expect(revokeLink).toHaveBeenCalledWith({
+      id: 'cuid_link_old',
+      by: mockCtx.userDbId,
+    })
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(recordActivity).mock.calls[0][0].payload).toMatchObject({
+      rotatedFrom: 'cuid_link_old',
+      reason: 'resend',
+    })
+  })
+
+  it('still returns ok when the email worker throws (link rotation succeeded)', async () => {
+    const futureExpiry = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: 'cuid_link_old',
+      batchId: mockBatch.id,
+      defaultReviewerName: 'Jane',
+      defaultReviewerEmail: 'jane@client.com',
+      expiresAt: futureExpiry,
+      revokedAt: null,
+    } as never)
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+    vi.mocked(createMagicLink).mockResolvedValue({
+      link: { id: 'cuid_link_new', batchId: mockBatch.id } as never,
+      token: 'tok2',
+    })
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      name: 'Caleb',
+      email: 'caleb@fonmarketing.com',
+    } as never)
+    vi.mocked(sendMagicLinkEmail).mockRejectedValue(new Error('worker down'))
+
+    const result = await resendMagicLinkEmailAction({ id: 'cuid_link_old' })
+
+    expect(result.ok).toBe(true)
+    expect(result.emailSent).toBe(false)
+    expect(result.emailError).toMatch(/worker down/)
+    // The new URL is still returned so the AM can copy it.
+    expect(result.newUrl).toContain('/review/tok2')
+    // The old link is still revoked so we do not leave both alive.
+    expect(revokeLink).toHaveBeenCalled()
   })
 })

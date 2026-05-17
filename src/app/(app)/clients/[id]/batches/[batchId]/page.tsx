@@ -462,16 +462,41 @@ export default async function BatchDetailPage({
           {magicLinks.length > 0 && (
             <PageSection title={`Review links (${magicLinks.length})`}>
               <div className="space-y-2">
-                {magicLinks.map((link) => (
-                  <MagicLinkRow
-                    key={link.id}
-                    id={link.id}
-                    recipientName={link.defaultReviewerName}
-                    recipientEmail={link.defaultReviewerEmail}
-                    expiresAt={link.expiresAt}
-                    lastVisitedAt={link.lastVisitedAt}
-                  />
-                ))}
+                {magicLinks.map((link) => {
+                  // Pre-compute comment count + last-activity per link from
+                  // review sessions. "Comment count" counts items that
+                  // carry signal: non-null comment, non-null suggestion,
+                  // or decision other than not_reviewed.
+                  let commentCount = 0
+                  let lastActivityAt: Date | null = null
+                  for (const session of reviewSessions) {
+                    if (session.magicLinkId !== link.id) continue
+                    for (const item of session.items) {
+                      const hasSignal =
+                        Boolean(item.comment) ||
+                        Boolean(item.suggestedCaption) ||
+                        item.decision !== 'not_reviewed'
+                      if (hasSignal) commentCount += 1
+                      if (item.reviewedAt) {
+                        if (!lastActivityAt || item.reviewedAt > lastActivityAt) {
+                          lastActivityAt = item.reviewedAt
+                        }
+                      }
+                    }
+                  }
+                  return (
+                    <MagicLinkRow
+                      key={link.id}
+                      id={link.id}
+                      recipientName={link.defaultReviewerName}
+                      recipientEmail={link.defaultReviewerEmail}
+                      expiresAt={link.expiresAt}
+                      lastVisitedAt={link.lastVisitedAt}
+                      commentCount={commentCount}
+                      lastActivityAt={lastActivityAt}
+                    />
+                  )
+                })}
               </div>
             </PageSection>
           )}
