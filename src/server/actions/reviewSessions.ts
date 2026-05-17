@@ -1,16 +1,31 @@
 'use server'
 
+import * as React from 'react'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import { ActivityKind, EventVisibility } from '@prisma/client'
 import { verifySession, verifyToken, hashToken } from '@/lib/magic-link'
 import { db } from '@/db/client'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 import {
   findActiveSession,
+  findSessionWithItems,
   saveDraftItem,
   startSession,
+  submitSession,
 } from '@/server/repositories/reviewSessions'
-import type { ReviewDecisionType } from '@/types/review-session'
+import { recordActivity } from '@/server/services/activity'
+import { sendEmail } from '@/lib/resend'
+import {
+  ReviewSubmittedDigestEmail,
+  buildSubject,
+  type DigestReviewItem,
+  type ReviewSubmittedDigestEmailProps,
+} from '@/server/emails/ReviewSubmittedDigestEmail'
+import type {
+  ReviewDecisionType,
+  ReviewSessionSummary,
+} from '@/types/review-session'
 
 /**
  * Server actions wrapping `src/server/repositories/reviewSessions.ts`.
@@ -208,4 +223,246 @@ export async function saveReviewDraftAction(input: {
 
   revalidateReviewerPaths(input.token, ctx.clientId, ctx.batchId)
   return { reviewItemId: item.id }
+}
+
+// ---- Submit Review ----
+
+/**
+ * Friendly base URL for AM-side links rendered into the digest email.
+ * Mirrors `appBaseUrl` in `src/server/actions/magicLink.ts` — prefer the
+ * stable prod alias over per-deployment URLs so the link in the AM's
+ * inbox keeps working after the next deploy.
+ */
+function appBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  }
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return 'http://localhost:3000'
+}
+
+function monthLabel(d: Date): string {
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ]
+  return `${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+}
+
+function firstName(full: string | null | undefined): string {
+  const trimmed = (full ?? '').trim()
+  if (!trimmed) return 'there'
+  return trimmed.split(/\s+/)[0]
+}
+
+export interface SubmitSessionActionResult {
+  ok: true
+  summary: ReviewSessionSummary
+  /** Soft warning: submission succeeded but the digest email did not send. */
+  emailError?: string
+}
+
+/**
+ * Reviewer clicks Submit Review. Flips the session to submitted, persists
+ * the summary snapshot, sends the ReviewSubmittedDigestEmail to the AM
+ * (CC the assigned AM if different from the link creator), emits a
+ * `review_session_submitted` ActivityEvent.
+ *
+ * Email failure does NOT roll back the submission. The reviewer has done
+ * the work and the persisted session is the source of truth; the AM can
+ * always open Relay to triage even if the email never arrives. We surface
+ * `emailError` in the result so the client UI can show a soft warning
+ * ("Submitted, but we could not send the digest email").
+ *
+ * Reply-To is set to the reviewer's email so the AM hitting Reply lands
+ * in the client's inbox (footer copy in the template promises this).
+ */
+export async function submitSessionAction(input: {
+  token: string
+}): Promise<SubmitSessionActionResult> {
+  const ctx = await resolveReviewerForToken(input.token)
+
+  const active = await findActiveSession({
+    magicLinkId: ctx.magicLinkId,
+    reviewerId: ctx.reviewerId,
+  })
+  if (!active) {
+    throw new ReviewSessionActionError('No active session to submit')
+  }
+
+  const hydrated = await findSessionWithItems({ reviewSessionId: active.id })
+  if (!hydrated) {
+    // Race: session was deleted between findActiveSession and the hydrate.
+    throw new ReviewSessionActionError('No active session to submit')
+  }
+  if (hydrated.items.length === 0) {
+    throw new ReviewSessionActionError(
+      'Cannot submit a review with no decisions. Mark at least one post first.',
+    )
+  }
+
+  // Flip status + persist summary. Repo is idempotent on re-submit, so a
+  // double-click cannot create duplicate emails on its own — but we still
+  // gate by `active` above to keep the email send out of the re-submit path.
+  const submitted = await submitSession({ reviewSessionId: active.id })
+  const summary =
+    (submitted.submittedSummary as unknown as ReviewSessionSummary | null) ?? {
+      approved: 0,
+      changesRequested: 0,
+      captionEdited: 0,
+      totalPosts: hydrated.items.length,
+    }
+
+  // Pull the data the digest email + activity event need in a single round
+  // trip. We need:
+  //   - the MagicLink for createdBy (AM who minted the link)
+  //   - the Batch (for label/month + revalidate path)
+  //   - the Client (for name + assignedAmId)
+  //   - the MagicLinkReviewer (for display name + reply-to email)
+  //   - every Post on the batch in canonical order (for postNumber +
+  //     caption baseline for the diff)
+  const link = await db.magicLink.findUnique({
+    where: { id: ctx.magicLinkId },
+    include: {
+      creator: { select: { id: true, name: true, email: true } },
+      batch: {
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+              assignedAmId: true,
+              assignedAm: { select: { id: true, name: true, email: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+  const reviewer = await db.magicLinkReviewer.findUnique({
+    where: { id: ctx.reviewerId },
+    select: { name: true, email: true },
+  })
+  const posts = link
+    ? await db.post.findMany({
+        where: { batchId: link.batchId, deletedAt: null },
+        orderBy: { postDate: 'asc' },
+        select: { id: true, postDate: true, caption: true },
+      })
+    : []
+
+  // Always emit the activity event — it is the durable audit trail and
+  // does not depend on the email succeeding. recordActivity is itself
+  // try/catch-wrapped so this cannot throw.
+  if (link) {
+    await recordActivity({
+      clientId: link.batch.clientId,
+      postId: null,
+      runId: null,
+      // Reviewer is a magic-link visitor, not a Clerk user — no actorId.
+      actorId: null,
+      kind: ActivityKind.review_session_submitted,
+      visibility: EventVisibility.internal,
+      payload: {
+        reviewSessionId: active.id,
+        magicLinkId: ctx.magicLinkId,
+        round: submitted.round,
+        summary,
+      },
+    })
+  }
+
+  let emailError: string | undefined
+  if (!link) {
+    // Defensive: the link row disappeared between resolveReviewerForToken
+    // and this lookup. Submission already succeeded; surface a soft error.
+    emailError = 'Magic link not found at email send time'
+  } else if (!link.creator?.email) {
+    emailError = 'Link creator has no email on record'
+  } else {
+    try {
+      // Build DigestReviewItem rows by joining the hydrated session items
+      // with the post lookup. postNumber is 1-based, in canonical batch
+      // order (postDate asc), matching how the AM-side detail page numbers
+      // posts.
+      const postIndex = new Map(
+        posts.map((p, i) => [p.id, { post: p, number: i + 1 }]),
+      )
+      const digestItems: DigestReviewItem[] = []
+      for (const item of hydrated.items) {
+        const lookup = postIndex.get(item.postId)
+        if (!lookup) continue // post deleted after the reviewer touched it
+        digestItems.push({
+          ...item,
+          post: {
+            id: lookup.post.id,
+            postDate: lookup.post.postDate,
+            caption: lookup.post.caption,
+          },
+          postNumber: lookup.number,
+        })
+      }
+      // Email-side ordering: walk in batch order so the AM reads the
+      // digest in the same sequence as the in-app detail page.
+      digestItems.sort((a, b) => a.postNumber - b.postNumber)
+
+      const batch = link.batch
+      const client = batch.client
+      const month = batch.scheduledAt ? monthLabel(batch.scheduledAt) : batch.label
+      const batchUrl = `${appBaseUrl()}/clients/${client.id}/batches/${batch.id}`
+      const amName = firstName(link.creator.name)
+      const reviewerName = (reviewer?.name ?? 'A reviewer').trim() || 'A reviewer'
+      const reviewerEmail = reviewer?.email?.trim() || undefined
+
+      const emailProps: ReviewSubmittedDigestEmailProps = {
+        amName,
+        reviewerName,
+        clientName: client.name,
+        monthLabel: month,
+        round: submitted.round,
+        summary,
+        items: digestItems,
+        batchUrl,
+        submittedAt: submitted.submittedAt ?? new Date(),
+        reviewerReplyEmail: reviewerEmail,
+      }
+
+      // Recipients: always the link creator; also the assigned AM on the
+      // client if different. The Layer 1 sendEmail wrapper takes a single
+      // `to` string and has no CC parameter, so we fan out one send per
+      // recipient. The cost is two Resend API calls in the worst case;
+      // the win is that we do not touch the Layer 1 module surface and
+      // each recipient gets a clean From/Reply-To header pair.
+      const recipients: string[] = [link.creator.email]
+      if (
+        client.assignedAm &&
+        client.assignedAm.email &&
+        client.assignedAm.id !== link.creator.id
+      ) {
+        recipients.push(client.assignedAm.email)
+      }
+
+      const subject = buildSubject(emailProps)
+      const reactNode = React.createElement(ReviewSubmittedDigestEmail, emailProps)
+      for (const to of recipients) {
+        await sendEmail({
+          to,
+          subject,
+          react: reactNode,
+          replyTo: reviewerEmail,
+        })
+      }
+    } catch (err) {
+      emailError = err instanceof Error ? err.message : String(err)
+      console.error('[review] submitSessionAction email send failed', {
+        reviewSessionId: active.id,
+        magicLinkId: ctx.magicLinkId,
+        err: emailError,
+      })
+    }
+  }
+
+  revalidateReviewerPaths(input.token, ctx.clientId, ctx.batchId)
+  return emailError ? { ok: true, summary, emailError } : { ok: true, summary }
 }
