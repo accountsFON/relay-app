@@ -122,6 +122,25 @@ enum ActivityKind {
   post_caption_ai_fixed
   magic_link_created
   magic_link_visited
+
+  review_session_started
+  review_session_submitted
+  review_caption_edit_accepted
+  review_item_addressed
+  review_round_started
+}
+
+enum ReviewSessionStatus {
+  in_progress
+  submitted
+  superseded
+}
+
+enum ReviewDecision {
+  not_reviewed
+  approved
+  changes_requested
+  caption_edited
 }
 
 enum ThreadStatus {
@@ -309,6 +328,7 @@ model Post {
   activityEvents ActivityEvent[]
   versions       PostVersion[]
   threads        PostThread[]
+  reviewItems    ReviewItem[]
 
   /// Prevents Trigger.dev retries (or any future code path) from creating
   /// duplicate posts for the same (contentRunId, postDate). Belt-and-
@@ -324,19 +344,31 @@ model Post {
 /// Snapshot of a Post body taken on every save (cap 50 per post via the
 /// PostVersion service). Powers diff and restore. Spec § Future Features § 2.
 model PostVersion {
-  id            String   @id @default(cuid())
-  postId        String
-  authorId      String?
-  caption       String   @db.Text
-  hashtags      String[]
-  graphicHook   String?
-  designerNotes String?
-  createdAt     DateTime @default(now())
+  id              String   @id @default(cuid())
+  postId          String
+  authorId        String?
+  caption         String   @db.Text
+  hashtags        String[]
+  graphicHook     String?
+  designerNotes   String?
+  /// 'am' | 'reviewer' | null. Null preserves the meaning of pre-v2 rows.
+  editAuthorRole  String?
+  /// 'manual' | 'ai_fix' | 'review_session' | null.
+  editOrigin      String?
+  /// Links to the prior PostVersion this row supersedes. Null for the first
+  /// version of a post.
+  parentVersionId String?
+  createdAt       DateTime @default(now())
 
-  post   Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author User? @relation("PostVersionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  post                      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author                    User?         @relation("PostVersionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  parentVersion             PostVersion?  @relation("PostVersionParent", fields: [parentVersionId], references: [id], onDelete: SetNull)
+  childVersions             PostVersion[] @relation("PostVersionParent")
+  acceptedFromReviewItems   ReviewItem[]  @relation("ReviewItemAcceptedVersion")
+  lastReviewedByReviewItems ReviewItem[]  @relation("ReviewItemLastReviewedVersion")
 
   @@index([postId, createdAt])
+  @@index([parentVersionId])
   @@map("post_versions")
 }
 
@@ -618,9 +650,10 @@ model MagicLink {
   createdAt            DateTime  @default(now())
   lastVisitedAt        DateTime?
 
-  batch     Batch               @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  creator   User                @relation("MagicLinkCreator", fields: [createdBy], references: [id])
-  reviewers MagicLinkReviewer[]
+  batch          Batch               @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  creator        User                @relation("MagicLinkCreator", fields: [createdBy], references: [id])
+  reviewers      MagicLinkReviewer[]
+  reviewSessions ReviewSession[]
 
   @@index([batchId])
   @@map("magic_links")
@@ -637,8 +670,75 @@ model MagicLinkReviewer {
   firstSeen DateTime @default(now())
   lastSeen  DateTime @default(now())
 
-  magicLink MagicLink @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
+  magicLink      MagicLink       @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
+  reviewSessions ReviewSession[]
 
   @@index([magicLinkId])
   @@map("magic_link_reviewers")
+}
+
+/// One review pass by a magic-link reviewer over a batch's posts. Round 1 is
+/// the initial review; round N+1 fires after the AM has addressed all items
+/// from round N and called startNextRound. v2 of the client review flow.
+model ReviewSession {
+  id          String  @id @default(cuid())
+  magicLinkId String
+  /// Null until first-visit name confirm associates the session with a
+  /// MagicLinkReviewer.
+  reviewerId  String?
+
+  status ReviewSessionStatus @default(in_progress)
+  /// 1 for the first review, 2 for re-review after AM addressed changes, etc.
+  round  Int                 @default(1)
+
+  startedAt        DateTime  @default(now())
+  submittedAt      DateTime?
+  /// Snapshot of decision counts at submit time, used by the digest email.
+  /// Shape: { approved: number, changesRequested: number, captionEdited: number, totalPosts: number }
+  submittedSummary Json?
+
+  magicLink MagicLink          @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
+  reviewer  MagicLinkReviewer? @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+  items     ReviewItem[]
+
+  @@index([magicLinkId, round])
+  @@index([reviewerId])
+  @@map("review_sessions")
+}
+
+/// One reviewer decision (and optional comment / caption edit) for one post
+/// inside a ReviewSession. Unique on (reviewSessionId, postId).
+model ReviewItem {
+  id              String @id @default(cuid())
+  reviewSessionId String
+  postId          String
+
+  decision                ReviewDecision @default(not_reviewed)
+  /// Free-text comment from the client. Optional, independent of decision.
+  comment                 String?        @db.Text
+  /// If decision = caption_edited, the suggested replacement caption lives
+  /// here.
+  suggestedCaption        String?        @db.Text
+  /// PostVersion row created when AM accepts the suggested caption. Null
+  /// until accepted.
+  acceptedAsPostVersionId String?
+
+  /// Round 2+: true when the AM edited this post between sessions, so the
+  /// client sees the "Updated since your last review" banner.
+  updatedSinceLastReview Boolean @default(false)
+  /// When updatedSinceLastReview is true, this references the PostVersion the
+  /// client last reviewed so we can show the diff if helpful.
+  lastReviewedVersionId  String?
+
+  reviewedAt DateTime?
+
+  reviewSession ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  acceptedAs    PostVersion?  @relation("ReviewItemAcceptedVersion", fields: [acceptedAsPostVersionId], references: [id], onDelete: SetNull)
+  lastReviewed  PostVersion?  @relation("ReviewItemLastReviewedVersion", fields: [lastReviewedVersionId], references: [id], onDelete: SetNull)
+
+  @@unique([reviewSessionId, postId])
+  @@index([postId])
+  @@index([decision])
+  @@map("review_items")
 }
