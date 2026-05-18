@@ -174,14 +174,16 @@ export async function saveItemDraft(
 
   // 7. Upsert the draft item. Repo handles the create-vs-update branch
   //    based on the @@unique([reviewSessionId, postId]) constraint.
+  //
+  // PATCH semantics: forward each field as-is so undefined means "leave
+  // this column alone" all the way to Prisma. The repo's create branch
+  // supplies a 'not_reviewed' default for the decision column on first
+  // insert so the row is always valid; the update branch lets Prisma
+  // skip any column whose input is undefined.
   const item = await saveDraftItem({
     reviewSessionId: activeSession.id,
     postId: input.postId,
-    // PATCH semantics: client may send a comment or caption without a fresh
-    // decision (e.g. typing a follow-up comment after already approving).
-    // Fall back to not_reviewed when decision is omitted on the first
-    // upsert; subsequent calls can preserve via the repo's update branch.
-    decision: input.decision ?? 'not_reviewed',
+    decision: input.decision,
     comment: input.comment,
     suggestedCaption: input.suggestedCaption,
   })

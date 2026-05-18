@@ -158,8 +158,11 @@ export async function findActiveSession(
 export interface SaveDraftItemInput {
   reviewSessionId: string
   postId: string
-  decision: ReviewDecisionType
+  /** Omit to leave the column alone on update; first insert falls back to 'not_reviewed'. */
+  decision?: ReviewDecisionType
+  /** Tri-state: undefined leaves alone, null clears, string sets. */
   comment?: string | null
+  /** Tri-state: undefined leaves alone, null clears, string sets. */
   suggestedCaption?: string | null
 }
 
@@ -167,6 +170,14 @@ export interface SaveDraftItemInput {
  * Upsert a ReviewItem by (reviewSessionId, postId). First call inserts,
  * subsequent calls for the same post update in place. `reviewedAt` is set
  * to now() on every call so callers can sort items by most-recent edit.
+ *
+ * Field semantics on update: every editable field accepts `undefined` to
+ * mean "leave alone" so callers can drive partial PATCHes (typing a
+ * comment after tapping a decision, or vice versa) without clobbering
+ * prior state. Prisma treats `undefined` as "skip this column" on update,
+ * so we forward each field raw rather than coercing through `?? null`.
+ * On create, decision/comment/suggestedCaption fall back to safe defaults
+ * so the row is always valid.
  *
  * The session is NOT checked for in_progress status here; the action
  * layer owns that gate so callers (e.g. AM-side replays) can stay
@@ -186,15 +197,15 @@ export async function saveDraftItem(
     create: {
       reviewSessionId: input.reviewSessionId,
       postId: input.postId,
-      decision: input.decision,
+      decision: input.decision ?? 'not_reviewed',
       comment: input.comment ?? null,
       suggestedCaption: input.suggestedCaption ?? null,
       reviewedAt: now,
     },
     update: {
       decision: input.decision,
-      comment: input.comment ?? null,
-      suggestedCaption: input.suggestedCaption ?? null,
+      comment: input.comment,
+      suggestedCaption: input.suggestedCaption,
       reviewedAt: now,
     },
   })

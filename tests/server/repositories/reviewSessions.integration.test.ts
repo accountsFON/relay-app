@@ -269,6 +269,111 @@ describe('saveDraftItem', () => {
     })
     expect(all).toHaveLength(1)
   })
+
+  // Regression: PATCH /api/review/[token]/draft sends only the fields the
+  // reviewer changed. Undefined fields must mean "leave alone" all the way
+  // down to Prisma. Without this, typing a comment after tapping a decision
+  // (or vice versa) silently clobbers the other field.
+  // See projects/relay-app/2026-05-17-julio-handoff.md known bug #1.
+  it('preserves prior decision when a follow-up call only sends a comment', async () => {
+    const session = await startSession({ magicLinkId, reviewerId })
+
+    await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      decision: 'changes_requested',
+    })
+
+    const after = await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      comment: 'needs more emojis',
+    })
+
+    expect(after.decision).toBe('changes_requested')
+    expect(after.comment).toBe('needs more emojis')
+  })
+
+  it('preserves prior comment when a follow-up call only sends a decision', async () => {
+    const session = await startSession({ magicLinkId, reviewerId })
+
+    await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      decision: 'not_reviewed',
+      comment: 'thinking about it',
+    })
+
+    const after = await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      decision: 'changes_requested',
+    })
+
+    expect(after.decision).toBe('changes_requested')
+    expect(after.comment).toBe('thinking about it')
+  })
+
+  it('preserves prior suggestedCaption when a follow-up call only sends a comment', async () => {
+    const session = await startSession({ magicLinkId, reviewerId })
+
+    await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      decision: 'caption_edited',
+      suggestedCaption: 'Welcome to our outdoor seating area',
+    })
+
+    const after = await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      comment: 'softer tone please',
+    })
+
+    expect(after.decision).toBe('caption_edited')
+    expect(after.suggestedCaption).toBe('Welcome to our outdoor seating area')
+    expect(after.comment).toBe('softer tone please')
+  })
+
+  it('clears comment when null is explicitly sent', async () => {
+    const session = await startSession({ magicLinkId, reviewerId })
+
+    await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      decision: 'changes_requested',
+      comment: 'first thoughts',
+    })
+
+    const after = await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      comment: null,
+    })
+
+    expect(after.decision).toBe('changes_requested')
+    expect(after.comment).toBeNull()
+  })
+
+  it('clears suggestedCaption when null is explicitly sent', async () => {
+    const session = await startSession({ magicLinkId, reviewerId })
+
+    await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      decision: 'caption_edited',
+      suggestedCaption: 'a first try',
+    })
+
+    const after = await saveDraftItem({
+      reviewSessionId: session.id,
+      postId: postIds[0],
+      suggestedCaption: null,
+    })
+
+    expect(after.decision).toBe('caption_edited')
+    expect(after.suggestedCaption).toBeNull()
+  })
 })
 
 describe('submitSession', () => {
