@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate --schema=src/db/schema.prisma && next build",
+    "build": "prisma generate --schema=src/db/schema.prisma && node scripts/maybe-migrate-deploy.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate --schema=src/db/schema.prisma",
