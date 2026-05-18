@@ -59,8 +59,8 @@ jobs:
     # Auto-deploy the Trigger.dev pipeline on push to main when any
     # pipeline-relevant file changed. Closes the manual `npx trigger.dev
     # deploy` gotcha that bit us 3 times in the launch-week sprint.
-    # CLI version pinned to 4.4.5 to match the local-dev recipe; bump in
-    # lockstep with the package.json devDep when we upgrade.
+    # CLI version is pinned in the `trigger:deploy` script in package.json,
+    # so this job and a local-dev run stay in lockstep automatically.
     name: Deploy Trigger.dev pipeline
     needs: [test, detect-pipeline-changes]
     if: needs.detect-pipeline-changes.outputs.pipeline == 'true'
@@ -77,6 +77,6 @@ jobs:
 
       - run: npx prisma generate --schema=src/db/schema.prisma
 
-      - run: npx trigger.dev@4.4.5 deploy
+      - run: npm run trigger:deploy
         env:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}

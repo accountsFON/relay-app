@@ -23,7 +23,8 @@
     "e2e:setup": "playwright test --project=setup",
     "e2e": "playwright test",
     "e2e:report": "playwright show-report",
-    "e2e:visual:update": "playwright test --project=visual --update-snapshots"
+    "e2e:visual:update": "playwright test --project=visual --update-snapshots",
+    "trigger:deploy": "npx trigger.dev@4.4.5 deploy"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
