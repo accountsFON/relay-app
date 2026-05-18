@@ -46,7 +46,10 @@ describe('sendEmail', () => {
     expect(result).toEqual({ id: 'email_abc123' })
     expect(sendMock).toHaveBeenCalledTimes(1)
     const payload = sendMock.mock.calls[0][0]
-    expect(payload.from).toBe('reviews@mail.fonbuild.com')
+    // Resend deliverability defaults (commit e38297c) wrap the bare
+    // RESEND_FROM_EMAIL in a "Relay Social <...>" display name unless
+    // RESEND_FROM_NAME overrides it.
+    expect(payload.from).toBe('Relay Social <reviews@mail.fonbuild.com>')
     expect(payload.to).toBe('client@example.com')
     expect(payload.subject).toBe('Your review is ready')
     expect(payload.react).toBeDefined()

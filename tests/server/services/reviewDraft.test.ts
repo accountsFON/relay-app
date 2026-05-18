@@ -238,6 +238,45 @@ describe('saveItemDraft', () => {
     })
   })
 
+  // Regression: the PATCH /api/review/[token]/draft route forwards
+  // undefined for any field the reviewer did not touch. The service must
+  // pass that undefined through to the repo unchanged — coercing it to a
+  // concrete value would let the repo's update branch clobber whatever
+  // the reviewer set previously. See projects/relay-app/2026-05-17-julio-handoff.md known bug #1.
+  it('forwards undefined decision to saveDraftItem when the route omits it (comment-only PATCH)', async () => {
+    primeHappyAuth()
+    mocks.findActiveSession.mockResolvedValue({
+      id: 'rs_existing',
+      magicLinkId: LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date('2026-05-16T09:00:00Z'),
+      submittedAt: null,
+      submittedSummary: null,
+    })
+    mocks.saveDraftItem.mockResolvedValue(
+      happyPathHydratedItem({ comment: 'needs more emojis' }),
+    )
+
+    await saveItemDraft({
+      token: VALID_TOKEN,
+      postId: POST_ID,
+      comment: 'needs more emojis',
+      // decision intentionally omitted — same shape the draft route sends
+      // for a textarea blur after an Approve / Changes tap.
+    })
+
+    expect(mocks.saveDraftItem).toHaveBeenCalledTimes(1)
+    expect(mocks.saveDraftItem).toHaveBeenCalledWith({
+      reviewSessionId: 'rs_existing',
+      postId: POST_ID,
+      decision: undefined,
+      comment: 'needs more emojis',
+      suggestedCaption: undefined,
+    })
+  })
+
   it('throws Unauthorized when verifyToken returns null (bad / expired URL token)', async () => {
     // Prime everything but the token verifier so we can prove the early
     // return short-circuits before any DB lookup happens.
