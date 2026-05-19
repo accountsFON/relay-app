@@ -8,7 +8,7 @@
  *    actually shows.
  *  - The "Send review link" button is gated off on the batch detail page
  *    for batches whose snapshot says clientReviewEnabled = false.
- *  - The Preview link is unaffected — it is an internal AM QA tool.
+ *  - The Preview link is unaffected. It is an internal AM QA tool.
  *  - The "Client Review" checkbox on the new client form is reachable,
  *    starts unchecked (default off), and toggles cleanly.
  *
@@ -38,14 +38,14 @@ test.describe('no review client flow', () => {
     await page.waitForLoadState('networkidle')
 
     // Don't false fail if the AM persona happens to lack access on a
-    // given seed run (the audit suite has precedent for this — see
+    // given seed run (the audit suite has precedent for this, see
     // batch-detail.spec.ts).
     const url = page.url()
     if (url.includes('/no-access') || url.includes('/dashboard')) {
       test.skip(true, 'am persona cannot view this batch in the current seed')
     }
 
-    // 9 visible nodes — the no review track. Both layouts render to the
+    // 9 visible nodes for the no review track. Both layouts render to the
     // DOM, so we filter by :visible to the one Tailwind shows.
     const visibleNodes = page.locator('[data-testid="relay-track-node"]:visible')
     await expect(visibleNodes).toHaveCount(9)
