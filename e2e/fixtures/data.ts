@@ -21,6 +21,7 @@ const DEMO_ORG_NAME = 'Relay Demo Agency'
 const DEMO_CLIENT_DENTAL = 'Cedar Creek Dental'
 const DEMO_CLIENT_PLUMBING = 'Apex Plumbing & Drain'
 const DEMO_CLIENT_YOGA = 'Sunrise Yoga Studio'
+const DEMO_CLIENT_NO_REVIEW = 'Lighthouse Family Law'
 
 export interface SeedData {
   org: { id: string; clerkOrgId: string }
@@ -41,6 +42,8 @@ export interface SeedData {
     sunriseYoga: SeedClient
     ironwood: SeedClient
     mapleAndOak: SeedClient
+    /** Demo client with clientReviewEnabled = false. Exercised by the no review smoke. */
+    lighthouseFamilyLaw: SeedClient
   }
   /** One representative batch ID per RelayStep, picked by `currentStep`. */
   batchByStep: Record<string, string | null>
@@ -48,6 +51,12 @@ export interface SeedData {
   stuckBatchIds: string[]
   /** Three posts known to have PostVersions (Cedar Creek, Apex, Riverbend). */
   postsWithVersions: { clientName: string; postId: string; runId: string }[]
+  /**
+   * A live, non terminal batch on the no review client. Used by the no
+   * review Playwright smoke to verify the gated UI (9 track nodes, no
+   * Send review link button) without hardcoding a batch ID.
+   */
+  noReviewBatchId: string | null
 }
 
 export interface SeedUser {
@@ -156,6 +165,19 @@ export async function resolveSeedData(): Promise<SeedData> {
       take: 3,
     })
 
+    // Pick a live, mid flow no review batch for the Playwright smoke. The
+    // seed pins Lighthouse Family Law's Apr batch to in_design, which is
+    // step 3 of the 9 step no review track.
+    const noReviewBatch = await db.batch.findFirst({
+      where: {
+        clientReviewEnabled: false,
+        client: { organizationId: org.id, name: DEMO_CLIENT_NO_REVIEW },
+        currentStep: 'in_design' as never,
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    })
+
     cached = {
       org: { id: org.id, clerkOrgId: org.clerkOrgId },
       users: {
@@ -175,6 +197,7 @@ export async function resolveSeedData(): Promise<SeedData> {
         sunriseYoga: clientByName(DEMO_CLIENT_YOGA),
         ironwood: clientByName('Ironwood Construction'),
         mapleAndOak: clientByName('Maple & Oak Furnishings'),
+        lighthouseFamilyLaw: clientByName(DEMO_CLIENT_NO_REVIEW),
       },
       batchByStep,
       stuckBatchIds: stuckRows.map((r) => r.id),
@@ -183,6 +206,7 @@ export async function resolveSeedData(): Promise<SeedData> {
         postId: r.post.id,
         runId: r.post.contentRunId,
       })),
+      noReviewBatchId: noReviewBatch?.id ?? null,
     }
 
     fs.mkdirSync(path.dirname(SEED_DATA_PATH), { recursive: true })

@@ -64,6 +64,13 @@ interface ClientDef {
   phone: string
   /** When supplied, overrides the industry default dos/donts. */
   dosOverride?: { dos: string; donts: string }
+  /**
+   * When false, this client's batches skip the client review loop (steps
+   * 8, 9, 11, 12). Defaults to true to match the Client model's prod
+   * default. Overridden on one fixture client so the no review flow is
+   * exercisable in the demo + Playwright smoke.
+   */
+  clientReviewEnabled?: boolean
 }
 
 export const CLIENT_DEFS: ClientDef[] = [
@@ -182,6 +189,10 @@ export const CLIENT_DEFS: ClientDef[] = [
     hasCrawledData: true,
     phone: '(412) 555 0105',
   },
+  // No review demo fixture: this client's batches skip steps 8, 9, 11, 12.
+  // Legal firms commonly opt out of the client review loop because partner
+  // approval lives offline. Keep the most visible demo client (Cedar Creek)
+  // on the standard review flow so the default experience is unchanged.
   {
     idx: 6,
     name: 'Lighthouse Family Law',
@@ -204,6 +215,7 @@ export const CLIENT_DEFS: ClientDef[] = [
     assetsFolderUrl: 'https://drive.google.com/drive/folders/lighthouse-law-assets',
     hasCrawledData: true,
     phone: '(207) 555 0106',
+    clientReviewEnabled: false,
   },
   {
     idx: 7,
@@ -541,6 +553,12 @@ export interface SeededClient {
   postingDays: string
   /** Used by content-runs seed to append the CTA after each caption body. */
   mainCta: string
+  /**
+   * Effective review flag on the seeded Client row. Mirrored onto every
+   * batch this seed creates so the snapshot stored on Batch matches the
+   * snapshot taken at batch creation time in app code.
+   */
+  clientReviewEnabled: boolean
 }
 
 function buildCrawledData(def: ClientDef): string | null {
@@ -611,6 +629,7 @@ export async function seedClients(
       autoCrawl: 'always',
       crawledData: crawled,
       crawledDataAt: crawled ? new Date('2026-04-15T12:00:00Z') : null,
+      clientReviewEnabled: def.clientReviewEnabled ?? true,
       status: def.status,
       onboardingCompletedAt: def.onboarded ? onboardedAt : null,
     }
@@ -637,6 +656,7 @@ export async function seedClients(
       designerUserId,
       postingDays: def.postingDays,
       mainCta: def.mainCta,
+      clientReviewEnabled: def.clientReviewEnabled ?? true,
     })
   }
 

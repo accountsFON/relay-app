@@ -82,6 +82,7 @@ describe('createClientAction', () => {
       excludedDates: [],
       autoCrawl: 'always',
       status: 'active',
+      clientReviewEnabled: false,
     })
 
     expect(requireClientEditor).toHaveBeenCalled()
@@ -105,6 +106,7 @@ describe('createClientAction', () => {
         excludedDates: [],
         autoCrawl: 'always',
         status: 'active',
+        clientReviewEnabled: false,
       })
     ).rejects.toThrow()
 
@@ -136,6 +138,45 @@ describe('deactivateClientAction', () => {
 
     expect(deactivateClient).toHaveBeenCalledWith('cuid_client_1', 'cuid_org_1')
     expect(revalidatePath).toHaveBeenCalledWith('/clients')
+  })
+})
+
+describe('createClientAction + updateClientAction, clientReviewEnabled', () => {
+  it('createClientAction persists clientReviewEnabled = true', async () => {
+    vi.mocked(createClient).mockResolvedValue({ id: 'cuid_client_1' } as any)
+
+    await createClientAction({
+      name: 'Akkoo Coffee',
+      postingDays: 'Mon,Wed,Fri',
+      holidayHandling: 'Major-US',
+      urls: [],
+      excludedDates: [],
+      autoCrawl: 'always',
+      status: 'active',
+      clientReviewEnabled: true,
+    })
+
+    expect(createClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'cuid_org_1',
+        name: 'Akkoo Coffee',
+        clientReviewEnabled: true,
+      }),
+    )
+  })
+
+  it('updateClientAction round-trips clientReviewEnabled', async () => {
+    vi.mocked(updateClient).mockResolvedValue({ count: 1 } as any)
+
+    await updateClientAction('cuid_client_1', {
+      clientReviewEnabled: true,
+    })
+
+    expect(updateClient).toHaveBeenCalledWith(
+      'cuid_client_1',
+      'cuid_org_1',
+      expect.objectContaining({ clientReviewEnabled: true }),
+    )
   })
 })
 

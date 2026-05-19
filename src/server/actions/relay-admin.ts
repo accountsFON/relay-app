@@ -114,6 +114,7 @@ export async function completeOnboardingAction(input: {
       organizationId: true,
       assignedAmId: true,
       onboardingCompletedAt: true,
+      clientReviewEnabled: true,
     },
   })
   if (!client) throw new Error('Client not found')
@@ -164,6 +165,9 @@ export async function completeOnboardingAction(input: {
         currentSubState: 'generating',
         currentHolder: holderId,
         currentRole: RelayRole.am,
+        // Snapshot the Client toggle so toggling the flag later does not
+        // retroactively reroute batches already in flight.
+        clientReviewEnabled: client.clientReviewEnabled,
       },
       select: { id: true },
     })
@@ -202,6 +206,7 @@ export async function createBatchAction(input: {
       organizationId: true,
       assignedAmId: true,
       onboardingCompletedAt: true,
+      clientReviewEnabled: true,
     },
   })
   if (!client) throw new Error('Client not found')
@@ -229,6 +234,9 @@ export async function createBatchAction(input: {
         currentSubState: 'generating',
         currentHolder: holderId,
         currentRole: RelayRole.am,
+        // Snapshot the Client toggle. Toggling the flag later does not
+        // retroactively reroute batches already in flight.
+        clientReviewEnabled: client.clientReviewEnabled,
       },
       select: { id: true },
     })

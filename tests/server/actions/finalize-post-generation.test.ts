@@ -19,6 +19,9 @@ vi.mock('@/db/client', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    client: {
+      findUnique: vi.fn(),
+    },
   },
 }))
 
@@ -79,6 +82,13 @@ beforeEach(() => {
   // Default: any user-supplied batchId belongs to the run's client (so the
   // add/replace happy paths pass the new batch-scope check).
   vi.mocked(db.batch.findUnique).mockResolvedValue({ clientId: 'client_1' } as never)
+  // Default: Client lookup for the snapshot returns a row with the flag
+  // set to true. Per-test overrides flip it for the snapshot assertions
+  // below.
+  vi.mocked(db.client.findUnique).mockResolvedValue({
+    name: 'Acme Co',
+    clientReviewEnabled: true,
+  } as never)
 })
 
 describe('finalizePostGenerationAction', () => {
@@ -273,6 +283,49 @@ describe('deferFinalizeAction cross-tenant guard', () => {
     expect(db.contentRun.update).toHaveBeenCalledWith({
       where: { id: 'run_1' },
       data: { autoFinalize: true },
+    })
+  })
+})
+
+describe('createBatchForRun, clientReviewEnabled snapshot via auto-new', () => {
+  // 'auto-new' is the background path: the helper inside
+  // finalize-post-generation.ts looks the Client up by id and snapshots
+  // its clientReviewEnabled onto the new Batch. Exercise via the public
+  // action so we can assert end-to-end through the service.
+  beforeEach(() => {
+    vi.mocked(db.batch.findFirst).mockResolvedValue(null)
+    vi.mocked(db.batch.create).mockResolvedValue({ id: 'batch_auto' } as never)
+  })
+
+  it("'auto-new' snapshots clientReviewEnabled = true", async () => {
+    vi.mocked(db.client.findUnique).mockResolvedValue({
+      name: 'Acme Co',
+      clientReviewEnabled: true,
+    } as never)
+
+    await finalizePostGenerationAction({ choice: 'auto-new', runId: 'run_1' })
+
+    expect(db.batch.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        clientId: 'client_1',
+        clientReviewEnabled: true,
+      }),
+    })
+  })
+
+  it("'auto-new' snapshots clientReviewEnabled = false", async () => {
+    vi.mocked(db.client.findUnique).mockResolvedValue({
+      name: 'Beta Co',
+      clientReviewEnabled: false,
+    } as never)
+
+    await finalizePostGenerationAction({ choice: 'auto-new', runId: 'run_1' })
+
+    expect(db.batch.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        clientId: 'client_1',
+        clientReviewEnabled: false,
+      }),
     })
   })
 })

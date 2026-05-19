@@ -50,6 +50,7 @@ export const clientInputSchema = z.object({
   autoCrawl: autoCrawlEnum.default('always'),
   assignedAmId: z.string().optional(),
   status: statusEnum.default('active'),
+  clientReviewEnabled: z.coerce.boolean().default(false),
 })
 
 // Explicit partial schema without defaults — so updates only touch the fields
@@ -80,6 +81,7 @@ export const clientUpdateSchema = z.object({
   autoCrawl: autoCrawlEnum.optional(),
   assignedAmId: z.string().optional(),
   status: statusEnum.optional(),
+  clientReviewEnabled: z.coerce.boolean().optional(),
 })
 
 export type ClientInput = z.infer<typeof clientInputSchema>

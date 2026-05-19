@@ -30,6 +30,7 @@ export interface BatchSummary
     | 'currentRole'
     | 'scheduledAt'
     | 'createdAt'
+    | 'clientReviewEnabled'
   > {
   holder: BatchHolderView
   /** Days the batch has held at currentStep. Computed by the page. */

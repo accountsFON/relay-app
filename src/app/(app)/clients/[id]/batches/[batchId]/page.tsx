@@ -172,11 +172,11 @@ export default async function BatchDetailPage({
     ? (userIndex.get(client.assignedDesignerId) ?? null)
     : null
 
-  const sendBackTargets = legalSendBackTargets(batch.currentStep).map((step) => ({
+  const sendBackTargets = legalSendBackTargets(batch.currentStep, batch.clientReviewEnabled).map((step) => ({
     step,
     label: STEP_LABEL[step],
   }))
-  const forwardTransitions = legalNextSteps(batch.currentStep).filter(
+  const forwardTransitions = legalNextSteps(batch.currentStep, batch.clientReviewEnabled).filter(
     (t) => t.direction === 'forward' || t.direction === 'auto',
   )
   const nextStep =
@@ -198,6 +198,7 @@ export default async function BatchDetailPage({
     currentRole: batch.currentRole,
     scheduledAt: batch.scheduledAt,
     createdAt: batch.createdAt,
+    clientReviewEnabled: batch.clientReviewEnabled,
     holder: {
       id: batch.holder.id,
       name: batch.holder.name,
@@ -359,7 +360,7 @@ export default async function BatchDetailPage({
               <span>Open in Canva</span>
               <ExternalLink className="size-3 shrink-0 opacity-60" />
             </Link>
-            {isLive && canEdit && (
+            {isLive && canEdit && batch.clientReviewEnabled && (
               <SendLinkButton batchId={batch.id} clientName={client.name} />
             )}
             {isLive && canAct && (
@@ -459,7 +460,7 @@ export default async function BatchDetailPage({
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6 lg:order-1">
-          {magicLinks.length > 0 && (
+          {batch.clientReviewEnabled && magicLinks.length > 0 && (
             <PageSection title={`Review links (${magicLinks.length})`}>
               <div className="space-y-2">
                 {magicLinks.map((link) => {
@@ -500,7 +501,7 @@ export default async function BatchDetailPage({
               </div>
             </PageSection>
           )}
-          {reviewSessions.length > 0 && (
+          {batch.clientReviewEnabled && reviewSessions.length > 0 && (
             <PageSection title={`Review Sessions (${reviewSessions.length})`}>
               <div className="space-y-2">
                 {reviewSessions.map((session) => (

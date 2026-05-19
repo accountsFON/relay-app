@@ -104,4 +104,37 @@ describe('ClientForm', () => {
       })
     )
   })
+
+  it('renders the Client Review checkbox unchecked by default and submits the boolean', async () => {
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+    render(<ClientForm mode="create" onSubmit={onSubmit} />)
+
+    // Required field so submit does not bail on validation.
+    await user.type(screen.getByLabelText(/^Name$/i), 'Test Client')
+
+    const checkbox = screen.getByLabelText(/Client Review/i) as HTMLInputElement
+    expect(checkbox.checked).toBe(false)
+
+    await user.click(checkbox)
+    expect(checkbox.checked).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: /Create client/i }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ clientReviewEnabled: true }),
+    )
+  })
+
+  it('renders the Client Review checkbox as checked when defaultValues say so', () => {
+    render(
+      <ClientForm
+        mode="edit"
+        defaultValues={{ clientReviewEnabled: true } as any}
+        onSubmit={vi.fn()}
+      />,
+    )
+    const checkbox = screen.getByLabelText(/Client Review/i) as HTMLInputElement
+    expect(checkbox.checked).toBe(true)
+  })
 })

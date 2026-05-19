@@ -79,6 +79,44 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
   { from: RelayStep.completed, to: RelayStep.final_qa_schedule, direction: 'send_back' },
 ] as const
 
+export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
+  { from: RelayStep.onboarding_gate, to: RelayStep.copy, direction: 'forward' },
+
+  { from: RelayStep.copy, to: RelayStep.in_design, direction: 'forward' },
+  { from: RelayStep.copy, to: RelayStep.onboarding_gate, direction: 'send_back' },
+
+  { from: RelayStep.in_design, to: RelayStep.designs_completed, direction: 'forward' },
+  { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },
+
+  { from: RelayStep.designs_completed, to: RelayStep.am_review_design, direction: 'forward' },
+  { from: RelayStep.designs_completed, to: RelayStep.in_design, direction: 'send_back' },
+
+  { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
+  { from: RelayStep.am_review_design, to: RelayStep.design_revisions, direction: 'send_back' },
+
+  { from: RelayStep.design_revisions, to: RelayStep.am_review_design, direction: 'forward' },
+  { from: RelayStep.design_revisions, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
+
+  // CHANGED: skip the two client steps; land on ready_to_schedule
+  { from: RelayStep.am_qa_pre_client, to: RelayStep.ready_to_schedule, direction: 'forward' },
+  { from: RelayStep.am_qa_pre_client, to: RelayStep.design_revisions, direction: 'send_back' },
+
+  // CHANGED: send back falls to am_qa_pre_client (was client_decision in full flow)
+  { from: RelayStep.ready_to_schedule, to: RelayStep.final_qa_schedule, direction: 'forward' },
+  { from: RelayStep.ready_to_schedule, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
+
+  { from: RelayStep.final_qa_schedule, to: RelayStep.completed, direction: 'forward' },
+  { from: RelayStep.final_qa_schedule, to: RelayStep.ready_to_schedule, direction: 'send_back' },
+
+  { from: RelayStep.completed, to: RelayStep.final_qa_schedule, direction: 'send_back' },
+] as const
+
+export function transitionsFor(
+  clientReviewEnabled: boolean,
+): readonly LegalTransition[] {
+  return clientReviewEnabled ? LEGAL_TRANSITIONS : LEGAL_TRANSITIONS_NO_REVIEW
+}
+
 export interface ValidateTransitionResult {
   ok: boolean
   direction?: TransitionDirection
@@ -88,25 +126,33 @@ export interface ValidateTransitionResult {
 export function validateTransition(
   from: RelayStep,
   to: RelayStep,
+  clientReviewEnabled: boolean,
 ): ValidateTransitionResult {
-  const match = LEGAL_TRANSITIONS.find((t) => t.from === from && t.to === to)
+  const map = transitionsFor(clientReviewEnabled)
+  const match = map.find((t) => t.from === from && t.to === to)
   if (!match) {
     return {
       ok: false,
-      reason: `Illegal transition: ${from} → ${to}`,
+      reason: `Illegal transition: ${from} -> ${to}`,
     }
   }
   return { ok: true, direction: match.direction }
 }
 
-export function legalNextSteps(from: RelayStep): LegalTransition[] {
-  return LEGAL_TRANSITIONS.filter((t) => t.from === from)
+export function legalNextSteps(
+  from: RelayStep,
+  clientReviewEnabled: boolean,
+): LegalTransition[] {
+  return transitionsFor(clientReviewEnabled).filter((t) => t.from === from) as LegalTransition[]
 }
 
-export function legalSendBackTargets(from: RelayStep): RelayStep[] {
-  return LEGAL_TRANSITIONS.filter(
-    (t) => t.from === from && t.direction === 'send_back',
-  ).map((t) => t.to)
+export function legalSendBackTargets(
+  from: RelayStep,
+  clientReviewEnabled: boolean,
+): RelayStep[] {
+  return transitionsFor(clientReviewEnabled)
+    .filter((t) => t.from === from && t.direction === 'send_back')
+    .map((t) => t.to)
 }
 
 export function holderRoleForStep(step: RelayStep): RelayRole {

@@ -232,6 +232,7 @@ model Client {
   autoCrawl          String       @default("always")
   crawledData        String?      @db.Text
   crawledDataAt      DateTime?
+  clientReviewEnabled Boolean      @default(false)
   status             ClientStatus @default(active)
   createdAt          DateTime     @default(now())
   deletedAt          DateTime?
@@ -436,6 +437,7 @@ model Batch {
   currentHolder   String
   currentRole     RelayRole
   scheduledAt     DateTime?
+  clientReviewEnabled Boolean      @default(true)
   createdAt       DateTime  @default(now())
   deletedAt       DateTime?
   deletedBy       String?
