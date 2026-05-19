@@ -122,13 +122,42 @@ export default async function ReviewSessionDetailPage({
     })
     .filter((x): x is HydratedItemWithPost => x !== null)
 
-  // Pending = no acceptedAsPostVersionId yet AND the item itself isn't
-  // already approved. Once Layer 3 wires Accept/Reject/Mark Addressed, the
-  // backend will set acceptedAsPostVersionId (caption edits) or surface a
-  // separate addressedAt path (TBD in 3.4). For now we treat anything with
-  // acceptedAsPostVersionId as addressed.
-  const pending = hydratedItems.filter((item) => !item.acceptedAsPostVersionId)
-  const addressed = hydratedItems.filter((item) => item.acceptedAsPostVersionId)
+  // Pending vs addressed:
+  //   - acceptedAsPostVersionId is set by acceptCaptionEditAction when the
+  //     AM accepts a caption suggestion (creates a new PostVersion).
+  //   - addressItemAction (Mark Addressed) and rejectCaptionEditAction
+  //     (Reject Edit) emit a `review_item_addressed` ActivityEvent with
+  //     reviewItemId in the payload. Their server-side state change is
+  //     purely the audit-event write, so the page reads the event stream
+  //     to know which items have been handled.
+  //
+  // An item is addressed if EITHER signal is present.
+  const itemIds = hydratedItems.map((item) => item.id)
+  const addressEvents =
+    itemIds.length === 0
+      ? []
+      : await db.activityEvent.findMany({
+          where: {
+            clientId: client.id,
+            kind: 'review_item_addressed',
+          },
+          select: { payload: true },
+        })
+  const itemIdSet = new Set(itemIds)
+  const addressedItemIds = new Set<string>()
+  for (const e of addressEvents) {
+    const reviewItemId = (e.payload as { reviewItemId?: string } | null)
+      ?.reviewItemId
+    if (reviewItemId && itemIdSet.has(reviewItemId)) {
+      addressedItemIds.add(reviewItemId)
+    }
+  }
+
+  const isAddressed = (item: HydratedItemWithPost) =>
+    Boolean(item.acceptedAsPostVersionId) || addressedItemIds.has(item.id)
+
+  const pending = hydratedItems.filter((item) => !isAddressed(item))
+  const addressed = hydratedItems.filter((item) => isAddressed(item))
 
   const summary: ReviewSessionSummary =
     session.submittedSummary ?? {
