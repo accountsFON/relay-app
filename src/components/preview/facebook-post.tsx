@@ -245,6 +245,17 @@ export function FacebookPost(props: FeedPostProps) {
               data-testid="caption-edit-inline-textarea"
               value={draftValue}
               onChange={(e) => onCaptionDraftChange?.(e.target.value)}
+              onPaste={(e) => {
+                // Belt-and-suspenders: sync React state to the textarea's
+                // actual value after a paste lands. See IG component for the
+                // multi-byte-character rationale.
+                const el = e.currentTarget
+                setTimeout(() => {
+                  if (el && el.value !== draftValue) {
+                    onCaptionDraftChange?.(el.value)
+                  }
+                }, 0)
+              }}
               rows={8}
               autoFocus
               aria-label="Edit suggested caption"

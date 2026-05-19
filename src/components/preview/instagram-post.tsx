@@ -330,6 +330,18 @@ export function InstagramFeedPost({
               data-testid="caption-edit-inline-textarea"
               value={draftValue}
               onChange={(e) => onCaptionDraftChange?.(e.target.value)}
+              onPaste={(e) => {
+                // Belt-and-suspenders: read the textarea's actual value on the
+                // next tick and sync state. Some browsers don't fire React's
+                // synthetic onChange consistently on paste of multi-byte
+                // characters (emoji, IME sequences).
+                const el = e.currentTarget
+                setTimeout(() => {
+                  if (el && el.value !== draftValue) {
+                    onCaptionDraftChange?.(el.value)
+                  }
+                }, 0)
+              }}
               rows={8}
               autoFocus
               aria-label="Edit suggested caption"
