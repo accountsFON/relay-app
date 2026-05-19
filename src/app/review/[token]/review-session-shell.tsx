@@ -11,6 +11,7 @@ import { SubmitReviewBar } from '@/components/review/submit-review-bar'
 import { SubmitReviewModal } from '@/components/review/submit-review-modal'
 import { ReviewSubmittedScreen } from '@/components/review/review-submitted-screen'
 import { ReturningReviewerBanner } from '@/components/review/returning-reviewer-banner'
+import { CaptionEditBottomSheet } from '@/components/review/caption-edit-bottom-sheet'
 import { submitSessionAction } from '@/server/actions/reviewSessions'
 import type {
   ReviewDecisionType,
@@ -92,6 +93,9 @@ export function ReviewSessionShell({
 
   const [submitModalOpen, setSubmitModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // postId of the post currently being captioned-edited. null = sheet closed.
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
 
   const postIds = useMemo(() => posts.map((p) => p.post.id), [posts])
 
@@ -179,6 +183,12 @@ export function ReviewSessionShell({
   const handleDecisionChange = useCallback(
     (postId: string, decision: ReviewDecisionType) => {
       void persistDraft(postId, { decision })
+      // Edit Copy is the only decision that needs a follow-up input from the
+      // reviewer. Open the bottom sheet so they can type the suggested caption
+      // in the same gesture, rather than tapping the post-card hint pill after.
+      if (decision === 'caption_edited') {
+        setEditingPostId(postId)
+      }
     },
     [persistDraft],
   )
@@ -188,6 +198,32 @@ export function ReviewSessionShell({
       void persistDraft(postId, { comment: comment.length > 0 ? comment : null })
     },
     [persistDraft],
+  )
+
+  const handleCaptionEditStart = useCallback((postId: string) => {
+    setEditingPostId(postId)
+  }, [])
+
+  const handleCaptionEditCancel = useCallback(() => {
+    setEditingPostId(null)
+  }, [])
+
+  const handleCaptionEditSave = useCallback(
+    async (newCaption: string) => {
+      const postId = editingPostId
+      if (!postId) return
+      await persistDraft(postId, {
+        decision: 'caption_edited',
+        suggestedCaption: newCaption,
+      })
+      setEditingPostId(null)
+    },
+    [editingPostId, persistDraft],
+  )
+
+  const editingPost = useMemo(
+    () => (editingPostId ? posts.find((p) => p.post.id === editingPostId) : undefined),
+    [editingPostId, posts],
   )
 
   const handleSubmitClick = useCallback(() => {
@@ -274,6 +310,7 @@ export function ReviewSessionShell({
                 onCommentChange={(comment) =>
                   handleCommentChange(post.id, comment)
                 }
+                onCaptionEditStart={() => handleCaptionEditStart(post.id)}
               />
             )
           })
@@ -293,6 +330,18 @@ export function ReviewSessionShell({
         onConfirm={handleSubmitConfirm}
         onCancel={handleSubmitCancel}
         submitting={submitting}
+      />
+
+      <CaptionEditBottomSheet
+        open={editingPostId !== null && editingPost !== undefined}
+        originalCaption={editingPost?.post.caption ?? ''}
+        initialDraft={
+          editingPostId
+            ? itemsByPostId[editingPostId]?.suggestedCaption ?? undefined
+            : undefined
+        }
+        onSave={handleCaptionEditSave}
+        onCancel={handleCaptionEditCancel}
       />
     </div>
   )
