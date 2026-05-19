@@ -47,6 +47,7 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
       canvaUrl: defaultValues?.canvaUrl ?? '',
       autoCrawl: defaultValues?.autoCrawl ?? 'always',
       status: defaultValues?.status ?? 'active',
+      clientReviewEnabled: (defaultValues as any)?.clientReviewEnabled ?? false,
     },
   })
 
@@ -184,6 +185,31 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
             Controls whether the pipeline crawls websites during content generation. &quot;Always&quot; gives freshest data but uses crawl credits each time. &quot;Never&quot; is free but uses older data.
           </p>
         </Field>
+      </PageSection>
+
+      <PageSection title="Workflow">
+        <div className="space-y-5">
+          <label htmlFor="clientReviewEnabled" className="flex items-start gap-3 cursor-pointer">
+            <input
+              id="clientReviewEnabled"
+              type="checkbox"
+              {...form.register('clientReviewEnabled')}
+              className="mt-1"
+            />
+            <span className="flex flex-col gap-1">
+              <span className="font-medium">Client Review</span>
+              <span className="text-sm text-muted-foreground">
+                When on, this client gets steps 8 and 9 in the relay
+                (Sent to client + Client review). When off, batches skip
+                those steps and shorten to 10 total.
+              </span>
+              <span className="text-sm text-muted-foreground">
+                Changes only apply to new batches. Open batches keep the
+                flow they started under.
+              </span>
+            </span>
+          </label>
+        </div>
       </PageSection>
 
       <div className="flex justify-end gap-2">
