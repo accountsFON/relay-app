@@ -28,6 +28,7 @@ vi.mock('@/db/client', () => ({
     magicLink: { findUnique: vi.fn() },
     magicLinkReviewer: { findUnique: vi.fn() },
     post: { findMany: vi.fn() },
+    activityEvent: { findMany: vi.fn() },
   },
 }))
 
@@ -190,6 +191,9 @@ describe('ReviewSessionDetailPage', () => {
     vi.mocked(db.magicLink.findUnique).mockResolvedValue(mockMagicLink as never)
     vi.mocked(db.magicLinkReviewer.findUnique).mockResolvedValue(mockReviewer as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)
+    // Default: no addressed events. Specific tests override this to simulate
+    // Mark Addressed / Reject Edit clicks.
+    vi.mocked(db.activityEvent.findMany).mockResolvedValue([])
   })
 
   it('renders the header + one row per non-approved item (omits approved)', async () => {
@@ -232,5 +236,100 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       }),
     ).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  describe('addressed-via-activity-event behavior', () => {
+    it('moves a changes_requested item to addressed when a Mark Addressed event exists', async () => {
+      vi.mocked(db.activityEvent.findMany).mockResolvedValue([
+        {
+          payload: {
+            reviewItemId: 'item_b',
+            decision: 'changes_requested',
+            addressedBy: 'user_db_1',
+          },
+        },
+      ] as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // The row still renders (it's just in a different bucket).
+      const row = getByTestId('review-item-row-stub-item_b')
+      expect(row.getAttribute('data-mode')).toBe('addressed')
+
+      // The other non-approved item (caption_edited without an event) stays pending.
+      const captionRow = getByTestId('review-item-row-stub-item_c')
+      expect(captionRow.getAttribute('data-mode')).toBe('pending')
+    })
+
+    it('moves a caption_edited item to addressed when a Reject Edit event exists', async () => {
+      vi.mocked(db.activityEvent.findMany).mockResolvedValue([
+        {
+          payload: {
+            reviewItemId: 'item_c',
+            decision: 'caption_edited',
+            action: 'rejected_caption_edit',
+            addressedBy: 'user_db_1',
+          },
+        },
+      ] as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      const captionRow = getByTestId('review-item-row-stub-item_c')
+      expect(captionRow.getAttribute('data-mode')).toBe('addressed')
+
+      // changes_requested item without an event stays pending.
+      const changesRow = getByTestId('review-item-row-stub-item_b')
+      expect(changesRow.getAttribute('data-mode')).toBe('pending')
+    })
+
+    it('ignores events whose payload reviewItemId is not in this session', async () => {
+      // Event from some other session's item id. Should not affect this page.
+      vi.mocked(db.activityEvent.findMany).mockResolvedValue([
+        { payload: { reviewItemId: 'item_from_some_other_session' } },
+      ] as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      expect(
+        getByTestId('review-item-row-stub-item_b').getAttribute('data-mode'),
+      ).toBe('pending')
+      expect(
+        getByTestId('review-item-row-stub-item_c').getAttribute('data-mode'),
+      ).toBe('pending')
+    })
+
+    it('still treats acceptedAsPostVersionId as addressed (Accept Edit path)', async () => {
+      vi.mocked(findSessionWithItems).mockResolvedValue({
+        ...mockSession,
+        items: mockSession.items.map((it) =>
+          it.id === 'item_c'
+            ? { ...it, acceptedAsPostVersionId: 'pv_new_1' }
+            : it,
+        ),
+      } as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      expect(
+        getByTestId('review-item-row-stub-item_c').getAttribute('data-mode'),
+      ).toBe('addressed')
+    })
   })
 })
