@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -90,6 +91,10 @@ export function InstagramFeedPost({
   // MarkupOverlay/CaptionMarkup callbacks don't carry viewport coords, so
   // we capture them here at mousedown.
   const lastPointerRef = useRef<{ x: number; y: number } | null>(null)
+  // Ref to the media <img> so we can read naturalWidth/Height for cached
+  // images. Browsers don't fire `load` on already-decoded images, so the
+  // onLoad handler alone misses those (very common on second visits).
+  const mediaImgRef = useRef<HTMLImageElement | null>(null)
 
   function recordPointer(event: ReactMouseEvent<HTMLElement>) {
     lastPointerRef.current = { x: event.clientX, y: event.clientY }
@@ -101,6 +106,15 @@ export function InstagramFeedPost({
       setNaturalAspectRatio(naturalWidth / naturalHeight)
     }
   }
+
+  // Pick up cached images that decoded before React attached onLoad.
+  useEffect(() => {
+    const img = mediaImgRef.current
+    if (!img) return
+    if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      setNaturalAspectRatio(img.naturalWidth / img.naturalHeight)
+    }
+  }, [post.mediaUrl])
 
   const displayAspectRatio = clampInstagramAspectRatio(naturalAspectRatio)
 
@@ -255,6 +269,7 @@ export function InstagramFeedPost({
       >
         {post.mediaUrl ? (
           <img
+            ref={mediaImgRef}
             src={post.mediaUrl}
             alt=""
             onLoad={handleMediaLoad}
@@ -315,6 +330,18 @@ export function InstagramFeedPost({
               data-testid="caption-edit-inline-textarea"
               value={draftValue}
               onChange={(e) => onCaptionDraftChange?.(e.target.value)}
+              onPaste={(e) => {
+                // Belt-and-suspenders: read the textarea's actual value on the
+                // next tick and sync state. Some browsers don't fire React's
+                // synthetic onChange consistently on paste of multi-byte
+                // characters (emoji, IME sequences).
+                const el = e.currentTarget
+                setTimeout(() => {
+                  if (el && el.value !== draftValue) {
+                    onCaptionDraftChange?.(el.value)
+                  }
+                }, 0)
+              }}
               rows={8}
               autoFocus
               aria-label="Edit suggested caption"

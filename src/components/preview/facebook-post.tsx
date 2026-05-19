@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -68,6 +69,9 @@ export function FacebookPost(props: FeedPostProps) {
   const [naturalAspectRatio, setNaturalAspectRatio] = useState<number | null>(null)
   // `view original / back to your edit` peek toggle when captionOverride is set.
   const [showOriginal, setShowOriginal] = useState(false)
+  // Ref to the media <img> so we can read naturalWidth/Height for cached
+  // images. Browsers don't fire `load` on already-decoded images.
+  const mediaImgRef = useRef<HTMLImageElement | null>(null)
   // Captured at mousedown so the draft composer can anchor near the click
   // that triggered pin creation. MarkupOverlay/CaptionMarkup callbacks
   // don't carry viewport coords on their own.
@@ -83,6 +87,15 @@ export function FacebookPost(props: FeedPostProps) {
       setNaturalAspectRatio(naturalWidth / naturalHeight)
     }
   }
+
+  // Pick up cached images that decoded before React attached onLoad.
+  useEffect(() => {
+    const img = mediaImgRef.current
+    if (!img) return
+    if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      setNaturalAspectRatio(img.naturalWidth / img.naturalHeight)
+    }
+  }, [post.mediaUrl])
 
   const displayAspectRatio = facebookAspectRatio(naturalAspectRatio)
 
@@ -232,6 +245,17 @@ export function FacebookPost(props: FeedPostProps) {
               data-testid="caption-edit-inline-textarea"
               value={draftValue}
               onChange={(e) => onCaptionDraftChange?.(e.target.value)}
+              onPaste={(e) => {
+                // Belt-and-suspenders: sync React state to the textarea's
+                // actual value after a paste lands. See IG component for the
+                // multi-byte-character rationale.
+                const el = e.currentTarget
+                setTimeout(() => {
+                  if (el && el.value !== draftValue) {
+                    onCaptionDraftChange?.(el.value)
+                  }
+                }, 0)
+              }}
               rows={8}
               autoFocus
               aria-label="Edit suggested caption"
@@ -313,6 +337,7 @@ export function FacebookPost(props: FeedPostProps) {
         {post.mediaUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            ref={mediaImgRef}
             src={post.mediaUrl}
             alt=""
             data-testid="fb-media"
