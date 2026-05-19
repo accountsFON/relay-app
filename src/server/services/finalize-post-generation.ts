@@ -120,6 +120,16 @@ async function createBatchForRun(
     orderBy: { createdAt: 'desc' },
     select: { currentHolder: true, currentRole: true },
   })
+  // Snapshot the Client's clientReviewEnabled onto the new Batch so
+  // toggling the Client flag later does not retroactively reroute
+  // batches already in flight.
+  const client = await db.client.findUnique({
+    where: { id: clientId },
+    select: { clientReviewEnabled: true },
+  })
+  if (!client) {
+    throw new Error(`Client ${clientId} not found in finalize-post-generation`)
+  }
   const newBatch = await db.batch.create({
     data: {
       clientId,
@@ -128,6 +138,7 @@ async function createBatchForRun(
       currentSubState: 'drafted',
       currentHolder: anyBatch?.currentHolder ?? fallbackHolderId,
       currentRole: anyBatch?.currentRole ?? RelayRole.am,
+      clientReviewEnabled: client.clientReviewEnabled,
     },
   })
   return newBatch.id
