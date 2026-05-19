@@ -310,18 +310,16 @@ export function InstagramFeedPost({
             className="flex flex-col gap-2"
             data-testid="instagram-post-inline-editor"
           >
-            <div className="flex items-start gap-1.5">
-              <b className="pt-1.5 font-semibold">{handle}</b>
-              <textarea
-                data-testid="caption-edit-inline-textarea"
-                value={draftValue}
-                onChange={(e) => onCaptionDraftChange?.(e.target.value)}
-                rows={4}
-                autoFocus
-                aria-label="Edit suggested caption"
-                className="flex-1 resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[14px] leading-snug text-[#262626] outline-none focus:border-[#0095f6]"
-              />
-            </div>
+            <b className="font-semibold">{handle}</b>
+            <textarea
+              data-testid="caption-edit-inline-textarea"
+              value={draftValue}
+              onChange={(e) => onCaptionDraftChange?.(e.target.value)}
+              rows={8}
+              autoFocus
+              aria-label="Edit suggested caption"
+              className="w-full min-h-[180px] resize-y rounded-md border border-[#dbdbdb] bg-white px-3 py-2 text-[14px] leading-snug text-[#262626] outline-none focus:border-[#0095f6]"
+            />
             <div className="flex justify-end gap-2">
               <button
                 type="button"
