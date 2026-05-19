@@ -94,6 +94,7 @@ type CreateClientInput = {
   autoCrawl?: string
   assignedAmId?: string
   status: ClientStatus
+  clientReviewEnabled?: boolean
 }
 
 export async function createClient(input: CreateClientInput) {
@@ -124,6 +125,7 @@ type UpdateClientData = Partial<{
   autoCrawl: string
   assignedAmId: string
   status: ClientStatus
+  clientReviewEnabled: boolean
 }>
 
 export async function updateClient(

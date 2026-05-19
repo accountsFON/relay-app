@@ -108,6 +108,7 @@ export async function createBatch(input: {
   currentSubState?: string | null
   currentHolder: string
   currentRole: RelayRole
+  clientReviewEnabled: boolean
 }) {
   return db.batch.create({ data: { ...input } })
 }
