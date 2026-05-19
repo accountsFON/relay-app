@@ -22,22 +22,7 @@ import { STEP_LABEL, STEP_ROLE } from './labels'
 import type { BatchSummary, SendBackArc } from './types'
 import { ScrollCurrentIntoView } from './scroll-current-into-view'
 import { RoleTooltip, StepTooltip } from './relay-tooltips'
-
-const FULL_TRACK: RelayStep[] = [
-  RelayStep.onboarding_gate,
-  RelayStep.copy,
-  RelayStep.in_design,
-  RelayStep.designs_completed,
-  RelayStep.am_review_design,
-  RelayStep.design_revisions,
-  RelayStep.am_qa_pre_client,
-  RelayStep.sent_to_client,
-  RelayStep.client_decision,
-  RelayStep.ready_to_schedule,
-  RelayStep.implementing_revisions,
-  RelayStep.revisions_complete,
-  RelayStep.final_qa_schedule,
-]
+import { relayTrackFor } from '@/lib/relay-track-shape'
 
 const ROLE_LABEL: Record<RelayRole, string> = {
   [RelayRole.admin]: 'Admin',
@@ -61,7 +46,10 @@ export function RelayTrack({
   audience = 'internal',
   className,
 }: RelayTrackProps) {
-  const steps = audience === 'client' ? CLIENT_TRACK_VIEW : FULL_TRACK
+  const steps =
+    audience === 'client'
+      ? CLIENT_TRACK_VIEW
+      : relayTrackFor(batch.clientReviewEnabled)
   const currentIndex = steps.indexOf(batch.currentStep)
   const totalSteps = steps.length
 
@@ -198,6 +186,7 @@ function RelayTrackDesktop({
           return (
             <li
               key={step}
+              data-testid="relay-track-node"
               data-current={isCurrent || undefined}
               className="flex min-w-[84px] flex-col items-center first:pl-3 last:pr-3"
             >
@@ -251,7 +240,11 @@ function RelayTrackMobile({
         const isFirst = i === 0
         const isLast = i === steps.length - 1
         return (
-          <li key={step} className="flex items-stretch gap-3 px-5 first:pt-5 last:pb-5">
+          <li
+            key={step}
+            data-testid="relay-track-node"
+            className="flex items-stretch gap-3 px-5 first:pt-5 last:pb-5"
+          >
             <div className="relative flex w-8 flex-col items-center">
               {/* line above circle (skipped on first) */}
               <div
