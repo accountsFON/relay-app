@@ -1,8 +1,20 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FacebookPost } from '@/components/preview/facebook-post'
+import { FB_DEFAULT_ASPECT_RATIO } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps } from '@/types/preview'
+
+function fireImageLoad(img: HTMLImageElement, naturalWidth: number, naturalHeight: number) {
+  Object.defineProperty(img, 'naturalWidth', { value: naturalWidth, configurable: true })
+  Object.defineProperty(img, 'naturalHeight', { value: naturalHeight, configurable: true })
+  fireEvent.load(img)
+}
+
+function mediaAspectRatio(): number {
+  const img = screen.getByTestId('fb-media') as HTMLElement
+  return Number.parseFloat(img.style.aspectRatio)
+}
 
 function mockOverlayRect() {
   // Force a known 400x400 layout so MarkupOverlay accepts clicks under JSDOM.
@@ -259,5 +271,45 @@ describe('FacebookPost', () => {
 
     const popover = screen.getByTestId('pin-popover')
     expect(popover.getAttribute('data-thread-id')).toBe('thread-xyz')
+  })
+
+  describe('image aspect ratio', () => {
+    it('renders the image at the 1.91:1 FB default before it loads', () => {
+      render(<FacebookPost {...makeProps()} />)
+      expect(mediaAspectRatio()).toBeCloseTo(FB_DEFAULT_ASPECT_RATIO)
+    })
+
+    it('renders square images at their natural 1:1 ratio (no clamp)', () => {
+      render(<FacebookPost {...makeProps()} />)
+      const img = screen.getByTestId('fb-media') as HTMLImageElement
+      fireImageLoad(img, 1080, 1080)
+      expect(mediaAspectRatio()).toBe(1)
+    })
+
+    it('renders portrait 4:5 images at their natural ratio (FB has no clamp)', () => {
+      render(<FacebookPost {...makeProps()} />)
+      const img = screen.getByTestId('fb-media') as HTMLImageElement
+      fireImageLoad(img, 1080, 1350)
+      expect(mediaAspectRatio()).toBeCloseTo(4 / 5)
+    })
+
+    it('renders landscape 16:9 images at their natural ratio', () => {
+      render(<FacebookPost {...makeProps()} />)
+      const img = screen.getByTestId('fb-media') as HTMLImageElement
+      fireImageLoad(img, 1920, 1080)
+      expect(mediaAspectRatio()).toBeCloseTo(16 / 9)
+    })
+
+    it('falls back to the 1.91:1 default for the placeholder when mediaUrl is null', () => {
+      render(
+        <FacebookPost
+          {...makeProps({
+            post: { id: 'p', caption: 'no media', hashtags: [], mediaUrl: null },
+          })}
+        />,
+      )
+      const placeholder = screen.getByTestId('fb-media-placeholder') as HTMLElement
+      expect(Number.parseFloat(placeholder.style.aspectRatio)).toBeCloseTo(FB_DEFAULT_ASPECT_RATIO)
+    })
   })
 })

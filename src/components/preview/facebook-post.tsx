@@ -1,8 +1,15 @@
 'use client'
 
-import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import {
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type SyntheticEvent,
+} from 'react'
 import { Globe, ThumbsUp, MessageCircle, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { facebookAspectRatio } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
 import { MarkupOverlay, type OverlayPin } from './markup-overlay'
 import { CaptionMarkup, type CaptionPin } from './caption-markup'
@@ -52,6 +59,7 @@ export function FacebookPost(props: FeedPostProps) {
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
   const [draftPin, setDraftPin] = useState<DraftPin | null>(null)
+  const [naturalAspectRatio, setNaturalAspectRatio] = useState<number | null>(null)
   // Captured at mousedown so the draft composer can anchor near the click
   // that triggered pin creation. MarkupOverlay/CaptionMarkup callbacks
   // don't carry viewport coords on their own.
@@ -60,6 +68,15 @@ export function FacebookPost(props: FeedPostProps) {
   function recordPointer(event: ReactMouseEvent<HTMLElement>) {
     lastPointerRef.current = { x: event.clientX, y: event.clientY }
   }
+
+  function handleMediaLoad(event: SyntheticEvent<HTMLImageElement>) {
+    const { naturalWidth, naturalHeight } = event.currentTarget
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      setNaturalAspectRatio(naturalWidth / naturalHeight)
+    }
+  }
+
+  const displayAspectRatio = facebookAspectRatio(naturalAspectRatio)
 
   const captionFull = post.caption ?? ''
   const needsTruncation = captionFull.length > FB_TRUNCATE_LIMIT
@@ -221,7 +238,9 @@ export function FacebookPost(props: FeedPostProps) {
         )}
       </div>
 
-      {/* Image (1.91:1 FB feed aspect) + markup overlay */}
+      {/* Image renders at the photo's natural aspect ratio (FB has no hard
+          clamp). Falls back to 1.91:1 landscape while loading or when
+          mediaUrl is null. */}
       <div className="relative">
         {post.mediaUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -229,14 +248,15 @@ export function FacebookPost(props: FeedPostProps) {
             src={post.mediaUrl}
             alt=""
             data-testid="fb-media"
+            onLoad={handleMediaLoad}
             className="block w-full"
-            style={{ aspectRatio: '1.91 / 1', objectFit: 'cover' }}
+            style={{ aspectRatio: displayAspectRatio, objectFit: 'cover' }}
           />
         ) : (
           <div
             data-testid="fb-media-placeholder"
             className="flex w-full items-center justify-center bg-gradient-to-br from-[#7ad3f5] to-[#3e8dc4] text-xs text-white/80"
-            style={{ aspectRatio: '1.91 / 1' }}
+            style={{ aspectRatio: displayAspectRatio }}
           >
             image goes here
           </div>

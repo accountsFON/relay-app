@@ -1,7 +1,14 @@
 'use client'
 
-import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import {
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type SyntheticEvent,
+} from 'react'
 import { cn } from '@/lib/utils'
+import { clampInstagramAspectRatio } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
 import { MarkupOverlay, type OverlayPin } from './markup-overlay'
 import { CaptionMarkup, type CaptionPin } from './caption-markup'
@@ -67,6 +74,7 @@ export function InstagramFeedPost({
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
   const [draftPin, setDraftPin] = useState<DraftPin | null>(null)
+  const [naturalAspectRatio, setNaturalAspectRatio] = useState<number | null>(null)
   // Track the last pointer position inside the post so we can anchor the
   // draft composer near the click that triggered the pin creation. The
   // MarkupOverlay/CaptionMarkup callbacks don't carry viewport coords, so
@@ -76,6 +84,15 @@ export function InstagramFeedPost({
   function recordPointer(event: ReactMouseEvent<HTMLElement>) {
     lastPointerRef.current = { x: event.clientX, y: event.clientY }
   }
+
+  function handleMediaLoad(event: SyntheticEvent<HTMLImageElement>) {
+    const { naturalWidth, naturalHeight } = event.currentTarget
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      setNaturalAspectRatio(naturalWidth / naturalHeight)
+    }
+  }
+
+  const displayAspectRatio = clampInstagramAspectRatio(naturalAspectRatio)
 
   const handle = useMemo(() => instagramHandle(client.name), [client.name])
 
@@ -210,15 +227,19 @@ export function InstagramFeedPost({
         </div>
       </header>
 
-      {/* Square media + markup overlay */}
+      {/* Media + markup overlay. Container aspect ratio adapts to the
+          image's natural ratio within IG's allowed range (4:5 to 1.91:1).
+          Falls back to a square while loading or when mediaUrl is null. */}
       <div
-        className="relative aspect-square w-full overflow-hidden bg-[#fafafa]"
+        className="relative w-full overflow-hidden bg-[#fafafa]"
+        style={{ aspectRatio: displayAspectRatio }}
         data-testid="instagram-post-media"
       >
         {post.mediaUrl ? (
           <img
             src={post.mediaUrl}
             alt=""
+            onLoad={handleMediaLoad}
             className="block size-full object-cover"
           />
         ) : (
