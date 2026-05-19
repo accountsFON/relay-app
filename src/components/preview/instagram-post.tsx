@@ -69,12 +69,22 @@ export function InstagramFeedPost({
   onCreateThread,
   onComment,
   onResolveThread,
+  editing = false,
+  captionDraft,
+  onCaptionDraftChange,
+  onCaptionEditSave,
+  onCaptionEditCancel,
+  captionOverride,
 }: FeedPostProps) {
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
   const [draftPin, setDraftPin] = useState<DraftPin | null>(null)
   const [naturalAspectRatio, setNaturalAspectRatio] = useState<number | null>(null)
+  // Local toggle for `view original / back to your edit` when captionOverride
+  // is set and the reviewer wants to peek at the original caption. View only,
+  // never persisted.
+  const [showOriginal, setShowOriginal] = useState(false)
   // Track the last pointer position inside the post so we can anchor the
   // draft composer near the click that triggered the pin creation. The
   // MarkupOverlay/CaptionMarkup callbacks don't carry viewport coords, so
@@ -96,11 +106,19 @@ export function InstagramFeedPost({
 
   const handle = useMemo(() => instagramHandle(client.name), [client.name])
 
-  const isLong = post.caption.length > CAPTION_TRUNCATE_AT
+  // When the reviewer has saved a suggested caption (captionOverride) we
+  // render that in the chrome instead of post.caption, unless they've
+  // tapped `view original` to peek at the original.
+  const displayedCaption =
+    captionOverride !== undefined && !showOriginal ? captionOverride : post.caption
+  const isLong = displayedCaption.length > CAPTION_TRUNCATE_AT
   const visibleCaption =
     isLong && !expanded
-      ? post.caption.slice(0, CAPTION_TRUNCATE_AT).trimEnd()
-      : post.caption
+      ? displayedCaption.slice(0, CAPTION_TRUNCATE_AT).trimEnd()
+      : displayedCaption
+
+  const draftValue = captionDraft ?? ''
+  const saveDisabled = draftValue.trim().length === 0 || draftValue === post.caption
 
   const imagePins: OverlayPin[] = useMemo(
     () =>
@@ -287,31 +305,87 @@ export function InstagramFeedPost({
 
       {/* Caption */}
       <div className="px-3 pt-1 pb-3 text-[14px] leading-snug text-[#262626]">
-        <p
-          className="whitespace-pre-line"
-          data-testid="instagram-post-caption"
-        >
-          <b className="font-semibold">{handle}</b>{' '}
-          <CaptionMarkup
-            caption={visibleCaption}
-            existingPins={captionPins.filter((p) => p.to <= visibleCaption.length)}
-            onPinClick={(id) => openThreadAt(id, null)}
-            onCreatePin={handleCreateCaptionPin}
-          />
-          {isLong && !expanded && (
-            <>
-              {'... '}
+        {editing ? (
+          <div
+            className="flex flex-col gap-2"
+            data-testid="instagram-post-inline-editor"
+          >
+            <div className="flex items-start gap-1.5">
+              <b className="pt-1.5 font-semibold">{handle}</b>
+              <textarea
+                data-testid="caption-edit-inline-textarea"
+                value={draftValue}
+                onChange={(e) => onCaptionDraftChange?.(e.target.value)}
+                rows={4}
+                autoFocus
+                aria-label="Edit suggested caption"
+                className="flex-1 resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[14px] leading-snug text-[#262626] outline-none focus:border-[#0095f6]"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setExpanded(true)}
-                className="text-[#8e8e8e] hover:text-[#262626]"
-                data-testid="instagram-post-more"
+                data-testid="caption-edit-inline-cancel"
+                onClick={() => onCaptionEditCancel?.()}
+                className="rounded-md px-3 py-1.5 text-[13px] font-medium text-[#262626] hover:bg-[#fafafa]"
               >
-                more
+                Cancel
               </button>
-            </>
-          )}
-        </p>
+              <button
+                type="button"
+                data-testid="caption-edit-inline-save"
+                onClick={() => void onCaptionEditSave?.()}
+                disabled={saveDisabled}
+                className="rounded-md bg-[#0095f6] px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-[#1877f2] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p
+            className="whitespace-pre-line"
+            data-testid="instagram-post-caption"
+          >
+            <b className="font-semibold">{handle}</b>{' '}
+            <CaptionMarkup
+              caption={visibleCaption}
+              existingPins={captionPins.filter((p) => p.to <= visibleCaption.length)}
+              onPinClick={(id) => openThreadAt(id, null)}
+              onCreatePin={handleCreateCaptionPin}
+            />
+            {isLong && !expanded && (
+              <>
+                {'... '}
+                <button
+                  type="button"
+                  onClick={() => setExpanded(true)}
+                  className="text-[#8e8e8e] hover:text-[#262626]"
+                  data-testid="instagram-post-more"
+                >
+                  more
+                </button>
+              </>
+            )}
+          </p>
+        )}
+
+        {!editing && captionOverride !== undefined && (
+          <p
+            className="mt-1 text-[12px] text-[#8e8e8e]"
+            data-testid="instagram-post-edit-indicator"
+          >
+            Edited{' · '}
+            <button
+              type="button"
+              data-testid="instagram-post-toggle-original"
+              onClick={() => setShowOriginal((prev) => !prev)}
+              className="text-[#00376b] hover:underline"
+            >
+              {showOriginal ? 'back to your edit' : 'view original'}
+            </button>
+          </p>
+        )}
 
         {post.hashtags.length > 0 && (
           <p

@@ -312,4 +312,100 @@ describe('FacebookPost', () => {
       expect(Number.parseFloat(placeholder.style.aspectRatio)).toBeCloseTo(FB_DEFAULT_ASPECT_RATIO)
     })
   })
+
+  describe('inline caption edit', () => {
+    it('renders the inline editor when editing is true', () => {
+      render(
+        <FacebookPost
+          {...makeProps({
+            editing: true,
+            captionDraft: 'My new draft',
+            onCaptionDraftChange: () => {},
+            onCaptionEditSave: () => {},
+            onCaptionEditCancel: () => {},
+          })}
+        />,
+      )
+      const textarea = screen.getByTestId('caption-edit-inline-textarea') as HTMLTextAreaElement
+      expect(textarea.value).toBe('My new draft')
+      expect(screen.getByTestId('caption-edit-inline-save')).toBeInTheDocument()
+      expect(screen.getByTestId('caption-edit-inline-cancel')).toBeInTheDocument()
+    })
+
+    it('Save is disabled while draft equals the original caption', () => {
+      render(
+        <FacebookPost
+          {...makeProps({
+            post: { id: 'p', caption: 'Same.', hashtags: [], mediaUrl: 'https://example.com/x.png' },
+            editing: true,
+            captionDraft: 'Same.',
+            onCaptionDraftChange: () => {},
+            onCaptionEditSave: () => {},
+            onCaptionEditCancel: () => {},
+          })}
+        />,
+      )
+      expect(screen.getByTestId('caption-edit-inline-save')).toBeDisabled()
+    })
+
+    it('Save + Cancel fire their respective handlers', async () => {
+      const onCaptionEditSave = vi.fn()
+      const onCaptionEditCancel = vi.fn()
+      const user = userEvent.setup()
+      render(
+        <FacebookPost
+          {...makeProps({
+            post: { id: 'p', caption: 'Original.', hashtags: [], mediaUrl: 'https://example.com/x.png' },
+            editing: true,
+            captionDraft: 'Edited.',
+            onCaptionDraftChange: () => {},
+            onCaptionEditSave,
+            onCaptionEditCancel,
+          })}
+        />,
+      )
+      await user.click(screen.getByTestId('caption-edit-inline-save'))
+      expect(onCaptionEditSave).toHaveBeenCalledTimes(1)
+
+      await user.click(screen.getByTestId('caption-edit-inline-cancel'))
+      expect(onCaptionEditCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('renders captionOverride in place of post.caption when not editing', () => {
+      render(
+        <FacebookPost
+          {...makeProps({
+            post: { id: 'p', caption: 'Original caption.', hashtags: [], mediaUrl: 'https://example.com/x.png' },
+            captionOverride: 'Reviewer suggested caption.',
+          })}
+        />,
+      )
+      const caption = screen.getByTestId('fb-caption')
+      expect(caption.textContent).toContain('Reviewer suggested caption.')
+      expect(caption.textContent).not.toContain('Original caption.')
+      expect(screen.getByTestId('facebook-post-edit-indicator')).toBeInTheDocument()
+    })
+
+    it('view original / back to your edit toggle swaps the caption rendered', async () => {
+      const user = userEvent.setup()
+      render(
+        <FacebookPost
+          {...makeProps({
+            post: { id: 'p', caption: 'Original caption.', hashtags: [], mediaUrl: 'https://example.com/x.png' },
+            captionOverride: 'Reviewer suggested caption.',
+          })}
+        />,
+      )
+
+      const toggle = screen.getByTestId('facebook-post-toggle-original')
+      expect(toggle.textContent).toBe('view original')
+
+      await user.click(toggle)
+      expect(screen.getByTestId('fb-caption').textContent).toContain('Original caption.')
+      expect(toggle.textContent).toBe('back to your edit')
+
+      await user.click(toggle)
+      expect(screen.getByTestId('fb-caption').textContent).toContain('Reviewer suggested caption.')
+    })
+  })
 })
