@@ -23,11 +23,9 @@ function makePost(id: string, caption: string): ReviewSessionShellPost {
     post: {
       id,
       caption,
-      hashtags: '',
-      mediaUrls: [],
-      designerNotes: null,
-      graphicHook: null,
-    } as ReviewSessionShellPost['post'],
+      hashtags: [],
+      mediaUrl: null,
+    },
   }
 }
 
