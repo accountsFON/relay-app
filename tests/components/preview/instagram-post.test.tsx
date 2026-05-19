@@ -1,8 +1,23 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InstagramFeedPost } from '@/components/preview/instagram-post'
+import {
+  IG_MIN_ASPECT_RATIO,
+  IG_MAX_ASPECT_RATIO,
+} from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps } from '@/types/preview'
+
+function fireImageLoad(img: HTMLImageElement, naturalWidth: number, naturalHeight: number) {
+  Object.defineProperty(img, 'naturalWidth', { value: naturalWidth, configurable: true })
+  Object.defineProperty(img, 'naturalHeight', { value: naturalHeight, configurable: true })
+  fireEvent.load(img)
+}
+
+function mediaContainerAspectRatio(): number {
+  const container = screen.getByTestId('instagram-post-media') as HTMLElement
+  return Number.parseFloat(container.style.aspectRatio)
+}
 
 function mockOverlayRect() {
   // Force a known 400x400 layout so MarkupOverlay accepts clicks under JSDOM.
@@ -302,5 +317,106 @@ describe('InstagramFeedPost', () => {
 
     const popover = screen.getByTestId('pin-popover')
     expect(popover.getAttribute('data-thread-id')).toBe('thread-xyz')
+  })
+
+  describe('image aspect ratio', () => {
+    it('renders the media container at 1:1 (square) before the image loads', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: {
+              id: 'p',
+              caption: 'No load yet',
+              hashtags: [],
+              mediaUrl: 'https://example.com/img.jpg',
+            },
+          })}
+        />,
+      )
+      expect(mediaContainerAspectRatio()).toBe(1)
+    })
+
+    it('keeps the natural ratio for in-range portrait (4:5) images', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: {
+              id: 'p',
+              caption: 'Portrait',
+              hashtags: [],
+              mediaUrl: 'https://example.com/portrait.jpg',
+            },
+          })}
+        />,
+      )
+      const img = screen.getByTestId('instagram-post-media').querySelector('img') as HTMLImageElement
+      fireImageLoad(img, 1080, 1350) // 4:5
+      expect(mediaContainerAspectRatio()).toBeCloseTo(4 / 5)
+    })
+
+    it('keeps the natural ratio for in-range landscape (16:9) images', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: {
+              id: 'p',
+              caption: 'Landscape',
+              hashtags: [],
+              mediaUrl: 'https://example.com/wide.jpg',
+            },
+          })}
+        />,
+      )
+      const img = screen.getByTestId('instagram-post-media').querySelector('img') as HTMLImageElement
+      fireImageLoad(img, 1920, 1080) // 16:9 ≈ 1.78, within IG range
+      expect(mediaContainerAspectRatio()).toBeCloseTo(16 / 9)
+    })
+
+    it('clamps ultra-tall portrait (9:16 phone vertical) to the IG 4:5 floor', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: {
+              id: 'p',
+              caption: 'Tall phone',
+              hashtags: [],
+              mediaUrl: 'https://example.com/tall.jpg',
+            },
+          })}
+        />,
+      )
+      const img = screen.getByTestId('instagram-post-media').querySelector('img') as HTMLImageElement
+      fireImageLoad(img, 1080, 1920) // 9:16
+      expect(mediaContainerAspectRatio()).toBeCloseTo(IG_MIN_ASPECT_RATIO)
+    })
+
+    it('clamps ultra-wide panorama (3:1) to the IG 1.91:1 ceiling', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: {
+              id: 'p',
+              caption: 'Panorama',
+              hashtags: [],
+              mediaUrl: 'https://example.com/pano.jpg',
+            },
+          })}
+        />,
+      )
+      const img = screen.getByTestId('instagram-post-media').querySelector('img') as HTMLImageElement
+      fireImageLoad(img, 3000, 1000) // 3:1
+      expect(mediaContainerAspectRatio()).toBeCloseTo(IG_MAX_ASPECT_RATIO)
+    })
+
+    it('falls back to square when mediaUrl is null', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'no media', hashtags: [], mediaUrl: null },
+          })}
+        />,
+      )
+      expect(mediaContainerAspectRatio()).toBe(1)
+    })
   })
 })
