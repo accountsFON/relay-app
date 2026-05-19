@@ -232,10 +232,10 @@ export function FacebookPost(props: FeedPostProps) {
               data-testid="caption-edit-inline-textarea"
               value={draftValue}
               onChange={(e) => onCaptionDraftChange?.(e.target.value)}
-              rows={4}
+              rows={8}
               autoFocus
               aria-label="Edit suggested caption"
-              className="w-full resize-none rounded-md border border-[#ced0d4] bg-white px-2 py-1.5 text-[15px] leading-[1.3333] text-[#050505] outline-none focus:border-[#1877f2]"
+              className="w-full min-h-[180px] resize-y rounded-md border border-[#ced0d4] bg-white px-3 py-2 text-[15px] leading-[1.3333] text-[#050505] outline-none focus:border-[#1877f2]"
             />
             <div className="flex justify-end gap-2">
               <button
