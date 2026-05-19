@@ -90,6 +90,16 @@ export async function createAndSendMagicLinkAction(
   const client = await findClientForUser(ctx, batch.clientId)
   if (!client) notFound()
 
+  // Defense in depth on top of the UI gate (RelayTrack + batch detail
+  // hide the Send review link button when this flag is off). If a
+  // caller bypasses the UI by invoking the action directly, the mint
+  // still fails before any side effect: no row, no email worker call.
+  if (!batch.clientReviewEnabled) {
+    throw new Error(
+      'Client Review is off for this client. Turn it on in the client form to send a review link.',
+    )
+  }
+
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000)
 
   const { link, token } = await createMagicLink({

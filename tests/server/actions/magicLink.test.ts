@@ -84,6 +84,7 @@ const mockBatch = {
   label: 'May 2026',
   scheduledAt: new Date('2026-05-01T00:00:00Z'),
   createdAt: new Date('2026-04-15T00:00:00Z'),
+  clientReviewEnabled: true,
 } as unknown as NonNullable<
   Awaited<ReturnType<typeof import('@/server/repositories/batches').findBatch>>
 >
@@ -200,6 +201,58 @@ describe('createAndSendMagicLinkAction', () => {
     // Link + activity still recorded so the AM can recover by copy-paste.
     expect(createMagicLink).toHaveBeenCalled()
     expect(recordActivity).toHaveBeenCalled()
+  })
+})
+
+describe('createAndSendMagicLinkAction, clientReviewEnabled gate', () => {
+  it('rejects when the batch has clientReviewEnabled = false', async () => {
+    const noReviewBatch = {
+      ...mockBatch,
+      clientReviewEnabled: false,
+    } as unknown as NonNullable<
+      Awaited<ReturnType<typeof import('@/server/repositories/batches').findBatch>>
+    >
+    vi.mocked(findBatch).mockResolvedValue(noReviewBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+
+    await expect(
+      createAndSendMagicLinkAction({
+        batchId: noReviewBatch.id,
+        recipientName: 'Test Reviewer',
+        recipientEmail: 'test@example.com',
+      }),
+    ).rejects.toThrow(/client review/i)
+
+    // No side effects: link not minted, no email, no activity.
+    expect(createMagicLink).not.toHaveBeenCalled()
+    expect(sendMagicLinkEmail).not.toHaveBeenCalled()
+    expect(recordActivity).not.toHaveBeenCalled()
+  })
+
+  it('succeeds when the batch has clientReviewEnabled = true', async () => {
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+    vi.mocked(createMagicLink).mockResolvedValue({
+      link: {
+        id: 'cuid_link_gate_ok',
+        batchId: mockBatch.id,
+      } as never,
+      token: 'gate-ok-token',
+    })
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      name: 'Caleb Cody',
+      email: 'caleb@fonmarketing.com',
+    } as never)
+    vi.mocked(sendMagicLinkEmail).mockResolvedValue({ messageId: 'msg_gate_ok' })
+
+    const result = await createAndSendMagicLinkAction({
+      batchId: mockBatch.id,
+      recipientName: 'Test',
+      recipientEmail: 'test@example.com',
+    })
+
+    expect(result.magicLinkId).toBe('cuid_link_gate_ok')
+    expect(createMagicLink).toHaveBeenCalled()
   })
 })
 
