@@ -43,4 +43,19 @@ export type FeedPostProps = {
   // onOpenThread: optional external open-callback fired in addition to the
   // post component's internal openThreadId state (legacy hook for tests).
   onOpenThread?: (threadId: string) => void;
+
+  // Inline caption-edit (v2 client review surface only). When `editing` is
+  // true the caption text inside the chrome is replaced by a textarea bound
+  // to `captionDraft` + `onCaptionDraftChange`, with Save/Cancel buttons
+  // wired to `onCaptionEditSave` / `onCaptionEditCancel`.
+  editing?: boolean;
+  captionDraft?: string;
+  onCaptionDraftChange?: (draft: string) => void;
+  onCaptionEditSave?: () => Promise<void> | void;
+  onCaptionEditCancel?: () => void;
+  // When the reviewer has saved a suggested caption, the host passes it via
+  // `captionOverride` so the chrome renders the suggestion in place of
+  // `post.caption`. A `view original / back to your edit` toggle is rendered
+  // beneath the caption when this is set.
+  captionOverride?: string;
 };

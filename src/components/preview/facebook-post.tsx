@@ -54,12 +54,20 @@ export function FacebookPost(props: FeedPostProps) {
     onCreateThread,
     onComment,
     onResolveThread,
+    editing = false,
+    captionDraft,
+    onCaptionDraftChange,
+    onCaptionEditSave,
+    onCaptionEditCancel,
+    captionOverride,
   } = props
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
   const [draftPin, setDraftPin] = useState<DraftPin | null>(null)
   const [naturalAspectRatio, setNaturalAspectRatio] = useState<number | null>(null)
+  // `view original / back to your edit` peek toggle when captionOverride is set.
+  const [showOriginal, setShowOriginal] = useState(false)
   // Captured at mousedown so the draft composer can anchor near the click
   // that triggered pin creation. MarkupOverlay/CaptionMarkup callbacks
   // don't carry viewport coords on their own.
@@ -78,12 +86,16 @@ export function FacebookPost(props: FeedPostProps) {
 
   const displayAspectRatio = facebookAspectRatio(naturalAspectRatio)
 
-  const captionFull = post.caption ?? ''
+  const captionFull =
+    (captionOverride !== undefined && !showOriginal ? captionOverride : post.caption) ?? ''
   const needsTruncation = captionFull.length > FB_TRUNCATE_LIMIT
   const captionDisplay =
     expanded || !needsTruncation
       ? captionFull
       : captionFull.slice(0, FB_TRUNCATE_LIMIT).trimEnd()
+
+  const draftValue = captionDraft ?? ''
+  const saveDisabled = draftValue.trim().length === 0 || draftValue === (post.caption ?? '')
 
   const imagePins: OverlayPin[] = useMemo(
     () =>
@@ -209,27 +221,83 @@ export function FacebookPost(props: FeedPostProps) {
       {/* Caption ABOVE image (Facebook layout) */}
       <div
         data-testid="fb-caption"
-        className="px-3 pb-2 text-[15px] leading-[1.3333] text-[#050505] whitespace-pre-line"
+        className="px-3 pb-2 text-[15px] leading-[1.3333] text-[#050505]"
       >
-        <CaptionMarkup
-          caption={captionDisplay}
-          existingPins={captionPins.filter((p) => p.to <= captionDisplay.length)}
-          onPinClick={(id) => openThreadAt(id, null)}
-          onCreatePin={handleCreateCaptionPin}
-        />
-        {needsTruncation && !expanded && (
-          <>
-            {'… '}
+        {editing ? (
+          <div
+            className="flex flex-col gap-2"
+            data-testid="facebook-post-inline-editor"
+          >
+            <textarea
+              data-testid="caption-edit-inline-textarea"
+              value={draftValue}
+              onChange={(e) => onCaptionDraftChange?.(e.target.value)}
+              rows={4}
+              autoFocus
+              aria-label="Edit suggested caption"
+              className="w-full resize-none rounded-md border border-[#ced0d4] bg-white px-2 py-1.5 text-[15px] leading-[1.3333] text-[#050505] outline-none focus:border-[#1877f2]"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                data-testid="caption-edit-inline-cancel"
+                onClick={() => onCaptionEditCancel?.()}
+                className="rounded-md px-3 py-1.5 text-[14px] font-medium text-[#65676b] hover:bg-[#f2f2f2]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-testid="caption-edit-inline-save"
+                onClick={() => void onCaptionEditSave?.()}
+                disabled={saveDisabled}
+                className="rounded-md bg-[#1877f2] px-3 py-1.5 text-[14px] font-semibold text-white hover:bg-[#1668d6] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="whitespace-pre-line">
+            <CaptionMarkup
+              caption={captionDisplay}
+              existingPins={captionPins.filter((p) => p.to <= captionDisplay.length)}
+              onPinClick={(id) => openThreadAt(id, null)}
+              onCreatePin={handleCreateCaptionPin}
+            />
+            {needsTruncation && !expanded && (
+              <>
+                {'… '}
+                <button
+                  type="button"
+                  onClick={() => setExpanded(true)}
+                  className="cursor-pointer font-semibold text-[#65676b] hover:underline"
+                >
+                  See more
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {!editing && captionOverride !== undefined && (
+          <p
+            className="mt-1 text-[12px] text-[#65676b]"
+            data-testid="facebook-post-edit-indicator"
+          >
+            Edited{' · '}
             <button
               type="button"
-              onClick={() => setExpanded(true)}
-              className="cursor-pointer font-semibold text-[#65676b] hover:underline"
+              data-testid="facebook-post-toggle-original"
+              onClick={() => setShowOriginal((prev) => !prev)}
+              className="text-[#1877f2] hover:underline"
             >
-              See more
+              {showOriginal ? 'back to your edit' : 'view original'}
             </button>
-          </>
+          </p>
         )}
-        {post.hashtags.length > 0 && (
+
+        {!editing && post.hashtags.length > 0 && (
           <div className="mt-1 text-[#1877f2]">
             {post.hashtags
               .map((tag) => (tag.startsWith('#') ? tag : `#${tag}`))

@@ -46,7 +46,7 @@ const BASE_PROPS = {
   sessionStatus: 'in_progress' as const,
 }
 
-describe('ReviewSessionShell -- caption edit wiring', () => {
+describe('ReviewSessionShell -- inline caption edit wiring', () => {
   beforeEach(() => {
     // Resolve every PATCH to /api/review/[token]/draft as a no-op success.
     vi.stubGlobal(
@@ -62,30 +62,28 @@ describe('ReviewSessionShell -- caption edit wiring', () => {
     vi.restoreAllMocks()
   })
 
-  it('opens the bottom sheet when Edit Copy is tapped on a post', async () => {
+  it('renders the inline caption editor when Edit Copy is tapped', async () => {
     render(<ReviewSessionShell {...BASE_PROPS} />)
 
-    // Sheet is not in the DOM before the user opens it.
+    // Inline editor is not in the DOM before the user opens it.
     expect(
-      screen.queryByTestId('caption-edit-sheet'),
+      screen.queryByTestId('caption-edit-inline-textarea'),
     ).not.toBeInTheDocument()
 
-    // Decision-button-row exposes a button per decision. Edit Copy is one of
-    // three; grabbing by accessible name keeps the test resilient to layout.
     const [editCopy] = screen.getAllByRole('button', {
       name: /edit copy on this post/i,
     })
     fireEvent.click(editCopy)
 
-    // Sheet renders and shows the post's original caption (verifiable when
-    // expanded). The presence of the dialog testid is enough for wiring.
-    expect(screen.getByTestId('caption-edit-sheet')).toBeInTheDocument()
+    // Inline textarea renders.
+    expect(
+      screen.getByTestId('caption-edit-inline-textarea'),
+    ).toBeInTheDocument()
   })
 
   it('Save persists suggestedCaption + decision via the draft PATCH', async () => {
     render(<ReviewSessionShell {...BASE_PROPS} />)
 
-    // Open the sheet on post-1.
     const [editCopy] = screen.getAllByRole('button', {
       name: /edit copy on this post/i,
     })
@@ -104,12 +102,12 @@ describe('ReviewSessionShell -- caption edit wiring', () => {
 
     // Type a new caption and click Save.
     const textarea = screen.getByTestId(
-      'caption-edit-textarea',
+      'caption-edit-inline-textarea',
     ) as HTMLTextAreaElement
     fireEvent.change(textarea, {
       target: { value: 'A better suggested caption.' },
     })
-    const save = screen.getByTestId('caption-edit-save')
+    const save = screen.getByTestId('caption-edit-inline-save')
     await act(async () => {
       fireEvent.click(save)
     })
@@ -125,15 +123,15 @@ describe('ReviewSessionShell -- caption edit wiring', () => {
       suggestedCaption: 'A better suggested caption.',
     })
 
-    // Sheet closes on save.
+    // Inline editor closes on save.
     await waitFor(() => {
       expect(
-        screen.queryByTestId('caption-edit-sheet'),
+        screen.queryByTestId('caption-edit-inline-textarea'),
       ).not.toBeInTheDocument()
     })
   })
 
-  it('Cancel closes the sheet without an extra PATCH', async () => {
+  it('Cancel closes the inline editor and reverts the decision', async () => {
     render(<ReviewSessionShell {...BASE_PROPS} />)
 
     const [editCopy] = screen.getAllByRole('button', {
@@ -145,17 +143,26 @@ describe('ReviewSessionShell -- caption edit wiring', () => {
       expect(global.fetch).toHaveBeenCalledTimes(1) // optimistic decision PATCH
     })
 
-    const cancel = screen.getByTestId('caption-edit-cancel')
+    const cancel = screen.getByTestId('caption-edit-inline-cancel')
     fireEvent.click(cancel)
 
     expect(
-      screen.queryByTestId('caption-edit-sheet'),
+      screen.queryByTestId('caption-edit-inline-textarea'),
     ).not.toBeInTheDocument()
-    // No additional PATCH from cancel.
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+
+    // The Cancel path reverts the decision back to `not_reviewed` via a
+    // second PATCH (the prior decision before Edit Copy was tapped).
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+    })
+    const secondCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[1]
+    expect(JSON.parse(secondCall[1].body)).toMatchObject({
+      postId: 'post-1',
+      decision: 'not_reviewed',
+    })
   })
 
-  it('re-opens the sheet via the Suggested edit hint pill', async () => {
+  it('re-entering Edit Copy with a saved suggestion pre-fills the textarea', async () => {
     const initialItem: ReviewItemHydrated = {
       id: 'item-1',
       postId: 'post-1',
@@ -172,14 +179,15 @@ describe('ReviewSessionShell -- caption edit wiring', () => {
       <ReviewSessionShell {...BASE_PROPS} initialItems={[initialItem]} />,
     )
 
-    const hint = screen.getByTestId('review-post-card-edit-hint')
-    fireEvent.click(hint)
+    // With an existing suggestion, the chrome surfaces the override + the
+    // `Edited · view original` toggle. To re-enter editing, tap Edit Copy.
+    const [editCopy] = screen.getAllByRole('button', {
+      name: /edit copy on this post/i,
+    })
+    fireEvent.click(editCopy)
 
-    expect(screen.getByTestId('caption-edit-sheet')).toBeInTheDocument()
-
-    // Sheet initialises with the saved draft, not the original caption.
     const textarea = screen.getByTestId(
-      'caption-edit-textarea',
+      'caption-edit-inline-textarea',
     ) as HTMLTextAreaElement
     expect(textarea.value).toBe('A prior suggestion')
   })

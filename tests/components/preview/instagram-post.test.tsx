@@ -419,4 +419,129 @@ describe('InstagramFeedPost', () => {
       expect(mediaContainerAspectRatio()).toBe(1)
     })
   })
+
+  describe('inline caption edit', () => {
+    it('renders the inline editor with textarea + save/cancel when editing is true', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Original caption.', hashtags: ['tag1'], mediaUrl: null },
+            editing: true,
+            captionDraft: 'My new draft',
+            onCaptionDraftChange: () => {},
+            onCaptionEditSave: () => {},
+            onCaptionEditCancel: () => {},
+          })}
+        />,
+      )
+
+      const textarea = screen.getByTestId('caption-edit-inline-textarea') as HTMLTextAreaElement
+      expect(textarea.value).toBe('My new draft')
+      expect(screen.getByTestId('caption-edit-inline-save')).toBeInTheDocument()
+      expect(screen.getByTestId('caption-edit-inline-cancel')).toBeInTheDocument()
+
+      // Read-only caption is suppressed while editing; hashtags remain.
+      expect(screen.queryByTestId('instagram-post-caption')).not.toBeInTheDocument()
+      expect(screen.getByTestId('instagram-post-hashtags')).toBeInTheDocument()
+    })
+
+    it('Save is disabled while the draft equals the original caption', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Same text.', hashtags: [], mediaUrl: null },
+            editing: true,
+            captionDraft: 'Same text.',
+            onCaptionDraftChange: () => {},
+            onCaptionEditSave: () => {},
+            onCaptionEditCancel: () => {},
+          })}
+        />,
+      )
+
+      expect(screen.getByTestId('caption-edit-inline-save')).toBeDisabled()
+    })
+
+    it('Save fires onCaptionEditSave when draft differs', async () => {
+      const onCaptionEditSave = vi.fn()
+      const user = userEvent.setup()
+
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Original.', hashtags: [], mediaUrl: null },
+            editing: true,
+            captionDraft: 'A different caption.',
+            onCaptionDraftChange: () => {},
+            onCaptionEditSave,
+            onCaptionEditCancel: () => {},
+          })}
+        />,
+      )
+
+      await user.click(screen.getByTestId('caption-edit-inline-save'))
+      expect(onCaptionEditSave).toHaveBeenCalledTimes(1)
+    })
+
+    it('Cancel fires onCaptionEditCancel', async () => {
+      const onCaptionEditCancel = vi.fn()
+      const user = userEvent.setup()
+
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Original.', hashtags: [], mediaUrl: null },
+            editing: true,
+            captionDraft: 'A change.',
+            onCaptionDraftChange: () => {},
+            onCaptionEditSave: () => {},
+            onCaptionEditCancel,
+          })}
+        />,
+      )
+
+      await user.click(screen.getByTestId('caption-edit-inline-cancel'))
+      expect(onCaptionEditCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('renders captionOverride instead of post.caption when not editing', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Original caption.', hashtags: [], mediaUrl: null },
+            captionOverride: 'Reviewer suggested caption.',
+          })}
+        />,
+      )
+
+      const caption = screen.getByTestId('instagram-post-caption')
+      expect(caption.textContent).toContain('Reviewer suggested caption.')
+      expect(caption.textContent).not.toContain('Original caption.')
+      expect(screen.getByTestId('instagram-post-edit-indicator')).toBeInTheDocument()
+    })
+
+    it('view original / back to your edit toggle swaps which caption is rendered', async () => {
+      const user = userEvent.setup()
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Original caption.', hashtags: [], mediaUrl: null },
+            captionOverride: 'Reviewer suggested caption.',
+          })}
+        />,
+      )
+
+      const toggle = screen.getByTestId('instagram-post-toggle-original')
+      expect(toggle.textContent).toBe('view original')
+
+      await user.click(toggle)
+      expect(screen.getByTestId('instagram-post-caption').textContent).toContain('Original caption.')
+      expect(toggle.textContent).toBe('back to your edit')
+
+      await user.click(toggle)
+      expect(screen.getByTestId('instagram-post-caption').textContent).toContain(
+        'Reviewer suggested caption.',
+      )
+    })
+  })
 })
