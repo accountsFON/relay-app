@@ -194,6 +194,7 @@ export async function passBaton(input: PassBatonInput) {
         currentStep: true,
         currentHolder: true,
         label: true,
+        clientReviewEnabled: true,
         client: { select: { organizationId: true } },
       },
     })
@@ -204,7 +205,7 @@ export async function passBaton(input: PassBatonInput) {
       throw new RelayServiceError('Relay not found')
     }
 
-    const result = validateTransition(batch.currentStep, input.toStep)
+    const result = validateTransition(batch.currentStep, input.toStep, batch.clientReviewEnabled)
     if (!result.ok) throw new RelayServiceError(result.reason ?? 'Illegal transition')
     if (result.direction !== 'forward' && result.direction !== 'auto') {
       throw new RelayServiceError(
@@ -301,6 +302,7 @@ export async function finishBatch(input: FinishBatchInput) {
         currentStep: true,
         currentHolder: true,
         label: true,
+        clientReviewEnabled: true,
         client: { select: { organizationId: true } },
       },
     })
@@ -309,7 +311,7 @@ export async function finishBatch(input: FinishBatchInput) {
       throw new RelayServiceError('Relay not found')
     }
 
-    const result = validateTransition(batch.currentStep, RelayStep.completed)
+    const result = validateTransition(batch.currentStep, RelayStep.completed, batch.clientReviewEnabled)
     if (!result.ok) throw new RelayServiceError(result.reason ?? 'Illegal transition')
 
     const completedByName = await loadUserName(tx, input.actorId)
@@ -371,6 +373,7 @@ export async function sendBackBaton(input: SendBackBatonInput) {
         currentStep: true,
         currentHolder: true,
         label: true,
+        clientReviewEnabled: true,
         client: { select: { organizationId: true } },
       },
     })
@@ -380,7 +383,7 @@ export async function sendBackBaton(input: SendBackBatonInput) {
       throw new RelayServiceError('Relay not found')
     }
 
-    const result = validateTransition(batch.currentStep, input.toStep)
+    const result = validateTransition(batch.currentStep, input.toStep, batch.clientReviewEnabled)
     if (!result.ok) throw new RelayServiceError(result.reason ?? 'Illegal transition')
     if (result.direction !== 'send_back') {
       throw new RelayServiceError(

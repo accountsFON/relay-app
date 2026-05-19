@@ -318,6 +318,7 @@ describe('passBaton', () => {
       currentStep: RelayStep.am_qa_pre_client,
       currentHolder: 'u_am',
       label: '2026-05',
+      clientReviewEnabled: true,
       client: { organizationId: 'org_1' },
     })
     await passBaton({
@@ -340,6 +341,7 @@ describe('passBaton', () => {
       currentStep: RelayStep.am_qa_pre_client,
       currentHolder: 'u_am',
       label: '2026-05',
+      clientReviewEnabled: true,
       client: { organizationId: 'org_1' },
     })
     await passBaton({
@@ -636,6 +638,76 @@ describe('cross-tenant scope guards', () => {
     // check moves the batch lookup before the update specifically so a
     // cross-org caller cannot mutate item state before the check.
     expect(currentTx.tx.revisionItem.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('passBaton, no review flow', () => {
+  it('forwards am_qa_pre_client to ready_to_schedule on a no review batch', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_qa_pre_client,
+      currentHolder: 'u_am',
+      label: 'Foo May 2026',
+      clientReviewEnabled: false,
+      client: { organizationId: 'org_1' },
+    })
+    const result = await passBaton({
+      batchId: 'b1',
+      toStep: RelayStep.ready_to_schedule,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.toStep).toBe(RelayStep.ready_to_schedule)
+    expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
+    const batchUpdateCall = currentTx.tx.batch.update.mock.calls[0][0]
+    expect(batchUpdateCall.data.currentStep).toBe(RelayStep.ready_to_schedule)
+    expect(currentTx.tx.relayEvent.create).toHaveBeenCalledOnce()
+    const relayEventCall = currentTx.tx.relayEvent.create.mock.calls[0][0]
+    expect(relayEventCall.data.type).toBe('pass_forward')
+    expect(relayEventCall.data.toStep).toBe(RelayStep.ready_to_schedule)
+  })
+
+  it('rejects am_qa_pre_client to sent_to_client on a no review batch', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_qa_pre_client,
+      currentHolder: 'u_am',
+      label: 'Foo May 2026',
+      clientReviewEnabled: false,
+      client: { organizationId: 'org_1' },
+    })
+    await expect(
+      passBaton({
+        batchId: 'b1',
+        toStep: RelayStep.sent_to_client,
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/Illegal transition/)
+  })
+
+  it('regression: am_qa_pre_client to sent_to_client still legal on a review enabled batch', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_qa_pre_client,
+      currentHolder: 'u_am',
+      label: 'Foo May 2026',
+      clientReviewEnabled: true,
+      client: { organizationId: 'org_1' },
+    })
+    const result = await passBaton({
+      batchId: 'b1',
+      toStep: RelayStep.sent_to_client,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.toStep).toBe(RelayStep.sent_to_client)
+    expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
+    const batchUpdateCall = currentTx.tx.batch.update.mock.calls[0][0]
+    expect(batchUpdateCall.data.currentStep).toBe(RelayStep.sent_to_client)
   })
 })
 

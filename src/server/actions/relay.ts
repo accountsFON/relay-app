@@ -161,6 +161,7 @@ export async function markBatchReviewedAction(input: {
       clientId: true,
       currentStep: true,
       label: true,
+      clientReviewEnabled: true,
       client: { select: { organizationId: true } },
     },
   })
@@ -171,7 +172,7 @@ export async function markBatchReviewedAction(input: {
   // 2. Find the next forward step. Refuse to auto-pick if the current step
   // branches (e.g. client_decision has two forward edges); the AM should
   // use the regular Pass Baton UI in those cases.
-  const forwardSteps = legalNextSteps(batch.currentStep).filter(
+  const forwardSteps = legalNextSteps(batch.currentStep, batch.clientReviewEnabled).filter(
     (t) => t.direction === 'forward',
   )
   if (forwardSteps.length === 0) {
