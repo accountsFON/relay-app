@@ -71,6 +71,28 @@ export function ClientProfileView({
         </KeyValueGrid>
       </PageSection>
 
+      <PageSection title="Workflow">
+        <FieldStack>
+          <BooleanField
+            clientId={client.id}
+            fieldKey="clientReviewEnabled"
+            label="Client Review"
+            value={client.clientReviewEnabled}
+            canEdit={canEdit}
+            onLabel="On"
+            offLabel="Off"
+            description={
+              <>
+                When on, this client gets steps 8 and 9 in the relay (Sent to
+                client and Client review). When off, batches skip those steps
+                and shorten to 10 total. Changes only apply to new batches;
+                open batches keep the flow they started under.
+              </>
+            }
+          />
+        </FieldStack>
+      </PageSection>
+
       <PageSection title="Assets">
         <FieldStack>
           <UrlListField clientId={client.id} label="URLs" urls={client.urls} canEdit={canEdit} />
@@ -733,6 +755,99 @@ function SelectField({
         </>
       ) : (
         <dd className="text-[15px] text-foreground">{selectedLabel}</dd>
+      )}
+    </div>
+  )
+}
+
+function BooleanField({
+  clientId,
+  fieldKey,
+  label,
+  value,
+  canEdit,
+  description,
+  onLabel = 'On',
+  offLabel = 'Off',
+}: {
+  clientId: string
+  fieldKey: FieldKey
+  label: string
+  value: boolean
+  canEdit: boolean
+  description?: React.ReactNode
+  onLabel?: string
+  offLabel?: string
+}) {
+  const editor = useFieldEditor<boolean>({
+    clientId,
+    fieldKey,
+    initial: value,
+  })
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <FieldHeader
+        label={label}
+        canEdit={canEdit}
+        editing={editor.editing}
+        pending={editor.pending}
+        isDirty={editor.isDirty}
+        onEdit={editor.startEdit}
+        onSave={editor.save}
+        onCancel={editor.cancel}
+      />
+      {editor.editing ? (
+        <>
+          <label
+            htmlFor={`${fieldKey}-edit`}
+            className="flex items-start gap-3 cursor-pointer rounded-xl border border-input bg-card px-3.5 py-2.5"
+          >
+            <input
+              autoFocus
+              id={`${fieldKey}-edit`}
+              type="checkbox"
+              checked={editor.draft}
+              onChange={(e) => editor.setDraft(e.target.checked)}
+              className="mt-1 size-4"
+            />
+            <span className="flex flex-col gap-1 text-[14px] leading-relaxed">
+              <span className="font-medium text-foreground">
+                {editor.draft ? onLabel : offLabel}
+              </span>
+              {description && (
+                <span className="text-[12px] text-muted-foreground">
+                  {description}
+                </span>
+              )}
+            </span>
+          </label>
+          <FieldError error={editor.error} />
+        </>
+      ) : (
+        <div className="space-y-1">
+          <dd className="flex items-center gap-2">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-2.5 h-7 text-[12px] font-medium tabular-nums',
+                value
+                  ? 'bg-foreground text-cream'
+                  : 'bg-cream-warm text-ink-50',
+              )}
+            >
+              <span
+                className={cn(
+                  'size-1.5 rounded-full',
+                  value ? 'bg-cream' : 'bg-ink-50',
+                )}
+              />
+              {value ? onLabel : offLabel}
+            </span>
+          </dd>
+          {description && (
+            <p className="text-[12px] text-muted-foreground">{description}</p>
+          )}
+        </div>
       )}
     </div>
   )
