@@ -1,6 +1,18 @@
 /**
  * Header DateScope pill + search bar behavior. Runs as the admin persona
  * since admin sees the most pages.
+ *
+ * Responsibility split after T12 (2026-05-21 notification-bell-and-heartbeat-plan):
+ *  - The InFlightRunsPill (`<Sparkles> N runs`) renders ONLY active +
+ *    awaiting_choice runs. Failed runs are stripped from its list
+ *    (`r.intent !== 'failed'` filter in in-flight-runs-pill.tsx).
+ *  - Failed runs surface in the notification bell as FailedRunRow with
+ *    inline Retry / Dismiss buttons (see e2e/am/failed-run-bell.spec.ts).
+ *
+ * This file does not assert on the failed-runs branch of the pill because
+ * the demo seed does not plant a failed in-flight run for the admin
+ * persona. The presence-in-bell side of the split is exercised in the
+ * dedicated bell specs under e2e/am/.
  */
 import { test, expect } from '@playwright/test'
 
