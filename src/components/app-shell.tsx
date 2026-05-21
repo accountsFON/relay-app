@@ -15,6 +15,9 @@ import { InFlightRunsProvider } from '@/components/relay/in-flight-runs-provider
 import { InFlightRunsPill } from '@/components/relay/in-flight-runs-pill'
 import { InFlightAutoFinalizer } from '@/components/relay/in-flight-auto-finalizer'
 import { CompletionNotificationsProvider, CompletionNotificationsBanner } from '@/components/relay/completion-notifications'
+import { NotificationProvider } from '@/components/notifications/notification-provider'
+import { HeaderBell } from '@/components/notifications/header-bell'
+import { NotificationDropdown } from '@/components/notifications/notification-dropdown'
 
 type BadgeKey = 'unreadMentions'
 type NavItem = {
@@ -93,6 +96,7 @@ export function AppShell({
 
   return (
     <InFlightRunsProvider>
+    <NotificationProvider>
     <CompletionNotificationsProvider>
     <div className="flex h-dvh flex-col md:flex-row bg-background">
       {sidebarOpen && (
@@ -214,6 +218,10 @@ export function AppShell({
           <div className="ml-auto flex items-center gap-2">
             <MobileSearchSheet />
             <DateScopePill />
+            <div className="relative">
+              <HeaderBell />
+              <NotificationDropdown />
+            </div>
           </div>
         </header>
 
@@ -221,6 +229,10 @@ export function AppShell({
           <SearchBar />
           <InFlightRunsPill />
           <DateScopePill />
+          <div className="relative">
+            <HeaderBell />
+            <NotificationDropdown />
+          </div>
         </header>
 
         {/* tabindex="0" makes the scrollable main region keyboard navigable
@@ -235,6 +247,7 @@ export function AppShell({
     <InFlightAutoFinalizer />
     <CompletionNotificationsBanner />
     </CompletionNotificationsProvider>
+    </NotificationProvider>
     </InFlightRunsProvider>
   )
 }

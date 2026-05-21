@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { INTENT_PRIORITY } from '@/components/relay/in-flight-runs-utils'
 import { RunProgressLine } from '@/components/relay/run-progress-line'
-import { FailedRunActions } from '@/components/relay/failed-run-actions'
 
 export function InFlightRunsPill() {
   const { runs } = useInFlightRuns()
@@ -34,6 +33,7 @@ export function InFlightRunsPill() {
   }, [open])
 
   const sorted = [...runs]
+    .filter((r) => r.intent !== 'failed')
     .filter((r) => !(r.intent === 'awaiting_choice' && clickedAcknowledged.has(r.id)))
     .sort((a, b) => {
       const p = INTENT_PRIORITY[a.intent] - INTENT_PRIORITY[b.intent]
@@ -71,43 +71,32 @@ export function InFlightRunsPill() {
           </div>
           <ul className="py-2 max-h-[400px] overflow-auto">
             {sorted.map((run) => {
-              const isFailed = run.intent === 'failed'
               const rowBody = (
                 <>
                   <p className="font-medium text-foreground">{run.clientName}</p>
-                  <div
-                    className={`text-muted-foreground ${isFailed ? '' : 'truncate'}`}
-                    title={isFailed && run.errorMessage ? `Failed: ${run.errorMessage}` : undefined}
-                  >
+                  <div className="text-muted-foreground truncate">
                     <RunProgressLine run={run} />
                   </div>
                 </>
               )
               return (
                 <li key={run.id} data-testid="inflight-row" className="text-[13px]">
-                  {isFailed ? (
-                    <div className="px-4 py-2">
-                      {rowBody}
-                      <FailedRunActions runId={run.id} />
-                    </div>
-                  ) : (
-                    <Link
-                      href={`/clients/${run.clientId}`}
-                      onClick={() => {
-                        if (run.intent === 'awaiting_choice') {
-                          setClickedAcknowledged((prev) => {
-                            const next = new Set(prev)
-                            next.add(run.id)
-                            return next
-                          })
-                        }
-                        setOpen(false)
-                      }}
-                      className="block px-4 py-2 hover:bg-cream-warm/60 transition-colors"
-                    >
-                      {rowBody}
-                    </Link>
-                  )}
+                  <Link
+                    href={`/clients/${run.clientId}`}
+                    onClick={() => {
+                      if (run.intent === 'awaiting_choice') {
+                        setClickedAcknowledged((prev) => {
+                          const next = new Set(prev)
+                          next.add(run.id)
+                          return next
+                        })
+                      }
+                      setOpen(false)
+                    }}
+                    className="block px-4 py-2 hover:bg-cream-warm/60 transition-colors"
+                  >
+                    {rowBody}
+                  </Link>
                 </li>
               )
             })}
