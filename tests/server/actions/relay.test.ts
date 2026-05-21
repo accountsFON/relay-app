@@ -44,10 +44,11 @@ vi.mock('next/cache', () => ({
 
 import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
-import { passBaton, sendBackBaton } from '@/server/services/relay'
+import { passBaton, sendBackBaton, finishBatch } from '@/server/services/relay'
 import {
   passBatonAction,
   sendBackBatonAction,
+  finishBatchAction,
 } from '@/server/actions/relay'
 import { RelayStep } from '@prisma/client'
 
@@ -86,6 +87,7 @@ beforeEach(() => {
     toStep: RelayStep.in_design,
     newHolderId: 'u_designer',
   })
+  vi.mocked(finishBatch).mockResolvedValue({ batchId: 'b1' })
 })
 
 describe('passBatonAction holder gate', () => {
@@ -236,5 +238,91 @@ describe('sendBackBatonAction holder gate', () => {
       }),
     ).rejects.toThrow(/only the current holder, an AM, or an admin/i)
     expect(sendBackBaton).not.toHaveBeenCalled()
+  })
+})
+
+describe('finishBatchAction holder gate', () => {
+  it('holder (any role) can finish — wasOverride=false on service call', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    mockBatch('u_actor')
+
+    await finishBatchAction({ batchId: 'b1' })
+
+    expect(finishBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        batchId: 'b1',
+        actorId: 'u_actor',
+        actorOrganizationId: 'org_1',
+        wasOverride: false,
+      }),
+    )
+  })
+
+  it('AM (not holder) can override — wasOverride=true on service call', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    mockBatch('u_someone_else')
+
+    await finishBatchAction({ batchId: 'b1' })
+
+    expect(finishBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'u_actor',
+        wasOverride: true,
+      }),
+    )
+  })
+
+  it('admin (not holder) can override — wasOverride=true on service call', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    mockBatch('u_someone_else')
+
+    await finishBatchAction({ batchId: 'b1' })
+
+    expect(finishBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ wasOverride: true }),
+    )
+  })
+
+  it('platformOwner (not holder) can override — wasOverride=true on service call', async () => {
+    vi.mocked(requireCan).mockResolvedValue(
+      makeCtx('designer', { platformOwner: true }),
+    )
+    mockBatch('u_someone_else')
+
+    await finishBatchAction({ batchId: 'b1' })
+
+    expect(finishBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ wasOverride: true }),
+    )
+  })
+
+  it('designer (not holder, not platformOwner) is rejected', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    mockBatch('u_someone_else')
+
+    await expect(
+      finishBatchAction({ batchId: 'b1' }),
+    ).rejects.toThrow(/only the current holder, an AM, or an admin/i)
+    expect(finishBatch).not.toHaveBeenCalled()
+  })
+
+  it('client (not holder) is rejected', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('client'))
+    mockBatch('u_someone_else')
+
+    await expect(
+      finishBatchAction({ batchId: 'b1' }),
+    ).rejects.toThrow(/only the current holder, an AM, or an admin/i)
+    expect(finishBatch).not.toHaveBeenCalled()
+  })
+
+  it('cross-tenant lookup throws Relay not found', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    mockBatch('u_someone_else', 'org_OTHER')
+
+    await expect(
+      finishBatchAction({ batchId: 'b1' }),
+    ).rejects.toThrow(/relay not found/i)
+    expect(finishBatch).not.toHaveBeenCalled()
   })
 })

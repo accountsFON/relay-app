@@ -334,4 +334,30 @@ describe('EventRenderer copy', () => {
       ),
     ).toBeInTheDocument()
   })
+
+  it('renders batch_completed normally when wasOverride is absent', () => {
+    const event = makeEvent(ActivityKind.batch_completed, {
+      batchId: 'b1',
+      batchLabel: 'Cedar Creek May 2026',
+      completedByName: 'Mollie',
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/finished Cedar Creek May 2026/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/overrode the holder/)).not.toBeInTheDocument()
+  })
+
+  it('renders batch_completed with override prefix when wasOverride=true', () => {
+    const event = makeEvent(ActivityKind.batch_completed, {
+      batchId: 'b1',
+      batchLabel: 'Cedar Creek May 2026',
+      completedByName: 'Mollie',
+      wasOverride: true,
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/overrode the holder and finished Cedar Creek May 2026/),
+    ).toBeInTheDocument()
+  })
 })

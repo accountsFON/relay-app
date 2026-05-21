@@ -19,20 +19,7 @@ import {
 import { legalNextSteps } from '@/server/lib/relay-state-machine'
 import { bulkResolveOnPost } from '@/server/repositories/threads'
 import { recordActivity } from '@/server/services/activity'
-import type { UserRole } from '@/lib/types'
-
-/**
- * Roles that may call passBatonAction / sendBackBatonAction on a batch
- * even when they are NOT the current holder. AMs + admins can override.
- * platformOwner always passes (admin-equivalent on every org).
- *
- * Designer + client stay gated to holder. State-machine legality is
- * still enforced inside the service.
- */
-function canOverrideHolder(role: UserRole, platformOwner: boolean): boolean {
-  if (platformOwner) return true
-  return role === 'admin' || role === 'account_manager'
-}
+import { canOverrideHolder } from '@/lib/relay-holder-override'
 
 /**
  * Cheap scoped lookup used by the action-layer holder gate. Throws the
@@ -100,10 +87,27 @@ export async function passBatonAction(input: {
  */
 export async function finishBatchAction(input: { batchId: string }) {
   const ctx = await requireCan('relay.pass')
+
+  // Mirror the passBatonAction / sendBackBatonAction holder-override gate.
+  // Finishing is a forward direction in the state machine ("move forward"
+  // semantically covers finish), so AMs + admins can complete a batch they
+  // do not currently hold. Designers + clients stay gated to holder.
+  const holder = await loadHolderForGate(input.batchId, ctx.organizationDbId)
+  const isOverride = ctx.userDbId !== holder.currentHolder
+  if (
+    isOverride &&
+    !canOverrideHolder(ctx.role, ctx.platformOwner)
+  ) {
+    throw new Error(
+      'Only the current holder, an AM, or an admin can finish this batch.',
+    )
+  }
+
   const result = await finishBatch({
     batchId: input.batchId,
     actorId: ctx.userDbId,
     actorOrganizationId: ctx.organizationDbId,
+    wasOverride: isOverride,
   })
   revalidatePath('/', 'layout')
   return result

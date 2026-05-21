@@ -83,6 +83,8 @@ export type ModeledActivityPayload =
       batchId: string
       batchLabel: string
       completedByName: string
+      /** See `batch_passed.wasOverride`. */
+      wasOverride?: boolean
     }
   | {
       kind: 'post_thread_opened'

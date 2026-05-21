@@ -942,9 +942,31 @@ describe('finishBatch', () => {
     expect(activityCall.data.payload).toMatchObject({
       batchId: 'b1',
       batchLabel: 'Cedar Creek May 2026',
+      wasOverride: false,
     })
 
     // Checklist is reseeded to an empty list (deleteMany fires; createMany doesn't because there's nothing to seed)
     expect(currentTx.tx.checklistItem.deleteMany).toHaveBeenCalledOnce()
+  })
+
+  it('records wasOverride=true on the batch_completed payload when caller passes it', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.final_qa_schedule,
+      currentHolder: 'u_someone_else',
+      label: 'Cedar Creek May 2026',
+      client: { organizationId: 'org_1' },
+    })
+    await finishBatch({
+      batchId: 'b1',
+      actorId: 'u_am_now',
+      actorOrganizationId: 'org_1',
+      wasOverride: true,
+    })
+    const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
+    expect(activityCall.data.payload).toMatchObject({
+      wasOverride: true,
+    })
   })
 })

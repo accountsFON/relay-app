@@ -189,7 +189,9 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: Check,
         tone: 'success',
-        message: `finished ${p.batchLabel}`,
+        message: p.wasOverride
+          ? `overrode the holder and finished ${p.batchLabel}`
+          : `finished ${p.batchLabel}`,
       }
     case 'batch_step_advanced':
       if (p.kind !== 'batch_step_advanced') break
