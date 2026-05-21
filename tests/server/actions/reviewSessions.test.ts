@@ -222,6 +222,7 @@ describe('submitSessionAction', () => {
           id: CLIENT_ID,
           name: 'Akkoo Coffee',
           assignedAmId: 'user_assigned',
+          assignedDesignerId: null,
           assignedAm: {
             id: 'user_assigned',
             name: 'Mollie Huebner',
@@ -324,6 +325,183 @@ describe('submitSessionAction', () => {
     expect(recordActivity).not.toHaveBeenCalled()
   })
 
+  it('mentions both AM and designer when both are assigned on the client', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveSession).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      round: 1,
+      status: 'in_progress',
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        {
+          id: 'item_1',
+          postId: 'post_1',
+          decision: 'approved',
+          comment: null,
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+        },
+      ],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      status: 'submitted',
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 1,
+        changesRequested: 0,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      creator: {
+        id: 'user_creator',
+        name: 'Caleb',
+        email: 'caleb@fonmarketing.com',
+      },
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        label: 'May 2026',
+        scheduledAt: null,
+        client: {
+          id: CLIENT_ID,
+          name: 'Akkoo Coffee',
+          assignedAmId: 'user_am_123',
+          assignedDesignerId: 'user_designer_456',
+          assignedAm: {
+            id: 'user_am_123',
+            name: 'Mollie',
+            email: 'mollie@fonmarketing.com',
+          },
+        },
+      },
+    } as never)
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      {
+        id: 'post_1',
+        postDate: new Date('2026-05-05T00:00:00Z'),
+        caption: 'caption one',
+      },
+    ] as never)
+    vi.mocked(sendEmail).mockResolvedValue({ id: 'resend_msg_1' } as never)
+
+    await submitSessionAction({ token: TOKEN })
+
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activityInput = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activityInput.kind).toBe(ActivityKind.review_session_submitted)
+    expect(activityInput.mentionedUserIds).toEqual(
+      expect.arrayContaining(['user_am_123', 'user_designer_456']),
+    )
+    expect(activityInput.mentionedUserIds).toHaveLength(2)
+  })
+
+  it('mentions only the AM when assignedDesignerId is null', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveSession).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      round: 1,
+      status: 'in_progress',
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        {
+          id: 'item_1',
+          postId: 'post_1',
+          decision: 'approved',
+          comment: null,
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+        },
+      ],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      status: 'submitted',
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 1,
+        changesRequested: 0,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      creator: {
+        id: 'user_creator',
+        name: 'Caleb',
+        email: 'caleb@fonmarketing.com',
+      },
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        label: 'May 2026',
+        scheduledAt: null,
+        client: {
+          id: CLIENT_ID,
+          name: 'Akkoo Coffee',
+          assignedAmId: 'user_am_123',
+          // No designer assigned.
+          assignedDesignerId: null,
+          assignedAm: {
+            id: 'user_am_123',
+            name: 'Mollie',
+            email: 'mollie@fonmarketing.com',
+          },
+        },
+      },
+    } as never)
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      {
+        id: 'post_1',
+        postDate: new Date('2026-05-05T00:00:00Z'),
+        caption: 'caption one',
+      },
+    ] as never)
+    vi.mocked(sendEmail).mockResolvedValue({ id: 'resend_msg_1' } as never)
+
+    await submitSessionAction({ token: TOKEN })
+
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activityInput = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activityInput.mentionedUserIds).toEqual(['user_am_123'])
+  })
+
   it('email failure does NOT roll back the submission , status still flipped, returns emailError', async () => {
     primeReviewerResolve()
     vi.mocked(findActiveSession).mockResolvedValue({
@@ -387,6 +565,7 @@ describe('submitSessionAction', () => {
           name: 'Akkoo Coffee',
           // Same AM as the link creator , no CC.
           assignedAmId: 'user_creator',
+          assignedDesignerId: null,
           assignedAm: {
             id: 'user_creator',
             name: 'Caleb',
