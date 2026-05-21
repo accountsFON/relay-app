@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/components/notifications/notification-provider'
@@ -8,17 +9,27 @@ import { FailedRunRow } from '@/components/notifications/failed-run-row'
 import type { NotificationItemDTO } from '@/app/api/notifications/summary/route'
 
 export function NotificationDropdown() {
-  const { isOpen, items, count, error } = useNotifications()
+  const { isOpen, items, count, error, closeDropdown } = useNotifications()
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      panelRef.current?.focus()
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   return (
     <div
+      ref={panelRef}
       id="notification-dropdown"
       role="dialog"
       aria-label="Notifications"
+      tabIndex={-1}
       className={cn(
         'absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-1rem)]',
-        'rounded-md border border-border bg-background shadow-lg',
+        'rounded-xl border border-border bg-card shadow-lg z-50',
         'overflow-hidden',
       )}
     >
@@ -54,6 +65,7 @@ export function NotificationDropdown() {
       <div className="border-t border-border px-3 py-2 text-center">
         <Link
           href="/inbox"
+          onClick={closeDropdown}
           className="text-[12px] text-foreground hover:underline"
         >
           See all in inbox →

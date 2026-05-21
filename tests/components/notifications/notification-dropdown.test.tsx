@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { NotificationDropdown } from '@/components/notifications/notification-dropdown'
 
 vi.mock('@/components/notifications/notification-provider', () => ({
@@ -21,14 +21,19 @@ vi.mock('@/server/actions/in-flight-runs', () => ({
 
 import { useNotifications } from '@/components/notifications/notification-provider'
 
-function setup(items: unknown[], isOpen = true, count?: number) {
+function setup(
+  items: unknown[],
+  isOpen = true,
+  count?: number,
+  opts?: { closeDropdown?: ReturnType<typeof vi.fn>; error?: 'offline' | null },
+) {
   ;(useNotifications as any).mockReturnValue({
     items,
     count: count ?? items.length,
     isOpen,
-    closeDropdown: vi.fn(),
+    closeDropdown: opts?.closeDropdown ?? vi.fn(),
     markRead: vi.fn(),
-    error: null,
+    error: opts?.error ?? null,
   })
 }
 
@@ -68,5 +73,26 @@ describe('NotificationDropdown', () => {
     setup([])
     render(<NotificationDropdown />)
     expect(screen.getByRole('link', { name: /See all in inbox/i })).toHaveAttribute('href', '/inbox')
+  })
+
+  it('calls closeDropdown when the "See all in inbox" footer link is clicked', () => {
+    const closeDropdown = vi.fn()
+    setup([], true, undefined, { closeDropdown })
+    render(<NotificationDropdown />)
+    fireEvent.click(screen.getByRole('link', { name: /See all in inbox/i }))
+    expect(closeDropdown).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the offline banner when error is "offline"', () => {
+    setup([], true, undefined, { error: 'offline' })
+    render(<NotificationDropdown />)
+    expect(screen.getByText(/Connection lost, will retry/i)).toBeInTheDocument()
+  })
+
+  it('focuses the dialog panel when isOpen becomes true', () => {
+    setup([])
+    render(<NotificationDropdown />)
+    const panel = screen.getByRole('dialog', { name: /Notifications/i })
+    expect(document.activeElement).toBe(panel)
   })
 })
