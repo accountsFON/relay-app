@@ -70,6 +70,63 @@ export function renderSummary(row: MentionInboxRow): string {
       const month = (payload.targetMonth as string) ?? 'Content'
       return `${prefix}${month} content generation failed for ${clientName}.`
     }
+    case 'review_session_started': {
+      const round = (payload.round as number) ?? 1
+      return `${prefix}Client review round ${round} started.`
+    }
+    case 'review_session_submitted': {
+      const s = payload.summary as { approved: number; changesRequested: number; captionEdited: number } | undefined
+      if (s) {
+        return `${prefix}Client review submitted (${s.approved} approved, ${s.changesRequested} changes, ${s.captionEdited} edits).`
+      }
+      return `${prefix}Client review submitted.`
+    }
+    case 'review_caption_edit_accepted': {
+      const postId = (payload.postId as string) ?? ''
+      return `${prefix}${actor} accepted the client caption edit on post ${postId.slice(0, 6)}.`
+    }
+    case 'review_item_addressed': {
+      const postId = (payload.postId as string) ?? ''
+      return `${prefix}${actor} marked feedback addressed on post ${postId.slice(0, 6)}.`
+    }
+    case 'review_round_started': {
+      const round = (payload.round as number) ?? 1
+      return `${prefix}Round ${round} review opened.`
+    }
+    case 'post_thread_opened': {
+      const postId = (payload.postId as string) ?? ''
+      return `${prefix}${actor} opened a thread on post ${postId.slice(0, 6)}.`
+    }
+    case 'post_thread_resolved': {
+      const postId = (payload.postId as string) ?? ''
+      const reason = payload.resolvedReason as string | undefined
+      if (reason) {
+        return `${prefix}${actor} resolved the thread on post ${postId.slice(0, 6)} ("${reason}").`
+      }
+      return `${prefix}${actor} resolved the thread on post ${postId.slice(0, 6)}.`
+    }
+    case 'magic_link_created': {
+      const recipient = (payload.recipientName as string) ?? 'a reviewer'
+      const expiresAt = payload.expiresAt as string | undefined
+      const expires = expiresAt
+        ? new Date(expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+        : 'soon'
+      return `${prefix}Review link sent to ${recipient}, expires ${expires}.`
+    }
+    case 'magic_link_visited': {
+      const reviewer = (payload.reviewerName as string) ?? 'A reviewer'
+      const isFirst = payload.isFirstVisit === true
+      const tail = isFirst ? 'first visit' : 'returning'
+      return `${prefix}${reviewer} opened the review link (${tail}).`
+    }
+    case 'post_caption_ai_fixed': {
+      const postId = (payload.postId as string) ?? ''
+      return `${prefix}${actor} used AI to fix the caption on post ${postId.slice(0, 6)}.`
+    }
+    case 'preview_review_submitted': {
+      const count = (payload.commentCount as number) ?? 0
+      return `${prefix}${actor} finished reviewing the preview (${count} comments).`
+    }
     default:
       return `${prefix}${actor} mentioned you.`
   }

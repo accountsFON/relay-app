@@ -101,6 +101,88 @@ describe('renderSummary, existing kinds', () => {
   })
 })
 
+describe('renderSummary, new kinds (parity sweep)', () => {
+  it('review_session_started names round', () => {
+    expect(
+      renderSummary(row({ kind: 'review_session_started', round: 1 })),
+    ).toBe('Cedar Creek · Client review round 1 started.')
+  })
+
+  it('review_session_submitted includes summary chips', () => {
+    expect(
+      renderSummary(row({
+        kind: 'review_session_submitted',
+        round: 1,
+        summary: { approved: 3, changesRequested: 1, captionEdited: 1 },
+      })),
+    ).toBe('Cedar Creek · Client review submitted (3 approved, 1 changes, 1 edits).')
+  })
+
+  it('review_caption_edit_accepted names short post ref', () => {
+    expect(
+      renderSummary(row({ kind: 'review_caption_edit_accepted', postId: 'abc123def456' })),
+    ).toBe('Cedar Creek · Mollie accepted the client caption edit on post abc123.')
+  })
+
+  it('review_item_addressed names short post ref', () => {
+    expect(
+      renderSummary(row({ kind: 'review_item_addressed', postId: 'abc123def456' })),
+    ).toBe('Cedar Creek · Mollie marked feedback addressed on post abc123.')
+  })
+
+  it('review_round_started includes round number', () => {
+    expect(
+      renderSummary(row({ kind: 'review_round_started', round: 2 })),
+    ).toBe('Cedar Creek · Round 2 review opened.')
+  })
+
+  it('post_thread_opened names short post ref', () => {
+    expect(
+      renderSummary(row({ kind: 'post_thread_opened', postId: 'abc123def456' })),
+    ).toBe('Cedar Creek · Mollie opened a thread on post abc123.')
+  })
+
+  it('post_thread_resolved includes reason when present', () => {
+    expect(
+      renderSummary(row({ kind: 'post_thread_resolved', postId: 'abc123def456', resolvedReason: 'fixed' })),
+    ).toBe('Cedar Creek · Mollie resolved the thread on post abc123 ("fixed").')
+  })
+
+  it('post_thread_resolved falls back without reason', () => {
+    expect(
+      renderSummary(row({ kind: 'post_thread_resolved', postId: 'abc123def456' })),
+    ).toBe('Cedar Creek · Mollie resolved the thread on post abc123.')
+  })
+
+  it('magic_link_created names recipient and expiry', () => {
+    expect(
+      renderSummary(row({
+        kind: 'magic_link_created',
+        recipientName: 'Sam',
+        expiresAt: '2026-05-28T00:00:00Z',
+      })),
+    ).toBe('Cedar Creek · Review link sent to Sam, expires May 28.')
+  })
+
+  it('magic_link_visited mentions reviewer and visit type', () => {
+    expect(
+      renderSummary(row({ kind: 'magic_link_visited', reviewerName: 'Sam', isFirstVisit: true })),
+    ).toBe('Cedar Creek · Sam opened the review link (first visit).')
+  })
+
+  it('post_caption_ai_fixed names short post ref', () => {
+    expect(
+      renderSummary(row({ kind: 'post_caption_ai_fixed', postId: 'abc123def456' })),
+    ).toBe('Cedar Creek · Mollie used AI to fix the caption on post abc123.')
+  })
+
+  it('preview_review_submitted names comment count', () => {
+    expect(
+      renderSummary(row({ kind: 'preview_review_submitted', commentCount: 4 })),
+    ).toBe('Cedar Creek · Mollie finished reviewing the preview (4 comments).')
+  })
+})
+
 describe('resolveHref, existing kinds', () => {
   it('uses batchId when present in payload', () => {
     expect(
