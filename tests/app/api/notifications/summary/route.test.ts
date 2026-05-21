@@ -96,4 +96,13 @@ describe('GET /api/notifications/summary', () => {
     const res = await GET(req)
     expect(res.headers.get('Cache-Control')).toBe('no-store')
   })
+
+  it('returns 401 when requireOrgContext throws Unauthorized', async () => {
+    mockRequireOrgContext.mockRejectedValue(new Error('Unauthorized'))
+    const req = new NextRequest('http://localhost/api/notifications/summary')
+    const res = await GET(req)
+    expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body).toEqual({ error: 'Unauthorized' })
+  })
 })

@@ -18,7 +18,7 @@ interface NotificationState {
   count: number
   items: NotificationItemDTO[]
   isOpen: boolean
-  error: 'offline' | null
+  error: 'offline' | 'unauthorized' | null
 }
 
 interface NotificationContextValue extends NotificationState {
@@ -42,11 +42,27 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   })
   const stateRef = useRef(state)
   stateRef.current = state
+  // Polling interval ref. Cleared and nulled on 401 so a stale session
+  // doesn't keep hammering the route every 20s from a backgrounded tab.
+  // Only a fresh mount (page reload after re-auth) restarts polling.
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchSummary = useCallback(async () => {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    // If we're already in the unauthorized terminal state, bail. Guards
+    // against a queued tick firing between the 401 response and the
+    // clearInterval below.
+    if (stateRef.current.error === 'unauthorized') return
     try {
       const res = await fetch('/api/notifications/summary')
+      if (res.status === 401) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
+        setState((s) => ({ ...s, error: 'unauthorized' }))
+        return
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const body = (await res.json()) as NotificationSummaryDTO
       setState((s) => ({ ...s, count: body.count, items: body.items, error: null }))
@@ -58,15 +74,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Initial fetch + interval
   useEffect(() => {
     void fetchSummary()
-    const id = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       void fetchSummary()
     }, POLL_MS)
-    return () => clearInterval(id)
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
   }, [fetchSummary])
 
-  // Visibility change handler: immediate fetch on tab return
+  // Visibility change handler: immediate fetch on tab return. Skipped
+  // while unauthorized -- a focus event can't fix a dead session, only
+  // a real re-auth (page reload) can.
   useEffect(() => {
     const onVisibility = () => {
+      if (stateRef.current.error === 'unauthorized') return
       if (document.visibilityState === 'visible') void fetchSummary()
     }
     document.addEventListener('visibilitychange', onVisibility)

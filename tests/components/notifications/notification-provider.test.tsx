@@ -186,4 +186,27 @@ describe('NotificationProvider', () => {
     await flushMicrotasks()
     expect(lastCtx?.error).toBe('offline')
   })
+
+  it('stops polling on 401 and sets unauthorized error', async () => {
+    fetchSpy.mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+    )
+    let lastCtx = null as ReturnType<typeof useNotifications> | null
+    render(
+      <NotificationProvider>
+        <Probe onState={(s) => {
+          lastCtx = s
+        }} />
+      </NotificationProvider>,
+    )
+    await flushMicrotasks()
+    expect(lastCtx?.error).toBe('unauthorized')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    // Advance 60s. No further fetches should fire -- interval was cleared.
+    await act(async () => {
+      vi.advanceTimersByTime(60_000)
+      await Promise.resolve()
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
 })
