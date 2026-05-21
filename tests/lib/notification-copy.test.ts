@@ -2,7 +2,20 @@ import { describe, it, expect } from 'vitest'
 import { renderSummary, resolveHref } from '@/lib/notification-copy'
 import type { MentionInboxRow } from '@/components/activity/types'
 
-function row(payload: Record<string, unknown>, overrides: Partial<MentionInboxRow> = {}): MentionInboxRow {
+/**
+ * Test row factory.
+ *
+ * Mirrors the production data shape: ActivityEvent.kind is set on the event
+ * column, NOT inside the JSONB payload. Emit sites in the codebase do not
+ * inject `kind` into the payload object (see preview-review-emit.ts,
+ * threads.ts, magicLink.ts, posts.ts, reviewSessions.ts).
+ *
+ * Callers may still pass `kind` inside the first arg for ergonomics; the
+ * factory extracts it onto `event.kind` and strips it from the payload so
+ * tests exercise the production shape (no `kind` in payload).
+ */
+function row(input: Record<string, unknown>, overrides: Partial<MentionInboxRow> = {}): MentionInboxRow {
+  const { kind, ...payloadWithoutKind } = input
   return {
     mentionId: 'm1',
     readAt: null,
@@ -10,8 +23,8 @@ function row(payload: Record<string, unknown>, overrides: Partial<MentionInboxRo
     event: {
       id: 'e1',
       createdAt: new Date('2026-05-21T12:00:00Z'),
-      kind: payload.kind as MentionInboxRow['event']['kind'],
-      payload: payload as MentionInboxRow['event']['payload'],
+      kind: kind as MentionInboxRow['event']['kind'],
+      payload: payloadWithoutKind as MentionInboxRow['event']['payload'],
       actor: { id: 'u1', name: 'Mollie', avatarUrl: null },
       runId: null,
       ...(overrides.event ?? {}),
@@ -183,6 +196,48 @@ describe('renderSummary, new kinds (parity sweep)', () => {
   })
 })
 
+describe('renderSummary, production payload shape (no kind in payload)', () => {
+  // Regression: real emit sites (preview-review-emit.ts, threads.ts,
+  // magicLink.ts, posts.ts, reviewSessions.ts) set ActivityEvent.kind on the
+  // column but do NOT inject `kind` into the JSONB payload. Switching on
+  // payload.kind would silently fall through to the generic default copy.
+  // These tests pin the row.event.kind switch to the production shape.
+
+  it('batch_passed renders without kind in payload', () => {
+    const r: MentionInboxRow = {
+      mentionId: 'm1',
+      readAt: null,
+      client: { id: 'c1', name: 'Cedar Creek' },
+      event: {
+        id: 'e1',
+        createdAt: new Date('2026-05-21T12:00:00Z'),
+        kind: 'batch_passed' as MentionInboxRow['event']['kind'],
+        payload: { batchLabel: 'May batch' } as unknown as MentionInboxRow['event']['payload'],
+        actor: { id: 'u1', name: 'Mollie', avatarUrl: null },
+        runId: null,
+      } as MentionInboxRow['event'],
+    } as MentionInboxRow
+    expect(renderSummary(r)).toBe('Cedar Creek · Mollie passed "May batch" to you.')
+  })
+
+  it('preview_review_submitted renders without kind in payload', () => {
+    const r: MentionInboxRow = {
+      mentionId: 'm1',
+      readAt: null,
+      client: { id: 'c1', name: 'Cedar Creek' },
+      event: {
+        id: 'e1',
+        createdAt: new Date('2026-05-21T12:00:00Z'),
+        kind: 'preview_review_submitted' as MentionInboxRow['event']['kind'],
+        payload: { batchId: 'b1', commentCount: 4 } as unknown as MentionInboxRow['event']['payload'],
+        actor: { id: 'u1', name: 'Mollie', avatarUrl: null },
+        runId: null,
+      } as MentionInboxRow['event'],
+    } as MentionInboxRow
+    expect(renderSummary(r)).toBe('Cedar Creek · Mollie finished reviewing the preview (4 comments).')
+  })
+})
+
 describe('resolveHref, existing kinds', () => {
   it('uses batchId when present in payload', () => {
     expect(
@@ -193,7 +248,7 @@ describe('resolveHref, existing kinds', () => {
   it('uses runId when no batchId', () => {
     expect(
       resolveHref(row({ kind: 'run_completed' }, { event: {
-        id: 'e1', kind: 'run_completed', runId: 'r1', payload: { kind: 'run_completed' },
+        id: 'e1', kind: 'run_completed', runId: 'r1', payload: {},
         createdAt: new Date(), actor: { id: 'u1', name: 'M', avatarUrl: null },
       } as MentionInboxRow['event'] })),
     ).toBe('/clients/c1/runs/r1')

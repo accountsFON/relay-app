@@ -16,7 +16,12 @@ export function renderSummary(row: MentionInboxRow): string {
   const payload = row.event.payload as Record<string, unknown>
   const prefix = `${clientName} · `
 
-  switch (payload.kind) {
+  // Switch on the event column kind, NOT payload.kind. Emit sites
+  // (preview-review-emit, threads, magicLink, posts, reviewSessions) set
+  // ActivityEvent.kind on the column but do not inject `kind` into the JSONB
+  // payload. Switching on payload.kind would always fall through to the
+  // default "X mentioned you" copy in production.
+  switch (row.event.kind) {
     case 'comment': {
       const body = (payload.body as string) ?? ''
       const trimmed = body.length > 120 ? body.slice(0, 117) + '…' : body
