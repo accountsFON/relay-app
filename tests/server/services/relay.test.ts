@@ -412,6 +412,151 @@ describe('sendBackBaton', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// AM / admin holder override
+// ---------------------------------------------------------------------------
+// passBaton + sendBackBaton accept a `wasOverride` flag that the caller
+// (the action layer) sets when the actor is NOT the current holder but is
+// permitted to advance anyway (AM, admin, platformOwner). The service
+// writes this through to the activity payload so renderers + notification
+// copy can prefix with "X overrode the holder and ...".
+//
+// The service itself does NOT enforce the role check — legality is still
+// enforced by validateTransition, and the holder gate lives at the action
+// layer (tests for that gate live alongside the action). These tests
+// confirm the payload contract.
+
+describe('passBaton wasOverride flag', () => {
+  it('writes wasOverride=false into payload when omitted (back-compat)', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await passBaton({
+      batchId: 'b1',
+      toStep: RelayStep.in_design,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    const payload = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+      .payload as { wasOverride?: boolean }
+    expect(payload.wasOverride).toBe(false)
+  })
+
+  it('writes wasOverride=true into payload when caller passes it', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      currentHolder: 'u_designer',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await passBaton({
+      batchId: 'b1',
+      toStep: RelayStep.in_design,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+      wasOverride: true,
+    })
+    const payload = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+      .payload as { wasOverride?: boolean }
+    expect(payload.wasOverride).toBe(true)
+  })
+
+  it('illegal transitions are rejected even when override=true', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      currentHolder: 'u_designer',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await expect(
+      passBaton({
+        batchId: 'b1',
+        toStep: RelayStep.sent_to_client, // not legal from copy
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+        wasOverride: true,
+      }),
+    ).rejects.toThrow(RelayServiceError)
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('sendBackBaton wasOverride flag', () => {
+  it('writes wasOverride=false into payload when omitted', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_qa_pre_client,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await sendBackBaton({
+      batchId: 'b1',
+      toStep: RelayStep.design_revisions,
+      reason: 'logo too small',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    const payload = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+      .payload as { wasOverride?: boolean }
+    expect(payload.wasOverride).toBe(false)
+  })
+
+  it('writes wasOverride=true into payload when caller passes it', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_qa_pre_client,
+      currentHolder: 'u_designer',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await sendBackBaton({
+      batchId: 'b1',
+      toStep: RelayStep.design_revisions,
+      reason: 'logo too small',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+      wasOverride: true,
+    })
+    const payload = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+      .payload as { wasOverride?: boolean }
+    expect(payload.wasOverride).toBe(true)
+  })
+
+  it('illegal transitions are rejected even when override=true', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      currentHolder: 'u_designer',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await expect(
+      sendBackBaton({
+        batchId: 'b1',
+        toStep: RelayStep.in_design, // forward, not send_back
+        reason: 'because',
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+        wasOverride: true,
+      }),
+    ).rejects.toThrow(/non-send_back/)
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+})
+
 describe('dispatchRevisions', () => {
   it('refuses empty plans', async () => {
     await expect(

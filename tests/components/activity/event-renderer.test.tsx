@@ -275,4 +275,63 @@ describe('EventRenderer copy', () => {
       screen.getByText(/opened round 2 for re-review/),
     ).toBeInTheDocument()
   })
+
+  // ---------------------------------------------------------------------
+  // AM / admin holder override copy
+  // ---------------------------------------------------------------------
+  // When the actor wasn't the current holder but had permission to advance
+  // anyway (AM/admin), the renderer prefixes the message with "overrode
+  // the holder and ...". Default behavior (wasOverride absent or false)
+  // stays as-is.
+
+  it('renders batch_passed normally when wasOverride is absent', () => {
+    const event = makeEvent(ActivityKind.batch_passed, {
+      batchId: 'b1',
+      batchLabel: 'May Round 1',
+      fromStep: 'copy',
+      toStep: 'in_design',
+      fromUserName: 'Mollie',
+      toUserName: 'Julio',
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/passed May Round 1 to Julio/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/overrode the holder/)).not.toBeInTheDocument()
+  })
+
+  it('renders batch_passed with override prefix when wasOverride=true', () => {
+    const event = makeEvent(ActivityKind.batch_passed, {
+      batchId: 'b1',
+      batchLabel: 'May Round 1',
+      fromStep: 'copy',
+      toStep: 'in_design',
+      fromUserName: 'Mollie',
+      toUserName: 'Julio',
+      wasOverride: true,
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/overrode the holder and passed May Round 1 to Julio/),
+    ).toBeInTheDocument()
+  })
+
+  it('renders batch_sent_back with override prefix when wasOverride=true', () => {
+    const event = makeEvent(ActivityKind.batch_sent_back, {
+      batchId: 'b1',
+      batchLabel: 'May Round 1',
+      fromStep: 'am_review_design',
+      toStep: 'in_design',
+      fromUserName: 'Mollie',
+      toUserName: 'Julio',
+      reason: 'fonts off',
+      wasOverride: true,
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(
+        /overrode the holder and sent May Round 1 back to Julio\. Reason: "fonts off"/,
+      ),
+    ).toBeInTheDocument()
+  })
 })
