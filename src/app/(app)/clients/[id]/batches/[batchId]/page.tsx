@@ -34,6 +34,7 @@ import { findRunForBatch } from '@/server/repositories/contentRuns'
 import { listVersionsForPost } from '@/server/services/postVersions'
 import { resolveBatchTargetMonth } from '@/lib/batch-target-month'
 import { resolveCanvaUrl } from '@/lib/canva'
+import { canOverrideHolder } from '@/lib/relay-holder-override'
 import { PostCard } from '@/components/posts/post-card'
 import { EventAnchor } from '@/components/notifications/event-anchor'
 import {
@@ -207,7 +208,13 @@ export default async function BatchDetailPage({
     daysOnCurrentStep,
   }
 
-  const canAct = batch.currentHolder === ctx.userDbId || ctx.platformOwner
+  // canAct mirrors the server-side holder-override gate on passBatonAction /
+  // sendBackBatonAction / finishBatchAction: holder always acts, plus AMs +
+  // admins + platformOwner can override regardless of who holds. Without
+  // this, the server would permit the call but no UI button would render.
+  const canAct =
+    batch.currentHolder === ctx.userDbId ||
+    canOverrideHolder(ctx.role, ctx.platformOwner)
   // Actions (generate content, export, archive) are unavailable on archived batches.
   const isLive = !batch.deletedAt
 

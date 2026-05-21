@@ -40,6 +40,14 @@ export interface PassBatonInput {
    * to avoid existence leaks.
    */
   actorOrganizationId: string
+  /**
+   * True when the acting user is NOT the current batch holder but is
+   * permitted to advance anyway (AM / admin / platformOwner override).
+   * Audit-only: the service writes this into the `batch_passed` payload
+   * so renderers + notification copy can prefix with "X overrode the
+   * holder and ...". Defaults to false.
+   */
+  wasOverride?: boolean
 }
 
 export interface SendBackBatonInput {
@@ -48,6 +56,8 @@ export interface SendBackBatonInput {
   reason: string
   actorId: string
   actorOrganizationId: string
+  /** See PassBatonInput.wasOverride. */
+  wasOverride?: boolean
 }
 
 export interface DispatchRevisionsInput {
@@ -264,6 +274,7 @@ export async function passBaton(input: PassBatonInput) {
           toUserName,
           newHolderId: next.userId,
           newHolderRole: next.role,
+          wasOverride: input.wasOverride === true,
         },
         mentionedUserIds: mentionsExcludingActor(
           next.notifyUserIds,
@@ -290,6 +301,14 @@ export interface FinishBatchInput {
   batchId: string
   actorId: string
   actorOrganizationId: string
+  /**
+   * True when the acting user is NOT the current batch holder but is
+   * permitted to finish anyway (AM / admin / platformOwner override).
+   * Audit-only: written into the `batch_completed` payload so renderers
+   * can prefix with "X overrode the holder and finished ...". Defaults
+   * to false.
+   */
+  wasOverride?: boolean
 }
 
 export async function finishBatch(input: FinishBatchInput) {
@@ -350,6 +369,7 @@ export async function finishBatch(input: FinishBatchInput) {
           batchId: batch.id,
           batchLabel: batch.label,
           completedByName,
+          wasOverride: input.wasOverride === true,
         },
       },
       tx,
@@ -441,6 +461,7 @@ export async function sendBackBaton(input: SendBackBatonInput) {
           toUserName,
           reason: input.reason,
           newHolderId: next.userId,
+          wasOverride: input.wasOverride === true,
         },
         mentionedUserIds: mentionsExcludingActor(
           next.notifyUserIds,

@@ -30,15 +30,21 @@ export function renderSummary(row: MentionInboxRow): string {
     case 'batch_passed': {
       const batchLabel = payload.batchLabel as string | undefined
       const toStep = payload.toStep as string | undefined
+      const wasOverride = payload.wasOverride === true
       const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
       const stepLabel = toStep ? relayStepLabel(toStep) : ''
       const tail = stepLabel ? ` It is sitting at ${stepLabel}.` : ''
-      return `${prefix}${actor} passed ${relay} to you.${tail}`
+      const verb = wasOverride ? 'overrode the holder and passed' : 'passed'
+      return `${prefix}${actor} ${verb} ${relay} to you.${tail}`
     }
     case 'batch_sent_back': {
       const batchLabel = payload.batchLabel as string | undefined
+      const wasOverride = payload.wasOverride === true
       const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
-      return `${prefix}${actor} sent ${relay} back to you for changes.`
+      const verb = wasOverride
+        ? 'overrode the holder and sent'
+        : 'sent'
+      return `${prefix}${actor} ${verb} ${relay} back to you for changes.`
     }
     case 'batch_revision_dispatched': {
       const itemType = (payload.itemType as string) ?? 'item'

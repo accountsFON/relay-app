@@ -32,6 +32,13 @@ export type ModeledActivityPayload =
       toStep: RelayStep
       fromUserName: string
       toUserName: string
+      /**
+       * True when the actor was NOT the holder at the time of pass but was
+       * permitted to advance anyway (AM / admin / platformOwner override).
+       * Optional for back-compat with historical events written before the
+       * override flag existed; treat absent as false.
+       */
+      wasOverride?: boolean
     }
   | {
       kind: 'batch_sent_back'
@@ -42,6 +49,8 @@ export type ModeledActivityPayload =
       fromUserName: string
       toUserName: string
       reason: string
+      /** See `batch_passed.wasOverride`. */
+      wasOverride?: boolean
     }
   | {
       kind: 'batch_revision_dispatched'
@@ -74,6 +83,8 @@ export type ModeledActivityPayload =
       batchId: string
       batchLabel: string
       completedByName: string
+      /** See `batch_passed.wasOverride`. */
+      wasOverride?: boolean
     }
   | {
       kind: 'post_thread_opened'

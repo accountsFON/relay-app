@@ -157,14 +157,18 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: ArrowRight,
         tone: 'success',
-        message: `passed ${p.batchLabel} to ${p.toUserName}`,
+        message: p.wasOverride
+          ? `overrode the holder and passed ${p.batchLabel} to ${p.toUserName}`
+          : `passed ${p.batchLabel} to ${p.toUserName}`,
       }
     case 'batch_sent_back':
       if (p.kind !== 'batch_sent_back') break
       return {
         icon: ArrowLeft,
         tone: 'warning',
-        message: `sent ${p.batchLabel} back to ${p.toUserName}. Reason: "${truncate(p.reason, 60)}"`,
+        message: p.wasOverride
+          ? `overrode the holder and sent ${p.batchLabel} back to ${p.toUserName}. Reason: "${truncate(p.reason, 60)}"`
+          : `sent ${p.batchLabel} back to ${p.toUserName}. Reason: "${truncate(p.reason, 60)}"`,
       }
     case 'batch_revision_dispatched':
       if (p.kind !== 'batch_revision_dispatched') break
@@ -185,7 +189,9 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: Check,
         tone: 'success',
-        message: `finished ${p.batchLabel}`,
+        message: p.wasOverride
+          ? `overrode the holder and finished ${p.batchLabel}`
+          : `finished ${p.batchLabel}`,
       }
     case 'batch_step_advanced':
       if (p.kind !== 'batch_step_advanced') break

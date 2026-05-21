@@ -196,6 +196,55 @@ describe('renderSummary, new kinds (parity sweep)', () => {
   })
 })
 
+describe('renderSummary, AM / admin holder override', () => {
+  // Audit-only flag: when the actor overrides the holder (AM/admin/platform
+  // owner advancing a batch they don't hold), the renderer prefixes the
+  // copy with "overrode the holder and ..." so the recipient sees who
+  // bypassed the queue.
+
+  it('batch_passed prefixes "overrode the holder and passed" when wasOverride=true', () => {
+    expect(
+      renderSummary(
+        row({
+          kind: 'batch_passed',
+          batchLabel: 'May batch',
+          toStep: 'copy_step',
+          wasOverride: true,
+        }),
+      ),
+    ).toMatch(/Mollie overrode the holder and passed "May batch" to you/)
+  })
+
+  it('batch_passed keeps "passed" when wasOverride absent', () => {
+    expect(
+      renderSummary(
+        row({ kind: 'batch_passed', batchLabel: 'May batch', toStep: 'copy_step' }),
+      ),
+    ).toMatch(/Mollie passed "May batch" to you/)
+    expect(
+      renderSummary(
+        row({ kind: 'batch_passed', batchLabel: 'May batch', toStep: 'copy_step' }),
+      ),
+    ).not.toMatch(/overrode the holder/)
+  })
+
+  it('batch_sent_back prefixes "overrode the holder and sent" when wasOverride=true', () => {
+    expect(
+      renderSummary(
+        row({ kind: 'batch_sent_back', batchLabel: 'May batch', wasOverride: true }),
+      ),
+    ).toBe(
+      'Cedar Creek · Mollie overrode the holder and sent "May batch" back to you for changes.',
+    )
+  })
+
+  it('batch_sent_back keeps "sent ... back" when wasOverride absent', () => {
+    expect(
+      renderSummary(row({ kind: 'batch_sent_back', batchLabel: 'May batch' })),
+    ).toBe('Cedar Creek · Mollie sent "May batch" back to you for changes.')
+  })
+})
+
 describe('renderSummary, production payload shape (no kind in payload)', () => {
   // Regression: real emit sites (preview-review-emit.ts, threads.ts,
   // magicLink.ts, posts.ts, reviewSessions.ts) set ActivityEvent.kind on the
