@@ -2,10 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import {
-  submitPreviewReviewAction,
-  type SubmitPreviewReviewResult,
-} from '@/server/actions/notifications'
+import { submitPreviewReviewAction } from '@/server/actions/notifications'
+import type { SubmitPreviewReviewResult } from '@/server/services/preview-review-emit'
 
 /**
  * Sticky bottom-right button on the AM /preview page. When the AM has

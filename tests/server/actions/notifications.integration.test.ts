@@ -1,18 +1,30 @@
 // @vitest-environment node
 /**
- * Integration tests for src/server/actions/notifications.ts.
+ * Integration tests for the preview review emit path.
  *
  * Mirrors the hoisted-Prisma + TEST_DATABASE_URL pattern from
  * tests/server/repositories/threads.integration.test.ts. Filename ends in
  * `.integration.test.ts` so the unit runner skips it; the integration
  * runner (npm run test:integration) picks it up.
  *
- * Covers submitPreviewReviewAction:
+ * The 4 emit-behavior cases call `emitPreviewReviewSubmit` (the pure
+ * helper in src/server/services/preview-review-emit.ts) directly, bypassing
+ * the `'use server'` action boundary. The helper does no auth, so we can
+ * pass `actorUserId` explicitly without mocking Clerk.
+ *
+ * The 5th case ("rejects cross-org batchId") covers the tenant-scoping
+ * guard in `submitPreviewReviewAction` (the browser-reachable RPC). It
+ * stubs `requireClientEditor` to return an OrgContext for OrgB and seeds
+ * a batch in OrgA — the action must throw with no event/mention written.
+ *
+ * Covers emit behavior:
  *   1. No AM-authored unresolved comments → { notified: false }, no event
  *   2. N AM-authored comments + assigned designer → { notified: true, commentCount }
  *      emits one preview_review_submitted event + one designer Mention
  *   3. No assignedDesigner → still emits event for activity history, no Mention
  *   4. Ignores resolved comments and comments by other authors when counting
+ * Covers tenant scoping:
+ *   5. Cross-org batchId rejects with no side effects
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import { randomUUID } from 'crypto'
@@ -46,6 +58,22 @@ const { db, pool } = await vi.hoisted(async () => {
 
 vi.mock('@/db/client', () => ({ db }))
 
+import type { OrgContext } from '@/lib/types'
+
+// Stubbed by the cross-org test to inject an OrgContext for the
+// requireClientEditor() call inside submitPreviewReviewAction. The
+// emit-behavior tests don't go through the server action, so they
+// leave this alone.
+const requireClientEditorMock: ReturnType<
+  typeof vi.fn<(...args: never[]) => Promise<OrgContext>>
+> = vi.fn(async (): Promise<OrgContext> => {
+  throw new Error('requireClientEditor not stubbed for this test')
+})
+vi.mock('@/server/middleware/permissions', () => ({
+  requireClientEditor: () => requireClientEditorMock(),
+}))
+
+import { emitPreviewReviewSubmit } from '@/server/services/preview-review-emit'
 import { submitPreviewReviewAction } from '@/server/actions/notifications'
 
 afterAll(async () => {
@@ -230,7 +258,7 @@ afterEach(async () => {
   }
 })
 
-describe('submitPreviewReviewAction', () => {
+describe('emitPreviewReviewSubmit', () => {
   it('returns { notified: false } when no AM-authored unresolved comments', async () => {
     const seed = await seedBatchWithPostThreads({
       amId: 'am1',
@@ -239,7 +267,7 @@ describe('submitPreviewReviewAction', () => {
     })
     createdOrgs.push(seed.orgId)
 
-    const result = await submitPreviewReviewAction({
+    const result = await emitPreviewReviewSubmit({
       batchId: seed.batchId,
       actorUserId: seed.amId,
     })
@@ -266,7 +294,7 @@ describe('submitPreviewReviewAction', () => {
     })
     createdOrgs.push(seed.orgId)
 
-    const result = await submitPreviewReviewAction({
+    const result = await emitPreviewReviewSubmit({
       batchId: seed.batchId,
       actorUserId: seed.amId,
     })
@@ -291,7 +319,7 @@ describe('submitPreviewReviewAction', () => {
     })
     createdOrgs.push(seed.orgId)
 
-    const result = await submitPreviewReviewAction({
+    const result = await emitPreviewReviewSubmit({
       batchId: seed.batchId,
       actorUserId: seed.amId,
     })
@@ -319,11 +347,81 @@ describe('submitPreviewReviewAction', () => {
     })
     createdOrgs.push(seed.orgId)
 
-    const result = await submitPreviewReviewAction({
+    const result = await emitPreviewReviewSubmit({
       batchId: seed.batchId,
       actorUserId: seed.amId,
     })
 
     expect(result).toEqual({ notified: true, commentCount: 1 })
+  })
+})
+
+describe('submitPreviewReviewAction (tenant scoping)', () => {
+  beforeEach(() => {
+    requireClientEditorMock.mockReset()
+  })
+
+  it('rejects cross-org batchId and writes no event or mention', async () => {
+    // Seed OrgA — the batch the attacker is targeting.
+    const orgA = await seedBatchWithPostThreads({
+      amId: 'amA',
+      designerId: 'desA',
+      threads: [{ authorId: 'amA', body: 'tighten', resolved: false }],
+    })
+    createdOrgs.push(orgA.orgId)
+
+    // Seed a separate OrgB plus a real user in it. The OrgB user is the
+    // "attacker" — authenticated, has client.edit in their own org, but
+    // has no visibility into OrgA.
+    const uid = randomUUID()
+    const orgB = await db.organization.create({
+      data: {
+        name: `test-notif-orgB-${uid}`,
+        clerkOrgId: `test-notif-orgB-${uid}`,
+      },
+    })
+    createdOrgs.push(orgB.id)
+    const attacker = await db.user.create({
+      data: {
+        clerkUserId: `test-notif-attacker-${uid}`,
+        organizationId: orgB.id,
+        role: 'admin',
+        email: `attacker-${uid}@test.invalid`,
+        name: 'Cross-Org Attacker',
+      },
+    })
+    await db.membership.create({
+      data: { userId: attacker.id, organizationId: orgB.id, role: 'admin' },
+    })
+
+    // Pretend the attacker is the authenticated caller.
+    const attackerCtx: OrgContext = {
+      userId: attacker.clerkUserId,
+      orgId: orgB.clerkOrgId,
+      role: 'admin',
+      plan: 'agency',
+      organizationDbId: orgB.id,
+      userDbId: attacker.id,
+      platformOwner: false,
+      linkedClientId: null,
+      permissionOverrides: null,
+      roleDefaults: {},
+    }
+    requireClientEditorMock.mockResolvedValue(attackerCtx)
+
+    await expect(
+      submitPreviewReviewAction({ batchId: orgA.batchId }),
+    ).rejects.toThrow(/not visible|not found/i)
+
+    // Critical: no ActivityEvent or Mention should have been written
+    // against OrgA's client.
+    const events = await db.activityEvent.findMany({
+      where: { clientId: orgA.clientId, kind: 'preview_review_submitted' },
+    })
+    expect(events).toHaveLength(0)
+    const mentions = await db.mention.findMany({
+      where: { mentionedUserId: orgA.designerId! },
+    })
+    expect(mentions).toHaveLength(0)
   })
 })
