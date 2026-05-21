@@ -187,21 +187,35 @@ export async function createThread(
   // errors internally so an activity write failure cannot abort the
   // thread create. clientId is required for activity rollup; load it
   // from the post (post must exist since the thread was created above).
+  // Also pull the client's assignedDesignerId so we can auto-notify the
+  // designer when an AM opens the FIRST comment on a thread (by definition
+  // this is the first comment — it's the create-thread path). Skip the
+  // mention when the AM IS the designer (self-notify) or when no designer
+  // is assigned.
   const post = await db.post.findUnique({
     where: { id: postId },
-    select: { clientId: true },
+    select: {
+      clientId: true,
+      client: { select: { assignedDesignerId: true } },
+    },
   })
   if (post) {
+    const actorUserId = author.kind === 'am' ? author.userId : null
+    const designerId = post.client?.assignedDesignerId ?? null
+    const mentionedUserIds =
+      designerId && designerId !== actorUserId ? [designerId] : []
+
     await recordActivity({
       clientId: post.clientId,
       postId,
-      actorId: author.kind === 'am' ? author.userId : null,
+      actorId: actorUserId,
       kind: ActivityKind.post_thread_opened,
       payload: {
         threadId: result.threadId,
         postId,
         pinLocation: pin.kind,
       },
+      mentionedUserIds,
     })
   }
 

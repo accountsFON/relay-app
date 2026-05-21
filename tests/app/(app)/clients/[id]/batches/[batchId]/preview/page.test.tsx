@@ -33,7 +33,31 @@ vi.mock('@/db/client', () => ({
     post: {
       findMany: vi.fn(),
     },
+    postComment: {
+      count: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
+    },
   },
+}))
+
+// PreviewSubmitButton is a client component with hooks ('use client'). Stub
+// it so the server-side page render under jsdom doesn't try to mount the
+// real component (its action surface is covered by the integration tests).
+vi.mock('@/components/notifications/preview-submit-button', () => ({
+  PreviewSubmitButton: (props: {
+    batchId: string
+    designerName: string | null
+    initialCommentCount: number
+  }) => (
+    <div
+      data-testid="preview-submit-button-stub"
+      data-batch-id={props.batchId}
+      data-designer-name={props.designerName ?? ''}
+      data-initial-comment-count={String(props.initialCommentCount)}
+    />
+  ),
 }))
 
 // The preview shell is a client component with hooks ('use client'). Stub it
@@ -129,6 +153,8 @@ describe('BatchPreviewPage', () => {
     vi.mocked(findClientForUser).mockResolvedValue(mockClient as never)
     vi.mocked(findBatch).mockResolvedValue(mockBatch as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)
+    vi.mocked(db.postComment.count).mockResolvedValue(0 as never)
+    vi.mocked(db.user.findUnique).mockResolvedValue(null as never)
     vi.mocked(listThreadsForBatch).mockResolvedValue(new Map())
     vi.mocked(derivePostApprovalForBatch).mockResolvedValue({
       ready: 2,

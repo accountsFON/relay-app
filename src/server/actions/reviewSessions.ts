@@ -338,6 +338,7 @@ export async function submitSessionAction(input: {
               id: true,
               name: true,
               assignedAmId: true,
+              assignedDesignerId: true,
               assignedAm: { select: { id: true, name: true, email: true } },
             },
           },
@@ -361,6 +362,17 @@ export async function submitSessionAction(input: {
   // does not depend on the email succeeding. recordActivity is itself
   // try/catch-wrapped so this cannot throw.
   if (link) {
+    // Auto-notify the assigned AM + designer so they see the bell light up
+    // the moment the client submits. Reviewer is a magic-link visitor with
+    // no Clerk identity, so the "don't self-notify" gate that applies on
+    // AM-triggered events is moot here — neither assignee can be the
+    // submitter. We filter nulls out so Mentions only attaches rows for
+    // actually-assigned roles.
+    const mentionedUserIds = [
+      link.batch.client.assignedAmId,
+      link.batch.client.assignedDesignerId,
+    ].filter((id): id is string => id !== null)
+
     await recordActivity({
       clientId: link.batch.clientId,
       postId: null,
@@ -375,6 +387,7 @@ export async function submitSessionAction(input: {
         round: submitted.round,
         summary,
       },
+      mentionedUserIds,
     })
   }
 

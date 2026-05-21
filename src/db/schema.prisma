@@ -128,6 +128,7 @@ enum ActivityKind {
   review_caption_edit_accepted
   review_item_addressed
   review_round_started
+  preview_review_submitted
 }
 
 enum ReviewSessionStatus {

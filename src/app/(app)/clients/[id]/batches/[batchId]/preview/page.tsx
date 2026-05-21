@@ -11,6 +11,8 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PageHeader } from '@/components/page-header'
 import { MarkBatchReviewedButton } from '@/components/preview/mark-batch-reviewed-button'
 import { PreviewPageShell } from './preview-page-shell'
+import { EventAnchor } from '@/components/notifications/event-anchor'
+import { PreviewSubmitButton } from '@/components/notifications/preview-submit-button'
 
 /**
  * Internal batch preview page (Layer 2 / Task 2.1).
@@ -53,6 +55,30 @@ export default async function BatchPreviewPage({
     derivePostApprovalForBatch(batch.id),
   ])
 
+  // Count AM-authored unresolved post-thread comments on this batch so the
+  // sticky Submit button can show the count + disable itself when there is
+  // nothing to send. Mirrors the count query in submitPreviewReviewAction;
+  // computing it here in the server component avoids a round trip on mount
+  // and a flash of "Submit (0)".
+  const [initialCommentCount, assignedDesigner] = await Promise.all([
+    db.postComment.count({
+      where: {
+        authorId: ctx.userDbId,
+        thread: {
+          resolvedAt: null,
+          post: { batchId: batch.id },
+        },
+      },
+    }),
+    client.assignedDesignerId
+      ? db.user.findUnique({
+          where: { id: client.assignedDesignerId },
+          select: { name: true },
+        })
+      : Promise.resolve(null),
+  ])
+  const designerName = assignedDesigner?.name ?? null
+
   // Hydrate posts with media + threads for the client shell.
   const hydratedPosts = posts.map((p) => ({
     id: p.id,
@@ -75,6 +101,7 @@ export default async function BatchPreviewPage({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
+      <EventAnchor />
       <div className="mb-5">
         <Breadcrumbs
           items={[
@@ -119,6 +146,14 @@ export default async function BatchPreviewPage({
           canEdit={canEdit}
         />
       </div>
+
+      {canEdit && (
+        <PreviewSubmitButton
+          batchId={batch.id}
+          designerName={designerName}
+          initialCommentCount={initialCommentCount}
+        />
+      )}
     </div>
   )
 }
