@@ -114,6 +114,10 @@ export function PreviewPageShell({
                 className="flex flex-col gap-3"
                 data-testid="preview-page-post"
                 data-post-id={post.id}
+                // Fallback for notification bell deep-links: until
+                // Post.threadOpenedEventId exists in the schema, use post.id
+                // so EventAnchor can locate the post tile.
+                data-event-id={post.id}
               >
                 <div
                   className="mx-auto flex w-full max-w-[470px] items-center justify-between gap-2 px-1"

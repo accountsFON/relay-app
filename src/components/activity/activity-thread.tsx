@@ -50,7 +50,7 @@ export function ActivityThread({
     ) : (
       <ol className="space-y-1">
         {events.map((event) => (
-          <li key={event.id}>
+          <li key={event.id} data-event-id={event.id}>
             <EventRenderer event={event} />
           </li>
         ))}

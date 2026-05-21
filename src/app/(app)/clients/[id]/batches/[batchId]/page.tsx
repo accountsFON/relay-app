@@ -35,6 +35,7 @@ import { listVersionsForPost } from '@/server/services/postVersions'
 import { resolveBatchTargetMonth } from '@/lib/batch-target-month'
 import { resolveCanvaUrl } from '@/lib/canva'
 import { PostCard } from '@/components/posts/post-card'
+import { EventAnchor } from '@/components/notifications/event-anchor'
 import {
   PostListCollapseProvider,
   PostListExpandAllToggle,
@@ -310,6 +311,7 @@ export default async function BatchDetailPage({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
+      <EventAnchor />
       {isBatchComplete && celebrationParticipants.length > 0 && (
         <BatchCompletionLap
           batchId={batch.id}

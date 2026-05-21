@@ -11,6 +11,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PageHeader } from '@/components/page-header'
 import { MarkBatchReviewedButton } from '@/components/preview/mark-batch-reviewed-button'
 import { PreviewPageShell } from './preview-page-shell'
+import { EventAnchor } from '@/components/notifications/event-anchor'
 
 /**
  * Internal batch preview page (Layer 2 / Task 2.1).
@@ -75,6 +76,7 @@ export default async function BatchPreviewPage({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
+      <EventAnchor />
       <div className="mb-5">
         <Breadcrumbs
           items={[
