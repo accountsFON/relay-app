@@ -76,7 +76,7 @@ export function ClientQuickAccess({
             content={
               canvaUrl
                 ? "Open the client's Canva folder in a new tab"
-                : 'No per-client Canva folder set, opens the shared agency folder. Set a per-client URL on the profile.'
+                : 'No per client Canva folder set, opens the shared agency folder. Set a per client URL on the profile.'
             }
           >
             <Link

@@ -126,7 +126,7 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
       {myRuns.length > 0 && (
         <Card>
           <div className="px-5 py-4">
-            <p className="text-[14px] font-semibold mb-3">Your in-flight generations</p>
+            <p className="text-[14px] font-semibold mb-3">Your in flight generations</p>
             <ul className="space-y-2">
               {myRuns.map((run) => (
                 <li key={run.id} className="flex items-center justify-between text-[14px]">
