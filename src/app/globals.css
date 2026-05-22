@@ -106,10 +106,10 @@
   --cream:      var(--neutral-50);
   --cream-warm: #F1F1F1;
   --cream-80:   #EBEBEB;
-  --orange:     var(--coral-500); /* Beta logo color was orange; coral is closest in v1. Logo file is replaced in 2.5A.3 — this alias only catches orphan refs. */
+  --orange:     var(--coral-500); /* Beta logo color was orange; coral is closest in v1. Logo file is replaced in 2.5A.3, this alias only catches orphan refs. */
 
-  /* Type stacks (system, no Google Fonts) */
-  --font-sans: "Helvetica Neue", -apple-system, BlinkMacSystemFont, system-ui, Arial, sans-serif;
+  /* Type stacks (Poppins via next/font/google, system fallback) */
+  --font-sans: var(--font-poppins, "Poppins"), -apple-system, BlinkMacSystemFont, system-ui, Arial, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
