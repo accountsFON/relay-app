@@ -252,7 +252,7 @@ export function ChecklistPanel({
                   onClick={confirmSendBack}
                   disabled={isPending || reasonText.trim().length === 0}
                 >
-                  {isPending ? 'Sending…' : 'Confirm send-back'}
+                  {isPending ? 'Sending…' : 'Confirm send back'}
                 </Button>
                 <Button
                   type="button"
