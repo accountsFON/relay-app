@@ -55,12 +55,12 @@ export function DateScopePill() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-cream-warm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+        className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-white px-4 text-sm font-medium text-foreground transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-100"
         aria-label={`Date scope: ${dateScopeLabel(scope)}`}
       >
-        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+        <Calendar className="h-4 w-4 text-neutral-500" />
         <span>{dateScopeLabel(scope)}</span>
-        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        <ChevronDown className="h-4 w-4 text-neutral-500" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
         {presets.map(({ preset, label }) => {

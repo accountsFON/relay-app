@@ -18,6 +18,7 @@
 import { Flame, Check } from 'lucide-react'
 import { RelayStep, RelayRole } from '@prisma/client'
 import { cn } from '@/lib/utils'
+import { StatusPill } from '@/components/ui/status-pill'
 import { STEP_LABEL, STEP_ROLE } from './labels'
 import type { BatchSummary, SendBackArc } from './types'
 import { ScrollCurrentIntoView } from './scroll-current-into-view'
@@ -107,36 +108,35 @@ function RelayTrackHeader({
         </h2>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-2.5 py-1 text-[11px] font-medium text-foreground">
-          <span className="size-1.5 rounded-full bg-foreground" aria-hidden />
+        <StatusPill variant="dot" dotColor="blue">
           Holder: {batch.holder.name}
-        </span>
+        </StatusPill>
         <RoleTooltip role={currentRole}>
           <span
             tabIndex={0}
-            className="inline-flex items-center rounded-full bg-cream-warm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {ROLE_LABEL[currentRole]}
+            <StatusPill variant="plain">{ROLE_LABEL[currentRole]}</StatusPill>
           </span>
         </RoleTooltip>
         {batch.daysOnCurrentStep > 0 && (
-          <span
-            className={cn(
-              'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em]',
+          <StatusPill
+            variant="accent"
+            accent={
               batch.daysOnCurrentStep > 5
-                ? 'bg-destructive/10 text-destructive'
+                ? 'coral'
                 : batch.daysOnCurrentStep > 2
-                ? 'bg-cream-warm text-ink-80'
-                : 'bg-cream-warm text-muted-foreground'
-            )}
+                ? 'yellow'
+                : 'blue'
+            }
           >
             {batch.daysOnCurrentStep}d on step
-          </span>
+          </StatusPill>
         )}
         {sendBackCount > 0 && (
-          <span className="inline-flex items-center rounded-full bg-cream-warm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <StatusPill variant="plain">
             {sendBackCount} send back{sendBackCount === 1 ? '' : 's'}
-          </span>
+          </StatusPill>
         )}
       </div>
     </header>

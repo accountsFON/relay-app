@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Link2, FolderOpen, ExternalLink, Palette } from 'lucide-react'
 import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { StatusPill } from '@/components/ui/status-pill'
 import { resolveCanvaUrl } from '@/lib/canva'
 
 function hostnameOf(url: string): string {
@@ -41,10 +42,12 @@ export function ClientQuickAccess({
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1 text-[12px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
+                className="max-w-full transition-colors hover:opacity-80"
               >
-                <Link2 className="size-3 shrink-0 text-muted-foreground" />
-                <span className="truncate">{hostnameOf(url)}</span>
+                <StatusPill variant="plain" className="gap-1.5 max-w-full">
+                  <Link2 className="size-3 shrink-0 text-neutral-500" />
+                  <span className="truncate">{hostnameOf(url)}</span>
+                </StatusPill>
               </Link>
             ))}
           </div>
@@ -59,11 +62,13 @@ export function ClientQuickAccess({
               href={assetsFolderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1 text-[12px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
+              className="max-w-full transition-colors hover:opacity-80"
             >
-              <FolderOpen className="size-3 shrink-0 text-muted-foreground" />
-              <span className="truncate">Open folder</span>
-              <ExternalLink className="size-3 shrink-0 opacity-60" />
+              <StatusPill variant="plain" className="gap-1.5 max-w-full">
+                <FolderOpen className="size-3 shrink-0 text-neutral-500" />
+                <span className="truncate">Open folder</span>
+                <ExternalLink className="size-3 shrink-0 opacity-60" />
+              </StatusPill>
             </Link>
           </div>
         )}
@@ -83,11 +88,13 @@ export function ClientQuickAccess({
               href={canvaHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1 text-[12px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
+              className="max-w-full transition-colors hover:opacity-80"
             >
-              <Palette className="size-3 shrink-0 text-muted-foreground" />
-              <span className="truncate">Open in Canva</span>
-              <ExternalLink className="size-3 shrink-0 opacity-60" />
+              <StatusPill variant="plain" className="gap-1.5 max-w-full">
+                <Palette className="size-3 shrink-0 text-neutral-500" />
+                <span className="truncate">Open in Canva</span>
+                <ExternalLink className="size-3 shrink-0 opacity-60" />
+              </StatusPill>
             </Link>
           </SimpleTooltip>
         </div>
