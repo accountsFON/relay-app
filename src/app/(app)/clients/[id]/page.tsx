@@ -14,7 +14,7 @@ import { db } from '@/db/client'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { buildMentionRoster } from '@/lib/mentions'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
 import { StatusDot } from '@/components/ui/badge'
@@ -111,33 +111,35 @@ export default async function ClientDetailPage({
         </div>
       )}
 
-      <PageHeader
+      <HeroBand
         title={client.name}
-        description={
+        subtitle={
           [client.industry, client.location].filter(Boolean).join(' · ') ||
           undefined
         }
-        backHref="/clients"
-        backLabel="Back to clients"
-        actions={
-          canEdit ? (
-            <>
-              {isLive && (
-                <>
-                  <GenerateContentDialog
-                    clientId={client.id}
-                    targetMonth={getNextMonth()}
-                  />
-                  <ArchiveClientButton clientId={client.id} clientName={client.name} />
-                </>
-              )}
-              <ClientStatusBadge clientId={client.id} status={client.status} canEdit={isLive && canEdit} />
-            </>
-          ) : (
-            <ClientStatusBadge clientId={client.id} status={client.status} canEdit={false} />
-          )
-        }
+        breadcrumb={[
+          { label: 'Clients', href: '/clients' },
+          { label: client.name },
+        ]}
       />
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        {canEdit ? (
+          <>
+            {isLive && (
+              <>
+                <GenerateContentDialog
+                  clientId={client.id}
+                  targetMonth={getNextMonth()}
+                />
+                <ArchiveClientButton clientId={client.id} clientName={client.name} />
+              </>
+            )}
+            <ClientStatusBadge clientId={client.id} status={client.status} canEdit={isLive && canEdit} />
+          </>
+        ) : (
+          <ClientStatusBadge clientId={client.id} status={client.status} canEdit={false} />
+        )}
+      </div>
 
       <div className="mt-6">
         <ClientTeamHeader

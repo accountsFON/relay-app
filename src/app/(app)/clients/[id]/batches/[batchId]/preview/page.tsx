@@ -7,8 +7,7 @@ import { findBatch } from '@/server/repositories/batches'
 import { listThreadsForBatch } from '@/server/repositories/threads'
 import { derivePostApprovalForBatch } from '@/server/services/approval'
 import { db } from '@/db/client'
-import { Breadcrumbs } from '@/components/breadcrumbs'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { MarkBatchReviewedButton } from '@/components/preview/mark-batch-reviewed-button'
 import { PreviewPageShell } from './preview-page-shell'
 import { EventAnchor } from '@/components/notifications/event-anchor'
@@ -102,41 +101,31 @@ export default async function BatchPreviewPage({
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
       <EventAnchor />
-      <div className="mb-5">
-        <Breadcrumbs
-          items={[
-            { href: '/dashboard', label: 'My Relay' },
-            { href: `/clients/${client.id}`, label: client.name },
-            {
-              href: `/clients/${client.id}/batches/${batch.id}`,
-              label: batch.label,
-            },
-            { label: 'Preview' },
-          ]}
-        />
-      </div>
-
-      <PageHeader
+      <HeroBand
         title={`${batch.label} preview`}
-        description={`${client.name} · ${approvalCounts.ready} ready · ${approvalCounts.pending} pending`}
-        actions={
-          <>
-            {canEdit && (
-              <MarkBatchReviewedButton
-                batchId={batch.id}
-                openThreadCount={totalOpenThreads}
-              />
-            )}
-            <Link
-              href={`/clients/${client.id}/batches/${batch.id}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
-            >
-              <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
-              <span>Back to relay</span>
-            </Link>
-          </>
-        }
+        subtitle={`${client.name} · ${approvalCounts.ready} ready · ${approvalCounts.pending} pending`}
+        breadcrumb={[
+          { label: 'My Relay', href: '/dashboard' },
+          { label: client.name, href: `/clients/${client.id}` },
+          { label: batch.label, href: `/clients/${client.id}/batches/${batch.id}` },
+          { label: 'Preview' },
+        ]}
       />
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        {canEdit && (
+          <MarkBatchReviewedButton
+            batchId={batch.id}
+            openThreadCount={totalOpenThreads}
+          />
+        )}
+        <Link
+          href={`/clients/${client.id}/batches/${batch.id}`}
+          className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+        >
+          <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
+          <span>Back to relay</span>
+        </Link>
+      </div>
 
       <div className="mt-8">
         <PreviewPageShell

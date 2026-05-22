@@ -4,7 +4,7 @@ import {
   listMentionsForUser,
   visibilityForViewer,
 } from '@/server/repositories/activityEvents'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { markAllMentionsReadAction } from '@/app/(app)/clients/[id]/activity/actions'
@@ -36,9 +36,9 @@ export default async function InboxPage() {
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-4xl">
-      <PageHeader
+      <HeroBand
         title="Inbox"
-        description={
+        subtitle={
           unreadCount > 0
             ? `${unreadCount} unread mention${unreadCount === 1 ? '' : 's'}.`
             : 'Mentions and replies, grouped by client.'

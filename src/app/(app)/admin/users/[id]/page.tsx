@@ -4,7 +4,7 @@ import { findUserWithMembershipInOrg } from '@/server/repositories/users'
 import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { AssignmentToggle } from './assignment-toggle'
 import { PermissionEditor } from './permission-editor'
 import { RoleChanger } from './role-changer'
@@ -69,26 +69,25 @@ export default async function AdminUserDetailPage({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title={user.name}
-        description={
-          <span>
-            {user.email} ·{' '}
-            <Badge variant="secondary" className="ml-1">
-              {ROLE_LABELS[membership.role]}
-            </Badge>
-            {(membership.role === 'account_manager' ||
-              membership.role === 'designer') && (
-              <span className="ml-2">
-                {assignedCount} {assignedCount === 1 ? 'client' : 'clients'}{' '}
-                assigned
-              </span>
-            )}
-          </span>
-        }
-        backHref="/admin/users"
-        backLabel="Back to team"
+        subtitle={user.email}
+        breadcrumb={[
+          { label: 'Admin', href: '/admin' },
+          { label: 'Team', href: '/admin/users' },
+          { label: user.name },
+        ]}
       />
+      <div className="mt-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <Badge variant="secondary">{ROLE_LABELS[membership.role]}</Badge>
+        {(membership.role === 'account_manager' ||
+          membership.role === 'designer') && (
+          <span>
+            {assignedCount} {assignedCount === 1 ? 'client' : 'clients'}{' '}
+            assigned
+          </span>
+        )}
+      </div>
 
       <Card className="mt-10 mb-6 p-4">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">

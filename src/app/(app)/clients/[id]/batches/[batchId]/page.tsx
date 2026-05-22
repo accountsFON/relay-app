@@ -16,8 +16,7 @@ import {
   legalNextSteps,
   legalSendBackTargets,
 } from '@/server/lib/relay-state-machine'
-import { PageHeader } from '@/components/page-header'
-import { Breadcrumbs } from '@/components/breadcrumbs'
+import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { RelayTrack } from '@/components/relay/relay-track'
@@ -336,69 +335,62 @@ export default async function BatchDetailPage({
         </div>
       )}
 
-      <div className="mb-5">
-        <Breadcrumbs
-          items={[
-            { href: '/dashboard', label: 'My Relay' },
-            { href: `/clients/${client.id}`, label: client.name },
-            { label: batch.label },
-          ]}
-        />
-      </div>
-
-      <PageHeader
+      <HeroBand
         title={batch.label}
-        description={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
-        actions={
-          <>
-            <Link
-              href={`/clients/${client.id}/batches/${batch.id}/preview`}
-              data-testid="batch-preview-link"
-              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
-            >
-              <Eye className="size-3.5 shrink-0 text-muted-foreground" />
-              <span>Preview</span>
-            </Link>
-            <Link
-              href={resolveCanvaUrl(client.canvaUrl)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
-            >
-              <Palette className="size-3.5 shrink-0 text-muted-foreground" />
-              <span>Open in Canva</span>
-              <ExternalLink className="size-3 shrink-0 opacity-60" />
-            </Link>
-            {isLive && canEdit && batch.clientReviewEnabled && (
-              <SendLinkButton batchId={batch.id} clientName={client.name} />
-            )}
-            {isLive && canAct && (
-              <>
-                {batch.currentStep !== RelayStep.final_qa_schedule && (
-                  <GenerateContentDialog
-                    clientId={client.id}
-                    targetMonth={targetMonth}
-                    lockMonth
-                  />
-                )}
-                {run && posts.length > 0 && (
-                  <ExportButton
-                    posts={posts.map((p) => ({
-                      date: p.postDate.toISOString().split('T')[0],
-                      caption: p.caption,
-                      hashtags: p.hashtags.join(' '),
-                      graphicHook: p.graphicHook ?? '',
-                      designerNotes: p.designerNotes ?? '',
-                    }))}
-                    filename={`${client.name}-${targetMonth}`}
-                  />
-                )}
-                {canEdit && <ArchiveBatchButton batchId={batch.id} />}
-              </>
-            )}
-          </>
-        }
+        subtitle={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
+        breadcrumb={[
+          { label: 'My Relay', href: '/dashboard' },
+          { label: client.name, href: `/clients/${client.id}` },
+          { label: batch.label },
+        ]}
       />
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <Link
+          href={`/clients/${client.id}/batches/${batch.id}/preview`}
+          data-testid="batch-preview-link"
+          className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+        >
+          <Eye className="size-3.5 shrink-0 text-muted-foreground" />
+          <span>Preview</span>
+        </Link>
+        <Link
+          href={resolveCanvaUrl(client.canvaUrl)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+        >
+          <Palette className="size-3.5 shrink-0 text-muted-foreground" />
+          <span>Open in Canva</span>
+          <ExternalLink className="size-3 shrink-0 opacity-60" />
+        </Link>
+        {isLive && canEdit && batch.clientReviewEnabled && (
+          <SendLinkButton batchId={batch.id} clientName={client.name} />
+        )}
+        {isLive && canAct && (
+          <>
+            {batch.currentStep !== RelayStep.final_qa_schedule && (
+              <GenerateContentDialog
+                clientId={client.id}
+                targetMonth={targetMonth}
+                lockMonth
+              />
+            )}
+            {run && posts.length > 0 && (
+              <ExportButton
+                posts={posts.map((p) => ({
+                  date: p.postDate.toISOString().split('T')[0],
+                  caption: p.caption,
+                  hashtags: p.hashtags.join(' '),
+                  graphicHook: p.graphicHook ?? '',
+                  designerNotes: p.designerNotes ?? '',
+                }))}
+                filename={`${client.name}-${targetMonth}`}
+              />
+            )}
+            {canEdit && <ArchiveBatchButton batchId={batch.id} />}
+          </>
+        )}
+      </div>
 
       <div className="mt-6">
         <ClientTeamHeader

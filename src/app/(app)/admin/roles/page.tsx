@@ -1,7 +1,7 @@
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import { listRoleDefaults } from '@/server/repositories/roleDefaults'
 import { Card } from '@/components/ui/card'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { AdminTabs } from '../admin-tabs'
 import { RoleDefaultsEditor } from './role-defaults-editor'
 import type { UserRole } from '@/lib/types'
@@ -25,9 +25,13 @@ export default async function AdminRolesPage() {
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title="Role defaults"
-        description="Org-wide defaults per role. Individual users can still be overridden on their detail page."
+        subtitle="Org-wide defaults per role. Individual users can still be overridden on their detail page."
+        breadcrumb={[
+          { label: 'Admin', href: '/admin' },
+          { label: 'Role defaults' },
+        ]}
       />
 
       <div className="mt-6">

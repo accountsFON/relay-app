@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { db } from '@/db/client'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { Badge } from '@/components/ui/badge'
 
@@ -142,7 +142,7 @@ export default async function LibraryPage() {
       group: 'App chrome',
       items: [
         { name: 'AppShell', path: 'src/components/app-shell.tsx', note: 'Sidebar + header on every authed route' },
-        { name: 'PageHeader', path: 'src/components/page-header.tsx' },
+        { name: 'HeroBand', path: 'src/components/hero-band.tsx', note: 'Blue band with title + subtitle + breadcrumb on every page top' },
         { name: 'OrgSwitcher', path: 'src/components/org-switcher.tsx' },
         { name: 'MaintenanceScreen', path: 'src/components/maintenance-screen.tsx', note: 'Renders when RELAY_MAINTENANCE_MODE=true' },
       ],
@@ -204,11 +204,13 @@ export default async function LibraryPage() {
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title="Library"
-        description="Beta QA index. Known issues at the top, then routes (clickable) and components (inventory only)."
-        actions={<Badge variant="primary">BETA</Badge>}
+        subtitle="Beta QA index. Known issues at the top, then routes (clickable) and components (inventory only)."
       />
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <Badge variant="primary">BETA</Badge>
+      </div>
 
       <div className="mt-10 space-y-8">
         {knownIssues.length > 0 && (

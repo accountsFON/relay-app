@@ -7,7 +7,7 @@ import {
 } from '@/server/repositories/batches'
 import { db } from '@/db/client'
 import { Card } from '@/components/ui/card'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
@@ -222,9 +222,9 @@ async function AmDashboard({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-[1600px]">
-      <PageHeader
+      <HeroBand
         title="My Relay"
-        description={
+        subtitle={
           ctx.role === 'admin'
             ? 'Every relay in flight, moving across the track.'
             : 'Your relays, moving across the track.'
@@ -267,9 +267,9 @@ async function DesignerDashboard({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title="My Relay"
-        description="Your design queue, moving across the track."
+        subtitle="Your design queue, moving across the track."
       />
       <div className="mt-4">
         <ShowArchivedToggle countArchived={archivedBatchCount} />
@@ -293,9 +293,9 @@ async function ClientDashboard({ linkedClientId }: { linkedClientId: string }) {
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-4xl">
-      <PageHeader
+      <HeroBand
         title="Your content"
-        description="Relays awaiting your approval and what's in production."
+        subtitle="Relays awaiting your approval and what's in production."
       />
       {allBatches.length === 0 ? (
         <div className="mt-10">
@@ -402,7 +402,7 @@ async function CostFallback({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
-      <PageHeader title="My Relay" description={`Activity for ${scopeLabel.toLowerCase()}.`} />
+      <HeroBand title="My Relay" subtitle={`Activity for ${scopeLabel.toLowerCase()}.`} />
       <div className="mt-10 grid gap-4 sm:grid-cols-3">
         <StatCard
           label={`${scopeLabel} cost`}

@@ -7,7 +7,7 @@ import {
 } from '@/server/repositories/batches'
 import { listFailedRunsForOrg } from '@/server/repositories/contentRuns'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { AdminTabs } from './admin-tabs'
@@ -35,9 +35,9 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title="Admin"
-        description="Onboarding queue, stuck relay watchlist, and failed runs."
+        subtitle="Onboarding queue, stuck relay watchlist, and failed runs."
       />
 
       <div className="mt-6">
