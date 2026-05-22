@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 type Breakdown = {
   openai: {
@@ -64,11 +65,14 @@ export function CostBreakdown({
         </Button>
       </div>
 
-      <div className="px-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="OpenAI" value={fmt(breakdown.openai.total)} />
-        <Stat label="Anthropic" value={fmt(breakdown.anthropic.total)} />
-        <Stat label="Firecrawl" value={fmt(breakdown.crawl.usd)} />
-        <Stat label="Total" value={fmt(breakdown.total)} sublabel={`${breakdown.credits} credits`} accent />
+      <div className="px-5">
+        <CostTileGrid
+          openaiCostUsd={breakdown.openai.total}
+          anthropicCostUsd={breakdown.anthropic.total}
+          firecrawlCostUsd={breakdown.crawl.usd}
+          totalCostUsd={breakdown.total}
+          credits={breakdown.credits}
+        />
       </div>
 
       {expanded && (
@@ -166,30 +170,58 @@ export function CostBreakdown({
   )
 }
 
-function Stat({
-  label,
-  value,
-  sublabel,
-  accent,
+type Tint = 'blue' | 'coral' | 'yellow' | 'ink'
+
+const tileBgMap: Record<Tint, string> = {
+  blue: 'bg-blue-100 text-foreground',
+  coral: 'bg-coral-100 text-foreground',
+  yellow: 'bg-yellow-100 text-foreground',
+  ink: 'bg-neutral-900 text-white',
+}
+
+const dotMap: Record<Tint, string> = {
+  blue: 'bg-blue-500',
+  coral: 'bg-coral-500',
+  yellow: 'bg-yellow-500',
+  ink: 'bg-white',
+}
+
+export function CostTileGrid({
+  openaiCostUsd,
+  anthropicCostUsd,
+  firecrawlCostUsd,
+  totalCostUsd,
+  credits,
 }: {
-  label: string
-  value: string
-  sublabel?: string
-  accent?: boolean
+  openaiCostUsd: number
+  anthropicCostUsd: number
+  firecrawlCostUsd: number
+  totalCostUsd: number
+  credits: number
 }) {
+  const tiles: Array<{ label: string; value: string; tint: Tint; subtitle?: string }> = [
+    { label: 'OPENAI', value: fmt(openaiCostUsd), tint: 'blue' },
+    { label: 'ANTHROPIC', value: fmt(anthropicCostUsd), tint: 'coral' },
+    { label: 'FIRECRAWL', value: fmt(firecrawlCostUsd), tint: 'yellow' },
+    { label: 'TOTAL', value: fmt(totalCostUsd), tint: 'ink', subtitle: `${credits} credits` },
+  ]
+
   return (
-    <div className={`rounded-xl px-4 py-3 ${accent ? 'bg-foreground text-cream' : 'bg-cream-warm/60'}`}>
-      <p className={`text-[12px] uppercase tracking-[0.06em] font-semibold ${accent ? 'text-cream/70' : 'text-muted-foreground'}`}>
-        {label}
-      </p>
-      <p className={`mt-1.5 text-lg font-bold tabular-nums ${accent ? 'text-cream' : 'text-foreground'}`}>
-        {value}
-      </p>
-      {sublabel && (
-        <p className={`text-[11px] mt-0.5 tabular-nums ${accent ? 'text-cream/70' : 'text-muted-foreground'}`}>
-          {sublabel}
-        </p>
-      )}
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {tiles.map((tile) => (
+        <div key={tile.label} className={cn('rounded-2xl p-5', tileBgMap[tile.tint])}>
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className={cn('h-1.5 w-1.5 rounded-full', dotMap[tile.tint])} />
+            <span className="text-[10px] font-medium uppercase tracking-wider opacity-80">
+              {tile.label}
+            </span>
+          </div>
+          <div className="text-2xl font-bold tabular-nums">{tile.value}</div>
+          {tile.subtitle && (
+            <div className="mt-1 text-xs tabular-nums opacity-70">{tile.subtitle}</div>
+          )}
+        </div>
+      ))}
     </div>
   )
 }
