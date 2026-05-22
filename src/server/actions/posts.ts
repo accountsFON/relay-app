@@ -8,6 +8,7 @@ import {
   snapshotPostVersion,
   findVersion,
 } from '@/server/services/postVersions'
+import { redoPostCaption } from '@/server/services/redoPost'
 
 export async function updatePostAction(
   postId: string,
@@ -132,4 +133,42 @@ export async function restorePostVersionAction(versionId: string) {
   })
 
   revalidatePath('/', 'layout')
+}
+
+/**
+ * Per-post AI redo. Regenerates the caption + hashtags + graphic hook +
+ * designer notes for a single post using the same brief / facts the
+ * original run had. Snapshots the prior body via PostVersion so the AM
+ * can restore if the redo is worse.
+ *
+ * Scope check via findPostById; the service trusts the caller's gate.
+ * post_edited activity event records the redo with `aiRedo: true`.
+ */
+export async function redoPostAction(postId: string) {
+  const ctx = await requireClientEditor()
+
+  const before = await findPostById(postId, ctx.userDbId)
+  if (!before) throw new Error('Post not found')
+
+  const result = await redoPostCaption({
+    postId,
+    actorUserId: ctx.userDbId,
+  })
+
+  await recordActivity({
+    clientId: before.clientId,
+    runId: before.contentRunId,
+    postId,
+    actorId: ctx.userDbId,
+    kind: ActivityKind.post_edited,
+    payload: {
+      fieldsChanged: ['caption', 'hashtags', 'graphicHook', 'designerNotes'],
+      aiRedo: true,
+      postVersionId: result.postVersionId || undefined,
+      costUsd: result.costUsd,
+    },
+  })
+
+  revalidatePath('/', 'layout')
+  return { postVersionId: result.postVersionId, newCaption: result.newCaption }
 }
