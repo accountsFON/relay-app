@@ -8,16 +8,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-ink-80 hover:bg-ink-80",
-        accent: "bg-foreground text-cream [a]:hover:bg-ink-80 hover:bg-ink-80",
+        default: "bg-primary text-primary-foreground [a]:hover:bg-neutral-700 hover:bg-neutral-700",
+        accent: "bg-foreground text-neutral-50 [a]:hover:bg-neutral-700 hover:bg-neutral-700",
         outline:
-          "border-border bg-card text-foreground hover:bg-cream-warm hover:text-foreground aria-expanded:bg-cream-warm aria-expanded:text-foreground",
+          "border-border bg-card text-foreground hover:bg-neutral-100 hover:text-foreground aria-expanded:bg-neutral-100 aria-expanded:text-foreground",
         // Brand refresh 2.5C.1: secondary now matches outline (white pill with border).
         // Old cream fill chip pattern moved to dedicated chip primitive in 2.5C.2.
         secondary:
-          "border-border bg-card text-foreground hover:bg-cream-warm hover:text-foreground aria-expanded:bg-cream-warm aria-expanded:text-foreground",
+          "border-border bg-card text-foreground hover:bg-neutral-100 hover:text-foreground aria-expanded:bg-neutral-100 aria-expanded:text-foreground",
         ghost:
-          "hover:bg-cream-warm hover:text-foreground aria-expanded:bg-cream-warm aria-expanded:text-foreground",
+          "hover:bg-neutral-100 hover:text-foreground aria-expanded:bg-neutral-100 aria-expanded:text-foreground",
         // Brand v1 has no dedicated destructive red. Coral is the closest warm
         // accent. Flagged for Caleb review (Phase 2.5C.1).
         destructive:

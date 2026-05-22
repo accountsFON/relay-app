@@ -165,8 +165,8 @@ export function RevisionPlanComposer({
                       className={cn(
                         'rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide',
                         item.type === opt.value
-                          ? 'bg-foreground text-cream'
-                          : 'bg-cream-warm text-foreground',
+                          ? 'bg-foreground text-neutral-50'
+                          : 'bg-neutral-100 text-foreground',
                       )}
                       title={`Routes to: ${opt.routesTo}`}
                     >

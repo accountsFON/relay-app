@@ -35,7 +35,7 @@ export function DataRow({
     <div
       className={cn(
         'flex items-center gap-4 px-5 py-4 transition-colors',
-        href || onClick ? 'hover:bg-cream-warm/60 cursor-pointer' : '',
+        href || onClick ? 'hover:bg-neutral-100/60 cursor-pointer' : '',
         className
       )}
     >
@@ -126,7 +126,7 @@ export function RowAvatar({
   return (
     <div
       className={cn(
-        'flex size-10 items-center justify-center rounded-full bg-cream-warm text-[13px] font-semibold text-ink-80',
+        'flex size-10 items-center justify-center rounded-full bg-neutral-100 text-[13px] font-semibold text-neutral-700',
         className
       )}
     >

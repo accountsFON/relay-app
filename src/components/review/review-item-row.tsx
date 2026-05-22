@@ -105,7 +105,7 @@ export function ReviewItemRow({
           {isAddressed && (
             <span
               data-testid="addressed-tag"
-              className="inline-flex items-center rounded-full bg-cream-warm px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground"
+              className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground"
             >
               Addressed
             </span>
@@ -152,7 +152,7 @@ function DecisionBadge({ decision }: { decision: ReviewItemHydrated['decision'] 
     return (
       <span
         data-testid="decision-badge-changes-requested"
-        className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-orange-900"
+        className="inline-flex items-center rounded-full bg-coral-100 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-coral-500"
       >
         Request changes
       </span>
@@ -186,7 +186,7 @@ function ChangesRequestedBody({
     <div className="space-y-3">
       <blockquote
         data-testid="changes-requested-comment"
-        className="border-l-4 border-orange-300 bg-orange-50/40 px-4 py-2 text-sm text-foreground"
+        className="border-l-4 border-coral-300 bg-coral-100/40 px-4 py-2 text-sm text-foreground"
       >
         {comment ? comment : <em className="text-muted-foreground">No comment provided.</em>}
       </blockquote>
@@ -237,7 +237,7 @@ function CaptionEditedBody({
       )}
       <div
         data-testid="caption-edited-diff-wrapper"
-        className="rounded-xl bg-cream-warm/40 p-4"
+        className="rounded-xl bg-neutral-100/40 p-4"
       >
         <CaptionDiffView segments={segments} />
       </div>

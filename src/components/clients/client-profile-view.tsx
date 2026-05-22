@@ -7,6 +7,7 @@ import type { Client } from '@prisma/client'
 import { ExternalLink, Link as LinkIcon, Pencil, Check, X } from 'lucide-react'
 import { PageSection } from '@/components/ui/page-section'
 import { Button } from '@/components/ui/button'
+import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
 import { updateClientAction } from '@/app/(app)/clients/actions'
@@ -257,7 +258,7 @@ function FieldHeader({
           type="button"
           onClick={onEdit}
           aria-label={`Edit ${label}`}
-          className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-warm hover:text-foreground transition-colors shrink-0"
+          className="inline-flex items-center justify-center size-7 rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-foreground transition-colors shrink-0"
         >
           <Pencil className="size-3.5" />
         </button>
@@ -268,7 +269,7 @@ function FieldHeader({
             type="button"
             onClick={onCancel}
             aria-label="Cancel"
-            className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-warm hover:text-foreground transition-colors"
+            className="inline-flex items-center justify-center size-7 rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-foreground transition-colors"
           >
             <X className="size-3.5" />
           </button>
@@ -277,7 +278,7 @@ function FieldHeader({
             onClick={onSave}
             disabled={pending || !isDirty}
             aria-label="Save"
-            className="inline-flex items-center justify-center size-7 rounded-full bg-foreground text-cream hover:bg-ink-80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center justify-center size-7 rounded-full bg-foreground text-neutral-50 hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <Check className="size-3.5" />
           </button>
@@ -371,7 +372,7 @@ function renderInlineValue(
   if (kind === 'phone') {
     const tel = value.replace(/[^+\d]/g, '')
     return (
-      <a href={`tel:${tel}`} className="hover:text-ink-50 transition-colors underline-offset-2 hover:underline">
+      <a href={`tel:${tel}`} className="hover:text-neutral-500 transition-colors underline-offset-2 hover:underline">
         {value}
       </a>
     )
@@ -436,7 +437,7 @@ function NarrativeField({
           <Linkified text={value} />
         </ScrollableContent>
       ) : (
-        <div className="rounded-xl bg-cream-warm/60 px-4 py-3 text-[14px]">
+        <div className="rounded-xl bg-neutral-100/60 px-4 py-3 text-[14px]">
           <EmptyValue />
         </div>
       )}
@@ -472,7 +473,7 @@ function FocusField({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3 min-h-7">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="inline-flex size-5 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-cream tabular-nums shrink-0">
+          <span className="inline-flex size-5 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-neutral-50 tabular-nums shrink-0">
             {index}
           </span>
           <h3 className="text-[12px] font-medium uppercase tracking-[0.06em] text-muted-foreground truncate">
@@ -490,7 +491,7 @@ function FocusField({
             type="button"
             onClick={editor.startEdit}
             aria-label={`Edit Focus ${index}`}
-            className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-warm hover:text-foreground transition-colors shrink-0"
+            className="inline-flex items-center justify-center size-7 rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-foreground transition-colors shrink-0"
           >
             <Pencil className="size-3.5" />
           </button>
@@ -501,7 +502,7 @@ function FocusField({
               type="button"
               onClick={editor.cancel}
               aria-label="Cancel"
-              className="inline-flex items-center justify-center size-7 rounded-full text-ink-50 hover:bg-cream-warm hover:text-foreground transition-colors"
+              className="inline-flex items-center justify-center size-7 rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-foreground transition-colors"
             >
               <X className="size-3.5" />
             </button>
@@ -510,7 +511,7 @@ function FocusField({
               onClick={editor.save}
               disabled={editor.pending || !editor.isDirty}
               aria-label="Save"
-              className="inline-flex items-center justify-center size-7 rounded-full bg-foreground text-cream hover:bg-ink-80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center justify-center size-7 rounded-full bg-foreground text-neutral-50 hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <Check className="size-3.5" />
             </button>
@@ -541,7 +542,7 @@ function FocusField({
           <Linkified text={value} />
         </ScrollableContent>
       ) : (
-        <div className="rounded-xl bg-cream-warm/60 px-4 py-3 text-[14px]">
+        <div className="rounded-xl bg-neutral-100/60 px-4 py-3 text-[14px]">
           <EmptyValue />
         </div>
       )}
@@ -599,8 +600,8 @@ function PostingDaysField({
                 className={cn(
                   'inline-flex h-8 min-w-9 items-center justify-center rounded-full px-2.5 text-[12px] font-semibold transition-colors',
                   active
-                    ? 'bg-foreground text-cream hover:bg-ink-80'
-                    : 'bg-cream-warm text-ink-50 hover:bg-cream-80 hover:text-foreground'
+                    ? 'bg-foreground text-neutral-50 hover:bg-neutral-700'
+                    : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200 hover:text-foreground'
                 )}
               >
                 {d}
@@ -613,8 +614,8 @@ function PostingDaysField({
               className={cn(
                 'inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-[12px] font-semibold tabular-nums',
                 active
-                  ? 'bg-foreground text-cream'
-                  : 'bg-cream-warm text-ink-20 line-through decoration-1'
+                  ? 'bg-foreground text-neutral-50'
+                  : 'bg-neutral-100 text-neutral-300 line-through decoration-1'
               )}
             >
               {d}
@@ -692,7 +693,7 @@ function ChipsField({
           {value.map((v) => (
             <span
               key={v}
-              className="inline-flex h-7 items-center rounded-full bg-cream-warm px-3 text-[13px] tabular-nums text-foreground"
+              className="inline-flex h-7 items-center rounded-full bg-neutral-100 px-3 text-[13px] tabular-nums text-foreground"
             >
               {v}
             </span>
@@ -804,13 +805,12 @@ function BooleanField({
             htmlFor={`${fieldKey}-edit`}
             className="flex items-start gap-3 cursor-pointer rounded-xl border border-input bg-card px-3.5 py-2.5"
           >
-            <input
+            <BrandCheckbox
               autoFocus
               id={`${fieldKey}-edit`}
-              type="checkbox"
               checked={editor.draft}
               onChange={(e) => editor.setDraft(e.target.checked)}
-              className="mt-1 size-4"
+              className="mt-1"
             />
             <span className="flex flex-col gap-1 text-[14px] leading-relaxed">
               <span className="font-medium text-foreground">
@@ -832,14 +832,14 @@ function BooleanField({
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-2.5 h-7 text-[12px] font-medium tabular-nums',
                 value
-                  ? 'bg-foreground text-cream'
-                  : 'bg-cream-warm text-ink-50',
+                  ? 'bg-foreground text-neutral-50'
+                  : 'bg-neutral-100 text-neutral-500',
               )}
             >
               <span
                 className={cn(
                   'size-1.5 rounded-full',
-                  value ? 'bg-cream' : 'bg-ink-50',
+                  value ? 'bg-neutral-50' : 'bg-neutral-500',
                 )}
               />
               {value ? onLabel : offLabel}
@@ -992,7 +992,7 @@ function LinkField({
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-[14px] text-foreground hover:text-ink-50 transition-colors max-w-full break-words"
+          className="inline-flex items-center gap-1.5 text-[14px] text-foreground hover:text-neutral-500 transition-colors max-w-full break-words"
         >
           <span className="break-all">{prettyUrl(href)}</span>
           <ExternalLink className="size-3.5 shrink-0" />
@@ -1055,23 +1055,23 @@ function ScrollableContent({
         style={{ maxHeight }}
         className={cn(
           'overflow-y-auto text-[14px] leading-relaxed text-foreground whitespace-pre-wrap break-words',
-          bare ? '' : 'rounded-xl bg-cream-warm/60 px-4 py-3'
+          bare ? '' : 'rounded-xl bg-neutral-100/60 px-4 py-3'
         )}
       >
         {children}
       </div>
       {showTopFade && !bare && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-4 rounded-t-xl bg-gradient-to-b from-cream-warm/95 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-4 rounded-t-xl bg-gradient-to-b from-neutral-100/95 to-transparent" />
       )}
       {showBottomFade && !bare && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-4 rounded-b-xl bg-gradient-to-t from-cream-warm/95 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-4 rounded-b-xl bg-gradient-to-t from-neutral-100/95 to-transparent" />
       )}
     </div>
   )
 }
 
 function EmptyValue() {
-  return <span className="text-ink-20">—</span>
+  return <span className="text-neutral-300">—</span>
 }
 
 function prettyUrl(url: string): string {
@@ -1118,7 +1118,7 @@ function Linkified({ text }: { text: string }) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-foreground underline underline-offset-2 hover:text-ink-50 break-all"
+              className="text-foreground underline underline-offset-2 hover:text-neutral-500 break-all"
             >
               {t.value}
             </a>
@@ -1130,7 +1130,7 @@ function Linkified({ text }: { text: string }) {
             <a
               key={i}
               href={`tel:${tel}`}
-              className="text-foreground underline underline-offset-2 hover:text-ink-50"
+              className="text-foreground underline underline-offset-2 hover:text-neutral-500"
             >
               {t.value}
             </a>

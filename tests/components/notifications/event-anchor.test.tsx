@@ -45,11 +45,11 @@ describe('EventAnchor', () => {
       await Promise.resolve()
     })
     const target = document.querySelector('[data-event-id="e1"]') as HTMLElement
-    expect(target.classList.contains('bg-cream-warm')).toBe(true)
+    expect(target.classList.contains('bg-neutral-100')).toBe(true)
     await act(async () => {
       vi.advanceTimersByTime(1600)
     })
-    expect(target.classList.contains('bg-cream-warm')).toBe(false)
+    expect(target.classList.contains('bg-neutral-100')).toBe(false)
     vi.useRealTimers()
   })
 

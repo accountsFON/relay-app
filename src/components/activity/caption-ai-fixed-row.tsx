@@ -67,7 +67,7 @@ export function CaptionAiFixedRow({
             <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               After
             </p>
-            <p className="whitespace-pre-wrap rounded bg-cream-warm px-2 py-1 text-foreground">
+            <p className="whitespace-pre-wrap rounded bg-neutral-100 px-2 py-1 text-foreground">
               {newCaption}
             </p>
           </div>

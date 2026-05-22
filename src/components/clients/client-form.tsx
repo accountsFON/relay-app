@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { clientInputSchema, type ClientInput } from '@/lib/schemas/client'
 import { Button } from '@/components/ui/button'
+import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -190,9 +191,8 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
       <PageSection title="Workflow">
         <div className="space-y-5">
           <label htmlFor="clientReviewEnabled" className="flex items-start gap-3 cursor-pointer">
-            <input
+            <BrandCheckbox
               id="clientReviewEnabled"
-              type="checkbox"
               {...form.register('clientReviewEnabled')}
               className="mt-1"
             />

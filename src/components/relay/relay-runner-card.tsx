@@ -16,6 +16,7 @@ import { useContext } from 'react'
 import { useRouter } from 'next/navigation'
 import { Repeat } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { cn } from '@/lib/utils'
 import { SelectModeContext } from '@/components/relay/dashboard-select-mode'
 
@@ -99,7 +100,7 @@ export function RelayRunnerCard({
       }}
       className={cn(
         'relative block w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left cursor-pointer transition-colors',
-        'hover:bg-cream-warm/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'hover:bg-neutral-100/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         recentlyPassed && 'ring-1 ring-blue-300',
         selectable && selected && 'ring-2 ring-foreground'
       )}
@@ -111,12 +112,11 @@ export function RelayRunnerCard({
             e.stopPropagation()
           }}
         >
-          <input
-            type="checkbox"
+          <BrandCheckbox
             checked={selected}
             onChange={() => onToggleSelect?.(relay.id)}
             aria-label={`Select ${relay.clientName} ${relay.label}`}
-            className="size-3.5 cursor-pointer"
+            className="size-3.5"
           />
         </span>
       )}

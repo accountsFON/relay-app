@@ -80,7 +80,7 @@ export function BatchCard({
               {batch.label}
             </p>
             <p className="truncate text-[11px] text-muted-foreground">
-              <span className="font-semibold uppercase tracking-[0.06em] text-ink-80">
+              <span className="font-semibold uppercase tracking-[0.06em] text-neutral-700">
                 {STEP_LABEL[batch.currentStep]}
               </span>
               {batch.currentSubState && (

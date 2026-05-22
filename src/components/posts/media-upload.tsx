@@ -153,7 +153,7 @@ export function MediaUpload({
       className={cn(
         'flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 cursor-pointer transition-colors',
         'border-border hover:border-foreground/40',
-        isDragging && 'border-foreground bg-cream-warm/40',
+        isDragging && 'border-foreground bg-neutral-100/40',
         isPending && 'opacity-60 pointer-events-none',
       )}
     >

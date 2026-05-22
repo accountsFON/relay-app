@@ -213,7 +213,7 @@ export function ChecklistPanel({
           {legalSendBackTargets.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-cream-warm focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
                 aria-label="Send back"
                 title="Send this relay back to a previous step. Add a reason for the recipient."
               >
@@ -234,7 +234,7 @@ export function ChecklistPanel({
           )}
 
           {sendBackTarget && (
-            <div className="space-y-2 rounded-md border border-ink/20 bg-cream-warm p-3">
+            <div className="space-y-2 rounded-md border border-neutral-900/20 bg-neutral-100 p-3">
               <p className="text-[12px] font-medium text-foreground">
                 Sending back to {STEP_LABEL[sendBackTarget]}. Required reason:
               </p>

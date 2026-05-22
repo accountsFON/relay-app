@@ -301,7 +301,7 @@ export function BulkMediaTray({
                   e.dataTransfer.effectAllowed = 'move'
                 }}
                 data-testid={`bulk-media-unassigned-item-${f.filename}`}
-                className="inline-flex items-center gap-2 rounded-md bg-cream-warm/60 px-2 py-1 text-[13px] cursor-grab active:cursor-grabbing"
+                className="inline-flex items-center gap-2 rounded-md bg-neutral-100/60 px-2 py-1 text-[13px] cursor-grab active:cursor-grabbing"
               >
                 <span>{f.filename}</span>
                 <button
@@ -339,7 +339,7 @@ export function BulkMediaTray({
               }}
               className={cn(
                 'flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2',
-                assigned && 'bg-cream-warm/40',
+                assigned && 'bg-neutral-100/40',
               )}
             >
               <span className="text-[13px] text-muted-foreground tabular-nums">

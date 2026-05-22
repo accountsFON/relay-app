@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge, StatusDot } from '@/components/ui/badge'
+import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { DataRowGroup, RowAvatar } from '@/components/ui/data-row'
 import { bulkGenerateContent } from './run-actions'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
@@ -100,7 +101,7 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
   return (
     <div className="space-y-4">
       {selected.size > 0 && (
-        <Card className="bg-cream-warm">
+        <Card className="bg-neutral-100">
           <div className="px-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[15px] font-semibold text-foreground">
               {selected.size} client{selected.size > 1 ? 's' : ''} selected
@@ -172,11 +173,9 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
             <div key={client.id} className={`flex items-center${isArchived ? ' opacity-50 grayscale' : ''}`}>
               <div className="pl-5 shrink-0 flex items-center gap-3">
                 {isSelectable ? (
-                  <input
-                    type="checkbox"
+                  <BrandCheckbox
                     checked={isSelected}
                     onChange={() => toggleClient(client.id)}
-                    className="size-4 rounded border-input accent-foreground"
                     aria-label={`Select ${client.name}`}
                   />
                 ) : (
@@ -184,11 +183,10 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
                 )}
                 {isSelected && selection !== undefined && (
                   <label className="flex items-center gap-1 text-[12px] text-muted-foreground">
-                    <input
-                      type="checkbox"
+                    <BrandCheckbox
                       checked={selection.reCrawl}
                       onChange={() => toggleReCrawl(client.id)}
-                      className="size-3.5 rounded border-input accent-foreground"
+                      className="size-3.5"
                       aria-label={`Re-crawl ${client.name}`}
                     />
                     Re-crawl
@@ -197,7 +195,7 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
               </div>
               <Link
                 href={`/clients/${client.id}`}
-                className="flex-1 flex items-center gap-4 px-4 py-4 hover:bg-cream-warm/60"
+                className="flex-1 flex items-center gap-4 px-4 py-4 hover:bg-neutral-100/60"
               >
                 <RowAvatar initials={client.name.slice(0, 2)} />
                 <div className="min-w-0 flex-1">

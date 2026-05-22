@@ -58,7 +58,7 @@ export function ClientQuickAccess({
         )}
 
         {assetsFolderUrl && (
-          <div className="flex items-center gap-2 sm:ml-auto sm:pl-5 sm:border-l sm:border-cream-80 min-w-0">
+          <div className="flex items-center gap-2 sm:ml-auto sm:pl-5 sm:border-l sm:border-neutral-200 min-w-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground shrink-0">
               Assets
             </span>

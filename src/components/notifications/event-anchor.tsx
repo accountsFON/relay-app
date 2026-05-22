@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 
-const HIGHLIGHT_CLASS = 'bg-cream-warm'
+const HIGHLIGHT_CLASS = 'bg-neutral-100'
 const HIGHLIGHT_MS = 1500
 
 /**

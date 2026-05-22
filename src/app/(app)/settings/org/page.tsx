@@ -48,7 +48,7 @@ export default async function OrgSettingsPage() {
           return (
             <PageSection key={s.title}>
               <div className="flex items-start gap-4">
-                <div className="rounded-full bg-cream-warm p-2.5 shrink-0">
+                <div className="rounded-full bg-neutral-100 p-2.5 shrink-0">
                   <Icon className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">

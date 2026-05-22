@@ -7,9 +7,9 @@
 /* ============================================================
    Relay v1 brand tokens
    Source of truth: vault → projects/relay-app/design-tokens.md
-   STATUS: v1 production brand (Phase 2.5, applied 2026-05-22).
-   Legacy --ink/--cream/--orange aliases preserved through 2.5C
-   for back compat; removed in 2.5E.3.
+   STATUS: v1 production brand (Phase 2.5, closed 2026-05-22).
+   Legacy --ink/--cream/--orange aliases were removed in 2.5E.3;
+   neutrals now use the canonical 50/100/200/300/500/700/900 ramp.
    ============================================================ */
 
 @theme inline {
@@ -49,16 +49,12 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-ink: var(--ink);
-  --color-ink-80: var(--ink-80);
-  --color-ink-50: var(--ink-50);
-  --color-ink-20: var(--ink-20);
-  --color-cream: var(--cream);
-  --color-cream-warm: var(--cream-warm);
-  --color-cream-80: var(--cream-80);
-  --color-orange: var(--orange);
   --color-neutral-white: var(--neutral-white);
   --color-neutral-50:    var(--neutral-50);
+  --color-neutral-100:   var(--neutral-100);
+  --color-neutral-200:   var(--neutral-200);
+  --color-neutral-300:   var(--neutral-300);
+  --color-neutral-500:   var(--neutral-500);
   --color-neutral-700:   var(--neutral-700);
   --color-neutral-900:   var(--neutral-900);
   --color-yellow-500:    var(--yellow-500);
@@ -81,11 +77,17 @@
 }
 
 :root {
-  /* Relay v1 brand primitives */
+  /* Relay v1 brand primitives. Neutrals follow a canonical
+     50/100/200/300/500/700/900 ramp. The legacy --ink/--cream/--orange
+     aliases were removed in Phase 2.5E.3. */
   --neutral-white: #FFFFFF;
   --neutral-50:    #F6F7F6;
-  --neutral-900:   #050D16;
+  --neutral-100:   #F1F1F1;
+  --neutral-200:   #EBEBEB;
+  --neutral-300:   #C9CAD2;
+  --neutral-500:   #6B6E80;
   --neutral-700:   #383E46;
+  --neutral-900:   #050D16;
 
   --yellow-500:    #FFE786;
   --yellow-300:    #FFEFB1;
@@ -99,61 +101,51 @@
   --blue-300:      #8BC9FF;
   --blue-100:      #BEE1FF;
 
-  /* Legacy aliases (kept through 2.5C for back compat; removed in 2.5E.3) */
-  --ink:        var(--neutral-900);
-  --ink-80:     var(--neutral-700);
-  --ink-50:     #6B6E80;
-  --ink-20:     #C9CAD2;
-  --cream:      var(--neutral-50);
-  --cream-warm: #F1F1F1;
-  --cream-80:   #EBEBEB;
-  --orange:     var(--coral-500); /* Beta logo color was orange; coral is closest in v1. Logo file is replaced in 2.5A.3, this alias only catches orphan refs. */
-
   /* Type stacks (Poppins via next/font/google, system fallback) */
   --font-sans: var(--font-poppins, "Poppins"), -apple-system, BlinkMacSystemFont, system-ui, Arial, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* shadcn semantic mapping → Relay tokens */
-  --background: var(--cream);
-  --foreground: var(--ink);
-  --card: #FFFFFF;
-  --card-foreground: var(--ink);
-  --popover: #FFFFFF;
-  --popover-foreground: var(--ink);
-  --primary: var(--ink);
-  --primary-foreground: var(--cream);
-  --secondary: var(--cream-warm);
-  --secondary-foreground: var(--ink);
-  --muted: var(--cream-warm);
-  --muted-foreground: var(--ink-50);
-  --accent: var(--ink);
-  --accent-foreground: var(--cream);
+  /* shadcn semantic mapping → Relay v1 tokens */
+  --background: var(--neutral-50);
+  --foreground: var(--neutral-900);
+  --card: var(--neutral-white);
+  --card-foreground: var(--neutral-900);
+  --popover: var(--neutral-white);
+  --popover-foreground: var(--neutral-900);
+  --primary: var(--neutral-900);
+  --primary-foreground: var(--neutral-50);
+  --secondary: var(--neutral-100);
+  --secondary-foreground: var(--neutral-900);
+  --muted: var(--neutral-100);
+  --muted-foreground: var(--neutral-500);
+  --accent: var(--neutral-900);
+  --accent-foreground: var(--neutral-50);
   --destructive: oklch(0.577 0.245 27.325);
   --border: rgba(5, 13, 22, 0.08);
   --border-strong: rgba(5, 13, 22, 0.16);
   --input: rgba(5, 13, 22, 0.10);
-  --ring: var(--ink);
-  --chart-1: var(--ink);
-  --chart-2: var(--ink-80);
-  --chart-3: var(--ink-50);
-  --chart-4: var(--ink-20);
-  --chart-5: var(--cream-80);
+  --ring: var(--neutral-900);
+  --chart-1: var(--neutral-900);
+  --chart-2: var(--neutral-700);
+  --chart-3: var(--neutral-500);
+  --chart-4: var(--neutral-300);
+  --chart-5: var(--neutral-200);
   --radius: 0.875rem;
 
-  /* Sidebar (uses cream-warm so it sits beside the cream main area) */
-  --sidebar: var(--cream-warm);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--ink);
-  --sidebar-primary-foreground: var(--cream);
-  --sidebar-accent: var(--cream-80);
-  --sidebar-accent-foreground: var(--ink);
+  /* Sidebar (uses neutral-100 so it sits beside the neutral-50 main area) */
+  --sidebar: var(--neutral-100);
+  --sidebar-foreground: var(--neutral-900);
+  --sidebar-primary: var(--neutral-900);
+  --sidebar-primary-foreground: var(--neutral-50);
+  --sidebar-accent: var(--neutral-200);
+  --sidebar-accent-foreground: var(--neutral-900);
   --sidebar-border: rgba(5, 13, 22, 0.08);
-  --sidebar-ring: var(--ink);
+  --sidebar-ring: var(--neutral-900);
 }
 
 /* Dark mode intentionally unset for the beta. When ready, define
-   :root.dark with ink as background and cream as foreground. */
+   :root.dark with neutral-900 as background and neutral-50 as foreground. */
 
 @layer base {
   * {

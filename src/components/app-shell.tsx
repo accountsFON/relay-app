@@ -18,6 +18,7 @@ import { CompletionNotificationsProvider, CompletionNotificationsBanner } from '
 import { NotificationProvider } from '@/components/notifications/notification-provider'
 import { HeaderBell } from '@/components/notifications/header-bell'
 import { NotificationDropdown } from '@/components/notifications/notification-dropdown'
+import { DecorationCorner } from '@/components/decorations/decoration-corner'
 import { Toaster } from 'sonner'
 
 type BadgeKey = 'unreadMentions'
@@ -102,7 +103,7 @@ export function AppShell({
     <div className="flex h-dvh flex-col md:flex-row bg-neutral-50">
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-ink/40 md:hidden"
+          className="fixed inset-0 z-40 bg-neutral-900/40 md:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -127,7 +128,7 @@ export function AppShell({
           </Link>
           <button
             onClick={closeSidebar}
-            className="rounded-full p-1.5 text-muted-foreground hover:bg-cream-80 md:hidden"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-neutral-200 md:hidden"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -192,7 +193,7 @@ export function AppShell({
           })()}
         </div>
 
-        <div className="px-5 py-4 flex items-center gap-3 border-t border-cream-80">
+        <div className="px-5 py-4 flex items-center gap-3 border-t border-neutral-200">
           <UserButton />
           <span className="text-[12px] text-muted-foreground italic" style={{ fontFamily: 'var(--font-serif)' }}>
             beta
@@ -201,10 +202,10 @@ export function AppShell({
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-3 bg-cream-warm px-4 md:hidden">
+        <header className="flex h-14 shrink-0 items-center gap-3 bg-neutral-100 px-4 md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="rounded-full p-1.5 text-muted-foreground hover:bg-cream-80"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-neutral-200"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
@@ -227,7 +228,7 @@ export function AppShell({
           </div>
         </header>
 
-        <header className="hidden h-12 shrink-0 items-center justify-end gap-3 border-b border-cream-80 bg-cream-warm/40 px-6 md:flex">
+        <header className="hidden h-12 shrink-0 items-center justify-end gap-3 border-b border-neutral-200 bg-neutral-100/40 px-6 md:flex">
           <SearchBar />
           <InFlightRunsPill />
           <DateScopePill />
@@ -245,6 +246,7 @@ export function AppShell({
           {children}
         </main>
       </div>
+      <DecorationCorner />
     </div>
     <InFlightAutoFinalizer />
     <CompletionNotificationsBanner />

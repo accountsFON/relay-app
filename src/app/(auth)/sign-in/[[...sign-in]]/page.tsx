@@ -17,8 +17,8 @@ export default function SignInPage() {
           elements: {
             card: 'shadow-none bg-card rounded-2xl',
             headerTitle: 'font-bold text-foreground',
-            formButtonPrimary: 'bg-primary hover:bg-ink-80 rounded-full',
-            footerActionLink: 'text-foreground hover:text-ink-80',
+            formButtonPrimary: 'bg-primary hover:bg-neutral-700 rounded-full',
+            footerActionLink: 'text-foreground hover:text-neutral-700',
           },
         }}
       />

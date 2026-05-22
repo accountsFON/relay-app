@@ -67,7 +67,7 @@ export function ClientTeamHeader({
         options={amOptions}
         canManage={canManage}
       />
-      <div className="hidden h-8 w-px shrink-0 bg-cream-80 sm:block" />
+      <div className="hidden h-8 w-px shrink-0 bg-neutral-200 sm:block" />
       <TeamSlot
         clientId={clientId}
         clientName={clientName}
@@ -153,7 +153,7 @@ function TeamSlot({
             className="size-9 rounded-full object-cover"
           />
         ) : (
-          <div className="flex size-9 items-center justify-center rounded-full bg-cream-warm text-muted-foreground">
+          <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100 text-muted-foreground">
             <UserCircle2 className="size-5" />
           </div>
         )}
@@ -168,7 +168,7 @@ function TeamSlot({
             value={selectValue}
             onChange={onChange}
             disabled={isPending}
-            className="-ml-1 max-w-full rounded-md bg-transparent px-1 py-0.5 text-[14px] font-medium text-foreground hover:bg-cream-warm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="-ml-1 max-w-full rounded-md bg-transparent px-1 py-0.5 text-[14px] font-medium text-foreground hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">— Unassigned —</option>
             {options.map((o) => (

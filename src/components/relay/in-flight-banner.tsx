@@ -17,7 +17,7 @@ export function InFlightBanner({ clientId }: { clientId: string }) {
       : `${matching.length} generations in flight`
 
   return (
-    <Card className="bg-cream-warm border-border" role="region" aria-label={headline}>
+    <Card className="bg-neutral-100 border-border" role="region" aria-label={headline}>
       <div className="px-5 py-4">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="size-4 text-foreground" />

@@ -87,7 +87,7 @@ export function MissingClientUserBanner({
   return (
     <Card
       size="sm"
-      className="border-ink/20 bg-cream-warm px-4 py-3"
+      className="border-neutral-900/20 bg-neutral-100 px-4 py-3"
       data-component="missing-client-user-banner"
       data-step={currentStep}
     >

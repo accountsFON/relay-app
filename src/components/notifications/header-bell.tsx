@@ -17,7 +17,7 @@ export function HeaderBell({ mountId = 'default' }: { mountId?: string } = {}) {
       aria-controls={`notification-dropdown-${mountId}`}
       className={cn(
         'relative inline-flex items-center justify-center rounded-md p-1.5',
-        'text-foreground hover:bg-cream-warm focus:outline-none focus:ring-2 focus:ring-ring',
+        'text-foreground hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-ring',
       )}
     >
       <Bell className="size-5" aria-hidden="true" />

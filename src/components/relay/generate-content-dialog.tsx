@@ -12,6 +12,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { Label } from '@/components/ui/label'
 import { getClientCrawlInfo } from '@/app/(app)/clients/[id]/generate/actions'
 import { generateContentAction } from '@/server/actions/generate-content'
@@ -201,9 +202,8 @@ export function GenerateContentDialog({
               </div>
             )}
             <div className="flex items-start gap-3">
-              <input
+              <BrandCheckbox
                 id="recrawl-toggle"
-                type="checkbox"
                 checked={reCrawl}
                 onChange={(e) => setReCrawl(e.target.checked)}
                 className="mt-1"
