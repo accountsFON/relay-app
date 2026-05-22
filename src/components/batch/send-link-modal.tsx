@@ -133,7 +133,7 @@ export function SendLinkModal({ batchId, clientName, open, onOpenChange }: Props
               <p className="text-sm font-medium">
                 {success.emailSent
                   ? 'Link created and emailed.'
-                  : 'Link created. Email failed — copy and send manually.'}
+                  : 'Link created. Email failed; copy and send manually.'}
               </p>
               {!success.emailSent && success.emailError && (
                 <p className="text-xs text-destructive">{success.emailError}</p>

@@ -73,7 +73,7 @@ export function ReviewItemRow({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  const headerLabel = `Post #${postNumber} — ${formatPostDate(item.post.postDate)}`
+  const headerLabel = `Post #${postNumber} · ${formatPostDate(item.post.postDate)}`
 
   function run(handler?: () => Promise<void>) {
     if (!handler) return

@@ -77,7 +77,7 @@ export async function ActiveBatchesSection({
       <PageSection title="Active relays" action={toggle}>
         <EmptyState
           title="Nothing in flight"
-          description="There are no active relays for this client. Archived relays are still available — toggle them on to review."
+          description="There are no active relays for this client. Archived relays are still available; toggle them on to review."
           className="py-12"
         />
       </PageSection>
