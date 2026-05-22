@@ -5,11 +5,19 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ActiveBatchHero } from '@/components/relay/active-batch-hero'
 import { ActiveBatchRow } from '@/components/relay/active-batch-row'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
-import Link from 'next/link'
+import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
+
+function nextMonthString(): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() + 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 /**
  * Adaptive Active Batches section on the client page.
- *  - 0 live in flight and 0 archived (or toggle off): do not render
+ *  - 0 live in flight + 0 archived ever + viewer can edit: "Get started"
+ *    CTA panel with an inline Generate content trigger (item 11).
+ *  - 0 live in flight + 0 archived ever + viewer cannot edit: do not render.
  *  - 1 live in flight: hero card variant
  *  - 2+ live in flight: equal-weight list, sorted held-by-you first then by activity
  *
@@ -24,11 +32,13 @@ export async function ActiveBatchesSection({
   viewerUserId,
   showArchived = false,
   archivedBatchCount = 0,
+  canGenerate = false,
 }: {
   clientId: string
   viewerUserId: string
   showArchived?: boolean
   archivedBatchCount?: number
+  canGenerate?: boolean
 }) {
   const batches = await listActiveBatchesForClient(clientId, viewerUserId)
   const archivedBatches = showArchived
@@ -36,7 +46,28 @@ export async function ActiveBatchesSection({
     : []
 
   const hasContent = batches.length > 0 || archivedBatches.length > 0
-  if (!hasContent && archivedBatchCount === 0) return null
+
+  // Fresh-client path: no batches and never had any. Render a CTA panel
+  // so AMs landing on a new client see a clear "start here" affordance
+  // rather than a header-only Generate button buried up top.
+  if (!hasContent && archivedBatchCount === 0) {
+    if (!canGenerate) return null
+    return (
+      <PageSection title="Get started">
+        <EmptyState
+          title="No relays yet"
+          description="Generate this client's first month of content to spin up the relay."
+          className="py-12"
+          action={
+            <GenerateContentDialog
+              clientId={clientId}
+              targetMonth={nextMonthString()}
+            />
+          }
+        />
+      </PageSection>
+    )
+  }
 
   const toggle = <ShowArchivedToggle countArchived={archivedBatchCount} />
 
