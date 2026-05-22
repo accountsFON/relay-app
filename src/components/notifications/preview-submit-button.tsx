@@ -88,6 +88,11 @@ export function PreviewSubmitButton({
           onClick={() => setDialogOpen(true)}
           disabled={disabled}
           variant={submitted ? 'outline' : 'default'}
+          className={
+            submitted
+              ? 'border-coral-500 text-coral-500 hover:bg-coral-100 hover:text-coral-500'
+              : undefined
+          }
         >
           {label}
         </Button>
@@ -106,6 +111,7 @@ export function PreviewSubmitButton({
               type="button"
               variant="outline"
               onClick={() => setDialogOpen(false)}
+              className="border-coral-500 text-coral-500 hover:bg-coral-100 hover:text-coral-500"
             >
               Cancel
             </Button>

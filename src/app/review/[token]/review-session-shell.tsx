@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps } from '@/types/preview'
+import { HeroBand } from '@/components/hero-band'
 import { ReviewProgressBar } from '@/components/review/review-progress-bar'
 import { ReviewPostCard } from '@/components/review/review-post-card'
 import { SubmitReviewBar } from '@/components/review/submit-review-bar'
@@ -235,6 +236,8 @@ export function ReviewSessionShell({
     )
   }
 
+  const postsCountLabel = `${posts.length} ${posts.length === 1 ? 'post' : 'posts'}`
+
   return (
     <div className="flex flex-col">
       {showReturningBanner ? (
@@ -244,15 +247,16 @@ export function ReviewSessionShell({
         />
       ) : null}
 
-      <div className="border-b border-border bg-card/40">
-        <div className="mx-auto flex w-full max-w-[640px] flex-col gap-3 px-4 py-4 sm:px-6">
-          <div>
-            <h1 className="text-base font-semibold text-foreground">{batchLabel}</h1>
-            <p className="text-xs text-muted-foreground">
-              Reviewing as{' '}
-              <span className="font-medium text-foreground">{reviewerName}</span>
-            </p>
-          </div>
+      <div className="mx-auto w-full max-w-[880px] px-4 pt-2 pb-4 sm:px-6 md:pt-4">
+        <HeroBand
+          title={`${clientName} — ${batchLabel}`}
+          subtitle={`Reviewing ${postsCountLabel} — leave feedback on any post, then submit when you're done.`}
+        />
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-white px-4 py-4 ring-1 ring-neutral-200 sm:px-6">
+          <p className="text-xs text-neutral-600">
+            Reviewing as{' '}
+            <span className="font-medium text-neutral-900">{reviewerName}</span>
+          </p>
           <ReviewProgressBar
             postIds={postIds}
             itemsByPostId={itemsByPostId}
@@ -262,7 +266,7 @@ export function ReviewSessionShell({
 
       <FeedShell platform={platform} onPlatformChange={setPlatform}>
         {posts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-600">
             No posts in this batch yet.
           </div>
         ) : (

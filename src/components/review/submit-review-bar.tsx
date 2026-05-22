@@ -33,7 +33,7 @@ export function SubmitReviewBar({
     <div
       data-testid="submit-review-bar"
       className={cn(
-        'sticky bottom-0 z-30 w-full border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80',
+        'sticky bottom-0 z-30 w-full border-t border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80',
         className,
       )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -41,7 +41,7 @@ export function SubmitReviewBar({
       <div className="mx-auto flex w-full max-w-[640px] flex-col gap-2 px-4 py-3 sm:px-6">
         <div
           data-testid="submit-review-bar-counter"
-          className="flex items-center justify-center gap-2 text-[12px] text-muted-foreground"
+          className="flex items-center justify-center gap-2 text-[12px] text-neutral-600"
         >
           <span data-testid="counter-approved">{approved} approved</span>
           <span aria-hidden>·</span>
