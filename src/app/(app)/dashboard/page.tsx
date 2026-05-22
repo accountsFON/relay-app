@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card'
 import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyStateCard } from '@/components/ui/empty-state-card'
 import { DataRow, DataRowGroup, RowAvatar } from '@/components/ui/data-row'
 import {
   clientKanbanColumn,
@@ -299,10 +300,11 @@ async function ClientDashboard({ linkedClientId }: { linkedClientId: string }) {
         subtitle="Relays awaiting your approval and what's in production."
       />
       {allBatches.length === 0 ? (
-        <div className="mt-10">
-          <EmptyState
-            title="No relays yet"
-            description="Your team will create relays as they prepare your content. They'll show up here when ready for your review."
+        <div className="mt-10 mx-auto max-w-md">
+          <EmptyStateCard
+            tint="blue"
+            shape="starburst"
+            label="No relays yet. Your team will queue content here for review."
           />
         </div>
       ) : (
@@ -355,6 +357,10 @@ function KanbanColumn({
   batches: ColumnBatch[]
 }) {
   const dotColor = CLIENT_COLUMN_COLOR[title]
+  // EmptyStateCard tints don't include 'neutral'; fall back to blue if a
+  // future column ever maps to neutral so the surface keeps tinting.
+  const emptyTint: 'blue' | 'yellow' | 'coral' =
+    dotColor === 'neutral' ? 'blue' : dotColor
   return (
     <div className="rounded-xl bg-cream-warm/40 p-2.5">
       <div className="mb-3 flex items-center justify-between px-1">
@@ -365,7 +371,11 @@ function KanbanColumn({
       </div>
       <div className="space-y-2">
         {batches.length === 0 ? (
-          <p className="px-1 text-[11px] text-muted-foreground italic">empty</p>
+          <EmptyStateCard
+            tint={emptyTint}
+            shape="asterisk"
+            label="Nothing here yet"
+          />
         ) : (
           batches.map((batch) => (
             <KanbanCard

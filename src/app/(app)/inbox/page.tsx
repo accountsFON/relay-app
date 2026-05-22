@@ -5,7 +5,7 @@ import {
   visibilityForViewer,
 } from '@/server/repositories/activityEvents'
 import { HeroBand } from '@/components/hero-band'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyStateCard } from '@/components/ui/empty-state-card'
 import { Button } from '@/components/ui/button'
 import { markAllMentionsReadAction } from '@/app/(app)/clients/[id]/activity/actions'
 import { InboxRow } from './inbox-row'
@@ -61,10 +61,13 @@ export default async function InboxPage() {
 
       <div className="mt-8 space-y-8">
         {mentions.length === 0 ? (
-          <EmptyState
-            title="No mentions yet"
-            description="When someone @-mentions you in an activity thread, it shows up here."
-          />
+          <div className="mx-auto max-w-md">
+            <EmptyStateCard
+              tint="blue"
+              shape="starburst"
+              label="Inbox zero. Mentions show up here."
+            />
+          </div>
         ) : (
           Array.from(byClient.entries()).map(([clientId, group]) => (
             <section key={clientId} className="space-y-2">

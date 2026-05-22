@@ -8,7 +8,7 @@ import { db } from '@/db/client'
 import { BulkGenerateList } from './bulk-generate'
 import { Button } from '@/components/ui/button'
 import { HeroBand } from '@/components/hero-band'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyStateCard } from '@/components/ui/empty-state-card'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { getClientScopeFilter } from '@/server/auth/scope'
 import { sortClientsForAm } from '@/lib/client-am-sort'
@@ -65,21 +65,26 @@ export default async function ClientsPage({
         </div>
 
         {clients.length === 0 ? (
-          <EmptyState
-            title={showArchived ? 'No archived clients.' : 'No clients here yet.'}
-            description={
-              showArchived
-                ? 'No archived clients found in this workspace.'
-                : 'Add a brand and Relay can start drafting their content.'
-            }
-            action={
-              !showArchived && canCreate && (
+          <div className="mx-auto max-w-md space-y-4">
+            <EmptyStateCard
+              tint="blue"
+              shape="starburst"
+              label={
+                showArchived
+                  ? 'No archived clients.'
+                  : 'Add a brand and Relay can start drafting their content.'
+              }
+            />
+            {!showArchived && canCreate && (
+              <div className="flex justify-center">
                 <Link href="/clients/new">
-                  <Button variant="accent" size="lg">Add your first client</Button>
+                  <Button variant="accent" size="lg">
+                    Add your first client
+                  </Button>
                 </Link>
-              )
-            }
-          />
+              </div>
+            )}
+          </div>
         ) : (
           <BulkGenerateList
             clients={clients.map((c) => ({
