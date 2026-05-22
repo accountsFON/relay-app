@@ -9,8 +9,11 @@
  *  - "MM-DD.{ext}" matches the post whose postDate falls on month MM,
  *    day DD (year-agnostic, since a batch is scoped to a single month
  *    in practice).
- *  - "N.{ext}" or "0N.{ext}" matches the Nth post when posts are sorted
- *    by postDate ascending (1-indexed). Leading zeros are stripped.
+ *  - Stems ending in digits ("N", "0N", "FON1", "FON_1", "fon-12") map
+ *    to the Nth post when posts are sorted by postDate ascending
+ *    (1-indexed). The trailing-digits fallback covers AM filenames
+ *    that share a client-prefix (e.g., "FON1.jpg ... FON10.jpg") so
+ *    drag-and-drop ordering Just Works without a rename pass.
  *
  * Returns the matching post id, or null if no match.
  */
@@ -46,8 +49,11 @@ export function matchFilenameToPost(
     }
   }
 
-  // Pattern 2: N or 0N (1-indexed position when sorted by postDate asc)
-  const nMatch = stem.match(/^0*(\d+)$/)
+  // Pattern 2: trailing digits map to 1-indexed position when posts are
+  // sorted by postDate asc. Matches "1", "01", "FON1", "FON_1", etc.
+  // Anchored at the end of the stem so middle-of-name digits do not
+  // accidentally consume the position slot.
+  const nMatch = stem.match(/(\d+)$/)
   if (nMatch) {
     const n = parseInt(nMatch[1], 10)
     if (n >= 1) {

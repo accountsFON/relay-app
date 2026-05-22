@@ -182,6 +182,7 @@ export default async function ClientDetailPage({
           viewerUserId={ctx.userDbId}
           showArchived={showArchived}
           archivedBatchCount={archivedBatchCount}
+          canGenerate={canEdit && isLive}
         />
       </div>
 
