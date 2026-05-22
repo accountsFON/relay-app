@@ -47,6 +47,7 @@ import { ExportButton } from '@/components/runs/export-button'
 import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
 import { SendLinkButton } from '@/components/batch/send-link-button'
+import { Button } from '@/components/ui/button'
 import { MagicLinkRow } from '@/components/batch/magic-link-row'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
 import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
@@ -345,24 +346,34 @@ export default async function BatchDetailPage({
         ]}
       />
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <Link
-          href={`/clients/${client.id}/batches/${batch.id}/preview`}
-          data-testid="batch-preview-link"
-          className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+        <Button
+          variant="secondary"
+          size="sm"
+          render={
+            <Link
+              href={`/clients/${client.id}/batches/${batch.id}/preview`}
+              data-testid="batch-preview-link"
+            />
+          }
         >
-          <Eye className="size-3.5 shrink-0 text-muted-foreground" />
+          <Eye className="text-muted-foreground" />
           <span>Preview</span>
-        </Link>
-        <Link
-          href={resolveCanvaUrl(client.canvaUrl)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          render={
+            <Link
+              href={resolveCanvaUrl(client.canvaUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          }
         >
-          <Palette className="size-3.5 shrink-0 text-muted-foreground" />
+          <Palette className="text-muted-foreground" />
           <span>Open in Canva</span>
-          <ExternalLink className="size-3 shrink-0 opacity-60" />
-        </Link>
+          <ExternalLink className="opacity-60" />
+        </Button>
         {isLive && canEdit && batch.clientReviewEnabled && (
           <SendLinkButton batchId={batch.id} clientName={client.name} />
         )}
