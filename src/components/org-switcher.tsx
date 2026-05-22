@@ -48,12 +48,7 @@ export function OrgSwitcher({
   if (!platformOwner && membershipCount <= 1) {
     return (
       <div className="mx-3 my-2 flex items-center gap-2 rounded-full bg-neutral-900 px-3 py-2 text-white">
-        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-xs font-semibold text-neutral-900">
-          {activeAgencyName?.[0]?.toUpperCase() ?? 'A'}
-        </span>
-        <span className="flex-1 truncate text-left text-sm font-medium">
-          {activeAgencyName}
-        </span>
+        <AgencyPillLabel name={activeAgencyName} />
       </div>
     )
   }
@@ -73,12 +68,7 @@ export function OrgSwitcher({
         />
       ) : (
         <div className="mx-3 my-2 flex items-center gap-2 rounded-full bg-neutral-900 px-3 py-2 text-white">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-xs font-semibold text-neutral-900">
-            {activeAgencyName?.[0]?.toUpperCase() ?? 'A'}
-          </span>
-          <span className="flex-1 truncate text-left text-sm font-medium">
-            {activeAgencyName}
-          </span>
+          <AgencyPillLabel name={activeAgencyName} />
         </div>
       )}
       {/* Platform owners always see this pin even if allAgencies came back
@@ -145,12 +135,7 @@ function AgencyDropdown({
         disabled={isPending}
         className="flex w-full items-center gap-2 rounded-full bg-neutral-900 px-3 py-2 text-white transition-colors hover:bg-neutral-900/90"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-xs font-semibold text-neutral-900">
-          {activeAgencyName?.[0]?.toUpperCase() ?? 'A'}
-        </span>
-        <span className="flex-1 truncate text-left text-sm font-medium">
-          {isPending ? 'Switching...' : activeAgencyName}
-        </span>
+        <AgencyPillLabel name={isPending ? 'Switching...' : activeAgencyName} />
         <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />
       </button>
       {open && (
@@ -181,5 +166,23 @@ function AgencyDropdown({
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * Shared label content for the agency pill: avatar square + name. Used by
+ * the single-membership static div, the dropdown-empty fallback div, and
+ * the dropdown trigger button. Single source of truth for the visual.
+ */
+function AgencyPillLabel({ name }: { name?: string | null }) {
+  return (
+    <>
+      <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-xs font-semibold text-neutral-900">
+        {name?.[0]?.toUpperCase() ?? 'A'}
+      </span>
+      <span className="flex-1 truncate text-left text-sm font-medium">
+        {name ?? 'Select org'}
+      </span>
+    </>
   )
 }

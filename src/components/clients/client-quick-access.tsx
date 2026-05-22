@@ -42,10 +42,14 @@ export function ClientQuickAccess({
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="max-w-full transition-colors hover:opacity-80"
+                className="max-w-full"
               >
-                <StatusPill variant="plain" className="gap-1.5 max-w-full">
-                  <Link2 className="size-3 shrink-0 text-neutral-500" />
+                <StatusPill
+                  variant="plain"
+                  hoverable
+                  leadingIcon={<Link2 className="size-3 shrink-0 text-neutral-500" />}
+                  className="max-w-full"
+                >
                   <span className="truncate">{hostnameOf(url)}</span>
                 </StatusPill>
               </Link>
@@ -62,10 +66,14 @@ export function ClientQuickAccess({
               href={assetsFolderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="max-w-full transition-colors hover:opacity-80"
+              className="max-w-full"
             >
-              <StatusPill variant="plain" className="gap-1.5 max-w-full">
-                <FolderOpen className="size-3 shrink-0 text-neutral-500" />
+              <StatusPill
+                variant="plain"
+                hoverable
+                leadingIcon={<FolderOpen className="size-3 shrink-0 text-neutral-500" />}
+                className="max-w-full"
+              >
                 <span className="truncate">Open folder</span>
                 <ExternalLink className="size-3 shrink-0 opacity-60" />
               </StatusPill>
@@ -88,10 +96,14 @@ export function ClientQuickAccess({
               href={canvaHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="max-w-full transition-colors hover:opacity-80"
+              className="max-w-full"
             >
-              <StatusPill variant="plain" className="gap-1.5 max-w-full">
-                <Palette className="size-3 shrink-0 text-neutral-500" />
+              <StatusPill
+                variant="plain"
+                hoverable
+                leadingIcon={<Palette className="size-3 shrink-0 text-neutral-500" />}
+                className="max-w-full"
+              >
                 <span className="truncate">Open in Canva</span>
                 <ExternalLink className="size-3 shrink-0 opacity-60" />
               </StatusPill>

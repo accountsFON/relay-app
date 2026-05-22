@@ -918,10 +918,14 @@ function UrlListField({
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="max-w-full transition-colors hover:opacity-80"
+              className="max-w-full"
             >
-              <StatusPill variant="plain" className="gap-1.5 max-w-full">
-                <LinkIcon className="size-3.5 shrink-0 text-neutral-500" />
+              <StatusPill
+                variant="plain"
+                hoverable
+                leadingIcon={<LinkIcon className="size-3.5 shrink-0 text-neutral-500" />}
+                className="max-w-full"
+              >
                 <span className="truncate">{prettyUrl(url)}</span>
               </StatusPill>
             </a>
