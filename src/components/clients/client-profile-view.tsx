@@ -7,6 +7,7 @@ import type { Client } from '@prisma/client'
 import { ExternalLink, Link as LinkIcon, Pencil, Check, X } from 'lucide-react'
 import { PageSection } from '@/components/ui/page-section'
 import { Button } from '@/components/ui/button'
+import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
 import { updateClientAction } from '@/app/(app)/clients/actions'
 import type { ClientUpdate } from '@/lib/schemas/client'
@@ -917,10 +918,12 @@ function UrlListField({
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 h-8 text-[13px] text-foreground hover:bg-cream-80 transition-colors max-w-full"
+              className="max-w-full transition-colors hover:opacity-80"
             >
-              <LinkIcon className="size-3.5 shrink-0 text-ink-50" />
-              <span className="truncate">{prettyUrl(url)}</span>
+              <StatusPill variant="plain" className="gap-1.5 max-w-full">
+                <LinkIcon className="size-3.5 shrink-0 text-neutral-500" />
+                <span className="truncate">{prettyUrl(url)}</span>
+              </StatusPill>
             </a>
           ))}
         </div>

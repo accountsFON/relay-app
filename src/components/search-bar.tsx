@@ -63,25 +63,25 @@ export function SearchBar() {
       role="search"
       onSubmit={handleSubmit}
       className={cn(
-        'group relative flex items-center',
-        'h-8 w-56 rounded-full border border-border bg-card pl-3 pr-2',
-        'focus-within:ring-3 focus-within:ring-ring/30',
+        'group relative flex w-full max-w-md items-center gap-2',
+        'h-10 rounded-full border border-border bg-white px-4',
+        'focus-within:border-border-strong focus-within:ring-2 focus-within:ring-blue-100',
       )}
     >
-      <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <Search className="h-4 w-4 shrink-0 text-neutral-500" />
       <input
         ref={inputRef}
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKey}
-        placeholder="Search…"
+        placeholder="Search relays, clients, steps..."
         aria-label="Search clients, posts, runs, and comments"
-        className="w-full bg-transparent pl-2 pr-2 text-[13px] text-foreground placeholder:text-muted-foreground outline-none"
+        className="flex-1 bg-transparent text-sm text-foreground placeholder:text-neutral-500 outline-none"
       />
       <kbd
         aria-hidden="true"
-        className="pointer-events-none ml-auto hidden rounded border border-border px-1 text-[10px] text-muted-foreground md:inline-flex"
+        className="pointer-events-none hidden rounded border border-border bg-neutral-50 px-1.5 py-0.5 font-mono text-[10px] text-neutral-500 md:inline-flex"
       >
         /
       </kbd>
