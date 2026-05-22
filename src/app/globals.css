@@ -5,9 +5,11 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================
-   Relay BETA brand tokens
+   Relay v1 brand tokens
    Source of truth: vault → projects/relay-app/design-tokens.md
-   STATUS: temporary beta branding, not final.
+   STATUS: v1 production brand (Phase 2.5, applied 2026-05-22).
+   Legacy --ink/--cream/--orange aliases preserved through 2.5C
+   for back compat; removed in 2.5E.3.
    ============================================================ */
 
 @theme inline {
@@ -54,6 +56,19 @@
   --color-cream-warm: var(--cream-warm);
   --color-cream-80: var(--cream-80);
   --color-orange: var(--orange);
+  --color-neutral-white: var(--neutral-white);
+  --color-neutral-50:    var(--neutral-50);
+  --color-neutral-700:   var(--neutral-700);
+  --color-neutral-900:   var(--neutral-900);
+  --color-yellow-500:    var(--yellow-500);
+  --color-yellow-300:    var(--yellow-300);
+  --color-yellow-100:    var(--yellow-100);
+  --color-coral-500:     var(--coral-500);
+  --color-coral-300:     var(--coral-300);
+  --color-coral-100:     var(--coral-100);
+  --color-blue-500:      var(--blue-500);
+  --color-blue-300:      var(--blue-300);
+  --color-blue-100:      var(--blue-100);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -65,15 +80,33 @@
 }
 
 :root {
-  /* Relay brand primitives — beta */
-  --ink: #131521;
-  --ink-80: #2A2E45;
-  --ink-50: #6B6E80;
-  --ink-20: #C9CAD2;
-  --cream: #F8F8F8;        /* page surface — neutral cool */
-  --cream-warm: #F1F1F1;   /* secondary surface — neutral cool */
-  --cream-80: #EBEBEB;     /* tertiary surface — neutral cool */
-  --orange: #FF4A1A;       /* reserved for logo only; not used in UI */
+  /* Relay v1 brand primitives */
+  --neutral-white: #FFFFFF;
+  --neutral-50:    #F6F7F6;
+  --neutral-900:   #050D16;
+  --neutral-700:   #383E46;
+
+  --yellow-500:    #FFE786;
+  --yellow-300:    #FFEFB1;
+  --yellow-100:    #FFF6D3;
+
+  --coral-500:     #FF9075;
+  --coral-300:     #FFCBBE;
+  --coral-100:     #FFDFD7;
+
+  --blue-500:      #57B1FF;
+  --blue-300:      #8BC9FF;
+  --blue-100:      #BEE1FF;
+
+  /* Legacy aliases (kept through 2.5C for back compat; removed in 2.5E.3) */
+  --ink:        var(--neutral-900);
+  --ink-80:     var(--neutral-700);
+  --ink-50:     #6B6E80;
+  --ink-20:     #C9CAD2;
+  --cream:      var(--neutral-50);
+  --cream-warm: #F1F1F1;
+  --cream-80:   #EBEBEB;
+  --orange:     var(--coral-500); /* Beta logo color was orange; coral is closest in v1. Logo file is replaced in 2.5A.3 — this alias only catches orphan refs. */
 
   /* Type stacks (system, no Google Fonts) */
   --font-sans: "Helvetica Neue", -apple-system, BlinkMacSystemFont, system-ui, Arial, sans-serif;
