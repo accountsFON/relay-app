@@ -112,12 +112,18 @@ export function MediaUpload({
           alt="Post media"
           className="w-full h-auto block"
         />
+        {/*
+          Trash button stays visible at reduced opacity by default so touch
+          devices (which have no hover state) can still find the delete
+          affordance. Brightens to full opacity on hover or keyboard focus.
+        */}
         <button
           type="button"
           onClick={handleClear}
           disabled={isPending}
           aria-label="Remove image"
-          className="absolute top-2 right-2 inline-flex items-center justify-center rounded-md bg-black/60 text-white p-2 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+          data-testid="media-upload-remove"
+          className="absolute top-2 right-2 inline-flex items-center justify-center rounded-md bg-black/60 text-white p-2 opacity-80 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity disabled:opacity-50"
         >
           <Trash2 className="size-4" />
         </button>
