@@ -12,6 +12,7 @@ import { MarkBatchReviewedButton } from '@/components/preview/mark-batch-reviewe
 import { PreviewPageShell } from './preview-page-shell'
 import { EventAnchor } from '@/components/notifications/event-anchor'
 import { PreviewSubmitButton } from '@/components/notifications/preview-submit-button'
+import { Button } from '@/components/ui/button'
 
 /**
  * Internal batch preview page (Layer 2 / Task 2.1).
@@ -118,13 +119,14 @@ export default async function BatchPreviewPage({
             openThreadCount={totalOpenThreads}
           />
         )}
-        <Link
-          href={`/clients/${client.id}/batches/${batch.id}`}
-          className="inline-flex items-center gap-1.5 rounded-full bg-cream-warm px-3 py-1.5 text-[13px] text-foreground hover:bg-cream-80 transition-colors"
+        <Button
+          variant="secondary"
+          size="sm"
+          render={<Link href={`/clients/${client.id}/batches/${batch.id}`} />}
         >
-          <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
+          <ChevronLeft className="text-muted-foreground" />
           <span>Back to relay</span>
-        </Link>
+        </Button>
       </div>
 
       <div className="mt-8">
