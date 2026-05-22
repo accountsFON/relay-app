@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { getClientScopeFilter } from '@/server/auth/scope'
+import { sortClientsForAm } from '@/lib/client-am-sort'
 
 export default async function ClientsPage({
   searchParams,
@@ -21,7 +22,7 @@ export default async function ClientsPage({
   const sp = await searchParams
   const showArchived = sp?.archived === '1'
 
-  const [clients, archivedClientCount] = await Promise.all([
+  const [clientsUnsorted, archivedClientCount] = await Promise.all([
     listClientsForUser(ctx, { showArchived }),
     db.client.onlyArchived().count({
       where: {
@@ -30,6 +31,14 @@ export default async function ClientsPage({
       },
     }),
   ])
+
+  // AM default sort: Ready -> Onboarding -> Paused -> Archived, alphabetical
+  // within rank. Other roles keep the repository's name-asc ordering so admin /
+  // designer / client surfaces look unchanged. Phase 2 item 12.
+  const clients =
+    ctx.role === 'account_manager'
+      ? sortClientsForAm(clientsUnsorted)
+      : clientsUnsorted
 
   const canCreate = canEditClients(ctx)
 
