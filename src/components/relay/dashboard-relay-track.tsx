@@ -22,6 +22,7 @@ import {
   RelayRunnerCard,
   type RunnerRelay,
 } from '@/components/relay/relay-runner-card'
+import { STEP_COLOR_CLASSES, getStepColor } from '@/lib/relay-step-colors'
 import { StepTooltip } from '@/components/relay/relay-tooltips'
 
 export interface DashboardRelayTrackStation {
@@ -102,6 +103,7 @@ function DesktopStation({
 }) {
   const hasRelays = station.relays.length > 0
   const hasRecent = station.relays.some((r) => isRecentlyPassed(r, now))
+  const stationColors = STEP_COLOR_CLASSES[getStepColor(station.step)]
 
   return (
     <div
@@ -110,7 +112,7 @@ function DesktopStation({
       data-active={hasRecent ? 'true' : undefined}
       className={cn(
         'flex w-[200px] shrink-0 flex-col rounded-lg bg-cream-warm/40 p-3',
-        hasRecent && 'ring-1 ring-[color:var(--orange)]/50 bg-cream-warm/60'
+        hasRecent && cn('ring-1 bg-cream-warm/60', stationColors.ring),
       )}
     >
       <StationHeader
@@ -142,6 +144,7 @@ function MobileStation({
 }) {
   const hasRelays = station.relays.length > 0
   const hasRecent = station.relays.some((r) => isRecentlyPassed(r, now))
+  const stationColors = STEP_COLOR_CLASSES[getStepColor(station.step)]
 
   return (
     <li
@@ -149,7 +152,7 @@ function MobileStation({
       data-active={hasRecent ? 'true' : undefined}
       className={cn(
         'rounded-md bg-cream-warm/40 p-2.5',
-        hasRecent && 'ring-1 ring-[color:var(--orange)]/50'
+        hasRecent && cn('ring-1', stationColors.ring),
       )}
     >
       <StationHeader
@@ -181,6 +184,7 @@ function StationHeader({
   count: number
   recent: boolean
 }) {
+  const stationColors = STEP_COLOR_CLASSES[getStepColor(step)]
   return (
     <div className="flex items-center justify-between gap-1.5 px-1">
       <StepTooltip step={step}>
@@ -198,8 +202,8 @@ function StationHeader({
         className={cn(
           'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] tabular-nums',
           recent
-            ? 'bg-[color:var(--orange)]/20 text-foreground'
-            : 'bg-cream-80 text-ink-80'
+            ? cn(stationColors.wash, 'text-foreground')
+            : 'bg-cream-80 text-ink-80',
         )}
         aria-label={`${count} ${count === 1 ? 'relay' : 'relays'} at this step`}
       >
