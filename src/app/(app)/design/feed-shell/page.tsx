@@ -24,7 +24,7 @@ export default function FeedShellDesignPage() {
           <div
             key={post.id}
             data-testid={`stub-ig-${post.id}`}
-            className="rounded-lg border border-cream-80 bg-card p-4 text-sm"
+            className="rounded-lg border border-neutral-200 bg-card p-4 text-sm"
           >
             IG: {post.id} , {post.label}
           </div>
@@ -32,7 +32,7 @@ export default function FeedShellDesignPage() {
           <div
             key={post.id}
             data-testid={`stub-fb-${post.id}`}
-            className="rounded-lg border border-cream-80 bg-card p-4 text-sm"
+            className="rounded-lg border border-neutral-200 bg-card p-4 text-sm"
           >
             FB: {post.id} , {post.label}
           </div>

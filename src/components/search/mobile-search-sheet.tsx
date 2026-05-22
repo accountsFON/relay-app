@@ -63,7 +63,7 @@ export function MobileSearchSheet({ className }: { className?: string }) {
       <DialogPrimitive.Trigger
         data-slot="mobile-search-trigger"
         className={cn(
-          'rounded-full bg-card p-1.5 text-muted-foreground hover:text-foreground hover:bg-cream-80',
+          'rounded-full bg-card p-1.5 text-muted-foreground hover:text-foreground hover:bg-neutral-200',
           className,
         )}
         aria-label="Search"
@@ -94,7 +94,7 @@ export function MobileSearchSheet({ className }: { className?: string }) {
             </DialogPrimitive.Title>
             <DialogPrimitive.Close
               data-slot="mobile-search-close"
-              className="rounded-full p-1.5 text-muted-foreground hover:bg-cream-80 hover:text-foreground"
+              className="rounded-full p-1.5 text-muted-foreground hover:bg-neutral-200 hover:text-foreground"
               aria-label="Close search"
             >
               <X className="h-4 w-4" />

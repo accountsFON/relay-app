@@ -90,7 +90,7 @@ export function DashboardRelayTrack({
           aria-label="Relay track"
           className="flex items-start gap-3 overflow-x-auto px-1 py-2"
           style={{
-            scrollbarColor: 'var(--ink-80) transparent',
+            scrollbarColor: 'var(--neutral-700) transparent',
             scrollbarWidth: 'thin',
           }}
         >
@@ -127,8 +127,8 @@ function DesktopStation({
       data-step={station.step}
       data-active={hasRecent ? 'true' : undefined}
       className={cn(
-        'flex w-[200px] shrink-0 flex-col rounded-lg bg-cream-warm/40 p-3',
-        hasRecent && cn('ring-1 bg-cream-warm/60', stationColors.ring),
+        'flex w-[200px] shrink-0 flex-col rounded-lg bg-neutral-100/40 p-3',
+        hasRecent && cn('ring-1 bg-neutral-100/60', stationColors.ring),
       )}
     >
       <StationHeader
@@ -170,7 +170,7 @@ function MobileStation({
       data-step={station.step}
       data-active={hasRecent ? 'true' : undefined}
       className={cn(
-        'rounded-md bg-cream-warm/40 p-2.5',
+        'rounded-md bg-neutral-100/40 p-2.5',
         hasRecent && cn('ring-1', stationColors.ring),
       )}
     >
@@ -225,7 +225,7 @@ function StationHeader({
           'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] tabular-nums',
           recent
             ? cn(stationColors.wash, 'text-foreground')
-            : 'bg-cream-80 text-ink-80',
+            : 'bg-neutral-200 text-neutral-700',
         )}
         aria-label={`${count} ${count === 1 ? 'relay' : 'relays'} at this step`}
       >

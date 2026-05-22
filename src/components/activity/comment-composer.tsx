@@ -190,7 +190,7 @@ export function CommentComposer({
                   onMouseEnter={() => setHighlightIndex(i)}
                   className={cn(
                     'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] transition-colors',
-                    isHighlighted ? 'bg-cream-warm' : 'bg-popover hover:bg-cream-80',
+                    isHighlighted ? 'bg-neutral-100' : 'bg-popover hover:bg-neutral-200',
                   )}
                 >
                   <span className="truncate font-medium text-foreground">

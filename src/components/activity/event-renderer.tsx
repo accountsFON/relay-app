@@ -104,7 +104,7 @@ function CommentRow({ event, className }: EventRendererProps) {
             tok.type === 'mention' ? (
               <span
                 key={i}
-                className="rounded bg-cream-warm px-1 py-0.5 text-[13px] font-medium text-foreground"
+                className="rounded bg-neutral-100 px-1 py-0.5 text-[13px] font-medium text-foreground"
               >
                 @{tok.handle}
               </span>
@@ -424,9 +424,9 @@ function numberField(payload: unknown, key: string): number | null {
 function toneClasses(tone: Tone): string {
   switch (tone) {
     case 'success':
-      return 'text-foreground bg-cream-warm'
+      return 'text-foreground bg-neutral-100'
     case 'warning':
-      return 'text-ink-80 bg-cream-warm'
+      return 'text-neutral-700 bg-neutral-100'
     case 'destructive':
       return 'text-destructive bg-destructive/10'
     default:

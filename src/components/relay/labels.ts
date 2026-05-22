@@ -26,14 +26,14 @@ export const STEP_LABEL: Record<RelayStep, string> = {
 }
 
 /**
- * Role colors aligned with the cream-and-ink brand system.
+ * Role colors aligned with the Relay v1 neutral brand system.
  * Hue-based distinctions (blue/purple/green) were retired in the brand
- * sweep — they broke the "orange is logo-only" rule by introducing
+ * sweep — they broke the "hue-as-category-accent" rule by introducing
  * non-brand chromatic backgrounds on every relay surface. Roles are now
- * distinguished by lightness/inversion within the ink scale:
+ * distinguished by lightness/inversion within the neutral scale:
  *   admin   — muted gray (least emphasis, internal-only role)
- *   am      — cream-warm tint (warm, the working-default role)
- *   designer— light ink tint (cooler emphasis)
+ *   am      — neutral-100 tint (warm, the working-default role)
+ *   designer— light neutral-900 tint (cooler emphasis)
  *   client  — inverse dark (strongest visual weight, signals "external")
  * Tailwind utility class triples to keep JSX readable.
  */
@@ -44,14 +44,14 @@ export const ROLE_COLOR: Record<RelayRole, { bg: string; text: string; ring: str
     ring: 'ring-muted-foreground/30',
   },
   [RelayRole.am]: {
-    bg: 'bg-cream-warm',
+    bg: 'bg-neutral-100',
     text: 'text-foreground',
-    ring: 'ring-ink/40',
+    ring: 'ring-neutral-900/40',
   },
   [RelayRole.designer]: {
-    bg: 'bg-ink/10',
+    bg: 'bg-neutral-900/10',
     text: 'text-foreground',
-    ring: 'ring-ink/40',
+    ring: 'ring-neutral-900/40',
   },
   [RelayRole.client]: {
     bg: 'bg-foreground',

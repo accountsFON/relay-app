@@ -44,7 +44,7 @@ export function PostVersionHistory({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[12px] text-muted-foreground hover:bg-cream-warm hover:text-foreground"
+        className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[12px] text-muted-foreground hover:bg-neutral-100 hover:text-foreground"
         aria-expanded={open}
         aria-controls={`versions-${postId}`}
       >

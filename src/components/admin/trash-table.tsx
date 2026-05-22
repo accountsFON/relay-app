@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2Icon, RotateCcwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { Badge } from '@/components/ui/badge'
 import { TypedConfirmModal } from '@/components/admin/typed-confirm-modal'
 import {
@@ -240,15 +241,13 @@ export function TrashTable({ entityType, rows: initialRows }: Props) {
           <thead>
             <tr className="border-b border-border bg-muted/30 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <th className="w-10 px-4 py-2">
-                <input
-                  type="checkbox"
+                <BrandCheckbox
                   checked={allSelected}
                   ref={(el) => {
                     if (el) el.indeterminate = someSelected
                   }}
                   onChange={toggleAll}
                   aria-label="Select all"
-                  className="rounded"
                 />
               </th>
               <th className="px-4 py-2">Name</th>
@@ -276,12 +275,10 @@ export function TrashTable({ entityType, rows: initialRows }: Props) {
                   )}
                 >
                   <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
+                    <BrandCheckbox
                       checked={isSelected}
                       onChange={() => toggleRow(row.id)}
                       aria-label={`Select ${row.label}`}
-                      className="rounded"
                     />
                   </td>
                   <td className="px-4 py-3 font-medium text-foreground">{row.label}</td>

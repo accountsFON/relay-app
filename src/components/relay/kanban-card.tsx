@@ -187,11 +187,11 @@ function toneClass(
 ): string {
   switch (tone) {
     case 'success':
-      return 'bg-cream-warm text-foreground'
+      return 'bg-neutral-100 text-foreground'
     case 'attention':
-      return 'bg-cream-warm text-ink-80'
+      return 'bg-neutral-100 text-neutral-700'
     case 'progress':
-      return 'bg-cream-80 text-ink-80'
+      return 'bg-neutral-200 text-neutral-700'
     default:
       return 'bg-muted text-muted-foreground'
   }

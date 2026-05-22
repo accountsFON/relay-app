@@ -70,7 +70,7 @@ export function DateScopePill() {
               key={preset}
               onClick={() => setPreset(preset)}
               className={cn(
-                scope.preset === preset && 'bg-cream-warm font-medium',
+                scope.preset === preset && 'bg-neutral-100 font-medium',
               )}
             >
               {label}

@@ -211,7 +211,7 @@ export default async function ClientDetailPage({
                           ? `/clients/${client.id}/runs/${run.id}`
                           : undefined
                     }
-                    leading={<RowAvatar icon={<Calendar className="size-5 text-ink-50" />} />}
+                    leading={<RowAvatar icon={<Calendar className="size-5 text-neutral-500" />} />}
                     title={
                       <span className="flex items-center gap-2">
                         <StatusDot status={run.status} />
@@ -223,7 +223,7 @@ export default async function ClientDetailPage({
                         {isRunning ? (
                           <span className="text-foreground">Generating content…</span>
                         ) : isQueued ? (
-                          <span className="text-ink-50">Queued, waiting to start…</span>
+                          <span className="text-neutral-500">Queued, waiting to start…</span>
                         ) : (
                           run.createdAt.toLocaleDateString()
                         )}

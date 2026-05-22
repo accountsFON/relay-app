@@ -18,11 +18,15 @@
  * Props are modeled as a discriminated union on `variant` so the type
  * checker prevents nonsense like `<StatusPill variant="plain" accent="coral" />`.
  *
- * Optional props (any variant):
+ * Optional props (per variant — see discriminated union below):
  * - `leadingIcon`: React node rendered before children. Auto adds gap-1.5.
+ *   Available on `plain` and `accent`. Disallowed on `dot` (the colored
+ *   dot is already the leading affordance).
  * - `hoverable`: adds hover:bg-neutral-50 + transition-colors. Use this on
  *   chip links instead of wrapping the anchor in hover:opacity-80, which
  *   cascaded into icons + dots + borders and read as "disabled."
+ *   Available on `plain` and `dot`. Disallowed on `accent` (tinted bg
+ *   already reads interactive; hover-on-tint looked broken in QA).
  */
 import * as React from 'react'
 import { cn } from '@/lib/utils'
@@ -45,22 +49,40 @@ const accentBgMap: Record<AccentColor, string> = {
 
 type StatusPillBase = {
   children: React.ReactNode
-  leadingIcon?: React.ReactNode
-  hoverable?: boolean
   className?: string
 }
 
+/**
+ * Discriminated union tightened in Phase 2.5E.3:
+ * - `accent` disallows `hoverable` (visual clash: the tinted bg already
+ *   reads as "interactive"; hover-on-tint looked broken in QA).
+ * - `dot` disallows `leadingIcon` (visual ambiguity: the colored dot is
+ *   already the leading affordance — two indicators on one pill compete).
+ */
 export type StatusPillProps =
-  | (StatusPillBase & { variant: 'plain' })
-  | (StatusPillBase & { variant: 'dot'; dotColor?: AccentColor })
-  | (StatusPillBase & { variant: 'accent'; accent?: AccentColor })
+  | (StatusPillBase & {
+      variant: 'plain'
+      leadingIcon?: React.ReactNode
+      hoverable?: boolean
+    })
+  | (StatusPillBase & {
+      variant: 'dot'
+      dotColor?: AccentColor
+      hoverable?: boolean
+      leadingIcon?: never
+    })
+  | (StatusPillBase & {
+      variant: 'accent'
+      accent?: AccentColor
+      leadingIcon?: React.ReactNode
+      hoverable?: never
+    })
 
 export function StatusPill(props: StatusPillProps) {
-  const { children, leadingIcon, hoverable, className } = props
-  const hoverClass = hoverable ? 'hover:bg-neutral-50 transition-colors' : ''
-  const gapClass = leadingIcon ? 'gap-1.5' : ''
+  const { children, className } = props
 
   if (props.variant === 'accent') {
+    const gapClass = props.leadingIcon ? 'gap-1.5' : ''
     return (
       <span
         data-pill
@@ -68,17 +90,17 @@ export function StatusPill(props: StatusPillProps) {
           'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium',
           accentBgMap[props.accent ?? 'neutral'],
           gapClass,
-          hoverClass,
           className,
         )}
       >
-        {leadingIcon}
+        {props.leadingIcon}
         {children}
       </span>
     )
   }
 
   if (props.variant === 'dot') {
+    const hoverClass = props.hoverable ? 'hover:bg-neutral-50 transition-colors' : ''
     return (
       <span
         data-pill
@@ -92,12 +114,13 @@ export function StatusPill(props: StatusPillProps) {
           data-status-dot
           className={cn('w-1.5 h-1.5 rounded-full', dotBgMap[props.dotColor ?? 'neutral'])}
         />
-        {leadingIcon}
         {children}
       </span>
     )
   }
 
+  const hoverClass = props.hoverable ? 'hover:bg-neutral-50 transition-colors' : ''
+  const gapClass = props.leadingIcon ? 'gap-1.5' : ''
   return (
     <span
       data-pill
@@ -108,7 +131,7 @@ export function StatusPill(props: StatusPillProps) {
         className,
       )}
     >
-      {leadingIcon}
+      {props.leadingIcon}
       {children}
     </span>
   )

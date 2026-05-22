@@ -97,7 +97,7 @@ export function InFlightRunsPill() {
                       }
                       setOpen(false)
                     }}
-                    className="block px-4 py-2 hover:bg-cream-warm/60 transition-colors"
+                    className="block px-4 py-2 hover:bg-neutral-100/60 transition-colors"
                   >
                     {rowBody}
                   </Link>

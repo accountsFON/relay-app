@@ -76,8 +76,8 @@ export function ClientStatusBadge({
           status === 'active'
             ? 'bg-primary text-primary-foreground hover:opacity-90'
             : status === 'archived'
-            ? 'bg-cream-80 text-ink-80 hover:bg-cream-warm'
-            : 'bg-cream-warm text-foreground hover:bg-cream-80',
+            ? 'bg-neutral-200 text-neutral-700 hover:bg-neutral-100'
+            : 'bg-neutral-100 text-foreground hover:bg-neutral-200',
           pending && 'opacity-60 cursor-not-allowed'
         )}
         aria-label={`Status: ${status}. Click to change.`}
@@ -95,7 +95,7 @@ export function ClientStatusBadge({
               onClick={() => handleSelect(opt.value)}
               className={cn(
                 'flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer',
-                selected && 'bg-cream-warm'
+                selected && 'bg-neutral-100'
               )}
             >
               <div className="flex h-4 w-4 shrink-0 items-center justify-center mt-0.5">

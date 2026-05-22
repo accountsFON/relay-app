@@ -192,7 +192,7 @@ function NotificationCard({
       <button
         onClick={() => dismiss(notification.id)}
         aria-label="Dismiss"
-        className="rounded-full p-1 text-muted-foreground hover:bg-cream-80"
+        className="rounded-full p-1 text-muted-foreground hover:bg-neutral-200"
       >
         <X className="size-4" />
       </button>

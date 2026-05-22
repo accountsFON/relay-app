@@ -34,7 +34,7 @@ export function AdminTabs() {
               'inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors',
               active
                 ? 'bg-foreground text-background'
-                : 'bg-cream-warm text-ink-50 hover:bg-cream-80 hover:text-foreground',
+                : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200 hover:text-foreground',
             )}
             aria-current={active ? 'page' : undefined}
           >

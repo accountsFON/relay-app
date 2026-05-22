@@ -362,7 +362,7 @@ function KanbanColumn({
   const emptyTint: 'blue' | 'yellow' | 'coral' =
     dotColor === 'neutral' ? 'blue' : dotColor
   return (
-    <div className="rounded-xl bg-cream-warm/40 p-2.5">
+    <div className="rounded-xl bg-neutral-100/40 p-2.5">
       <div className="mb-3 flex items-center justify-between px-1">
         <StatusPill variant="dot" dotColor={dotColor}>
           <span className="uppercase tracking-wider text-[10px]">{title}</span>

@@ -71,7 +71,7 @@ export function MobileThreadFab({
             <DialogPrimitive.Close
               data-slot="mobile-thread-fab-close"
               aria-label="Close client thread"
-              className="rounded-full p-1.5 text-muted-foreground hover:bg-cream-80 hover:text-foreground"
+              className="rounded-full p-1.5 text-muted-foreground hover:bg-neutral-200 hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </DialogPrimitive.Close>

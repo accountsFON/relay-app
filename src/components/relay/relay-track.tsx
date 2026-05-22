@@ -297,7 +297,7 @@ function RelayTrackMobile({
                   isCurrent
                     ? 'text-foreground'
                     : isPast
-                    ? 'text-ink-50'
+                    ? 'text-neutral-500'
                     : 'text-muted-foreground'
                 )}
               >
@@ -381,7 +381,7 @@ function RelayNodeLabel({
           isCurrent
             ? 'text-foreground'
             : isPast
-            ? 'text-ink-50'
+            ? 'text-neutral-500'
             : 'text-muted-foreground'
         )}
       >

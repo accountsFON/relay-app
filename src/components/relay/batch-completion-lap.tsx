@@ -147,7 +147,7 @@ function Avatar({ participant }: { participant: CelebrationParticipant }) {
   return (
     <div
       title={participant.name}
-      className="flex size-12 items-center justify-center rounded-full border-2 border-background bg-cream-warm text-muted-foreground shadow-md"
+      className="flex size-12 items-center justify-center rounded-full border-2 border-background bg-neutral-100 text-muted-foreground shadow-md"
     >
       <UserCircle2 className="size-7" />
     </div>

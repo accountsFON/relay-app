@@ -28,9 +28,9 @@ const tintBgMap: Record<Tint, string> = {
 }
 
 const tintFillMap: Record<Tint, string> = {
-  blue: '#57B1FF',
-  yellow: '#FFE786',
-  coral: '#FF9075',
+  blue: 'var(--color-blue-500)',
+  yellow: 'var(--color-yellow-500)',
+  coral: 'var(--color-coral-500)',
 }
 
 const tintDotMap: Record<Tint, string> = {

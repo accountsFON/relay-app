@@ -41,7 +41,7 @@ export function PlatformToggle({
       role="radiogroup"
       aria-label="Preview platform"
       className={cn(
-        'inline-flex items-center rounded-full bg-cream-warm p-1 text-[13px] font-medium',
+        'inline-flex items-center rounded-full bg-neutral-100 p-1 text-[13px] font-medium',
         className,
       )}
     >
@@ -89,7 +89,7 @@ function PlatformOption({
         'rounded-full px-4 py-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30',
         active
           ? 'bg-card text-foreground shadow-sm'
-          : 'text-ink-50 hover:text-foreground',
+          : 'text-neutral-500 hover:text-foreground',
       )}
     >
       {label}

@@ -325,10 +325,10 @@ export function PostCard({
                 </p>
                 <QaEditedIndicator preQaCaption={post.preQaCaption} />
                 {post.hashtags.length > 0 && (
-                  <p className="text-[14px] text-ink-50">{post.hashtags.join(' ')}</p>
+                  <p className="text-[14px] text-neutral-500">{post.hashtags.join(' ')}</p>
                 )}
                 {post.graphicHook && (
-                  <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
+                  <div className="rounded-xl bg-neutral-100/60 px-4 py-3">
                     <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                       Graphic hook
                     </p>
@@ -336,7 +336,7 @@ export function PostCard({
                   </div>
                 )}
                 {post.designerNotes && (
-                  <div className="rounded-xl bg-cream-warm/60 px-4 py-3">
+                  <div className="rounded-xl bg-neutral-100/60 px-4 py-3">
                     <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                       Designer notes
                     </p>

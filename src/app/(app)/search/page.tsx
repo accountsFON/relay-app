@@ -65,7 +65,7 @@ export default async function SearchPage({
                     <li key={c.id}>
                       <Link
                         href={`/clients/${c.id}`}
-                        className="block rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-cream-warm"
+                        className="block rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-neutral-100"
                       >
                         <div className="flex items-baseline gap-2">
                           <p className="text-[15px] font-semibold text-foreground">
@@ -101,7 +101,7 @@ export default async function SearchPage({
                     <li key={p.id} className="relative">
                       <Link
                         href={`/clients/${p.clientId}/runs/${p.contentRunId}`}
-                        className="block rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-cream-warm"
+                        className="block rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-neutral-100"
                       >
                         <div className="flex items-baseline gap-2 text-[12px] text-muted-foreground">
                           <span className="font-medium text-foreground">{p.clientName}</span>
@@ -137,7 +137,7 @@ export default async function SearchPage({
                     <li key={r.id}>
                       <Link
                         href={`/clients/${r.clientId}/runs/${r.id}`}
-                        className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-cream-warm"
+                        className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-neutral-100"
                       >
                         <div>
                           <p className="text-[14px] font-medium text-foreground">
@@ -159,7 +159,7 @@ export default async function SearchPage({
                     <li key={c.id}>
                       <Link
                         href={`/clients/${c.clientId}`}
-                        className="block rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-cream-warm"
+                        className="block rounded-md border border-border bg-card px-4 py-3 transition-colors hover:bg-neutral-100"
                       >
                         <div className="flex items-baseline gap-2 text-[12px] text-muted-foreground">
                           <span className="font-medium text-foreground">
@@ -209,7 +209,7 @@ function FilterRail({
           className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
             filter === t.value
               ? 'bg-foreground text-background'
-              : 'bg-cream-warm text-ink-50 hover:bg-cream-80 hover:text-foreground'
+              : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200 hover:text-foreground'
           }`}
         >
           {t.label}

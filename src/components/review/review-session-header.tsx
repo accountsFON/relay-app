@@ -122,7 +122,7 @@ function SummaryChip({
     tone === 'success'
       ? 'bg-green-50 text-green-900'
       : tone === 'warning'
-        ? 'bg-orange-50 text-orange-900'
+        ? 'bg-coral-100 text-coral-500'
         : 'bg-blue-50 text-blue-900'
 
   return (

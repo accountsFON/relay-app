@@ -23,7 +23,7 @@ export function NotificationRow({ item }: { item: NotificationItemDTO }) {
       onMouseEnter={() => router.prefetch(item.href)}
       className={cn(
         'flex w-full items-start gap-3 px-3 py-2.5 text-left',
-        'hover:bg-cream-warm/40 focus:bg-cream-warm/40 focus:outline-none',
+        'hover:bg-neutral-100/40 focus:bg-neutral-100/40 focus:outline-none',
       )}
     >
       <span
