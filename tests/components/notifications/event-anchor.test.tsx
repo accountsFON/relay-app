@@ -4,16 +4,24 @@ import { EventAnchor } from '@/components/notifications/event-anchor'
 
 describe('EventAnchor', () => {
   let scrollIntoViewMock: ReturnType<typeof vi.fn>
+  let originalMatchMedia: typeof window.matchMedia | undefined
 
   beforeEach(() => {
     scrollIntoViewMock = vi.fn()
     Element.prototype.scrollIntoView =
       scrollIntoViewMock as unknown as Element['scrollIntoView']
     window.history.replaceState({}, '', '/')
+    originalMatchMedia = window.matchMedia
   })
 
   afterEach(() => {
     window.history.replaceState({}, '', '/')
+    if (originalMatchMedia) {
+      window.matchMedia = originalMatchMedia
+    } else {
+      // jsdom doesn't define matchMedia by default; remove any test override.
+      delete (window as unknown as { matchMedia?: unknown }).matchMedia
+    }
   })
 
   it('scrolls to the element matching #comment-XYZ on mount', async () => {
@@ -67,5 +75,46 @@ describe('EventAnchor', () => {
       window.dispatchEvent(new HashChangeEvent('hashchange'))
     })
     expect(scrollIntoViewMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('respects prefers-reduced-motion by scrolling with behavior: auto', async () => {
+    const matchMediaMock = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      onchange: null,
+      dispatchEvent: vi.fn(),
+    }))
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: matchMediaMock,
+    })
+    window.history.replaceState({}, '', '/somewhere#comment-e1')
+    document.body.innerHTML = '<div data-event-id="e1">target</div>'
+    render(<EventAnchor />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(matchMediaMock).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)')
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: 'auto', block: 'center' }),
+    )
+  })
+
+  it('escapes the eventId via CSS.escape before querySelector', async () => {
+    const escapeSpy = vi.spyOn(CSS, 'escape')
+    window.history.replaceState({}, '', '/somewhere#comment-e1')
+    document.body.innerHTML = '<div data-event-id="e1">target</div>'
+    render(<EventAnchor />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(escapeSpy).toHaveBeenCalledWith('e1')
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1)
+    escapeSpy.mockRestore()
   })
 })

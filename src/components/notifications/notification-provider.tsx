@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -118,20 +119,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const closeDropdown = useCallback(() => setState((s) => ({ ...s, isOpen: false })), [])
   const toggleDropdown = useCallback(() => setState((s) => ({ ...s, isOpen: !s.isOpen })), [])
 
-  return (
-    <Ctx.Provider
-      value={{
-        ...state,
-        markRead,
-        refresh: fetchSummary,
-        openDropdown,
-        closeDropdown,
-        toggleDropdown,
-      }}
-    >
-      {children}
-    </Ctx.Provider>
+  // Memoize the context value so consumers don't re-render on every 20s poll
+  // tick just because the provider rebuilt the object identity.
+  const value = useMemo<NotificationContextValue>(
+    () => ({
+      ...state,
+      markRead,
+      refresh: fetchSummary,
+      openDropdown,
+      closeDropdown,
+      toggleDropdown,
+    }),
+    [state, markRead, fetchSummary, openDropdown, closeDropdown, toggleDropdown],
   )
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
 export function useNotifications(): NotificationContextValue {

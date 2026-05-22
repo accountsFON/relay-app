@@ -21,11 +21,22 @@ export function EventAnchor() {
       const hash = window.location.hash.replace(/^#/, '')
       if (!hash.startsWith('comment-')) return
       const eventId = hash.slice('comment-'.length)
+      // CSS.escape guards against future ID formats that include special
+      // selector characters; current CUID2 ids don't need it but the cost
+      // is one call.
       const el = document.querySelector(
-        `[data-event-id="${eventId}"]`,
+        `[data-event-id="${CSS.escape(eventId)}"]`,
       ) as HTMLElement | null
       if (!el) return
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Respect the user's motion preference. `'auto'` is an instant jump
+      // with no animation; `'smooth'` is the animated scroll.
+      const prefersReducedMotion =
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      el.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'center',
+      })
       el.classList.add(HIGHLIGHT_CLASS)
       if (highlightTimer) clearTimeout(highlightTimer)
       highlightTimer = setTimeout(() => {
