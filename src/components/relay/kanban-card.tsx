@@ -10,6 +10,11 @@ import {
   type BatchForSubStatus,
 } from '@/lib/batch-sub-status'
 import {
+  getStepColor,
+  STEP_COLOR_CLASSES,
+} from '@/lib/relay-step-colors'
+import { cn } from '@/lib/utils'
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -46,6 +51,7 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
   const sub = deriveSubStatus(batch)
   const isArchived = Boolean(batch.deletedAt)
   const href = `/clients/${batch.clientId}/batches/${batch.id}`
+  const accentBorder = STEP_COLOR_CLASSES[getStepColor(batch.currentStep)].leftBorder
 
   function navigate() {
     router.push(href)
@@ -77,10 +83,11 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
           }
         }}
         data-archived={isArchived ? 'true' : undefined}
-        className={
-          'block rounded-md border border-border bg-background px-3 py-2 cursor-pointer transition-colors hover:bg-cream-warm/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ' +
-          (isArchived ? 'opacity-60' : '')
-        }
+        className={cn(
+          'block rounded-xl border border-border border-l-4 bg-white px-3 py-2.5 shadow-sm cursor-pointer transition-all hover:shadow-md hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          accentBorder,
+          isArchived && 'opacity-60',
+        )}
       >
         <div className="flex items-center justify-between gap-2">
           <p className="text-[13px] font-medium text-foreground truncate">
