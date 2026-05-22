@@ -54,7 +54,8 @@ export function getStepColor(
 /**
  * Tailwind class triples for each category color. Active circle gets the
  * 500 fill with white icon; recently passed highlights use the 300 tint
- * ring; tile backgrounds use the 100 wash. Done circles use ink.
+ * ring; tile backgrounds use the 100 wash. Done circles use ink. The
+ * `leftBorder` slot is the 4px accent border for kanban cards.
  */
 export const STEP_COLOR_CLASSES: Record<
   StepCategoryColor,
@@ -64,6 +65,7 @@ export const STEP_COLOR_CLASSES: Record<
     ring: string
     wash: string
     text: string
+    leftBorder: string
   }
 > = {
   blue: {
@@ -72,6 +74,7 @@ export const STEP_COLOR_CLASSES: Record<
     ring: 'ring-blue-300',
     wash: 'bg-blue-100',
     text: 'text-blue-500',
+    leftBorder: 'border-l-blue-500',
   },
   yellow: {
     activeBg: 'bg-yellow-500',
@@ -79,6 +82,7 @@ export const STEP_COLOR_CLASSES: Record<
     ring: 'ring-yellow-300',
     wash: 'bg-yellow-100',
     text: 'text-yellow-500',
+    leftBorder: 'border-l-yellow-500',
   },
   coral: {
     activeBg: 'bg-coral-500',
@@ -86,6 +90,7 @@ export const STEP_COLOR_CLASSES: Record<
     ring: 'ring-coral-300',
     wash: 'bg-coral-100',
     text: 'text-coral-500',
+    leftBorder: 'border-l-coral-500',
   },
   ink: {
     activeBg: 'bg-neutral-900',
@@ -93,5 +98,6 @@ export const STEP_COLOR_CLASSES: Record<
     ring: 'ring-neutral-700',
     wash: 'bg-neutral-50',
     text: 'text-neutral-900',
+    leftBorder: 'border-l-neutral-900',
   },
 }

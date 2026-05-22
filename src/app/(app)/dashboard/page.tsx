@@ -16,6 +16,7 @@ import {
   type ClientKanbanColumn,
 } from '@/lib/batch-sub-status'
 import { KanbanCard } from '@/components/relay/kanban-card'
+import { StatusPill } from '@/components/ui/status-pill'
 import {
   DashboardRelayTrack,
   type DashboardRelayTrackStation,
@@ -332,22 +333,35 @@ interface ColumnBatch {
   revisionPlan?: { items: { status: import('@prisma/client').RevisionItemStatus }[] } | null
 }
 
+/**
+ * Color map for the two client-facing kanban columns. Mirrors the step
+ * color heuristic in `relay-step-colors.ts`:
+ *   - 'Awaiting Your Approval' = client-held = blue
+ *   - 'In Production' = AM/Designer-held = yellow (AM is the majority owner)
+ *
+ * Typed against StatusPill's AccentColor set (no `ink`) because the client
+ * kanban never surfaces a fully-completed column.
+ */
+const CLIENT_COLUMN_COLOR: Record<ClientKanbanColumn, 'blue' | 'yellow' | 'coral' | 'neutral'> = {
+  'Awaiting Your Approval': 'blue',
+  'In Production': 'yellow',
+}
+
 function KanbanColumn({
   title,
   batches,
 }: {
-  title: string
+  title: ClientKanbanColumn
   batches: ColumnBatch[]
 }) {
+  const dotColor = CLIENT_COLUMN_COLOR[title]
   return (
-    <div className="rounded-md bg-cream-warm/40 p-2.5">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <h3 className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
-        </h3>
-        <span className="text-[11px] text-muted-foreground">
-          {batches.length}
-        </span>
+    <div className="rounded-xl bg-cream-warm/40 p-2.5">
+      <div className="mb-3 flex items-center justify-between px-1">
+        <StatusPill variant="dot" dotColor={dotColor}>
+          <span className="uppercase tracking-wider text-[10px]">{title}</span>
+        </StatusPill>
+        <span className="text-xs text-muted-foreground">{batches.length}</span>
       </div>
       <div className="space-y-2">
         {batches.length === 0 ? (
