@@ -43,6 +43,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { tokenizeBody } from '@/lib/mentions'
 import { relayStepLabel } from '@/lib/relay-step-labels'
+import { formatRelative } from '@/lib/format-relative'
 import type { ActivityEventView } from './types'
 import { CaptionAiFixedRow } from './caption-ai-fixed-row'
 
@@ -521,14 +522,3 @@ function humanizeFieldName(key: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
-function formatRelative(d: Date): string {
-  const diffMs = Date.now() - new Date(d).getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  if (diffSec < 60) return `${diffSec}s ago`
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-  const diffDay = Math.floor(diffHr / 24)
-  return `${diffDay}d ago`
-}

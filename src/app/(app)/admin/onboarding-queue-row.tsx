@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { completeOnboardingAction } from '@/server/actions/relay-admin'
+import { formatRelativeDays } from '@/lib/format-relative'
 
 export interface OnboardingClient {
   id: string
@@ -46,7 +47,7 @@ export function OnboardingQueueRow({ client }: { client: OnboardingClient }) {
         <p className="text-[11px] text-muted-foreground">
           {missingAm ? '⚠️ no AM · ' : ''}
           {missingDesigner ? '⚠️ no designer · ' : ''}
-          imported {formatRelative(client.createdAt)}
+          imported {formatRelativeDays(client.createdAt)}
         </p>
         {error && <p className="mt-1 text-[11px] text-destructive">{error}</p>}
       </div>
@@ -61,10 +62,3 @@ export function OnboardingQueueRow({ client }: { client: OnboardingClient }) {
   )
 }
 
-function formatRelative(date: Date): string {
-  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000)
-  if (days === 0) return 'today'
-  if (days === 1) return 'yesterday'
-  if (days < 7) return `${days}d ago`
-  return new Date(date).toLocaleDateString()
-}
