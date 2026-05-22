@@ -129,9 +129,9 @@
   --accent: var(--ink);
   --accent-foreground: var(--cream);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: rgba(19, 21, 33, 0.08);
-  --border-strong: rgba(19, 21, 33, 0.16);
-  --input: rgba(19, 21, 33, 0.10);
+  --border: rgba(5, 13, 22, 0.08);
+  --border-strong: rgba(5, 13, 22, 0.16);
+  --input: rgba(5, 13, 22, 0.10);
   --ring: var(--ink);
   --chart-1: var(--ink);
   --chart-2: var(--ink-80);
@@ -147,7 +147,7 @@
   --sidebar-primary-foreground: var(--cream);
   --sidebar-accent: var(--cream-80);
   --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: rgba(19, 21, 33, 0.08);
+  --sidebar-border: rgba(5, 13, 22, 0.08);
   --sidebar-ring: var(--ink);
 }
 
