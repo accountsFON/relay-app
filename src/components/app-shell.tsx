@@ -155,14 +155,14 @@ export function AppShell({
                 className={cn(
                   'flex items-center gap-3 rounded-full px-3 py-2.5 text-[14px] font-medium transition-colors',
                   isActive
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-ink-50 hover:bg-cream-80 hover:text-foreground'
+                    ? 'bg-blue-100 text-neutral-900'
+                    : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
                 )}
               >
-                <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-foreground')} />
+                <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-blue-500' : 'text-neutral-500')} />
                 <span className="flex-1">{item.label}</span>
                 {badgeCount > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1.5 text-[11px] font-medium text-background">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-coral-500 px-1.5 text-[11px] font-medium text-white">
                     {badgeCount > 99 ? '99+' : badgeCount}
                   </span>
                 )}
@@ -181,11 +181,11 @@ export function AppShell({
                 className={cn(
                   'flex items-center gap-3 rounded-full px-3 py-2.5 text-[14px] font-medium transition-colors',
                   isActive
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-ink-50 hover:bg-cream-80 hover:text-foreground'
+                    ? 'bg-blue-100 text-neutral-900'
+                    : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
                 )}
               >
-                <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-foreground')} />
+                <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-blue-500' : 'text-neutral-500')} />
                 {settingsNavItem.label}
               </Link>
             )

@@ -1,6 +1,6 @@
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { AdminTabs } from '../admin-tabs'
 import type { TrashRow } from '@/components/admin/trash-table'
 import { TrashTabsClient } from './trash-tabs-client'
@@ -206,13 +206,17 @@ export default async function AdminTrashPage() {
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title="Trash"
-        description={
+        subtitle={
           totalCount === 0
             ? 'No archived items. Items are permanently deleted after 30 days.'
             : `${totalCount} archived ${totalCount === 1 ? 'item' : 'items'}. Permanently deleted after 30 days.`
         }
+        breadcrumb={[
+          { label: 'Admin', href: '/admin' },
+          { label: 'Trash' },
+        ]}
       />
 
       <div className="mt-6">

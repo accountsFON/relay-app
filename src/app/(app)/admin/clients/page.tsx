@@ -2,7 +2,7 @@ import { requireAdminPortal } from '@/server/middleware/permissions'
 import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { Card } from '@/components/ui/card'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { AdminTabs } from '../admin-tabs'
 import { AssignmentSelect } from './assignment-select'
 
@@ -23,9 +23,13 @@ export default async function AdminClientsPage() {
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title="Client assignments"
-        description={`${clients.length} ${clients.length === 1 ? 'client' : 'clients'}. Reassign AM and Designer per client below.`}
+        subtitle={`${clients.length} ${clients.length === 1 ? 'client' : 'clients'}. Reassign AM and Designer per client below.`}
+        breadcrumb={[
+          { label: 'Admin', href: '/admin' },
+          { label: 'Client assignments' },
+        ]}
       />
 
       <div className="mt-6">

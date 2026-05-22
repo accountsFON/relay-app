@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { canEditClients } from '@/server/middleware/permissions'
 import { searchAcrossEntities } from '@/server/repositories/search'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,9 +24,9 @@ export default async function SearchPage({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title={q ? `Results for "${q}"` : 'Search'}
-        description={
+        subtitle={
           results
             ? `${results.total} match${results.total === 1 ? '' : 'es'} across clients, posts, runs, and comments.`
             : 'Search across clients, runs, posts, and comments.'

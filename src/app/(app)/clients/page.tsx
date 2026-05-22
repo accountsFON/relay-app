@@ -7,7 +7,7 @@ import { listClientsForUser } from '@/server/repositories/clients'
 import { db } from '@/db/client'
 import { BulkGenerateList } from './bulk-generate'
 import { Button } from '@/components/ui/button'
-import { PageHeader } from '@/components/page-header'
+import { HeroBand } from '@/components/hero-band'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { getClientScopeFilter } from '@/server/auth/scope'
@@ -44,22 +44,20 @@ export default async function ClientsPage({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
-      <PageHeader
+      <HeroBand
         title="Clients"
-        description={`${clients.length} ${clients.length === 1 ? 'client' : 'clients'} in this workspace.`}
-        actions={
-          canCreate && (
-            <>
-              <Link href="/clients/new">
-                <Button variant="accent">New client</Button>
-              </Link>
-              <Link href="/clients/import">
-                <Button variant="outline">Import CSV</Button>
-              </Link>
-            </>
-          )
-        }
+        subtitle={`${clients.length} ${clients.length === 1 ? 'client' : 'clients'} in this workspace.`}
       />
+      {canCreate && (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <Link href="/clients/new">
+            <Button variant="accent">New client</Button>
+          </Link>
+          <Link href="/clients/import">
+            <Button variant="outline">Import CSV</Button>
+          </Link>
+        </div>
+      )}
 
       <div className="mt-10">
         <div className="mb-4 flex items-center justify-between">
