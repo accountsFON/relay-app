@@ -8,7 +8,9 @@ import { NotificationRow } from '@/components/notifications/notification-row'
 import { FailedRunRow } from '@/components/notifications/failed-run-row'
 import type { NotificationItemDTO } from '@/app/api/notifications/summary/route'
 
-export function NotificationDropdown() {
+export function NotificationDropdown({
+  mountId = 'default',
+}: { mountId?: string } = {}) {
   const { isOpen, items, count, error, closeDropdown } = useNotifications()
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -23,7 +25,8 @@ export function NotificationDropdown() {
   return (
     <div
       ref={panelRef}
-      id="notification-dropdown"
+      id={`notification-dropdown-${mountId}`}
+      data-testid="notification-dropdown"
       role="dialog"
       aria-label="Notifications"
       tabIndex={-1}

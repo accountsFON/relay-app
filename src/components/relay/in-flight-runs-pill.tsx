@@ -32,6 +32,10 @@ export function InFlightRunsPill() {
     }
   }, [open])
 
+  // Failed runs were absorbed into the notification bell in Phase 1, and
+  // listInFlightRuns no longer returns them. The intent='failed' filter
+  // is kept as a defensive guard so the pill stays correct if a future
+  // provider change re-introduces failed rows.
   const sorted = [...runs]
     .filter((r) => r.intent !== 'failed')
     .filter((r) => !(r.intent === 'awaiting_choice' && clickedAcknowledged.has(r.id)))

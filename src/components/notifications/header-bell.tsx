@@ -4,7 +4,7 @@ import { Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/components/notifications/notification-provider'
 
-export function HeaderBell() {
+export function HeaderBell({ mountId = 'default' }: { mountId?: string } = {}) {
   const { count, isOpen, toggleDropdown, error } = useNotifications()
   const display = count >= 10 ? '9+' : count > 0 ? String(count) : null
 
@@ -14,7 +14,7 @@ export function HeaderBell() {
       onClick={toggleDropdown}
       aria-label={`Notifications, ${count} unread`}
       aria-expanded={isOpen}
-      aria-controls="notification-dropdown"
+      aria-controls={`notification-dropdown-${mountId}`}
       className={cn(
         'relative inline-flex items-center justify-center rounded-md p-1.5',
         'text-foreground hover:bg-cream-warm focus:outline-none focus:ring-2 focus:ring-ring',

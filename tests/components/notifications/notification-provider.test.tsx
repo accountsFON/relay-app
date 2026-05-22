@@ -173,6 +173,31 @@ describe('NotificationProvider', () => {
     expect(markMentionReadActionMock).toHaveBeenCalledWith('m1')
   })
 
+  it('markRead rolls back the optimistic update when the action throws', async () => {
+    markMentionReadActionMock.mockRejectedValueOnce(new Error('server rejected'))
+    let lastCtx = null as ReturnType<typeof useNotifications> | null
+    render(
+      <NotificationProvider>
+        <Probe onState={(s) => {
+          lastCtx = s
+        }} />
+      </NotificationProvider>,
+    )
+    await flushMicrotasks()
+    expect(lastCtx?.count).toBe(2)
+    expect(lastCtx?.items).toHaveLength(2)
+
+    await act(async () => {
+      await lastCtx!.markRead('e1')
+    })
+
+    // Rollback restores the prior state (item + count both back to original).
+    expect(lastCtx!.items.find((i) => i.eventId === 'e1')).toBeDefined()
+    expect(lastCtx!.items).toHaveLength(2)
+    expect(lastCtx!.count).toBe(2)
+    expect(markMentionReadActionMock).toHaveBeenCalledWith('m1')
+  })
+
   it('sets error state when fetch fails', async () => {
     fetchSpy.mockRejectedValueOnce(new Error('offline'))
     let lastCtx = null as ReturnType<typeof useNotifications> | null
