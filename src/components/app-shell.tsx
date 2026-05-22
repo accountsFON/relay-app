@@ -99,7 +99,7 @@ export function AppShell({
     <InFlightRunsProvider>
     <NotificationProvider>
     <CompletionNotificationsProvider>
-    <div className="flex h-dvh flex-col md:flex-row bg-background">
+    <div className="flex h-dvh flex-col md:flex-row bg-neutral-50">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-ink/40 md:hidden"
@@ -109,7 +109,8 @@ export function AppShell({
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-cream-warm transition-transform duration-200 md:static md:z-auto md:w-60 md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-white transition-transform duration-200',
+          'md:static md:z-auto md:w-60 md:translate-x-0 md:m-3 md:rounded-3xl md:shadow-sm md:border md:border-neutral-200/60',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
