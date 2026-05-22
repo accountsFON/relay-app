@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import Image from 'next/image'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { db } from '@/db/client'
@@ -38,16 +39,25 @@ export default async function ReviewLayout({ children }: { children: ReactNode }
   const clientName = link?.batch.client.name ?? 'Client'
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto flex w-full max-w-[640px] items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex flex-col">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+    <div className="flex min-h-dvh flex-col bg-neutral-50 text-foreground">
+      <header>
+        <div className="mx-auto flex w-full max-w-[880px] items-center justify-between px-4 py-4 sm:px-6 md:py-6">
+          <Image
+            src="/brand/wordmark-dark.svg"
+            alt="Relay"
+            width={96}
+            height={32}
+            className="h-7 w-auto"
+            priority
+          />
+          <div className="flex flex-col items-end">
+            <span className="text-[11px] uppercase tracking-wide text-neutral-500">
               Review by
             </span>
-            <span className="text-sm font-medium text-foreground">{clientName}</span>
+            <span className="text-sm font-medium text-neutral-900">
+              {clientName}
+            </span>
           </div>
-          <span className="text-[11px] text-muted-foreground">Relay</span>
         </div>
       </header>
       <main className="flex-1">{children}</main>
