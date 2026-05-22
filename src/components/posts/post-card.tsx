@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronRight, MoreHorizontal, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { updatePostAction } from '@/server/actions/posts'
+import { updatePostAction, redoPostAction } from '@/server/actions/posts'
 import { archivePostAction, restorePostAction } from '@/app/(app)/trash/actions'
 import { cn } from '@/lib/utils'
 import { usePostListCollapse } from '@/components/posts/post-list-collapse'
@@ -70,6 +71,7 @@ export function PostCard({
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
+  const [redoConfirmOpen, setRedoConfirmOpen] = useState(false)
   const [localCollapsed, setLocalCollapsed] = useState(defaultCollapsed)
 
   const isArchived = Boolean(post.deletedAt)
@@ -125,6 +127,21 @@ export function PostCard({
     startTransition(async () => {
       await restorePostAction(post.id)
       router.refresh()
+    })
+  }
+
+  const handleRedo = () => {
+    setRedoConfirmOpen(false)
+    startTransition(async () => {
+      try {
+        await redoPostAction(post.id)
+        router.refresh()
+        toast.success('Caption regenerated. Prior version saved in history.')
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : 'AI redo failed; nothing was changed.',
+        )
+      }
     })
   }
 
@@ -195,6 +212,20 @@ export function PostCard({
                 <SimpleTooltip content="Edit this post">
                   <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
                     Edit
+                  </Button>
+                </SimpleTooltip>
+              )}
+              {canEdit && !isEditing && !isArchived && (
+                <SimpleTooltip content="Regenerate this post's caption with AI">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRedoConfirmOpen(true)}
+                    disabled={isPending}
+                    aria-label="AI redo"
+                  >
+                    <Sparkles className="size-4" />
+                    Redo
                   </Button>
                 </SimpleTooltip>
               )}
@@ -357,6 +388,32 @@ export function PostCard({
               disabled={isPending}
             >
               {isPending ? 'Archiving…' : 'Archive'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={redoConfirmOpen} onOpenChange={setRedoConfirmOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Regenerate caption with AI?</DialogTitle>
+            <DialogDescription>
+              The current caption, hashtags, graphic hook, and designer
+              notes will be replaced. Your current version stays in the
+              post history so you can revert if the redo is worse.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setRedoConfirmOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleRedo} disabled={isPending}>
+              {isPending ? 'Regenerating…' : 'Redo with AI'}
             </Button>
           </DialogFooter>
         </DialogContent>
