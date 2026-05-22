@@ -116,12 +116,12 @@ export function AppShell({
         <div className="flex h-16 items-center justify-between px-5">
           <Link href="/dashboard" className="flex items-center pl-1" aria-label="Relay home">
             <Image
-              src="/brand/logo-no-padding-dark-text.svg"
+              src="/brand/wordmark-dark.svg"
               alt="Relay"
-              width={96}
-              height={28}
+              width={72}
+              height={36}
               priority
-              className="h-7 w-auto"
+              className="h-9 w-auto"
             />
           </Link>
           <button
@@ -209,12 +209,12 @@ export function AppShell({
             <Menu className="h-5 w-5" />
           </button>
           <Image
-            src="/brand/logo-no-padding-dark-text.svg"
+            src="/brand/wordmark-dark.svg"
             alt="Relay"
-            width={80}
-            height={24}
+            width={64}
+            height={32}
             priority
-            className="h-6 w-auto"
+            className="h-8 w-auto"
           />
           <div className="ml-auto flex items-center gap-2">
             <MobileSearchSheet />
