@@ -248,7 +248,19 @@ export function AppShell({
     </div>
     <InFlightAutoFinalizer />
     <CompletionNotificationsBanner />
-    <Toaster position="bottom-right" richColors closeButton />
+    <Toaster
+      position="bottom-right"
+      richColors
+      closeButton
+      theme="light"
+      toastOptions={{
+        classNames: {
+          success: 'border-blue-500',
+          error: 'border-coral-500',
+          info: 'border-neutral-700',
+        },
+      }}
+    />
     </CompletionNotificationsProvider>
     </NotificationProvider>
     </InFlightRunsProvider>

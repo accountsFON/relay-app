@@ -26,4 +26,25 @@ describe('<StatusPill>', () => {
     )
     expect(container.firstChild).toHaveClass('bg-blue-100')
   })
+
+  it('renders leading icon when provided', () => {
+    render(
+      <StatusPill
+        variant="plain"
+        leadingIcon={<svg data-testid="leading-icon" />}
+      >
+        label
+      </StatusPill>,
+    )
+    expect(screen.getByTestId('leading-icon')).toBeInTheDocument()
+  })
+
+  it('applies hover class when hoverable=true', () => {
+    const { container } = render(
+      <StatusPill variant="plain" hoverable>
+        x
+      </StatusPill>,
+    )
+    expect(container.firstChild).toHaveClass('hover:bg-neutral-50')
+  })
 })
