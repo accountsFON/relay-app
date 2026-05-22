@@ -24,22 +24,37 @@ export interface NotificationSummaryDTO {
 }
 
 export async function GET(_req: NextRequest) {
-  const ctx = await requireOrgContext()
-  const visibility = visibilityForViewer(ctx)
-  const [mentions, count] = await Promise.all([
-    listMentionsForUser(ctx.userDbId, {
-      organizationId: ctx.organizationDbId,
-      limit: 10,
-      unreadOnly: true,
-      visibilityFilter: visibility,
-    }),
-    unreadMentionCount(ctx.userDbId, ctx.organizationDbId, visibility),
-  ])
-  const items: NotificationItemDTO[] = mentions.map(toDTO)
-  return Response.json(
-    { count, items } satisfies NotificationSummaryDTO,
-    { headers: { 'Cache-Control': 'no-store' } },
-  )
+  try {
+    const ctx = await requireOrgContext()
+    const visibility = visibilityForViewer(ctx)
+    const [mentions, count] = await Promise.all([
+      listMentionsForUser(ctx.userDbId, {
+        organizationId: ctx.organizationDbId,
+        limit: 10,
+        unreadOnly: true,
+        visibilityFilter: visibility,
+      }),
+      unreadMentionCount(ctx.userDbId, ctx.organizationDbId, visibility),
+    ])
+    const items: NotificationItemDTO[] = mentions.map(toDTO)
+    return Response.json(
+      { count, items } satisfies NotificationSummaryDTO,
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+  } catch (err) {
+    // requireOrgContext throws `new Error('Unauthorized')` when there's no
+    // valid session. Surface that as a real 401 so the client can stop
+    // polling instead of treating it as a transient offline error and
+    // spamming the route every 20s from a backgrounded tab.
+    if (err instanceof Error && err.message === 'Unauthorized') {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    console.error('[notifications/summary] fetch failed', err)
+    return Response.json(
+      { error: 'Notification fetch failed' },
+      { status: 500 },
+    )
+  }
 }
 
 function toDTO(row: MentionInboxRow): NotificationItemDTO {
