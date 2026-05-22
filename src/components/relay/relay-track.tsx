@@ -15,7 +15,7 @@
  *
  * Schema dep: BatchSummary (placeholder), RelayEvent[] for arcs (Rails-owned).
  */
-import { Flame, Check } from 'lucide-react'
+import { Clock, Check } from 'lucide-react'
 import { RelayStep, RelayRole } from '@prisma/client'
 import { cn } from '@/lib/utils'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -24,6 +24,7 @@ import type { BatchSummary, SendBackArc } from './types'
 import { ScrollCurrentIntoView } from './scroll-current-into-view'
 import { RoleTooltip, StepTooltip } from './relay-tooltips'
 import { relayTrackFor } from '@/lib/relay-track-shape'
+import { STEP_COLOR_CLASSES, getStepColor } from '@/lib/relay-step-colors'
 
 const ROLE_LABEL: Record<RelayRole, string> = {
   [RelayRole.admin]: 'Admin',
@@ -197,7 +198,9 @@ function RelayTrackDesktop({
                     aria-hidden
                     className={cn(
                       'absolute left-1/2 top-1/2 h-px w-full -translate-y-1/2',
-                      i < currentIndex ? 'bg-foreground' : 'bg-cream-80'
+                      i < currentIndex
+                        ? 'bg-neutral-900'
+                        : 'bg-neutral-50'
                     )}
                   />
                 )}
@@ -207,7 +210,12 @@ function RelayTrackDesktop({
                       tabIndex={0}
                       className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <RelayNodeCircle index={i} isCurrent={isCurrent} isPast={isPast} />
+                      <RelayNodeCircle
+                        step={step}
+                        index={i}
+                        isCurrent={isCurrent}
+                        isPast={isPast}
+                      />
                     </span>
                   </StepTooltip>
                 </div>
@@ -251,25 +259,41 @@ function RelayTrackMobile({
                 aria-hidden
                 className={cn(
                   'w-px flex-1',
-                  isFirst ? 'invisible' : i <= currentIndex ? 'bg-foreground' : 'bg-cream-80'
+                  isFirst
+                    ? 'invisible'
+                    : i <= currentIndex
+                    ? 'bg-neutral-900'
+                    : 'bg-neutral-50'
                 )}
               />
               <div className="my-1">
-                <RelayNodeCircle index={i} isCurrent={isCurrent} isPast={isPast} />
+                <RelayNodeCircle
+                  step={step}
+                  index={i}
+                  isCurrent={isCurrent}
+                  isPast={isPast}
+                />
               </div>
               {/* line below circle (skipped on last) */}
               <div
                 aria-hidden
                 className={cn(
                   'w-px flex-1',
-                  isLast ? 'invisible' : i < currentIndex ? 'bg-foreground' : 'bg-cream-80'
+                  isLast
+                    ? 'invisible'
+                    : i < currentIndex
+                    ? 'bg-neutral-900'
+                    : 'bg-neutral-50'
                 )}
               />
             </div>
             <div className="flex-1 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                {ROLE_LABEL[STEP_ROLE[step]]}
+              </p>
               <p
                 className={cn(
-                  'text-[14px] font-medium',
+                  'mt-0.5 text-[14px] font-medium',
                   isCurrent
                     ? 'text-foreground'
                     : isPast
@@ -278,9 +302,6 @@ function RelayTrackMobile({
                 )}
               >
                 {STEP_LABEL[step]}
-              </p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                {ROLE_LABEL[STEP_ROLE[step]]}
               </p>
             </div>
           </li>
@@ -291,41 +312,51 @@ function RelayTrackMobile({
 }
 
 function RelayNodeCircle({
+  step,
   index,
   isCurrent,
   isPast,
 }: {
+  step: RelayStep
   index: number
   isCurrent: boolean
   isPast: boolean
 }) {
-  if (isCurrent) {
-    return (
-      <div
-        className="flex size-10 items-center justify-center rounded-full bg-foreground text-cream shadow-[0_0_0_4px_var(--card),0_0_0_5px_var(--ink)] transition-all"
-        aria-current="step"
-        aria-label="Current step"
-      >
-        <Flame className="size-4" />
-      </div>
-    )
-  }
   if (isPast) {
+    // Done: filled ink circle with white check.
     return (
       <div
-        className="flex size-8 items-center justify-center rounded-full bg-cream-warm text-foreground transition-colors"
+        className="flex size-8 items-center justify-center rounded-full bg-neutral-900 text-white transition-colors"
         aria-label="Completed step"
       >
         <Check className="size-3.5" strokeWidth={2.5} />
       </div>
     )
   }
+  if (isCurrent) {
+    // Active: filled circle in the step's category color, white clock.
+    const colors = STEP_COLOR_CLASSES[getStepColor(step)]
+    return (
+      <div
+        className={cn(
+          'flex size-10 items-center justify-center rounded-full shadow-[0_0_0_4px_var(--card)] transition-all',
+          colors.activeBg,
+          colors.activeText,
+        )}
+        aria-current="step"
+        aria-label="Current step"
+      >
+        <Clock className="size-4" strokeWidth={2.5} />
+      </div>
+    )
+  }
+  // Pending: outlined circle, neutral border, step number inside.
   return (
     <div
-      className="flex size-8 items-center justify-center rounded-full bg-cream-80 text-ink-50 transition-colors"
+      className="flex size-8 items-center justify-center rounded-full border-2 border-neutral-50 bg-card text-neutral-700 transition-colors"
       aria-label={`Step ${index + 1}, not yet started`}
     >
-      <span className="text-[11px] font-semibold tabular-nums">{index + 1}</span>
+      <span className="text-[11px] font-medium tabular-nums">{index + 1}</span>
     </div>
   )
 }
@@ -341,9 +372,12 @@ function RelayNodeLabel({
 }) {
   return (
     <div className="mt-3 w-full text-center">
+      <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {ROLE_LABEL[STEP_ROLE[step]]}
+      </p>
       <p
         className={cn(
-          'truncate text-[12px] font-medium leading-tight',
+          'mt-0.5 truncate text-[12px] font-medium leading-tight',
           isCurrent
             ? 'text-foreground'
             : isPast
@@ -352,9 +386,6 @@ function RelayNodeLabel({
         )}
       >
         {STEP_LABEL[step]}
-      </p>
-      <p className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        {ROLE_LABEL[STEP_ROLE[step]]}
       </p>
     </div>
   )

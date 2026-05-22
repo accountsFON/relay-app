@@ -100,7 +100,7 @@ export function RelayRunnerCard({
       className={cn(
         'relative block w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left cursor-pointer transition-colors',
         'hover:bg-cream-warm/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        recentlyPassed && 'ring-1 ring-[var(--orange)]/60',
+        recentlyPassed && 'ring-1 ring-blue-300',
         selectable && selected && 'ring-2 ring-foreground'
       )}
     >
@@ -128,7 +128,7 @@ export function RelayRunnerCard({
           <span
             title="Baton just passed"
             aria-label="Baton just passed"
-            className="inline-flex shrink-0 items-center justify-center rounded-full bg-[color:var(--orange)]/15 p-0.5 text-[color:var(--orange)]"
+            className="inline-flex shrink-0 items-center justify-center rounded-full bg-blue-100 p-0.5 text-blue-500"
           >
             <Repeat className="size-2.5" strokeWidth={2.5} />
           </span>
