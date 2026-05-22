@@ -41,7 +41,11 @@ export type InFlightRun = {
  * Returns all ContentRuns for the current org that are "in flight":
  *   - active:           status NOT IN ('complete', 'failed')
  *   - awaiting_choice:  status = 'complete' AND at least one Post has batchId IS NULL
- *   - failed:           status = 'failed' AND acknowledgedAt IS NULL
+ *
+ * Failed runs are NOT included anymore. The notification bell's FailedRunRow
+ * (driven by the `run_failed` ActivityKind mention) is the canonical surface
+ * for unacknowledged failures, with inline Retry / Dismiss. The 2s pill poll
+ * no longer fetches failed rows it never renders.
  *
  * Ordered by createdAt asc so the choice modal queues correctly.
  * matchingBatch is populated on awaiting_choice rows via findMatchingBatchForRun.
@@ -63,7 +67,6 @@ export async function listInFlightRuns(): Promise<InFlightRun[]> {
       OR: [
         { status: { notIn: [...TERMINAL_STATUSES] } },
         { status: 'complete', posts: { some: { batchId: null } } },
-        { status: 'failed', acknowledgedAt: null },
       ],
     },
     select: {

@@ -219,8 +219,8 @@ export function AppShell({
             <MobileSearchSheet />
             <DateScopePill />
             <div className="relative">
-              <HeaderBell />
-              <NotificationDropdown />
+              <HeaderBell mountId="mobile" />
+              <NotificationDropdown mountId="mobile" />
             </div>
           </div>
         </header>
@@ -230,8 +230,8 @@ export function AppShell({
           <InFlightRunsPill />
           <DateScopePill />
           <div className="relative">
-            <HeaderBell />
-            <NotificationDropdown />
+            <HeaderBell mountId="desktop" />
+            <NotificationDropdown mountId="desktop" />
           </div>
         </header>
 

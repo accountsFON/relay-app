@@ -83,7 +83,7 @@ test.describe('preview submit notification (am -> designer)', () => {
         // mention. The full "finished reviewing the preview (N
         // comments)" copy is unit-tested separately in
         // notification-copy.test.ts.
-        const panel = designerPage.locator('#notification-dropdown:visible')
+        const panel = designerPage.locator('[data-testid="notification-dropdown"]:visible')
         await expect(
           panel.getByText(/just now/i).first(),
         ).toBeVisible({ timeout: 10_000 })

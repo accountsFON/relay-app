@@ -67,7 +67,7 @@ test.describe('notification bell (am)', () => {
     await bell.click()
 
     // Wait for the dropdown to be open + populated.
-    const panel = page.locator('#notification-dropdown:visible')
+    const panel = page.locator('[data-testid="notification-dropdown"]:visible')
     await expect(panel).toBeVisible()
 
     // First NotificationRow (skips FailedRunRow which uses a Link, not a
@@ -107,10 +107,11 @@ test.describe('notification bell (am)', () => {
       await bell.click()
       // Scope to the visible dropdown so we don't match the /inbox
       // empty-state copy that may also be on the page (mobile inbox shell).
-      // Two #notification-dropdown nodes exist (mobile + desktop) and
-      // share open state via context, so :visible picks the right one.
+      // Two NotificationDropdown panels mount (mobile + desktop) with
+      // distinct ids; both share data-testid="notification-dropdown",
+      // and :visible picks whichever is shown at the current viewport.
       await expect(
-        page.locator('#notification-dropdown:visible').getByText(/all caught up/i),
+        page.locator('[data-testid="notification-dropdown"]:visible').getByText(/all caught up/i),
       ).toBeVisible()
     } finally {
       await restoreUnreadForMentions(restored)

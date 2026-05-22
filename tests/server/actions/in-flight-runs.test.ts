@@ -181,51 +181,35 @@ describe('listInFlightRuns', () => {
     expect(result[0].matchingBatch).toBeUndefined()
   })
 
-  it('returns failed runs only if acknowledgedAt is null', async () => {
-    const t1 = new Date('2026-05-10T08:00:00Z')
-    // The DB query already filters out acknowledged failed runs (WHERE clause).
-    // This test verifies that only the unacknowledged one comes back from the action.
-    vi.mocked(db.contentRun.findMany).mockResolvedValue([
-      makeRow({
-        id: 'run_failed_unack',
-        clientId: 'client_3',
-        status: 'failed',
-        errorMessage: 'OpenAI timeout',
-        createdAt: t1,
-        client: { name: 'Gamma Inc' },
-        _count: { posts: 0 },
-      }),
-    ] as never)
+  it('does not include failed runs in the WHERE clause (absorbed into the bell)', async () => {
+    // Failed runs were moved to the notification bell's FailedRunRow in
+    // Phase 1. The 2s pill poll no longer touches failed rows, so the
+    // listInFlightRuns query no longer includes the
+    // { status: 'failed', acknowledgedAt: null } clause.
+    vi.mocked(db.contentRun.findMany).mockResolvedValue([] as never)
 
-    const result = await listInFlightRuns()
+    await listInFlightRuns()
 
-    expect(result).toHaveLength(1)
-    expect(result[0]).toMatchObject({
-      id: 'run_failed_unack',
-      intent: 'failed',
-      status: 'failed',
-      errorMessage: 'OpenAI timeout',
-    })
-
-    // Verify the query included the right WHERE conditions for org scoping and failed filter.
-    // The client filter is objectContaining because Phase 9 added getClientScopeFilter spread —
-    // for an account_manager ctx the filter also includes { assignedAmId: ctx.userDbId }.
-    expect(vi.mocked(db.contentRun.findMany)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          client: expect.objectContaining({
-            organizationId: mockCtx.organizationDbId,
-          }),
-          OR: expect.arrayContaining([
-            { status: 'failed', acknowledgedAt: null },
-          ]),
-        }),
-      }),
+    const call = vi.mocked(db.contentRun.findMany).mock.calls[0]?.[0] as
+      | { where: { OR: Array<Record<string, unknown>> } }
+      | undefined
+    expect(call).toBeDefined()
+    const orClauses = call!.where.OR
+    expect(orClauses).toBeDefined()
+    // Active runs clause stays.
+    expect(orClauses).toContainEqual(
+      expect.objectContaining({ status: expect.objectContaining({ notIn: expect.anything() }) }),
     )
-
-    // The acknowledged run is not returned — the DB mock already omits it,
-    // confirming the WHERE clause would filter it at the DB level.
-    expect(result.find((r) => r.id === 'run_failed_ack')).toBeUndefined()
+    // Awaiting-choice clause stays.
+    expect(orClauses).toContainEqual(
+      expect.objectContaining({ status: 'complete' }),
+    )
+    // Failed clause is gone.
+    expect(
+      orClauses.some(
+        (c) => c.status === 'failed' || (typeof c === 'object' && 'acknowledgedAt' in c),
+      ),
+    ).toBe(false)
   })
 
   it("passes the current org's DB ID in the WHERE clause", async () => {

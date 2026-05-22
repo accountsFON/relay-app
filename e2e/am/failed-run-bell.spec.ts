@@ -46,7 +46,7 @@ test.describe('failed run in bell (am)', () => {
       await expect(bell).toBeVisible({ timeout: 25_000 })
       await bell.click()
 
-      const panel = page.locator('#notification-dropdown:visible')
+      const panel = page.locator('[data-testid="notification-dropdown"]:visible')
 
       // FailedRunRow renders summary copy from notification-copy.ts case
       // 'run_failed': "<month> content generation failed for <client>."
@@ -78,7 +78,7 @@ test.describe('failed run in bell (am)', () => {
         .first()
       await expect(bell).toBeVisible({ timeout: 25_000 })
       await bell.click()
-      const panel = page.locator('#notification-dropdown:visible')
+      const panel = page.locator('[data-testid="notification-dropdown"]:visible')
       await panel.getByRole('button', { name: /^Dismiss$/ }).click()
 
       // FailedRunActions optimistically calls onDismissed -> markRead which
@@ -87,7 +87,7 @@ test.describe('failed run in bell (am)', () => {
       // count check because the dropdown may close + reopen, breaking a
       // strict locator chained off `panel`.
       await expect(
-        page.locator('#notification-dropdown:visible').getByText(/content generation failed/i),
+        page.locator('[data-testid="notification-dropdown"]:visible').getByText(/content generation failed/i),
       ).toHaveCount(0, { timeout: 10_000 })
       expect(page.url()).toBe(urlBefore)
     } finally {
@@ -108,7 +108,7 @@ test.describe('failed run in bell (am)', () => {
         .first()
       await expect(bell).toBeVisible({ timeout: 25_000 })
       await bell.click()
-      const panel = page.locator('#notification-dropdown:visible')
+      const panel = page.locator('[data-testid="notification-dropdown"]:visible')
       await panel.getByRole('button', { name: /^Retry$/ }).click()
 
       // The Retry button text shifts to "Retrying…" while the server
@@ -122,10 +122,10 @@ test.describe('failed run in bell (am)', () => {
       // because the source ActivityEvent is also gone (cascade on the
       // archived run). 15s budget for the trigger call to settle.
       // The dropdown may close after the action completes, so we scope
-      // the wait to all #notification-dropdown nodes regardless of
+      // the wait to all notification-dropdown nodes regardless of
       // visibility.
       await expect(
-        page.locator('#notification-dropdown').getByText(/content generation failed/i),
+        page.locator('[data-testid="notification-dropdown"]').getByText(/content generation failed/i),
       ).toHaveCount(0, { timeout: 15_000 })
     } finally {
       await cleanup()
