@@ -3,7 +3,7 @@ import { requireOrgContext } from '@/server/middleware/auth'
 import { canEditClients } from '@/server/middleware/permissions'
 import { searchAcrossEntities } from '@/server/repositories/search'
 import { HeroBand } from '@/components/hero-band'
-import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyStateCard } from '@/components/ui/empty-state-card'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { PostSearchResultActions } from '@/components/search/post-search-result-actions'
@@ -34,19 +34,21 @@ export default async function SearchPage({
       />
 
       {!q && (
-        <div className="mt-8">
-          <EmptyState
-            title="Type a query to search"
-            description="Use the search bar in the top header. Press Enter to land here."
+        <div className="mt-8 mx-auto max-w-md">
+          <EmptyStateCard
+            tint="yellow"
+            shape="blob"
+            label="Type a query in the top search bar to land here."
           />
         </div>
       )}
 
       {results && results.total === 0 && (
-        <div className="mt-8">
-          <EmptyState
-            title="No matches"
-            description={`Nothing in your scope matches "${q}". Try a shorter query or different terms.`}
+        <div className="mt-8 mx-auto max-w-md">
+          <EmptyStateCard
+            tint="coral"
+            shape="asterisk"
+            label={`No matches for "${q}". Try a shorter query.`}
           />
         </div>
       )}

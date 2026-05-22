@@ -17,13 +17,29 @@
 import { cn } from '@/lib/utils'
 import { relayStepLabel } from '@/lib/relay-step-labels'
 import { EmptyState } from '@/components/ui/empty-state'
+import { EmptyStateCard } from '@/components/ui/empty-state-card'
 import type { RelayStep } from '@prisma/client'
 import {
   RelayRunnerCard,
   type RunnerRelay,
 } from '@/components/relay/relay-runner-card'
-import { STEP_COLOR_CLASSES, getStepColor } from '@/lib/relay-step-colors'
+import {
+  STEP_COLOR_CLASSES,
+  getStepColor,
+  type StepCategoryColor,
+} from '@/lib/relay-step-colors'
 import { StepTooltip } from '@/components/relay/relay-tooltips'
+
+/**
+ * EmptyStateCard tints are the 3 working hues. `completed` resolves to
+ * `ink` in the step color map. Fall back to `blue` so a Completed station
+ * with zero runners still renders a tinted card. The case is rare since
+ * completed relays accumulate, but a fresh org will hit it.
+ */
+function emptyTintForStep(step: RelayStep): 'blue' | 'yellow' | 'coral' {
+  const color: StepCategoryColor = getStepColor(step)
+  return color === 'ink' ? 'blue' : color
+}
 
 export interface DashboardRelayTrackStation {
   step: RelayStep
@@ -126,9 +142,12 @@ function DesktopStation({
             <RelayRunnerCard key={relay.id} relay={relay} now={now} />
           ))
         ) : (
-          <p className="px-1 py-1 text-[12px] italic text-muted-foreground">
-            empty
-          </p>
+          <EmptyStateCard
+            tint={emptyTintForStep(station.step)}
+            shape="asterisk"
+            label="Nothing here yet"
+            className="p-4"
+          />
         )}
       </div>
     </div>
@@ -166,9 +185,12 @@ function MobileStation({
             <RelayRunnerCard key={relay.id} relay={relay} now={now} />
           ))
         ) : (
-          <p className="px-1 py-1 text-[11px] italic text-muted-foreground">
-            no relays here
-          </p>
+          <EmptyStateCard
+            tint={emptyTintForStep(station.step)}
+            shape="asterisk"
+            label="Nothing here yet"
+            className="p-4"
+          />
         )}
       </div>
     </li>
