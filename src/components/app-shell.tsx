@@ -18,6 +18,7 @@ import { CompletionNotificationsProvider, CompletionNotificationsBanner } from '
 import { NotificationProvider } from '@/components/notifications/notification-provider'
 import { HeaderBell } from '@/components/notifications/header-bell'
 import { NotificationDropdown } from '@/components/notifications/notification-dropdown'
+import { Toaster } from 'sonner'
 
 type BadgeKey = 'unreadMentions'
 type NavItem = {
@@ -246,6 +247,7 @@ export function AppShell({
     </div>
     <InFlightAutoFinalizer />
     <CompletionNotificationsBanner />
+    <Toaster position="bottom-right" richColors closeButton />
     </CompletionNotificationsProvider>
     </NotificationProvider>
     </InFlightRunsProvider>
