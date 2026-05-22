@@ -2,6 +2,7 @@ import { cookies, headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/magic-link'
 import { db } from '@/db/client'
+import { markMagicLinkVisited } from '@/server/services/magic-link-visited-emit'
 import {
   findActiveSession,
   listSessionsForBatch,
@@ -60,7 +61,6 @@ export default async function ReviewPage({
       batch: {
         select: {
           id: true,
-          label: true,
           client: {
             select: {
               id: true,
@@ -68,6 +68,7 @@ export default async function ReviewPage({
               assignedAm: { select: { id: true, name: true } },
             },
           },
+          label: true,
         },
       },
       creator: { select: { id: true, name: true } },
@@ -77,12 +78,18 @@ export default async function ReviewPage({
     notFound()
   }
 
-  // Side effect: bump lastVisitedAt so the AM can see "client opened
-  // this link" in the batch page. Best-effort; failures here should not
-  // block the render.
-  void db.magicLink
-    .update({ where: { id: link.id }, data: { lastVisitedAt: new Date() } })
-    .catch(() => null)
+  // Atomic first-visit detection + AM mention. Bumps lastVisitedAt on
+  // every visit so the AM's "Last visited X" indicator stays accurate;
+  // only emits the magic_link_visited ActivityEvent on the very first
+  // visit. Race-safe via a CAS-style updateMany. Fire-and-forget so a
+  // mention-write failure can't block the reviewer's page render.
+  void markMagicLinkVisited({
+    magicLinkId: link.id,
+    batchId: link.batch.id,
+    clientId: link.batch.client.id,
+    assignedAmUserId: link.batch.client.assignedAm?.id ?? null,
+    defaultReviewerName: link.defaultReviewerName,
+  }).catch(() => null)
 
   // -- Identity branch --
   const jar = await cookies()
