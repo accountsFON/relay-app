@@ -32,17 +32,20 @@ test.describe('preview submit notification (am -> designer)', () => {
       await page.goto(`/clients/${clientId}/batches/${batchId}/preview`)
       await page.waitForLoadState('networkidle')
 
-      // `window.confirm("Send 2 comments to <designer>?")` fires inside
-      // PreviewSubmitButton.handleClick. Auto-accept it for the spec.
-      page.on('dialog', (d) => d.accept().catch(() => {}))
-
       const submitBtn = page.getByRole('button', { name: /Submit \(\d+\)/ })
       await expect(submitBtn).toBeVisible({ timeout: 10_000 })
       await submitBtn.click()
 
-      // Sent state lives in PreviewSubmitButton's status branch +
-      // disables the button. Match the inline confirmation copy.
-      await expect(page.getByText(/Sent \d+ comments? to /i)).toBeVisible({
+      // Confirmation Dialog renders inline (not a browser-native confirm).
+      // Title is "Send to designer?"; the primary action is labelled "Send".
+      const confirmBtn = page.getByRole('button', { name: /^Send$/ })
+      await expect(confirmBtn).toBeVisible({ timeout: 5_000 })
+      await confirmBtn.click()
+
+      // Success surfaces via a sonner toast at bottom-right + the sticky
+      // Submit button flipping to "Sent ✓". Assert on the button
+      // transition (more stable than the toast which auto-dismisses).
+      await expect(page.getByRole('button', { name: /^Sent ✓$/ })).toBeVisible({
         timeout: 10_000,
       })
 
