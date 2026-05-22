@@ -4,9 +4,9 @@ export default function PendingPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">
       <Image
-        src="/brand/logo-no-padding-dark-text.svg"
+        src="/brand/wordmark-dark.svg"
         alt="Relay"
-        width={120}
+        width={72}
         height={36}
         priority
         className="h-9 w-auto mb-10"
