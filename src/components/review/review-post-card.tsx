@@ -180,10 +180,6 @@ export function ReviewPostCard({
       ref={articleRef}
       data-testid="review-post-card"
       data-post-id={post.id}
-      // Fallback for notification bell deep-links: until Post.threadOpenedEventId
-      // exists in the schema, use post.id so EventAnchor can locate the post
-      // tile when the linked thread originated from this post.
-      data-event-id={post.id}
       data-decision={decision}
       data-editing={isEditing ? 'true' : 'false'}
       className={cn(
