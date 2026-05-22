@@ -46,6 +46,13 @@ export function renderSummary(row: MentionInboxRow): string {
         : 'sent'
       return `${prefix}${actor} ${verb} ${relay} back to you for changes.`
     }
+    case 'batch_completed': {
+      const batchLabel = payload.batchLabel as string | undefined
+      const wasOverride = payload.wasOverride === true
+      const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
+      const verb = wasOverride ? 'overrode the holder and finished' : 'finished'
+      return `${prefix}${actor} ${verb} ${relay}.`
+    }
     case 'batch_revision_dispatched': {
       const itemType = (payload.itemType as string) ?? 'item'
       const desc = (payload.itemDescription as string) ?? ''

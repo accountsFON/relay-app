@@ -134,10 +134,6 @@ export function PostCard({
     <>
       <Card
         data-post-id={post.id}
-        // Fallback for notification bell deep-links: until Post.threadOpenedEventId
-        // exists in the schema, use post.id so EventAnchor can locate the post
-        // card when the linked thread originated from this post.
-        data-event-id={post.id}
         data-archived={isArchived ? '1' : undefined}
         data-collapsed={collapsed ? '1' : undefined}
         className={cn(isArchived && 'opacity-50 grayscale pointer-events-none')}

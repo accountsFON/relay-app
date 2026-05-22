@@ -78,13 +78,11 @@ test.describe('preview submit notification (am -> designer)', () => {
         await expect(bellPostReload).toBeVisible({ timeout: 15_000 })
         await bellPostReload.click()
 
-        // The emit site (preview-review-emit.ts) doesn't currently include
-        // payload.kind, so notification-copy.ts falls into the default
-        // case: "<client> · <actor> mentioned you." Asserting on a fresh
-        // Cedar Creek row with the "just now" relative-time stamp proves
-        // the heartbeat picked up the new mention. Once the emit copy
-        // lands per spec, this regex can tighten to the "finished
-        // reviewing the preview (N comments)" string.
+        // Assert on a fresh Cedar Creek row with the "just now"
+        // relative-time stamp — proves the heartbeat picked up the
+        // mention. The full "finished reviewing the preview (N
+        // comments)" copy is unit-tested separately in
+        // notification-copy.test.ts.
         const panel = designerPage.locator('#notification-dropdown:visible')
         await expect(
           panel.getByText(/just now/i).first(),

@@ -243,6 +243,26 @@ describe('renderSummary, AM / admin holder override', () => {
       renderSummary(row({ kind: 'batch_sent_back', batchLabel: 'May batch' })),
     ).toBe('Cedar Creek · Mollie sent "May batch" back to you for changes.')
   })
+
+  it('batch_completed renders "finished" when wasOverride absent', () => {
+    expect(
+      renderSummary(row({ kind: 'batch_completed', batchLabel: 'May batch' })),
+    ).toBe('Cedar Creek · Mollie finished "May batch".')
+  })
+
+  it('batch_completed prefixes "overrode the holder and finished" when wasOverride=true', () => {
+    expect(
+      renderSummary(
+        row({ kind: 'batch_completed', batchLabel: 'May batch', wasOverride: true }),
+      ),
+    ).toBe('Cedar Creek · Mollie overrode the holder and finished "May batch".')
+  })
+
+  it('batch_completed falls back to default relay label when batchLabel missing', () => {
+    expect(renderSummary(row({ kind: 'batch_completed' }))).toBe(
+      'Cedar Creek · Mollie finished a relay.',
+    )
+  })
 })
 
 describe('renderSummary, production payload shape (no kind in payload)', () => {
