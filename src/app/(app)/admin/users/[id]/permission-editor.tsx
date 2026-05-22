@@ -120,7 +120,7 @@ export function PermissionEditor({
             onClick={applyReadOnly}
             disabled={isPending}
           >
-            Apply read-only preset
+            Apply read only preset
           </Button>
           <Button
             type="button"

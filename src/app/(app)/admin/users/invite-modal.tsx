@@ -52,7 +52,7 @@ export function InviteMemberButton() {
         <DialogHeader>
           <DialogTitle>Invite team member</DialogTitle>
           <DialogDescription>
-            They will get an email invite and be added to this agency on first sign-in.
+            They will get an email invite and be added to this agency on first sign in.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

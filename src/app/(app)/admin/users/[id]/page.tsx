@@ -105,8 +105,8 @@ export default async function AdminUserDetailPage({
         <Card className="p-6">
           <p className="text-sm text-muted-foreground">
             {membership.role === 'admin'
-              ? 'Admins see and operate on every client. There are no per-client assignments to manage.'
-              : 'This role does not use per-client assignments.'}
+              ? 'Admins see and operate on every client. There are no per client assignments to manage.'
+              : 'This role does not use per client assignments.'}
           </p>
         </Card>
       ) : (
