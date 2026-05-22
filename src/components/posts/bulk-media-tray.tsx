@@ -264,7 +264,7 @@ export function BulkMediaTray({
           </span>
         ) : (
           <p className="text-[13px] text-muted-foreground">
-            Drop files here. We’ll auto-match by filename
+            Drop files here. We’ll auto match by filename
             (MM-DD.jpg or N.jpg).
           </p>
         )}
