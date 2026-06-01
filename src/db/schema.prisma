@@ -463,6 +463,7 @@ model Batch {
   scheduledAt         DateTime?
   clientReviewEnabled Boolean   @default(true)
   createdAt           DateTime  @default(now())
+  completedAt         DateTime?
   deletedAt           DateTime?
   deletedBy           String?
 
