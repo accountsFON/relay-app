@@ -168,7 +168,7 @@ export const generateContentTask = task({
         data: { supportingFacts: factsResult.facts, openaiCostUsd: openaiCost },
       })
 
-      // Step 5: Generate captions — parse CTA candidates once, share between prompt + parser
+      // Step 5: Generate captions, parse CTA candidates once, share between prompt + parser
       currentStep = 'caption_generation'
       const ctaCandidates = parseCtaCandidates(client.mainCta)
 

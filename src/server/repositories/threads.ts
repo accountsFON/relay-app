@@ -189,7 +189,7 @@ export async function createThread(
   // from the post (post must exist since the thread was created above).
   // Also pull the client's assignedDesignerId so we can auto-notify the
   // designer when an AM opens the FIRST comment on a thread (by definition
-  // this is the first comment — it's the create-thread path). Skip the
+  // this is the first comment, it's the create-thread path). Skip the
   // mention when the AM IS the designer (self-notify) or when no designer
   // is assigned.
   const post = await db.post.findUnique({

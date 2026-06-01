@@ -75,7 +75,7 @@ export async function archivePost({ postId, actorUserId }: PostArchiveInput): Pr
 }
 
 export async function restorePost({ postId, actorUserId }: PostArchiveInput): Promise<void> {
-  // Two-query pattern — same reason as archivePost above.
+  // Two-query pattern, same reason as archivePost above.
   const post = await db.post.withArchived().findFirst({ where: { id: postId } })
   if (!post) throw new Error(`Post ${postId} not found`)
   if (!post.deletedAt) throw new Error(`Post ${postId} is not archived`)

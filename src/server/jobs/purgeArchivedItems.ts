@@ -10,7 +10,7 @@ const PURGE_DAYS = 30
 const SYSTEM_ACTOR = 'system:purgeArchivedItems'
 
 // ---------------------------------------------------------------------------
-// Inner run logic — exported separately so integration tests can call it
+// Inner run logic, exported separately so integration tests can call it
 // directly without needing the Trigger.dev harness.
 // ---------------------------------------------------------------------------
 
@@ -62,7 +62,7 @@ export async function runPurgeArchivedItems(
   const clientIds = clientsToPurge.map((c) => c.id)
 
   // -------------------------------------------------------------------------
-  // Step 2: Collect batches to purge (skip those under a purging client —
+  // Step 2: Collect batches to purge (skip those under a purging client,
   // the FK cascade on Client will handle them automatically)
   // -------------------------------------------------------------------------
   const batchesToPurge = await db.batch.onlyArchived().findMany({
@@ -114,7 +114,7 @@ export async function runPurgeArchivedItems(
   })
 
   // -------------------------------------------------------------------------
-  // Execute deletes — top-down so FK cascades cover descendants where possible
+  // Execute deletes, top-down so FK cascades cover descendants where possible
   // -------------------------------------------------------------------------
 
   // 1. Clients: FK cascades to Batch, ContentRun, Post automatically.

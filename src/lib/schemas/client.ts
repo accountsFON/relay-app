@@ -53,7 +53,7 @@ export const clientInputSchema = z.object({
   clientReviewEnabled: z.coerce.boolean().default(false),
 })
 
-// Explicit partial schema without defaults — so updates only touch the fields
+// Explicit partial schema without defaults, so updates only touch the fields
 // the caller actually provides.
 export const clientUpdateSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200).optional(),

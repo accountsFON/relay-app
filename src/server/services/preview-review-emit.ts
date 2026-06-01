@@ -52,7 +52,7 @@ export async function emitPreviewReviewSubmit(input: {
 
   // Count unresolved AM-authored thread comments on this batch's posts.
   // The PostComment row carries authorId; the parent PostThread carries
-  // resolvedAt. "Unresolved" means the *thread* is not resolved — even an
+  // resolvedAt. "Unresolved" means the *thread* is not resolved, even an
   // older comment under an open thread is still actionable for the
   // designer.
   const commentCount = await db.postComment.count({
@@ -71,7 +71,7 @@ export async function emitPreviewReviewSubmit(input: {
     return { notified: false }
   }
 
-  // Skip self-notify (AM is also the designer for this client) — same
+  // Skip self-notify (AM is also the designer for this client), same
   // gate the postCommentAction emit point uses. No designer assigned
   // also lands here.
   const designerId = batch.client.assignedDesignerId

@@ -309,7 +309,7 @@ export async function archiveBatch({
     })
 
     // Stamp the affected ContentRuns (updateMany is NOT intercepted by the
-    // soft-delete extension, so no explicit deletedAt: null guard is needed —
+    // soft-delete extension, so no explicit deletedAt: null guard is needed,
     // the IDs were already filtered to live-only above).
     if (runIds.length > 0) {
       await tx.contentRun.updateMany({
@@ -348,7 +348,7 @@ export async function restoreBatch({
   batchId,
   actorUserId,
 }: BatchArchiveInput): Promise<void> {
-  // Two-query pattern — same reason as archiveBatch.
+  // Two-query pattern, same reason as archiveBatch.
   const batch = await db.batch.withArchived().findFirst({ where: { id: batchId } })
   if (!batch) throw new Error(`Relay ${batchId} not found`)
   if (!batch.deletedAt) throw new Error(`Relay ${batchId} is not archived`)

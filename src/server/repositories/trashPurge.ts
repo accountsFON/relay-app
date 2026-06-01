@@ -195,7 +195,7 @@ async function purgeBatch(batchId: string, actorUserId: string): Promise<void> {
   // These are the ContentRuns stamped by archiveBatch's cascade.
   // We collect IDs here (outside the transaction) because after we deleteMany
   // the Posts inside the transaction, the `posts: { some: { batchId } }` filter
-  // would no longer match (the posts are gone) — so we must capture run IDs first.
+  // would no longer match (the posts are gone), so we must capture run IDs first.
   const affectedRuns = await db.contentRun.withArchived().findMany({
     where: {
       deletedAt: priorDeletedAt,
@@ -208,7 +208,7 @@ async function purgeBatch(batchId: string, actorUserId: string): Promise<void> {
 
   await db.$transaction(async (tx) => {
     // 1. Explicitly delete cascade-archived Posts.
-    //    Post.batchId is SetNull, not Cascade — db.batch.delete() alone would
+    //    Post.batchId is SetNull, not Cascade; db.batch.delete() alone would
     //    null out batchId instead of deleting the Posts. We must do this manually.
     await tx.post.deleteMany({ where: { batchId, deletedAt: priorDeletedAt } })
 

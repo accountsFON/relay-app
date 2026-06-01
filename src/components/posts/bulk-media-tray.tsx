@@ -100,7 +100,7 @@ export function BulkMediaTray({
       const uploaded = await Promise.all(
         incoming.map(async (file) => {
           // SDK handshake handles token request internally. We use the first
-          // post in the batch as the auth anchor in clientPayload — the
+          // post in the batch as the auth anchor in clientPayload, the
           // route's onBeforeGenerateToken validates the actor has post.edit
           // on that post's org (which gates the entire batch since posts in
           // a batch share an org).

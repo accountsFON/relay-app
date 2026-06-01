@@ -108,7 +108,7 @@ export async function restoreClientAction(clientId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Purge (permanent hard-delete) — admin only
+// Purge (permanent hard-delete), admin only
 // ---------------------------------------------------------------------------
 
 export async function purgeEntityAction(

@@ -43,7 +43,7 @@ export function resolveBatchTargetMonth(
 export function parseLabel(label: string, fallbackDate: Date): string | null {
   const lower = label.trim().toLowerCase()
 
-  // Match "...prefix MonthName YYYY" — picks up the new "Client Name Month Year"
+  // Match "...prefix MonthName YYYY", picks up the new "Client Name Month Year"
   // format alongside the legacy "April 2026".
   const trailingMonthYear = lower.match(/(?:^|\s)([a-z]+)\s+(\d{4})$/)
   if (trailingMonthYear) {

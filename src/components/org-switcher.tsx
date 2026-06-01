@@ -119,7 +119,7 @@ function AgencyDropdown({
         await setActive({ organization: clerkOrgId })
       } catch {
         // Clerk rejects when the user has no Clerk membership in this org.
-        // For platform owners this is expected — the cookie above carries
+        // For platform owners this is expected, the cookie above carries
         // the choice through. For regular users it shouldn't happen since
         // we only show their own memberships.
       }

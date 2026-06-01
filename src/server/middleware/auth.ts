@@ -33,7 +33,7 @@ export async function getOrgContext(): Promise<OrgContext | null> {
   // cookie when a platform owner clicks an agency. Lets us route to that
   // org regardless of Clerk's active-org state, which can be stuck when
   // Clerk's setActive rejects (rate limit, missing Clerk-side membership,
-  // stale session). The badge alone wasn't enough — once Clerk's session
+  // stale session). The badge alone wasn't enough; once Clerk's session
   // had an active org, the badge sat idle and the cascade resolved to
   // the previous org. The cookie is the explicit "use this org" signal.
   let org = null

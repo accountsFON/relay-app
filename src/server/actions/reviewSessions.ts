@@ -129,7 +129,7 @@ async function resolveReviewerForToken(token: string): Promise<ResolvedReviewer>
 
 function revalidateReviewerPaths(token: string, clientId: string, batchId: string): void {
   revalidatePath(`/review/${token}`)
-  // Keep the AM-side batch + review session list fresh too — a reviewer
+  // Keep the AM-side batch + review session list fresh too; a reviewer
   // starting or saving drafts is observable on the AM dashboard.
   revalidatePath(`/clients/${clientId}/batches/${batchId}`)
 }
@@ -194,7 +194,7 @@ export async function saveReviewDraftAction(input: {
   }
 
   // Resolve the active session for this reviewer. Create lazily if the
-  // reviewer never called startReviewSessionAction first — saving a draft
+  // reviewer never called startReviewSessionAction first; saving a draft
   // is the strongest signal of intent and we don't want a race where the
   // very first tap drops on the floor.
   let session = await findActiveSession({
@@ -308,7 +308,7 @@ export async function submitSessionAction(input: {
   }
 
   // Flip status + persist summary. Repo is idempotent on re-submit, so a
-  // double-click cannot create duplicate emails on its own — but we still
+  // double-click cannot create duplicate emails on its own, but we still
   // gate by `active` above to keep the email send out of the re-submit path.
   const submitted = await submitSession({ reviewSessionId: active.id })
   const summary =
@@ -358,14 +358,14 @@ export async function submitSessionAction(input: {
       })
     : []
 
-  // Always emit the activity event — it is the durable audit trail and
+  // Always emit the activity event, it is the durable audit trail and
   // does not depend on the email succeeding. recordActivity is itself
   // try/catch-wrapped so this cannot throw.
   if (link) {
     // Auto-notify the assigned AM + designer so they see the bell light up
     // the moment the client submits. Reviewer is a magic-link visitor with
     // no Clerk identity, so the "don't self-notify" gate that applies on
-    // AM-triggered events is moot here — neither assignee can be the
+    // AM-triggered events is moot here; neither assignee can be the
     // submitter. We filter nulls out so Mentions only attaches rows for
     // actually-assigned roles.
     const mentionedUserIds = [
@@ -377,7 +377,7 @@ export async function submitSessionAction(input: {
       clientId: link.batch.clientId,
       postId: null,
       runId: null,
-      // Reviewer is a magic-link visitor, not a Clerk user — no actorId.
+      // Reviewer is a magic-link visitor, not a Clerk user, no actorId.
       actorId: null,
       kind: ActivityKind.review_session_submitted,
       visibility: EventVisibility.internal,
@@ -800,7 +800,7 @@ export async function startNextRoundAction(input: {
   // Re-send the magic link email so the reviewer pops back in. The raw
   // token is deterministic over (magicLinkId, expiresAt) + the
   // MAGIC_LINK_SECRET, so we can re-mint the EXACT same token the AM
-  // originally generated — no need to persist the raw value. The
+  // originally generated, no need to persist the raw value. The
   // tokenHash on MagicLink stays valid against this re-minted token
   // because the hash is over the same signed string.
   let emailError: string | undefined

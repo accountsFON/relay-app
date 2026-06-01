@@ -162,7 +162,7 @@ export async function findMatchingBatchForRun(
 
   // Pull candidate batches for the client (cap at 50 most recent).
   // Exclude archived batches (deletedAt: null) so a retired batch can never
-  // surface as a replace target — the soft-delete extension also enforces
+  // surface as a replace target; the soft-delete extension also enforces
   // this, but we make the intent explicit here.
   const candidates = await db.batch.findMany({
     where: { clientId: run.clientId, deletedAt: null },
@@ -407,7 +407,7 @@ export async function restoreContentRun({
   runId,
   actorUserId,
 }: ContentRunArchiveInput): Promise<void> {
-  // Two-query pattern — same reason as archiveContentRun.
+  // Two-query pattern, same reason as archiveContentRun.
   const run = await db.contentRun.withArchived().findFirst({ where: { id: runId } })
   if (!run) throw new Error(`ContentRun ${runId} not found`)
   if (!run.deletedAt) throw new Error(`ContentRun ${runId} is not archived`)
