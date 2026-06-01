@@ -24,7 +24,6 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
   ],
   [RelayStep.designs_completed]: [
     { label: 'Designs match copy themes' },
-    { label: 'Designer satisfied with output' },
   ],
   [RelayStep.am_review_design]: [
     { label: 'Designs match brand guidelines' },
