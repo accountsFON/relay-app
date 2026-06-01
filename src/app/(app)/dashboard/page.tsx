@@ -36,7 +36,8 @@ const AM_TRACK_STEPS: RelayStep[] = [
   RelayStep.onboarding_gate,
   RelayStep.copy,
   RelayStep.in_design,
-  RelayStep.designs_completed,
+  // `designs_completed` removed per Phase 3 item 15 PR1. Enum value
+  // preserved so historical events render; no live batch lands here.
   RelayStep.am_review_design,
   RelayStep.design_revisions,
   RelayStep.am_qa_pre_client,
@@ -56,7 +57,7 @@ const AM_TRACK_STEPS: RelayStep[] = [
  */
 const DESIGNER_TRACK_STEPS: RelayStep[] = [
   RelayStep.in_design,
-  RelayStep.designs_completed,
+  // `designs_completed` removed per Phase 3 item 15 PR1.
   RelayStep.design_revisions,
 ]
 

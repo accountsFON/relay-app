@@ -22,13 +22,17 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
     { label: 'Visual concept aligned with brief' },
     { label: 'All posts have draft graphics' },
   ],
-  [RelayStep.designs_completed]: [
-    { label: 'Designs match copy themes' },
-  ],
+  // Retired step (Phase 3 item 15 PR1). Kept as an empty entry so the
+  // CHECKLIST_SEED record stays total over RelayStep, and reseeding for a
+  // legacy batch sitting on this step before the backfill yields zero items
+  // instead of throwing. PR2 (Wave F5) tombstones the enum entirely.
+  [RelayStep.designs_completed]: [],
   [RelayStep.am_review_design]: [
     { label: 'Designs match brand guidelines' },
     { label: 'Copy / image alignment verified' },
     { label: 'No spelling or layout issues' },
+    // Merged from the retired `designs_completed` step (Phase 3 item 15 PR1).
+    { label: 'Designs match copy themes' },
   ],
   [RelayStep.design_revisions]: [
     { label: 'All flagged revisions addressed' },

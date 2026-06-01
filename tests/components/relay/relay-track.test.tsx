@@ -28,43 +28,45 @@ function makeBatchSummary(overrides: Partial<BatchSummary> = {}): BatchSummary {
 }
 
 describe('RelayTrack', () => {
-  it('renders 13 nodes when the batch has clientReviewEnabled = true', () => {
+  it('renders 12 nodes when the batch has clientReviewEnabled = true', () => {
+    // Was 13 before Phase 3 item 15 PR1 retired `designs_completed`.
     const batch = makeBatchSummary({
       currentStep: RelayStep.am_qa_pre_client,
       clientReviewEnabled: true,
     })
     render(<RelayTrack batch={batch} />)
-    // Desktop + mobile both render the node list, so we get 13 * 2 = 26.
-    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(13 * 2)
+    // Desktop + mobile both render the node list, so we get 12 * 2 = 24.
+    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(12 * 2)
   })
 
-  it('renders 9 nodes when clientReviewEnabled = false', () => {
+  it('renders 8 nodes when clientReviewEnabled = false', () => {
+    // Was 9 before Phase 3 item 15 PR1 retired `designs_completed`.
     const batch = makeBatchSummary({
       currentStep: RelayStep.am_qa_pre_client,
       clientReviewEnabled: false,
     })
     render(<RelayTrack batch={batch} />)
-    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(9 * 2)
+    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(8 * 2)
   })
 
   it('renders the step counter as "Step X of Y" using the right total for the flow', () => {
     const reviewOff = makeBatchSummary({
-      currentStep: RelayStep.am_qa_pre_client, // index 6 in NO_REVIEW_TRACK
+      currentStep: RelayStep.am_qa_pre_client, // index 5 in NO_REVIEW_TRACK
       clientReviewEnabled: false,
     })
     render(<RelayTrack batch={reviewOff} />)
-    // am_qa_pre_client is the 7th node (index 6) in NO_REVIEW_TRACK; total is 9.
-    expect(screen.getByText(/Step\s+7\s+of\s+9/i)).toBeInTheDocument()
+    // am_qa_pre_client is the 6th node (index 5) in NO_REVIEW_TRACK; total is 8.
+    expect(screen.getByText(/Step\s+6\s+of\s+8/i)).toBeInTheDocument()
   })
 
   it('renders the step counter using the FULL_TRACK total when review is on', () => {
     const reviewOn = makeBatchSummary({
-      currentStep: RelayStep.am_qa_pre_client, // index 6 in FULL_TRACK
+      currentStep: RelayStep.am_qa_pre_client, // index 5 in FULL_TRACK
       clientReviewEnabled: true,
     })
     render(<RelayTrack batch={reviewOn} />)
-    // am_qa_pre_client is the 7th node (index 6) in FULL_TRACK; total is 13.
-    expect(screen.getByText(/Step\s+7\s+of\s+13/i)).toBeInTheDocument()
+    // am_qa_pre_client is the 6th node (index 5) in FULL_TRACK; total is 12.
+    expect(screen.getByText(/Step\s+6\s+of\s+12/i)).toBeInTheDocument()
   })
 
   it('still renders the 3-node client abstraction when audience = "client"', () => {

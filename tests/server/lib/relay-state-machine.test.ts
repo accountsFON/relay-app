@@ -194,9 +194,17 @@ describe('completed terminal step', () => {
 })
 
 describe('go back on every step', () => {
-  it('every RelayStep except onboarding_gate has at least one legal send-back target', () => {
+  it('every live RelayStep except onboarding_gate has at least one legal send-back target', () => {
     for (const step of Object.values(RelayStep)) {
       if (step === RelayStep.onboarding_gate) {
+        expect(legalSendBackTargets(step as RelayStep, true)).toEqual([])
+        continue
+      }
+      // Phase 3 item 15 PR1 retired `designs_completed`. The enum value is
+      // preserved for historical events but no live batch reaches the step,
+      // so it has no legal transitions in either direction. PR2 (Wave F5)
+      // will tombstone the enum value entirely.
+      if (step === RelayStep.designs_completed) {
         expect(legalSendBackTargets(step as RelayStep, true)).toEqual([])
         continue
       }

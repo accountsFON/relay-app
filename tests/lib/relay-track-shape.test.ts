@@ -3,22 +3,26 @@ import { RelayStep } from '@prisma/client'
 import { FULL_TRACK, NO_REVIEW_TRACK, relayTrackFor } from '@/lib/relay-track-shape'
 
 describe('relay-track-shape', () => {
-  it('FULL_TRACK has 13 nodes (completed step is rendered separately)', () => {
-    expect(FULL_TRACK).toHaveLength(13)
+  it('FULL_TRACK has 12 nodes (completed step is rendered separately)', () => {
+    // Was 13 before Phase 3 item 15 PR1 retired `designs_completed`.
+    expect(FULL_TRACK).toHaveLength(12)
     expect(FULL_TRACK[0]).toBe(RelayStep.onboarding_gate)
     expect(FULL_TRACK).toContain(RelayStep.sent_to_client)
     expect(FULL_TRACK).toContain(RelayStep.client_decision)
     expect(FULL_TRACK).toContain(RelayStep.implementing_revisions)
     expect(FULL_TRACK).toContain(RelayStep.revisions_complete)
+    expect(FULL_TRACK).not.toContain(RelayStep.designs_completed)
     expect(FULL_TRACK[FULL_TRACK.length - 1]).toBe(RelayStep.final_qa_schedule)
   })
 
-  it('NO_REVIEW_TRACK has 9 nodes and drops the four client steps', () => {
-    expect(NO_REVIEW_TRACK).toHaveLength(9)
+  it('NO_REVIEW_TRACK has 8 nodes and drops the four client steps', () => {
+    // Was 9 before Phase 3 item 15 PR1 retired `designs_completed`.
+    expect(NO_REVIEW_TRACK).toHaveLength(8)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.sent_to_client)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.client_decision)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.implementing_revisions)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.revisions_complete)
+    expect(NO_REVIEW_TRACK).not.toContain(RelayStep.designs_completed)
     expect(NO_REVIEW_TRACK[NO_REVIEW_TRACK.length - 1]).toBe(RelayStep.final_qa_schedule)
   })
 

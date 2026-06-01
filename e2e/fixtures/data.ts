@@ -77,7 +77,7 @@ const RELAY_STEPS = [
   'onboarding_gate',
   'copy',
   'in_design',
-  'designs_completed',
+  // `designs_completed` removed per Phase 3 item 15 PR1.
   'am_review_design',
   'design_revisions',
   'am_qa_pre_client',

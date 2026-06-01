@@ -409,7 +409,9 @@ export async function listClientPipelineBatches(linkedClientId: string) {
           'sent_to_client',
           'client_decision',
           'in_design',
-          'designs_completed',
+          // `designs_completed` removed per Phase 3 item 15 PR1; no live
+          // batch should sit here after the backfill. Enum value preserved
+          // for historical RelayEvent rows.
           'am_review_design',
           'design_revisions',
           'am_qa_pre_client',
