@@ -47,6 +47,7 @@ import { ExportButton } from '@/components/runs/export-button'
 import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
 import { SendLinkButton } from '@/components/batch/send-link-button'
+import { OpenClientContentButton } from '@/components/batch/open-client-content-button'
 import { Button } from '@/components/ui/button'
 import { MagicLinkRow } from '@/components/batch/magic-link-row'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
@@ -374,6 +375,10 @@ export default async function BatchDetailPage({
           <span>Open in Canva</span>
           <ExternalLink className="opacity-60" />
         </Button>
+        <OpenClientContentButton
+          currentStep={batch.currentStep}
+          assetsFolderUrl={client.assetsFolderUrl}
+        />
         {isLive && canEdit && batch.clientReviewEnabled && (
           <SendLinkButton batchId={batch.id} clientName={client.name} />
         )}
