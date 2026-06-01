@@ -25,22 +25,52 @@ import { canOverrideHolder } from '@/lib/relay-holder-override'
  * Cheap scoped lookup used by the action-layer holder gate. Throws the
  * same "Relay not found" the service would on cross-tenant access so the
  * gate cannot be used to probe existence across orgs.
+ *
+ * Also returns `clientId` so the action can scope `revalidatePath` to the
+ * specific batch + client surfaces rather than blasting the whole app
+ * layout cache. Per Phase 2 item 9 audit (2026-06-01): the previous
+ * `revalidatePath('/', 'layout')` call forced a full RSC re-render of
+ * the 9-query batch detail page on every pass, adding a measurable
+ * second-plus delay on cold cache.
  */
 async function loadHolderForGate(
   batchId: string,
   organizationDbId: string,
-): Promise<{ currentHolder: string }> {
+): Promise<{ currentHolder: string; clientId: string }> {
   const batch = await db.batch.findUnique({
     where: { id: batchId },
     select: {
       currentHolder: true,
+      clientId: true,
       client: { select: { organizationId: true } },
     },
   })
   if (!batch || batch.client.organizationId !== organizationDbId) {
     throw new Error('Relay not found')
   }
-  return { currentHolder: batch.currentHolder }
+  return { currentHolder: batch.currentHolder, clientId: batch.clientId }
+}
+
+/**
+ * Standard revalidation set for any relay state machine transition. Pass,
+ * send back, finish, dispatch, complete revision all mutate batch state +
+ * may emit notifications, so they all need to invalidate the same four
+ * surfaces:
+ *
+ * - The batch detail page (the surface the action shipped from).
+ * - The parent client overview (lists batches for the client).
+ * - The dashboard kanban (shows every batch across the org).
+ * - The inbox (mention notifications fire on most state transitions).
+ *
+ * Conservative path selection: extra revalidation is harmless, missed
+ * revalidation causes stale-data bugs the user has to hard-refresh to
+ * clear. See Phase 2 item 9 audit doc.
+ */
+function revalidateBatchSurfaces(clientId: string, batchId: string) {
+  revalidatePath(`/clients/${clientId}/batches/${batchId}`)
+  revalidatePath(`/clients/${clientId}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/inbox')
 }
 
 export async function passBatonAction(input: {
@@ -73,7 +103,7 @@ export async function passBatonAction(input: {
     actorOrganizationId: ctx.organizationDbId,
     wasOverride: isOverride,
   })
-  revalidatePath('/', 'layout')
+  revalidateBatchSurfaces(holder.clientId, input.batchId)
   return result
 }
 
@@ -109,7 +139,7 @@ export async function finishBatchAction(input: { batchId: string }) {
     actorOrganizationId: ctx.organizationDbId,
     wasOverride: isOverride,
   })
-  revalidatePath('/', 'layout')
+  revalidateBatchSurfaces(holder.clientId, input.batchId)
   return result
 }
 
@@ -140,7 +170,7 @@ export async function sendBackBatonAction(input: {
     actorOrganizationId: ctx.organizationDbId,
     wasOverride: isOverride,
   })
-  revalidatePath('/', 'layout')
+  revalidateBatchSurfaces(holder.clientId, input.batchId)
   return result
 }
 
@@ -149,13 +179,26 @@ export async function dispatchRevisionsAction(input: {
   items: { type: RevisionItemType; description: string; assignedTo: string }[]
 }) {
   const ctx = await requireCan('relay.composeRevisionPlan')
+  // Cheap scope lookup so we know which client surfaces to revalidate.
+  // The service does its own cross-tenant check; this select is only used
+  // for revalidatePath targeting.
+  const scope = await db.batch.findUnique({
+    where: { id: input.batchId },
+    select: {
+      clientId: true,
+      client: { select: { organizationId: true } },
+    },
+  })
+  if (!scope || scope.client.organizationId !== ctx.organizationDbId) {
+    throw new Error('Relay not found')
+  }
   const result = await dispatchRevisions({
     batchId: input.batchId,
     items: input.items,
     actorId: ctx.userDbId,
     actorOrganizationId: ctx.organizationDbId,
   })
-  revalidatePath('/', 'layout')
+  revalidateBatchSurfaces(scope.clientId, input.batchId)
   return result
 }
 
@@ -166,7 +209,20 @@ export async function completeRevisionItemAction(input: { itemId: string }) {
     actorId: ctx.userDbId,
     actorOrganizationId: ctx.organizationDbId,
   })
-  revalidatePath('/', 'layout')
+  // Resolve the batch surfaces AFTER the service runs so we revalidate the
+  // exact batch the item belongs to. Service already enforced cross-tenant
+  // scope. Cheap selects only.
+  const item = await db.revisionItem.findUnique({
+    where: { id: input.itemId },
+    select: { plan: { select: { batch: { select: { id: true, clientId: true } } } } },
+  })
+  if (item) {
+    revalidateBatchSurfaces(item.plan.batch.clientId, item.plan.batch.id)
+  } else {
+    // Should be unreachable (service would have thrown), but stay safe.
+    revalidatePath('/dashboard')
+    revalidatePath('/inbox')
+  }
   return result
 }
 
@@ -179,6 +235,7 @@ export async function advanceCopySubStateAction(input: {
     where: { id: input.batchId },
     select: {
       id: true,
+      clientId: true,
       currentStep: true,
       currentSubState: true,
       currentHolder: true,
@@ -198,7 +255,12 @@ export async function advanceCopySubStateAction(input: {
     where: { id: batch.id },
     data: { currentSubState: input.toSubState },
   })
-  revalidatePath('/', 'layout')
+  // Sub-state changes do not emit notifications (no relayEvent or
+  // recordActivity), so skip /inbox. The kanban card sub-state badge
+  // does change, so revalidate the dashboard.
+  revalidatePath(`/clients/${batch.clientId}/batches/${batch.id}`)
+  revalidatePath(`/clients/${batch.clientId}`)
+  revalidatePath('/dashboard')
   return { ok: true as const, changed: true }
 }
 
@@ -317,7 +379,7 @@ export async function markBatchReviewedAction(input: {
     },
   })
 
-  revalidatePath('/', 'layout')
+  revalidateBatchSurfaces(batch.clientId, batch.id)
   return {
     ...advanceResult,
     resolvedThreadCount: resolvedCount,
