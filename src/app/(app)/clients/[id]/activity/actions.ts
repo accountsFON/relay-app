@@ -1,5 +1,5 @@
 /**
- * Activity server actions — Caleb-owned write surface for the comms layer.
+ * Activity server actions: Caleb-owned write surface for the comms layer.
  *
  * Spec: projects/relay-app/2026-05-09-activity-thread-plan.md § API surface
  *       projects/relay-app/2026-05-09-relay-workflow-design.md § Phase 2

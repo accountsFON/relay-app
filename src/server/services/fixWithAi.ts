@@ -1,14 +1,14 @@
 /**
- * Fix with AI service — propose + accept flow for AI-assisted caption rewrites.
+ * Fix with AI service: propose + accept flow for AI-assisted caption rewrites.
  *
  * Spec: projects/relay-app/2026-05-16-post-preview-feedback-system-design.md
  *       § Fix with AI (full section)
  *
  * Public surface:
- *   - proposeFix({ postId, threadId }) — load post + thread + client brand
+ *   - proposeFix({ postId, threadId }), load post + thread + client brand
  *     context, call the model with the prompt from fixWithAiPrompt.ts,
  *     return the rewrite + diff + token usage. No DB writes.
- *   - acceptFix({ postId, threadId, proposedCaption, acceptedBy }) — create
+ *   - acceptFix({ postId, threadId, proposedCaption, acceptedBy }), create
  *     a new PostVersion, update Post.caption, auto-resolve the originating
  *     thread, emit a post_caption_ai_fixed ActivityEvent.
  *
@@ -85,7 +85,7 @@ function commentAuthorLabel(comment: {
 
 /**
  * Propose an AI rewrite of the post's caption based on the feedback in
- * `threadId`. Pure read — no DB writes. The caller (API route) wires
+ * `threadId`. Pure read, no DB writes. The caller (API route) wires
  * this into the DiffModal; AM either accepts (acceptFix) or closes.
  */
 export async function proposeFix(input: ProposeFixInput): Promise<ProposeFixResult> {

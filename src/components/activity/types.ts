@@ -1,5 +1,5 @@
 /**
- * Activity view types — denormalized shapes the activity surfaces consume.
+ * Activity view types: denormalized shapes the activity surfaces consume.
  *
  * Prisma's ActivityEvent has `payload: Json`. The runtime contract for that
  * Json is `ActivityPayload` below, keyed by `kind`. The activity-events repo

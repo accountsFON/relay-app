@@ -9,7 +9,7 @@ interface Props {
 }
 
 /**
- * ShowArchivedToggle — toggles `?archived=1` in the URL.
+ * ShowArchivedToggle: toggles `?archived=1` in the URL.
  *
  * URL-based state because:
  * - Survives refresh / shareable links

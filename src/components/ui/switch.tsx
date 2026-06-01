@@ -5,12 +5,12 @@ import { Switch as SwitchPrimitive } from "@base-ui/react/switch"
 import { cn } from "@/lib/utils"
 
 /**
- * Switch — wraps @base-ui/react Switch with project Tailwind styles.
+ * Switch: wraps @base-ui/react Switch with project Tailwind styles.
  *
  * Usage:
  *   <Switch checked={checked} onCheckedChange={(next) => setChecked(next)} />
  *
- * onCheckedChange receives (checked: boolean, eventDetails) — the eventDetails
+ * onCheckedChange receives (checked: boolean, eventDetails), the eventDetails
  * argument is ignored in most call sites; just use the first argument.
  */
 function Switch({

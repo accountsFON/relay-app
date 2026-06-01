@@ -1,7 +1,7 @@
 'use server'
 
 /**
- * Server actions for the trash system — archive, restore, and purge.
+ * Server actions for the trash system: archive, restore, and purge.
  *
  * All nine actions are co-located here so the trash surface area is contained.
  * Archive/restore actions require `client.edit` permission (admin + AM).
@@ -89,7 +89,7 @@ export async function restoreBatchAction(batchId: string): Promise<void> {
 
 /**
  * Soft-deletes a client and cascades to all its live Batches, ContentRuns,
- * and Posts. This is the trash soft-delete — distinct from `deactivateClientAction`
+ * and Posts. This is the trash soft-delete, distinct from `deactivateClientAction`
  * in clients/actions.ts which calls `deactivateClient` (a status-change only).
  */
 export async function archiveClientAction(clientId: string): Promise<void> {

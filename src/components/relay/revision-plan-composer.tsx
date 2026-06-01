@@ -1,5 +1,5 @@
 /**
- * RevisionPlanComposer — right-rail variant for step 11b (implementing_revisions).
+ * RevisionPlanComposer: right-rail variant for step 11b (implementing_revisions).
  *
  * Spec: projects/relay-app/2026-05-09-relay-workflow-design.md § State Machine,
  *       RevisionPlan dispatch (step 11b).

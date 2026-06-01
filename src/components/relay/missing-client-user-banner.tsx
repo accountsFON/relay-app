@@ -1,5 +1,5 @@
 /**
- * MissingClientUserBanner — shown when a batch is in a client-held step
+ * MissingClientUserBanner: shown when a batch is in a client-held step
  * (sent_to_client or client_decision) but no client-role user is linked to
  * the Client. Without a real client viewer the relay would sit on that
  * step indefinitely, so the banner gives the AM/admin holder an explicit

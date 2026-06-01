@@ -135,7 +135,7 @@ function RowActions({
 // ---------------------------------------------------------------------------
 
 /**
- * TrashTable — renders a single entity type's archived rows with:
+ * TrashTable: renders a single entity type's archived rows with:
  *   - Bulk select + bulk permanent delete
  *   - Per-row Restore and single permanent delete
  *   - Days-until-purge badge (red at <= 7 days)

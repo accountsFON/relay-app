@@ -13,7 +13,7 @@ import { attachMediaToPost } from '@/lib/media'
  * uploaded the file directly to Vercel Blob using the signed token from
  * /api/media/upload. Returns the updated post.
  *
- * Auth: same shape as /api/media/upload — requireClientEditor + org-scoped
+ * Auth: same shape as /api/media/upload, requireClientEditor + org-scoped
  * findPostById to prevent cross-org writes.
  */
 export async function POST(

@@ -3,13 +3,13 @@
  *
  * Two token types live here:
  *
- *  1. The URL token (signToken / verifyToken) — opaque value embedded in
+ *  1. The URL token (signToken / verifyToken): opaque value embedded in
  *     /review/[token]. Carries the magic-link id and an expiry. Server
  *     validates by recomputing the HMAC; never stored raw, only as
  *     sha256(token) (hashToken) on MagicLink.tokenHash for revocation
  *     lookup.
  *
- *  2. The session value (signSession / verifySession) — signed cookie
+ *  2. The session value (signSession / verifySession): signed cookie
  *     value scoped to a single magic link, identifies a returning
  *     reviewer. 30-day expiry baked into the signed payload so the
  *     cookie outlives the JS session but never the link itself.
@@ -71,7 +71,7 @@ export interface VerifiedToken {
 
 /**
  * Returns `{sigBase64Url}.{magicLinkId}.{expiresAt}`. The id and expiresAt
- * portions are intentionally readable (not encrypted) — the security
+ * portions are intentionally readable (not encrypted), the security
  * property is that an attacker cannot forge a valid signature without
  * MAGIC_LINK_SECRET, and the server re-checks revocation + expiry on every
  * request.

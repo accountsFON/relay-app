@@ -15,7 +15,7 @@
  *      link (round = highest in_progress; starts a fresh round 1
  *      session if none exists yet).
  *   5. Asserts the postId being drafted belongs to the magic link's
- *      batch (defense in depth — the client never owns postId selection
+ *      batch (defense in depth: the client never owns postId selection
  *      authority).
  *   6. Hands off to the Task 1.4 repository's `saveDraftItem` which
  *      performs the upsert on (reviewSessionId, postId).
@@ -76,7 +76,7 @@ export interface SaveItemDraftInput {
   token: string
   /** Post id the client is drafting against. Must belong to the link's batch. */
   postId: string
-  /** New decision state. Optional — omitted means "leave decision alone, only update comment / caption". */
+  /** New decision state. Optional, omitted means "leave decision alone, only update comment / caption". */
   decision?: ReviewDecisionType
   /** Free-text comment. `null` clears, `undefined` leaves unchanged. */
   comment?: string | null

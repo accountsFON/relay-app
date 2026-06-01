@@ -309,7 +309,7 @@ export async function getMonthlyCostSummary(
  * `organizationId` AND that the membership role has `run.delete` permission.
  *
  * `run.delete` is the closest existing permission key for soft-deleting a
- * ContentRun — it covers both admins and account managers, and excludes
+ * ContentRun, it covers both admins and account managers, and excludes
  * designers and clients, which matches the intended gatekeeping.
  */
 async function assertCanEditContentRun(
@@ -399,7 +399,7 @@ export async function archiveContentRun({
  * Restores a soft-deleted ContentRun and any Posts whose `deletedAt` matches
  * the run's prior `deletedAt` timestamp (timestamp-aware restore).
  *
- * Posts archived independently at a different timestamp are left alone — they
+ * Posts archived independently at a different timestamp are left alone, they
  * were archived by a separate intent and should not be brought back by a run
  * restore.
  */

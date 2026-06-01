@@ -4,9 +4,9 @@ import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
- * DataRow — Wise-style list row.
+ * DataRow: Wise-style list row.
  * Avatar (or icon) + 2-line text + right-aligned meta + chevron.
- * No row borders — rhythm comes from padding alone.
+ * No row borders, rhythm comes from padding alone.
  *
  * Used for: clients list, runs list, posts list, recipients-style surfaces.
  */
@@ -87,7 +87,7 @@ export function DataRow({
 }
 
 /**
- * DataRowGroup — wraps DataRows in the standard card chrome.
+ * DataRowGroup: wraps DataRows in the standard card chrome.
  * Optional sectioned (date-grouped) variant.
  */
 export function DataRowGroup({
@@ -110,7 +110,7 @@ export function DataRowGroup({
 }
 
 /**
- * Avatar bubble for DataRow leading slot — initials, photo, or icon.
+ * Avatar bubble for DataRow leading slot: initials, photo, or icon.
  */
 export function RowAvatar({
   initials,

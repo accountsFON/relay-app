@@ -1,5 +1,5 @@
 /**
- * ReviewSessionHeader — top section of the AM-side review session detail page.
+ * ReviewSessionHeader: top section of the AM-side review session detail page.
  *
  * Shows reviewer identity, round number, formatted submitted timestamp (always
  * America/New_York since AM-side surfaces are agency-internal), and chip

@@ -1,5 +1,5 @@
 /**
- * CommentComposer — textarea + @mention autocomplete.
+ * CommentComposer: textarea + @mention autocomplete.
  *
  * Spec: projects/relay-app/2026-05-09-activity-thread-plan.md § CommentComposer
  *       projects/relay-app/2026-05-09-relay-workflow-design.md § Phase 2

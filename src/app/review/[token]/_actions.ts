@@ -18,7 +18,7 @@ const SESSION_COOKIE_NAME = 'magic-link-session'
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60 // 30 days
 
 /**
- * Local error class — kept un-exported because 'use server' files only
+ * Local error class: kept un-exported because 'use server' files only
  * permit async function exports. Callers see a generic Error with a
  * meaningful message; the error.name discriminator is preserved for
  * logging / telemetry but is not part of the public API.
@@ -32,7 +32,7 @@ class MagicLinkActionError extends Error {
 
 /**
  * Re-verifies the URL token (do NOT trust the client-supplied token blindly
- * even though the middleware already gated the page render — server actions
+ * even though the middleware already gated the page render, server actions
  * are independent request entry points). Returns the resolved magic link or
  * throws.
  */

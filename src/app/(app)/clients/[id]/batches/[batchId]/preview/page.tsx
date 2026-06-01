@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button'
  * per-post media upload, bulk media tray) into a single AM-facing surface.
  *
  * Auth: standard client.view gate via requireClientViewer + findClientForUser
- * scoping. Mode is always 'internal' here — magic-link client view ships in
+ * scoping. Mode is always 'internal' here, magic-link client view ships in
  * Task 2.2 at /review/[token] reusing the same preview shell with mode='review'.
  */
 export default async function BatchPreviewPage({

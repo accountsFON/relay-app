@@ -7,7 +7,7 @@
  * caption edit.
  *
  * Auth gating happens one layer up in `src/server/actions/reviewSessions.ts`.
- * This file is intentionally org-agnostic — sessions scope through
+ * This file is intentionally org-agnostic, sessions scope through
  * `MagicLink → Batch → Client → Organization`, same indirection pattern
  * as `threads.ts`. The org-filter lint allowlist includes this file for
  * that reason.

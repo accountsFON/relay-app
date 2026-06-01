@@ -29,7 +29,7 @@ type Props = {
    * The user's own Memberships, mapped to AgencyOption. Used for
    * multi-membership regular users so we can render a dropdown without
    * Clerk's <OrganizationSwitcher> (which exposes a "Create organization"
-   * button — agency creation is gated to Path 1 + platform owners).
+   * button: agency creation is gated to Path 1 + platform owners).
    */
   userAgencies?: AgencyOption[]
   /** Active org's Clerk Org ID, used to mark the current row in the dropdown. */

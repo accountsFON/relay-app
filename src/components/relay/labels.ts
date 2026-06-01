@@ -1,5 +1,5 @@
 /**
- * Relay UI labels — human strings + role colors for the relay surfaces.
+ * Relay UI labels: human strings + role colors for the relay surfaces.
  *
  * Pure data, safe to import from client components. State-machine helpers
  * (HOLDER_ROLE, validateTransition, legalSendBackTargets) live in
@@ -28,13 +28,13 @@ export const STEP_LABEL: Record<RelayStep, string> = {
 /**
  * Role colors aligned with the Relay v1 neutral brand system.
  * Hue-based distinctions (blue/purple/green) were retired in the brand
- * sweep — they broke the "hue-as-category-accent" rule by introducing
+ * sweep, they broke the "hue-as-category-accent" rule by introducing
  * non-brand chromatic backgrounds on every relay surface. Roles are now
  * distinguished by lightness/inversion within the neutral scale:
- *   admin   — muted gray (least emphasis, internal-only role)
- *   am      — neutral-100 tint (warm, the working-default role)
- *   designer— light neutral-900 tint (cooler emphasis)
- *   client  — inverse dark (strongest visual weight, signals "external")
+ *   admin: muted gray (least emphasis, internal-only role)
+ *   am: neutral-100 tint (warm, the working-default role)
+ *   designer: light neutral-900 tint (cooler emphasis)
+ *   client: inverse dark (strongest visual weight, signals "external")
  * Tailwind utility class triples to keep JSX readable.
  */
 export const ROLE_COLOR: Record<RelayRole, { bg: string; text: string; ring: string }> = {

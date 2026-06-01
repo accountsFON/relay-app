@@ -10,7 +10,7 @@
  *
  * Access control mirrors the existing batch page: requireClientViewer +
  * findClientForUser. The session must also belong to a magic link on a batch
- * the AM has access to — we verify that by walking magicLink → batch → client
+ * the AM has access to, we verify that by walking magicLink → batch → client
  * and notFound() if it doesn't match the scoped client.
  *
  * Layer 2 / Task 2.2.

@@ -143,7 +143,7 @@ function revalidateReviewerPaths(token: string, clientId: string, batchId: strin
  * round 1.
  *
  * Round 2+ session creation is owned by `startNextRound` in
- * `src/server/services/reviewRound.ts` (Layer 2 Task 2.4), not here —
+ * `src/server/services/reviewRound.ts` (Layer 2 Task 2.4), not here,
  * the reviewer cannot self-trigger a new round, the AM has to close out
  * the prior one first.
  */
@@ -176,7 +176,7 @@ export async function startReviewSessionAction(input: {
  * (reviewSessionId, postId).
  *
  * Validates the reviewer owns the session AND the post belongs to the
- * link's batch — without the latter check a reviewer could forge a
+ * link's batch, without the latter check a reviewer could forge a
  * postId from a different batch into the upsert and silently corrupt
  * another batch's items.
  */
@@ -234,7 +234,7 @@ export async function saveReviewDraftAction(input: {
 
 /**
  * Friendly base URL for AM-side links rendered into the digest email.
- * Mirrors `appBaseUrl` in `src/server/actions/magicLink.ts` — prefer the
+ * Mirrors `appBaseUrl` in `src/server/actions/magicLink.ts`, prefer the
  * stable prod alias over per-deployment URLs so the link in the AM's
  * inbox keeps working after the next deploy.
  */
@@ -713,7 +713,7 @@ export async function rejectCaptionEditAction(input: {
 /**
  * AM marks a `changes_requested` (or `caption_edited`) item as addressed.
  *
- * Pure audit event in v2 — Layer 0 schema has no `addressedAt` column on
+ * Pure audit event in v2: Layer 0 schema has no `addressedAt` column on
  * ReviewItem and the plan explicitly says to skip the schema bump. The
  * detail page rolls "pending vs addressed" off the activity stream in
  * Layer 3 task 3.4 / 3.5 (the page reads the per-item event count).
@@ -761,7 +761,7 @@ export interface StartNextRoundActionResult {
  * materializes carryforward items, and emits the round-started activity
  * event) and re-sends the magic link email so the reviewer knows there
  * is fresh work to look at. The magic link token does not rotate between
- * rounds — same URL is reused so any past email the client has is also
+ * rounds, same URL is reused so any past email the client has is also
  * still valid.
  *
  * Email failure does NOT roll back the new round. The AM can manually

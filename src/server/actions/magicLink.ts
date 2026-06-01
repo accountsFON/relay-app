@@ -66,7 +66,7 @@ export interface CreateAndSendMagicLinkResult {
  * so cross-org / cross-scope batchIds 404.
  *
  * Email failure does NOT roll back the magic link. The AM gets the URL
- * in the response and can copy it manually — the alternative (rolling
+ * in the response and can copy it manually, the alternative (rolling
  * back) leaves the AM with no link at all and no way to recover. We
  * surface the email error in the result so the UI can flag it.
  */
@@ -173,7 +173,7 @@ export interface RevokeMagicLinkInput {
 
 /**
  * Revokes a magic link. Verifies the caller has client.edit on the
- * link's underlying batch's client before flipping revokedAt — prevents
+ * link's underlying batch's client before flipping revokedAt, prevents
  * a tampered id from one org being used to revoke a link in another.
  */
 export async function revokeMagicLinkAction(

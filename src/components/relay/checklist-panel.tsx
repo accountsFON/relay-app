@@ -1,5 +1,5 @@
 /**
- * ChecklistPanel — sticky right rail of the batch detail page.
+ * ChecklistPanel: sticky right rail of the batch detail page.
  *
  * Spec: projects/relay-app/2026-05-09-relay-workflow-design.md § Handoff Mechanics
  *

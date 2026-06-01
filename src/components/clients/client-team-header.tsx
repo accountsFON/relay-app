@@ -1,5 +1,5 @@
 /**
- * ClientTeamHeader — surfaces who owns this client (AM + Designer) at the
+ * ClientTeamHeader: surfaces who owns this client (AM + Designer) at the
  * top of the client detail page. When the viewer has admin.portal they can
  * reassign inline; otherwise the names render read-only.
  *

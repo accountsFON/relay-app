@@ -5,7 +5,7 @@
  *
  * Race safety: `MagicLink.lastVisitedAt` doubles as the first-visit
  * sentinel. `updateMany` with `where: { lastVisitedAt: null }` is
- * compare-and-swap at the DB level — only one of N concurrent visits
+ * compare-and-swap at the DB level, only one of N concurrent visits
  * "wins" the count === 1 path, regardless of interleaving. Subsequent
  * visits bump lastVisitedAt for the AM's "Last visited X" UI without
  * re-emitting.

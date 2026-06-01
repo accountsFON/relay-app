@@ -80,7 +80,7 @@ export async function passBatonAction(input: {
 /**
  * Terminal-state action: advances a batch from final_qa_schedule to completed.
  *
- * Permission: relay.pass (same as a regular forward Pass Baton — completing
+ * Permission: relay.pass (same as a regular forward Pass Baton, completing
  * is a forward direction in the state machine).
  * Checklist gating: UI-side only (ChecklistPanel disables the Finish button
  * until isChecklistComplete returns true). Matches passBatonAction pattern.
@@ -213,7 +213,7 @@ export async function advanceCopySubStateAction(input: {
  * `batch_step_advanced` ActivityEvent so the audit trail names this as a
  * force-advance rather than a routine Pass Baton.
  *
- * Permission: `relay.pass` (same as a regular forward Pass Baton — this
+ * Permission: `relay.pass` (same as a regular forward Pass Baton, this
  * is a forward direction in the state machine).
  */
 export async function markBatchReviewedAction(input: {

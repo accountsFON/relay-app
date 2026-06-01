@@ -11,7 +11,7 @@ interface Props {
 }
 
 /**
- * SendLinkButton — opens a modal that mints + emails a magic review link.
+ * SendLinkButton: opens a modal that mints + emails a magic review link.
  *
  * Internal AM use only. The host page should only render this for users
  * with client.edit permission.

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * ReviewItemRow — one row on the AM-side review session detail page.
+ * ReviewItemRow: one row on the AM-side review session detail page.
  *
  * Renders a single non-approved ReviewItem. Branches on decision:
  *   - changes_requested: shows the client comment in a blockquote + a

@@ -12,7 +12,7 @@ export type NameModalProps = {
 
 /**
  * First-visit identity confirm. Pre-fills with the values the AM baked
- * into the MagicLink row, but both fields are editable — clients should
+ * into the MagicLink row, but both fields are editable, clients should
  * be able to correct a typo or use their real name if the AM only had
  * a placeholder.
  *
@@ -20,7 +20,7 @@ export type NameModalProps = {
  * and revalidates the path. router.refresh() pulls the new render
  * (without the modal) into view.
  *
- * Renders as a backdrop + centered card. No portal — the parent layout
+ * Renders as a backdrop + centered card. No portal, the parent layout
  * is the only thing on the page at this point so z-index is not
  * contested.
  */

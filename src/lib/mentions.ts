@@ -1,5 +1,5 @@
 /**
- * Mention parsing helpers — pure functions, safe to import client + server.
+ * Mention parsing helpers: pure functions, safe to import client + server.
  *
  * Spec: projects/relay-app/2026-05-09-activity-thread-plan.md § Mention parsing
  *

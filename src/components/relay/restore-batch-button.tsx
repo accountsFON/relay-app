@@ -10,11 +10,11 @@ interface Props {
 }
 
 /**
- * RestoreBatchBanner — wraps ArchivedBanner with a pre-wired restore callback
+ * RestoreBatchBanner: wraps ArchivedBanner with a pre-wired restore callback
  * for batches.
  *
  * Client component so it can import `restoreBatchAction` directly and close
- * over `batchId` — avoiding the need for an inline `'use server'` function
+ * over `batchId`, avoiding the need for an inline `'use server'` function
  * inside the server page component.
  */
 export function RestoreBatchBanner({ batchId, archivedAt, archivedBy }: Props) {

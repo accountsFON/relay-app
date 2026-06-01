@@ -10,7 +10,7 @@ import { db } from '@/db/client'
  *   (now - 24 days, now - 23 days]
  *
  * At purge time the item will be 30 days old, so this fires 6-7 days before
- * purge — nominally ~7 days before (when deletedAt ≈ now - 23 days).
+ * purge, nominally ~7 days before (when deletedAt ≈ now - 23 days).
  *
  * Crucially the 1-day-wide window means each item is caught exactly once
  * across its lifetime, regardless of how many times the daily job runs.

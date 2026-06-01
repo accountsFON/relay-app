@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
  * Brand-painted native checkbox. Uses `accent-foreground` so the checked
  * box fills with neutral-900 and the check glyph stays the platform default
  * (no SVG hack). Standardizes size, border, focus ring, and disabled state
- * across surfaces — matches the spec from 2.5C.3 Step 3.
+ * across surfaces, matches the spec from 2.5C.3 Step 3.
  *
  * Drop-in replacement for `<input type="checkbox" ... />`.
  */

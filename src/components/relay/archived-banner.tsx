@@ -9,12 +9,12 @@ interface Props {
   entityType: 'Client' | 'Relay' | 'Post' | 'Run';
   archivedAt: Date;
   archivedBy?: string | null;
-  /** Server action wrapper supplied by the caller — knows which entity to restore */
+  /** Server action wrapper supplied by the caller, knows which entity to restore */
   onRestore: () => Promise<void>;
 }
 
 /**
- * ArchivedBanner — sticky strip shown at the top of a read-only archived
+ * ArchivedBanner: sticky strip shown at the top of a read-only archived
  * entity view. Uses cream-warm + ink border instead of the amber palette
  * that originally lived here; chromatic colors break the cream-and-ink
  * brand system.

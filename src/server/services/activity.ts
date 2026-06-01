@@ -19,7 +19,7 @@ export interface RecordActivityInput {
    * Who can see this event in activity threads / search results.
    * Defaults to `internal` (agency-only). Set explicitly for client-facing
    * events (`public`) or sensitive audit entries (`admin_only`).
-   * Spec § Future Features § Section 2 — visibility rules.
+   * Spec § Future Features § Section 2, visibility rules.
    */
   visibility?: EventVisibility
   payload: ActivityPayload
@@ -77,7 +77,7 @@ function dedupe<T>(arr: T[]): T[] {
 
 /**
  * Default ActivityEvent visibility when the caller doesn't pass one.
- * Spec § Future Features § Section 2 — visibility rules.
+ * Spec § Future Features § Section 2, visibility rules.
  *
  * Conservative default: only `comment` is public, sensitive admin actions
  * are `admin_only`, everything else is `internal`. Call sites that want a

@@ -2,7 +2,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * PageSection — labeled card section for grouping related content.
+ * PageSection: labeled card section for grouping related content.
  * Replaces the inline `<Section>` definitions scattered across pages.
  */
 export function PageSection({

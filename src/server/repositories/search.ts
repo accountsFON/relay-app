@@ -1,5 +1,5 @@
 /**
- * Search repository — Postgres full text search across the major entities.
+ * Search repository: Postgres full text search across the major entities.
  *
  * Spec: projects/relay-app/2026-05-09-future-features-exploration.md § 3
  *

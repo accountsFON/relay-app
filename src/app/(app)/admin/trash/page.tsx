@@ -23,13 +23,13 @@ function daysUntilPurge(deletedAt: Date): number {
 // ---------------------------------------------------------------------------
 
 /**
- * /admin/trash — Org-Admin-only page that shows all soft-deleted entities
+ * /admin/trash: Org-Admin-only page that shows all soft-deleted entities
  * across 4 tabs (Clients, Batches, Runs, Posts). Admins can:
  *   - Restore: undo the soft-delete
  *   - Permanently delete (single): typed-confirm with entity label
  *   - Permanently delete (bulk): typed-confirm with count
  *
- * Permission gate: requireAdminPortal() (admin.portal key — admin role only).
+ * Permission gate: requireAdminPortal() (admin.portal key, admin role only).
  * Data loading uses the two-query pattern (onlyArchived() bare + separate user
  * lookups) to avoid the soft-delete proxy + include incompatibility.
  */

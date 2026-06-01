@@ -12,13 +12,13 @@ import {
  * Server actions backing the notification bell (Phase 1).
  *
  * Spec: projects/relay-app/2026-05-21-notification-bell-and-heartbeat-plan.md
- *       § Task 15 — submitPreviewReviewAction + /preview Submit button
+ *       § Task 15, submitPreviewReviewAction + /preview Submit button
  *
  * submitPreviewReviewAction emits a `preview_review_submitted` ActivityEvent
  * with a designer Mention so the assigned designer's bell lights up the
  * moment the AM clicks "Submit" on the /preview page. The action is a
  * silent no-op when the AM has no unresolved comments authored on the
- * batch — no event, no mention. We never spam the designer with an empty
+ * batch, no event, no mention. We never spam the designer with an empty
  * review summary.
  *
  * Security boundary:
@@ -28,7 +28,7 @@ import {
  *   verify tenant scoping before writing.
  * - The actual emit logic lives in `@/server/services/preview-review-emit`
  *   as a plain (non `'use server'`) helper, exported for integration tests.
- *   That helper does no auth — callers must scope first. The server action
+ *   That helper does no auth, callers must scope first. The server action
  *   below does exactly that.
  */
 
@@ -37,7 +37,7 @@ export interface SubmitPreviewReviewInput {
 }
 
 /**
- * Server action — only reachable from authenticated browsers via RPC.
+ * Server action: only reachable from authenticated browsers via RPC.
  * Resolves the actor from Clerk via requireClientEditor() and verifies
  * tenant scoping (the batch's client must be visible to the caller per
  * findClientForUser) before delegating to emitPreviewReviewSubmit.

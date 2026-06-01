@@ -23,7 +23,7 @@ interface Props {
 }
 
 /**
- * TypedConfirmModal — reusable confirmation dialog that requires the user to
+ * TypedConfirmModal: reusable confirmation dialog that requires the user to
  * type a specific string before the destructive action is enabled.
  *
  * Used for:

@@ -1,5 +1,5 @@
 /**
- * Relay view types — denormalized shapes the UI components consume.
+ * Relay view types: denormalized shapes the UI components consume.
  *
  * Wraps the Prisma models with computed fields (daysOnCurrentStep) and
  * eager-loaded relations (holder) so the components don't need to know

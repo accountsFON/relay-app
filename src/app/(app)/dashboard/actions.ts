@@ -15,7 +15,7 @@ const MAX_BULK_ARCHIVE = 100
  * - Permission: requireClientEditor (same as the per-batch overflow menu's
  *   archiveBatchAction in /trash/actions.ts)
  * - Each archiveBatch call has its own internal transaction (post-cascade
- *   stamping is atomic per batch). The bulk loop is NOT one big transaction —
+ *   stamping is atomic per batch). The bulk loop is NOT one big transaction,
  *   Prisma cannot nest the transactions archiveBatch already starts. If batch
  *   N fails, batches 1..N-1 remain archived (recoverable via /admin/trash).
  *   `failed` contains the ids that errored so the UI can surface them.

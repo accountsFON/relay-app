@@ -2,7 +2,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * EmptyState — confident empty state pattern (Wise/Anthropic-style).
+ * EmptyState: confident empty state pattern (Wise/Anthropic-style).
  * Italic Georgia display headline + one sentence + one orange pill CTA.
  * No "try one of these examples" walls.
  */
