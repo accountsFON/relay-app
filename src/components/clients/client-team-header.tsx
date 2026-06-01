@@ -16,6 +16,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { setClientPrimary } from '@/app/(app)/admin/clients/actions'
 import { Button } from '@/components/ui/button'
 import {
@@ -129,7 +130,7 @@ function TeamSlot({
         router.refresh()
       } catch (err) {
         setPendingId(null)
-        alert(err instanceof Error ? err.message : 'Failed to reassign')
+        toast.error(err instanceof Error ? err.message : 'Failed to reassign')
       }
     })
   }

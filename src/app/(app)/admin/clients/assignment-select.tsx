@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { toast } from 'sonner'
 import { setClientPrimary } from './actions'
 
 type Option = { id: string; name: string }
@@ -30,7 +31,7 @@ export function AssignmentSelect({
       try {
         await setClientPrimary({ clientId, slot, userId })
       } catch (err) {
-        alert(
+        toast.error(
           err instanceof Error ? err.message : 'Failed to update assignment',
         )
       }
