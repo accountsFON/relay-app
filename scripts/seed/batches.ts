@@ -148,8 +148,9 @@ const BATCH_SPECS: BatchSpec[] = [
   { clientIdx: 8, month: '2026-03', step: RelayStep.revisions_complete, checkedCount: 1 },
   { clientIdx: 8, month: '2026-04', step: RelayStep.in_design },
 
-  // Bread & Bowl — designs_completed Apr only.
-  { clientIdx: 9, month: '2026-04', step: RelayStep.designs_completed },
+  // Bread & Bowl — am_review_design Apr only.
+  // (was designs_completed; Phase 3 item 15 PR1 retired that step.)
+  { clientIdx: 9, month: '2026-04', step: RelayStep.am_review_design },
 
   // Cyclone CrossFit — am_review_design Apr only.
   { clientIdx: 10, month: '2026-04', step: RelayStep.am_review_design, checkedCount: 1 },
@@ -158,8 +159,9 @@ const BATCH_SPECS: BatchSpec[] = [
   { clientIdx: 11, month: '2026-03', step: RelayStep.ready_to_schedule },
   { clientIdx: 11, month: '2026-04', step: RelayStep.copy, subState: 'drafted' },
 
-  // Stonewall Roofing — designs_completed Apr.
-  { clientIdx: 12, month: '2026-04', step: RelayStep.designs_completed },
+  // Stonewall Roofing — am_review_design Apr.
+  // (was designs_completed; Phase 3 item 15 PR1 retired that step.)
+  { clientIdx: 12, month: '2026-04', step: RelayStep.am_review_design },
 
   // Solstice Photography — revisions_complete Mar, in_design Apr.
   { clientIdx: 13, month: '2026-03', step: RelayStep.revisions_complete, checkedCount: 2 },

@@ -6,11 +6,23 @@ export { RelayStep, RelayRole }
 
 type DbOrTx = DbClient | DbTx
 
+/**
+ * Step to holder role.
+ *
+ * `designs_completed` is a retired step (Phase 3 item 15, PR1 dropped it from
+ * LEGAL_TRANSITIONS). The enum value is preserved so historical ActivityEvent
+ * and RelayEvent rows render cleanly, and a backfill migration walks any
+ * in-flight batches forward to `am_review_design`. The holder mapping stays
+ * here so `holderRoleForStep()` keeps a total function over RelayStep, but no
+ * live batch should ever sit on this step after the PR1 backfill runs. PR2
+ * (Wave F5) will tombstone the enum value once the prod audit confirms zero
+ * batches at this step.
+ */
 export const HOLDER_ROLE: Record<RelayStep, RelayRole> = {
   [RelayStep.onboarding_gate]: RelayRole.admin,
   [RelayStep.copy]: RelayRole.am,
   [RelayStep.in_design]: RelayRole.designer,
-  [RelayStep.designs_completed]: RelayRole.designer,
+  [RelayStep.designs_completed]: RelayRole.designer, // retired step, kept for historical rows
   [RelayStep.am_review_design]: RelayRole.am,
   [RelayStep.design_revisions]: RelayRole.designer,
   [RelayStep.am_qa_pre_client]: RelayRole.am,
@@ -37,11 +49,12 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
   { from: RelayStep.copy, to: RelayStep.in_design, direction: 'forward' },
   { from: RelayStep.copy, to: RelayStep.onboarding_gate, direction: 'send_back' },
 
-  { from: RelayStep.in_design, to: RelayStep.designs_completed, direction: 'forward' },
+  // Phase 3 item 15: designer hands directly to AM review. The retired
+  // `designs_completed` step is no longer reachable as a forward target.
+  // Designer self-correction stays as send_back to copy; the previous
+  // `designs_completed -> in_design` send_back is gone with the step.
+  { from: RelayStep.in_design, to: RelayStep.am_review_design, direction: 'forward' },
   { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },
-
-  { from: RelayStep.designs_completed, to: RelayStep.am_review_design, direction: 'forward' },
-  { from: RelayStep.designs_completed, to: RelayStep.in_design, direction: 'send_back' },
 
   { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
   { from: RelayStep.am_review_design, to: RelayStep.design_revisions, direction: 'send_back' },
@@ -85,11 +98,10 @@ export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
   { from: RelayStep.copy, to: RelayStep.in_design, direction: 'forward' },
   { from: RelayStep.copy, to: RelayStep.onboarding_gate, direction: 'send_back' },
 
-  { from: RelayStep.in_design, to: RelayStep.designs_completed, direction: 'forward' },
+  // Phase 3 item 15: designer hands directly to AM review. Mirrors the
+  // FULL_TRACK change above.
+  { from: RelayStep.in_design, to: RelayStep.am_review_design, direction: 'forward' },
   { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },
-
-  { from: RelayStep.designs_completed, to: RelayStep.am_review_design, direction: 'forward' },
-  { from: RelayStep.designs_completed, to: RelayStep.in_design, direction: 'send_back' },
 
   { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
   { from: RelayStep.am_review_design, to: RelayStep.design_revisions, direction: 'send_back' },

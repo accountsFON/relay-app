@@ -167,10 +167,13 @@ describe('getNotifyTargetsForStep', () => {
     ])
   })
 
-  it('in_design -> designs_completed stays with the designer', () => {
-    expect(
-      getNotifyTargetsForStep(RelayStep.designs_completed, client),
-    ).toEqual(['user_designer'])
+  it('in_design -> am_review_design notifies the AM', () => {
+    // Phase 3 item 15 PR1: in_design now hands directly to am_review_design;
+    // the old `designs_completed` intermediate step is retired. The notify
+    // target is the AM on the destination step.
+    expect(getNotifyTargetsForStep(RelayStep.am_review_design, client)).toEqual([
+      'user_am',
+    ])
   })
 
   it('am_review_design -> sent_to_client notifies every linked client user', () => {
