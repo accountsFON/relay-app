@@ -75,7 +75,7 @@ export function SearchBar() {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKey}
-        placeholder="Search relays, clients, steps..."
+        placeholder="Search clients, posts, runs, comments..."
         aria-label="Search clients, posts, runs, and comments"
         className="flex-1 bg-transparent text-sm text-foreground placeholder:text-neutral-500 outline-none"
       />

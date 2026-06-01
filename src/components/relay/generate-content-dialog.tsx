@@ -209,7 +209,7 @@ export function GenerateContentDialog({
                 className="mt-1"
               />
               <div className="flex-1">
-                <Label htmlFor="recrawl-toggle">Re-crawl client websites</Label>
+                <Label htmlFor="recrawl-toggle">Recrawl client websites</Label>
                 {lastCrawled && (
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Last crawled {new Date(lastCrawled).toLocaleDateString()}

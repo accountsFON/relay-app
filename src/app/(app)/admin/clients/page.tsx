@@ -54,7 +54,7 @@ export default async function AdminClientsPage() {
                     <div className="font-medium text-foreground">{c.name}</div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {c.industry ?? '—'}
+                    {c.industry ?? <span aria-hidden="true">–</span>}
                   </td>
                   <td className="px-4 py-3">
                     <AssignmentSelect

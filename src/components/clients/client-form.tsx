@@ -172,15 +172,15 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
       </PageSection>
 
       <PageSection title="Crawl Settings">
-        <Field label="Auto-crawl behavior" htmlFor="autoCrawl">
+        <Field label="Automatic crawling" htmlFor="autoCrawl">
           <select
             id="autoCrawl"
             {...form.register('autoCrawl')}
             className="h-11 w-full rounded-xl border border-input bg-card px-3.5 text-[15px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
           >
-            <option value="always">Always re-crawl (every generation)</option>
+            <option value="always">Always recrawl (every generation)</option>
             <option value="when_empty">Only when no stored data exists</option>
-            <option value="never">Never auto-crawl (use stored data)</option>
+            <option value="never">Never crawl automatically (use stored data)</option>
           </select>
           <p className="text-[13px] text-muted-foreground mt-2">
             Controls whether the pipeline crawls websites during content generation. &quot;Always&quot; gives freshest data but uses crawl credits each time. &quot;Never&quot; is free but uses older data.

@@ -170,7 +170,7 @@ function TeamSlot({
             disabled={isPending}
             className="-ml-1 max-w-full rounded-md bg-transparent px-1 py-0.5 text-[14px] font-medium text-foreground hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="">— Unassigned —</option>
+            <option value="">Unassigned</option>
             {options.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}

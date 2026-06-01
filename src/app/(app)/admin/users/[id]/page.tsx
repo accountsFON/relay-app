@@ -150,10 +150,10 @@ export default async function AdminUserDetailPage({
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {c.assignedAm?.name ?? '—'}
+                        {c.assignedAm?.name ?? 'Unassigned'}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {c.assignedDesigner?.name ?? '—'}
+                        {c.assignedDesigner?.name ?? 'Unassigned'}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <AssignmentToggle

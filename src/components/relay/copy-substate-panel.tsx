@@ -94,7 +94,7 @@ export function CopySubStatePanel({
 
       {sub === 'drafted' && !canAct && (
         <p className="mt-2 text-[12px] text-muted-foreground">
-          Copy drafted — waiting on AM review.
+          Copy drafted. Waiting on AM review.
         </p>
       )}
     </Card>

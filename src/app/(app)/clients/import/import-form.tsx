@@ -79,7 +79,7 @@ export function ImportForm() {
       <p className="text-sm text-muted-foreground">
         {mode === 'single'
           ? 'Upload a CSV with exactly one data row to create one client.'
-          : 'Upload a CSV with as many rows as you want. The import is all-or-nothing: if any row fails validation, no clients are created.'}
+          : 'Upload a CSV with as many rows as you want. The import is all or nothing: if any row fails validation, no clients are created.'}
       </p>
 
       {/* File picker */}

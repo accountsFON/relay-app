@@ -141,7 +141,7 @@ export default async function SearchPage({
                       >
                         <div>
                           <p className="text-[14px] font-medium text-foreground">
-                            {r.clientName} — {r.targetMonth}
+                            {r.clientName} · {r.targetMonth}
                           </p>
                         </div>
                         <Badge variant="outline">{r.status}</Badge>

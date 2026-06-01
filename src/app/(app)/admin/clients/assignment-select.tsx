@@ -47,7 +47,7 @@ export function AssignmentSelect({
       disabled={isPending}
       className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
     >
-      <option value="">— Unassigned —</option>
+      <option value="">Unassigned</option>
       {options.map((o) => (
         <option key={o.id} value={o.id}>
           {o.name}

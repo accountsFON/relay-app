@@ -159,7 +159,7 @@ export default async function AdminTrashPage() {
     })
     return {
       id: p.id,
-      label: `Post ${postDateLabel} — ${captionSnippet}`,
+      label: `Post ${postDateLabel} · ${captionSnippet}`,
       archivedBy: resolveArchivedBy(p.deletedBy),
       archivedAt: p.deletedAt!.toISOString(),
       daysUntilPurge: daysUntilPurge(p.deletedAt!),

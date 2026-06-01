@@ -225,7 +225,7 @@ async function AmDashboard({
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-[1600px]">
       <HeroBand
-        title="My Relay"
+        title="My relay"
         subtitle={
           ctx.role === 'admin'
             ? 'Every relay in flight, moving across the track.'
@@ -270,7 +270,7 @@ async function DesignerDashboard({
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <HeroBand
-        title="My Relay"
+        title="My relay"
         subtitle="Your design queue, moving across the track."
       />
       <div className="mt-4">
@@ -426,7 +426,7 @@ async function CostFallback({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-6xl">
-      <HeroBand title="My Relay" subtitle={`Activity for ${scopeLabel.toLowerCase()}.`} />
+      <HeroBand title="My relay" subtitle={`Activity for ${scopeLabel.toLowerCase()}.`} />
       <div className="mt-10 grid gap-4 sm:grid-cols-3">
         <StatCard
           label={`${scopeLabel} cost`}

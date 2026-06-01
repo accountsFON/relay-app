@@ -45,7 +45,7 @@ function configForStep(step: SupportedStep): ModeConfig {
     return {
       toStep: RelayStep.client_decision,
       description:
-        'The auto-advance from "With client" runs when a real client opens the relay. Invite a client user to enable that flow, or skip the review and advance manually.',
+        'The automatic advance from "With client" runs when a real client opens the relay. Invite a client user to enable that flow, or skip the review and advance manually.',
       buttonLabel: 'Skip client review',
       pendingLabel: 'Advancing…',
     }
