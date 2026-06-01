@@ -1,11 +1,11 @@
 /**
- * PostVersion service — snapshot every save of post body, cap depth.
+ * PostVersion service: snapshot every save of post body, cap depth.
  *
  * Spec: projects/relay-app/2026-05-09-future-features-exploration.md § 2
  *
  * Capture semantics:
  * - One PostVersion per save, captures the WHOLE post body (caption,
- *   hashtags, graphicHook, designerNotes) — not per-field deltas.
+ *   hashtags, graphicHook, designerNotes), not per-field deltas.
  * - Restore creates a new save (history is append-only).
  * - Cap at 50 versions per post; trim oldest in the same transaction.
  */

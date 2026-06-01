@@ -67,7 +67,7 @@ export async function listBatchesByHolder(userId: string) {
 
 /**
  * Stuck Watchlist: batches whose currentStep hasn't progressed in
- * the last `idleHours` (default 48 — spec § Verification step 14).
+ * the last `idleHours` (default 48, spec § Verification step 14).
  * Approximates "stuck" by createdAt of the most recent RelayEvent
  * landing on this step.
  */
@@ -228,7 +228,7 @@ export async function listArchivedBatchesForClient(clientId: string) {
  * Checks that `actorUserId` holds an org membership with `run.delete`
  * permission. There is no dedicated `batch.delete` key; `run.delete`
  * is the closest existing key covering admins and account managers while
- * excluding designers and clients — which matches the intended gatekeeping.
+ * excluding designers and clients, which matches the intended gatekeeping.
  */
 async function assertCanEditBatch(
   actorUserId: string,
@@ -266,7 +266,7 @@ export interface BatchArchiveInput {
  * Soft-deletes a Batch and cascades to:
  * - All live Posts whose `batchId = batchId`
  * - All live ContentRuns that have at least one Post in this batch
- *   (there is no direct ContentRun.batchId column — the relationship
+ *   (there is no direct ContentRun.batchId column, the relationship
  *    is bridged through Posts).
  *
  * All three layers share the same `deletedAt` timestamp so a restore can
@@ -341,7 +341,7 @@ export async function archiveBatch({
  * cascaded layers (batch, ContentRuns, Posts).
  *
  * Only rows whose `deletedAt` matches the batch's prior `deletedAt` are
- * cleared — independently-archived rows at a different timestamp are left
+ * cleared, independently-archived rows at a different timestamp are left
  * alone.
  */
 export async function restoreBatch({

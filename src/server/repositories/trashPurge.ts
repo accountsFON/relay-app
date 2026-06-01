@@ -9,7 +9,7 @@ import type { UserRole } from '@/lib/types'
 
 /**
  * Checks that `actorUserId` holds an org membership with `admin.portal`
- * permission. `admin.portal` is the most restrictive built-in permission key —
+ * permission. `admin.portal` is the most restrictive built-in permission key,
  * it is true only for the `admin` role by default (account_manager, designer,
  * and client are all false). There is no explicit "Org Owner" role in the
  * Membership schema; `admin` is the most-privileged role, and `admin.portal`
@@ -59,7 +59,7 @@ export interface PurgeInput {
 /**
  * Permanently hard-deletes an archived entity and all of its descendants.
  *
- * **Org Admin only** — uses the `admin.portal` permission gate, the most
+ * **Org Admin only**, uses the `admin.portal` permission gate, the most
  * restrictive built-in key (admin role exclusively).
  *
  * Entity behaviour per type:

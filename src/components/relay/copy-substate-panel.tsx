@@ -1,5 +1,5 @@
 /**
- * CopySubStatePanel — renders the AM-side affordance at step `copy`,
+ * CopySubStatePanel: renders the AM-side affordance at step `copy`,
  * keyed off the sub-state. Bridges the Batch model to the existing
  * generation flow at /clients/[id]/generate.
  *

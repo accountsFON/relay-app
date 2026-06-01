@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
  *
  * Next.js wraps every server-component segment in an error boundary that
  * looks for an error.tsx file in the segment's directory (or any parent).
- * Without one, the user sees Next's default fallback — a white screen
+ * Without one, the user sees Next's default fallback, a white screen
  * with a stack trace. This component catches that and shows a friendly
  * card with a retry button and a back-to-dashboard escape hatch.
  *

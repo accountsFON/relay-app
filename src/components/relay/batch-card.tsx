@@ -1,5 +1,5 @@
 /**
- * BatchCard — card used in every kanban (AM, Designer, Client).
+ * BatchCard: card used in every kanban (AM, Designer, Client).
  *
  * Spec: projects/relay-app/2026-05-09-relay-workflow-design.md § Caleb-Surfaces
  *

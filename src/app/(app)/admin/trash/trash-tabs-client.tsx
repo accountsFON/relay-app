@@ -19,7 +19,7 @@ interface Props {
 }
 
 /**
- * TrashTabsClient — client component for the tab switcher on /admin/trash.
+ * TrashTabsClient: client component for the tab switcher on /admin/trash.
  *
  * Manages the active tab index via useState. Each tab renders a TrashTable
  * that is mount-preserved (display:none) once visited so selections are not

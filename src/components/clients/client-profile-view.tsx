@@ -149,7 +149,7 @@ function useUnsavedChanges(dirty: boolean) {
 }
 
 /**
- * useFieldEditor — common state machine for one editable field.
+ * useFieldEditor: common state machine for one editable field.
  * Tracks dirty, pending, and exposes save/cancel.
  */
 function useFieldEditor<T>({
@@ -446,7 +446,7 @@ function NarrativeField({
 }
 
 /**
- * FocusField — same shape as NarrativeField but with a numbered badge
+ * FocusField: same shape as NarrativeField but with a numbered badge
  * inline with the label, so Focus 1/2/3 stack consistently with Main CTA,
  * Dos, Don'ts in the Strategy section.
  */

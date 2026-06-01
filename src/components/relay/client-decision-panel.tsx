@@ -1,5 +1,5 @@
 /**
- * ClientDecisionPanel — replaces ChecklistPanel for client-role viewers
+ * ClientDecisionPanel: replaces ChecklistPanel for client-role viewers
  * at step `client_decision`. Spec § Verification step 9.
  *
  * Two affordances: Approve (→ ready_to_schedule, AM-held) or

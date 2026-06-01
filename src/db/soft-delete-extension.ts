@@ -5,8 +5,8 @@
  * (Client, Batch, ContentRun, Post) automatically filter out rows where
  * `deletedAt` is not null. Two opt-in escape hatches are provided:
  *
- *   db.client.withArchived().findMany(...)   — returns live + archived rows
- *   db.client.onlyArchived().findMany(...)   — returns only archived rows
+ *   db.client.withArchived().findMany(...): returns live + archived rows
+ *   db.client.onlyArchived().findMany(...): returns only archived rows
  *
  * How the filtering works:
  *
@@ -22,7 +22,7 @@
  *    to leave the `deletedAt` filter alone.
  *
  * 3. `onlyArchived()` returns a model proxy whose read methods inject
- *    `where.deletedAt = { not: null }` — the interceptor sees the key
+ *    `where.deletedAt = { not: null }`, the interceptor sees the key
  *    present and passes it through unchanged, so only soft-deleted rows
  *    are returned.
  *

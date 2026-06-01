@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * DashboardSelectMode — Select-mode toggle + bulk archive for the My Relay
+ * DashboardSelectMode: Select-mode toggle + bulk archive for the My Relay
  * dashboard.
  *
  * Wraps the dashboard track and exposes selection state to descendants via
@@ -14,7 +14,7 @@
  *     with [N selected] [Select all visible] [Archive] [Cancel].
  *   - Archive opens a Yes/Cancel Dialog. Yes calls bulkArchiveBatchesAction.
  *   - Cancel (and Escape) exits select mode and clears selection.
- *   - Selection is ephemeral — refresh or route change clears it.
+ *   - Selection is ephemeral: refresh or route change clears it.
  *
  * Spec: projects/relay-app/2026-05-14-completed-step-and-bulk-archive-design.md
  */

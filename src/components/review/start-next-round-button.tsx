@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * StartNextRoundButton — closes the current submitted review session and opens
+ * StartNextRoundButton: closes the current submitted review session and opens
  * round N+1 for the same magic link reviewer. Rendered on the AM-side review
  * session detail page once every non-approved item has been addressed.
  *

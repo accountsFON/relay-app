@@ -13,11 +13,11 @@ import { db } from '@/db/client'
  * The header shows "Review by {clientName}" so the reviewer knows
  * whose work they are looking at. We pull the client name through the
  * batch on the validated magicLinkId that middleware attached as a
- * request header — single DB hit, no token verification cost.
+ * request header, single DB hit, no token verification cost.
  *
  * Note: this file does NOT render <html>/<body>. The root layout at
  * src/app/layout.tsx already does that and wraps the tree in
- * ClerkProvider. ClerkProvider being above us is fine — it only
+ * ClerkProvider. ClerkProvider being above us is fine, it only
  * provides React context; it does not gate the route. The actual
  * Clerk-session-required behavior lives in (app)/layout.tsx, which
  * this route deliberately does not pass through.

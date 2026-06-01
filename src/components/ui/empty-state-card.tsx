@@ -1,5 +1,5 @@
 /**
- * EmptyStateCard — pastel tinted card with a centered decoration shape and
+ * EmptyStateCard: pastel tinted card with a centered decoration shape and
  * a one line label. Use on kanban empty columns, /inbox zero state, /clients
  * zero state, /search no results, /library if empty. Phase 2.5D.4.
  *

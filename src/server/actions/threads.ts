@@ -26,13 +26,13 @@ const MAGIC_LINK_SESSION_COOKIE = 'magic-link-session'
  * Reads the signed `magic-link-session` cookie set by the magic-link
  * landing page (src/app/review/[token]/_actions.ts → confirmReviewerIdentity).
  * Verifies the HMAC, then looks up the MagicLinkReviewer row whose id
- * is baked into the JWT payload. Returns null if any step fails —
+ * is baked into the JWT payload. Returns null if any step fails,
  * callers fall back to Clerk auth or throw UnauthorizedError.
  *
  * The `token` field returned here is the hash of the URL token used as
  * the reviewerToken column value on thread + comment rows. We hash it
  * here from the MagicLink.tokenHash directly rather than re-deriving
- * from the raw URL token — the raw token is not available to a server
+ * from the raw URL token, the raw token is not available to a server
  * action invoked from anywhere other than the /review/[token] page,
  * and the hash is the canonical identifier for the link.
  */

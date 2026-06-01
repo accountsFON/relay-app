@@ -27,11 +27,11 @@ export type ReviewFeedProps = {
  *
  * Owns the IG/FB platform toggle state. The page hands us the data
  * statically; rendering toggles do not refetch (the same threads + posts
- * apply to both platforms — the chrome is the only thing that changes).
+ * apply to both platforms, the chrome is the only thing that changes).
  *
  * Layer 2.3 wiring: each post receives onCreateThread + onComment bound
  * to the magic-link reviewer actions. onResolveThread is intentionally
- * omitted per design — only AMs can resolve threads.
+ * omitted per design, only AMs can resolve threads.
  */
 export function ReviewFeed({
   token,

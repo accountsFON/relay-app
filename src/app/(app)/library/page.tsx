@@ -1,5 +1,5 @@
 /**
- * /library — Beta QA index. Lists every route + every component so we can
+ * /library: Beta QA index. Lists every route + every component so we can
  * hit-test the app without missing anything.
  *
  * Temporary surface. Drop after the beta cycle. Routes are clickable;
@@ -7,7 +7,7 @@
  *
  * For dynamic routes (`[id]`, `[batchId]`, `[runId]`, `[userId]`), this
  * page fetches one of each from the DB and substitutes. If nothing exists
- * yet, the link reads "(no sample data — create one first)".
+ * yet, the link reads "(no sample data, create one first)".
  */
 import Link from 'next/link'
 import { redirect } from 'next/navigation'

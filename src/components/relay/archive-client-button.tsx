@@ -20,7 +20,7 @@ interface Props {
 }
 
 /**
- * ArchiveClientButton — header action that soft-deletes a client after a
+ * ArchiveClientButton: header action that soft-deletes a client after a
  * typed-name confirmation.
  *
  * Extra friction is intentional: archiving a client cascades to all its
@@ -29,7 +29,7 @@ interface Props {
  *
  * Client component so it can own the dialog open/close state, the typed
  * input value, and the transition. Imports `archiveClientAction` directly
- * (server action) — keeps the server/client boundary clean and avoids prop
+ * (server action), keeps the server/client boundary clean and avoids prop
  * serialisation.
  *
  * On success, redirects to /clients so the user is never left on a now-

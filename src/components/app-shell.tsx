@@ -48,7 +48,7 @@ const platformNavItem: NavItem = {
   href: '/platform',
   icon: Globe2,
 }
-/** Beta QA index — temporary surface, drop after the beta cycle. */
+/** Beta QA index, temporary surface, drop after the beta cycle. */
 const libraryNavItem: NavItem = {
   label: 'Library',
   href: '/library',

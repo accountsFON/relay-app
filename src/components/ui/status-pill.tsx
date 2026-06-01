@@ -1,5 +1,5 @@
 /**
- * StatusPill — surface-level status / metadata pill primitive.
+ * StatusPill: surface-level status / metadata pill primitive.
  *
  * Spec: projects/relay-app/2026-05-22-brand-implementation-plan.md
  *       § Task 2.5C.2 (Mockup 3 status pills) + Task 2.5C.3 carry-overs.
@@ -18,7 +18,7 @@
  * Props are modeled as a discriminated union on `variant` so the type
  * checker prevents nonsense like `<StatusPill variant="plain" accent="coral" />`.
  *
- * Optional props (per variant — see discriminated union below):
+ * Optional props (per variant, see discriminated union below):
  * - `leadingIcon`: React node rendered before children. Auto adds gap-1.5.
  *   Available on `plain` and `accent`. Disallowed on `dot` (the colored
  *   dot is already the leading affordance).
@@ -57,7 +57,7 @@ type StatusPillBase = {
  * - `accent` disallows `hoverable` (visual clash: the tinted bg already
  *   reads as "interactive"; hover-on-tint looked broken in QA).
  * - `dot` disallows `leadingIcon` (visual ambiguity: the colored dot is
- *   already the leading affordance — two indicators on one pill compete).
+ *   already the leading affordance, two indicators on one pill compete).
  */
 export type StatusPillProps =
   | (StatusPillBase & {

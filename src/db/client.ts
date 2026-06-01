@@ -10,7 +10,7 @@ export type DbClient = ReturnType<typeof applySoftDelete>
 /**
  * The transaction client type for the extended client.
  * Use this instead of `Prisma.TransactionClient` in files that accept `db` or
- * a transaction as a parameter — Prisma's extension changes the transaction
+ * a transaction as a parameter, Prisma's extension changes the transaction
  * client's generic shape.
  *
  * Usage:

@@ -10,11 +10,11 @@ interface Props {
 }
 
 /**
- * RestoreClientBanner — wraps ArchivedBanner with a pre-wired restore
+ * RestoreClientBanner: wraps ArchivedBanner with a pre-wired restore
  * callback for clients.
  *
  * Client component so it can import `restoreClientAction` directly and close
- * over `clientId` — avoiding the need for an inline `'use server'` function
+ * over `clientId`, avoiding the need for an inline `'use server'` function
  * inside the server page component.
  */
 export function RestoreClientBanner({ clientId, archivedAt, archivedBy }: Props) {

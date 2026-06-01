@@ -2,7 +2,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * ActionBar — horizontal row of pill buttons for entity detail pages.
+ * ActionBar: horizontal row of pill buttons for entity detail pages.
  * First action is typically primary, rest are ghost/outline.
  * Wraps cleanly on mobile.
  */

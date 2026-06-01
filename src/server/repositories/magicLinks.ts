@@ -2,15 +2,15 @@
  * Magic-link persistence layer.
  *
  * Three responsibilities:
- *   1. createMagicLink — mint a fresh signed token, store only its hash,
+ *   1. createMagicLink: mint a fresh signed token, store only its hash,
  *      hand the raw token back to the caller (single chance, the email
  *      pipeline is the only legitimate destination).
- *   2. findByTokenHash — request-time lookup used by the /review/[token]
+ *   2. findByTokenHash: request-time lookup used by the /review/[token]
  *      middleware after HMAC + expiry check.
- *   3. revokeLink / recordReviewer / findReviewerBySession — link
+ *   3. revokeLink / recordReviewer / findReviewerBySession: link
  *      lifecycle and per-visitor identity.
  *
- * No auth gating in this layer — server actions on top resolve Clerk
+ * No auth gating in this layer, server actions on top resolve Clerk
  * identity for create/revoke and magic-link session identity for
  * recordReviewer. Mirrors the existing repository pattern in
  * src/server/repositories/clients.ts and batches.ts.
@@ -47,7 +47,7 @@ export interface CreateMagicLinkResult {
  *   4. Return both the persisted row and the raw token.
  *
  * The id has to be known up front so the token can carry it; we
- * generate it via a temporary insert + update? No — Prisma's @default(cuid())
+ * generate it via a temporary insert + update? No, Prisma's @default(cuid())
  * is computed by the client before send, so we can pre-compute by
  * creating with no token first. Simpler: do a two-phase insert in a
  * transaction (create row to get the id, then sign + update tokenHash).
@@ -137,7 +137,7 @@ export interface RecordReviewerInput {
  *   - First insert sets firstSeen + lastSeen to now (Prisma defaults).
  *   - Subsequent visits only bump lastSeen + (optionally) latest name/email.
  *
- * We do not move firstSeen on an existing row — that field is the audit
+ * We do not move firstSeen on an existing row, that field is the audit
  * anchor for "when did this client first read the batch".
  */
 export async function recordReviewer(

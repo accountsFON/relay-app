@@ -1,5 +1,5 @@
 /**
- * ReviewSubmittedDigestEmail — the digest the AM gets when a client hits
+ * ReviewSubmittedDigestEmail: the digest the AM gets when a client hits
  * Submit Review on a review session. Inlines every Request Changes comment
  * and every Caption Edit diff so the AM can triage the batch from their
  * inbox without opening Relay for routine cases.
@@ -9,7 +9,7 @@
  * in the email body.
  *
  * The template intentionally does NOT include approved items in the
- * per-item section — the summary chip row already reports the count, and
+ * per-item section, the summary chip row already reports the count, and
  * the AM has nothing to act on for approvals. Inlining them would bury
  * the items that actually need attention.
  *
@@ -40,7 +40,7 @@ export interface DigestReviewItem extends ReviewItemHydrated {
   post: {
     id: string
     postDate: Date
-    /** CURRENT caption on the Post — used as the baseline for the diff. */
+    /** CURRENT caption on the Post, used as the baseline for the diff. */
     caption: string
   }
   /** 1-based position in the batch (for "Post #N" display). */
@@ -67,7 +67,7 @@ export interface ReviewSubmittedDigestEmailProps {
   /** Timestamp of the submit click. */
   submittedAt: Date
   /**
-   * Optional reviewer reply-to email. Informational only — actually
+   * Optional reviewer reply-to email. Informational only, actually
    * setting Reply-To happens at the Resend send call.
    */
   reviewerReplyEmail?: string

@@ -1,5 +1,5 @@
 /**
- * Activity events repository — READ-side helpers (Caleb-owned).
+ * Activity events repository: READ-side helpers (Caleb-owned).
  *
  * Spec: projects/relay-app/2026-05-09-activity-thread-plan.md § Repository
  *       projects/relay-app/2026-05-09-relay-workflow-design.md § Caleb-Surfaces

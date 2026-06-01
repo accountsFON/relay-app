@@ -48,7 +48,7 @@ function Badge({
 }
 
 /**
- * StatusDot — small colored dot for inline status indication.
+ * StatusDot: small colored dot for inline status indication.
  * Wise-style: a single dot signals state without dominating the row.
  */
 function StatusDot({

@@ -445,7 +445,7 @@ function truncate(s: string, max: number): string {
 
 /**
  * Compact post reference used in event copy. The activity surface doesn't
- * have post titles, so we use a short id slice — readable enough to scan,
+ * have post titles, so we use a short id slice, readable enough to scan,
  * unique enough to dedupe.
  */
 function shortPostRef(postId: string): string {

@@ -13,7 +13,7 @@ import {
  * Body: { threadId: string }
  *
  * Auth: AM only (Clerk + client.edit). Magic-link reviewers cannot trigger
- * AI rewrites in v1 (cost + abuse vector — see design doc § Non-goals).
+ * AI rewrites in v1 (cost + abuse vector, see design doc § Non-goals).
  *
  * Returns the proposal shape:
  *   { proposedCaption, diff: DiffSegment[], tokenUsage: { in, out, costUsd } }

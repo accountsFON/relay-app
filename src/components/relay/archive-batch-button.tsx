@@ -19,11 +19,11 @@ interface Props {
 }
 
 /**
- * ArchiveBatchButton — header action that soft-deletes a batch after confirmation.
+ * ArchiveBatchButton: header action that soft-deletes a batch after confirmation.
  *
  * Client component so it can own the dialog open/close state and the transition.
  * Imports `archiveBatchAction` directly (server action) rather than receiving
- * it as a prop — keeps the server/client boundary clean and avoids prop-serialisation.
+ * it as a prop, keeps the server/client boundary clean and avoids prop-serialisation.
  */
 export function ArchiveBatchButton({ batchId }: Props) {
   const router = useRouter()

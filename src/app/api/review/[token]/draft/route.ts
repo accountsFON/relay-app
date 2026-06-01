@@ -10,7 +10,7 @@
  *
  * Every tap on the v2 client review surface fires this route: decision
  * button taps, comment textarea blurs, caption edit saves. Survives
- * tab close, device switch, browser crash — the upsert key is
+ * tab close, device switch, browser crash, the upsert key is
  * (reviewSessionId, postId), so a draft can be re-saved an unbounded
  * number of times before Submit Review flips the session to submitted.
  *

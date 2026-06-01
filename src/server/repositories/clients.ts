@@ -204,7 +204,7 @@ export async function assignClientDesigner(
 /**
  * Checks that `actorUserId` holds an org membership with `client.edit`
  * permission. `client.edit` is the appropriate key for soft-deleting a Client
- * — it covers admins and account managers while excluding designers and
+ *, it covers admins and account managers while excluding designers and
  * client-role users, matching the intended gatekeeping.
  */
 async function assertCanEditClient(
@@ -245,7 +245,7 @@ export interface ClientArchiveInput {
  *
  * Client has direct foreign keys to all three child types (clientId on Batch,
  * ContentRun, and Post), so a single updateMany filter on clientId is
- * sufficient — no indirection through Posts is needed.
+ * sufficient, no indirection through Posts is needed.
  *
  * All four layers share the same `deletedAt` timestamp so a restore can undo
  * all of them with a single timestamp filter.
@@ -316,7 +316,7 @@ export async function archiveClient({
  * cascaded layers (Batch, ContentRun, Post).
  *
  * Only rows whose `deletedAt` matches the client's prior `deletedAt` timestamp
- * are cleared — rows archived independently at a different timestamp are left
+ * are cleared, rows archived independently at a different timestamp are left
  * alone (they were archived by a separate intent).
  */
 export async function restoreClient({
