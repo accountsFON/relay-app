@@ -8,6 +8,19 @@ import { recordActivity } from '@/server/services/activity'
 import { reseedChecklistForStep } from '@/server/lib/relay-state-machine'
 import { buildBatchLabel } from '@/lib/batch-target-month'
 
+/**
+ * Standard revalidation set for any admin relay action that mutates a
+ * batch (nudge, take over, complete onboarding, create batch). Same four
+ * surfaces as relay.ts: batch detail, client overview, dashboard, inbox.
+ * See Phase 2 item 9 audit doc (2026-06-01) for the perf rationale.
+ */
+function revalidateBatchSurfaces(clientId: string, batchId: string) {
+  revalidatePath(`/clients/${clientId}/batches/${batchId}`)
+  revalidatePath(`/clients/${clientId}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/inbox')
+}
+
 export async function nudgeStuckBatchAction(input: { batchId: string }) {
   const ctx = await requireCan('relay.takeOver')
   const batch = await db.batch.findUnique({
@@ -45,7 +58,7 @@ export async function nudgeStuckBatchAction(input: { batchId: string }) {
     mentionedUserIds:
       batch.currentHolder !== ctx.userDbId ? [batch.currentHolder] : [],
   })
-  revalidatePath('/', 'layout')
+  revalidateBatchSurfaces(batch.clientId, batch.id)
   return { ok: true as const }
 }
 
@@ -96,7 +109,7 @@ export async function takeOverBatchAction(input: {
     },
     mentionedUserIds: [input.newHolderId],
   })
-  revalidatePath('/', 'layout')
+  revalidateBatchSurfaces(batch.clientId, batch.id)
   return { ok: true as const, changed: true }
 }
 
@@ -152,7 +165,7 @@ export async function completeOnboardingAction(input: {
         },
         tx,
       )
-      revalidatePath('/', 'layout')
+      revalidateBatchSurfaces(client.id, existing.id)
       return { batchId: existing.id, created: false }
     }
 
@@ -189,7 +202,7 @@ export async function completeOnboardingAction(input: {
       tx,
     )
 
-    revalidatePath('/', 'layout')
+    revalidateBatchSurfaces(client.id, batch.id)
     return { batchId: batch.id, created: true }
   })
 }
@@ -252,7 +265,7 @@ export async function createBatchAction(input: {
       },
       tx,
     )
-    revalidatePath('/', 'layout')
+    revalidateBatchSurfaces(client.id, batch.id)
     return { batchId: batch.id }
   })
 }
