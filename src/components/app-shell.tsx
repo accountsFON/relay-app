@@ -20,6 +20,7 @@ import { HeaderBell } from '@/components/notifications/header-bell'
 import { NotificationDropdown } from '@/components/notifications/notification-dropdown'
 import { DecorationCorner } from '@/components/decorations/decoration-corner'
 import { TourProvider } from '@/components/onboarding/tour-provider'
+import { ReportBugButton } from '@/components/feedback/report-bug-button'
 import { Toaster } from 'sonner'
 
 type BadgeKey = 'unreadMentions'
@@ -210,6 +211,13 @@ export function AppShell({
               </Link>
             )
           })()}
+        </div>
+
+        <div className="px-3 pb-1 pt-1">
+          {/* Persistent in app feedback channel, Phase 5 item 27. Sits
+              just above the user row so it stays visible on every page
+              without competing with the primary nav for attention. */}
+          <ReportBugButton />
         </div>
 
         <div className="px-5 py-4 flex items-center gap-3 border-t border-neutral-200">

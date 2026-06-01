@@ -149,6 +149,15 @@ enum ThreadStatus {
   resolved
 }
 
+/// Severity for in app "Report a bug" submissions. `high` triggers an
+/// immediate admin email at submit time; all severities roll up in the
+/// weekly digest. Phase 5 item 27.
+enum FeedbackSeverity {
+  low
+  medium
+  high
+}
+
 model Organization {
   id                   String   @id @default(cuid())
   name                 String
@@ -212,6 +221,7 @@ model User {
   threadsAuthored   PostThread[]         @relation("ThreadAuthor")
   commentsAuthored  PostComment[]        @relation("CommentAuthor")
   magicLinksCreated MagicLink[]          @relation("MagicLinkCreator")
+  feedback          Feedback[]           @relation("FeedbackSubmitter")
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -770,4 +780,34 @@ model ReviewItem {
   @@index([postId])
   @@index([decision])
   @@map("review_items")
+}
+
+/// In app "Report a bug" submission. One row per submit. The weekly
+/// digest cron (sendFeedbackDigest, Mondays 13:00 UTC) collects every
+/// row where sentInDigestAt is null and emails all admin users. When
+/// severity = high, submitFeedbackAction also fires an immediate
+/// urgent email at submit time and sets sentUrgentAt. Both timestamps
+/// are independent tracking flags, not a "handled" marker; a single
+/// high severity row ends up with both columns set.
+///
+/// Spec: projects/relay-app/2026-06-01-phase-5-item-27-feedback-channel-recommendation.md
+model Feedback {
+  id             String           @id @default(cuid())
+  userId         String
+  bodyText       String           @db.Text
+  severity       FeedbackSeverity @default(medium)
+  createdAt      DateTime         @default(now())
+  /// Set by the sendFeedbackDigest cron when the row is included in a
+  /// weekly digest send. Null = not yet digested.
+  sentInDigestAt DateTime?
+  /// Set by submitFeedbackAction when severity = high and the immediate
+  /// admin email fires. Null for low/medium rows and for any high row
+  /// where the urgent send failed (the digest still picks it up).
+  sentUrgentAt   DateTime?
+
+  user User @relation("FeedbackSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sentInDigestAt])
+  @@index([userId])
+  @@map("feedback")
 }
