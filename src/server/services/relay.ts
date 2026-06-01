@@ -343,6 +343,10 @@ export async function finishBatch(input: FinishBatchInput) {
         currentSubState: null,
         currentHolder: input.actorId,
         currentRole: RelayRole.am,
+        // Anchor for the auto-archive cron (Phase 3 item 21, Wave F6).
+        // Set once on the terminal transition; the auto-archive runner
+        // reads this column and stamps deletedAt 30 days later.
+        completedAt: new Date(),
       },
     })
 

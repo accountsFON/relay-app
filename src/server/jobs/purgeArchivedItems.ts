@@ -1,6 +1,7 @@
 import { schedules, logger } from '@trigger.dev/sdk/v3'
 import { db } from '@/db/client'
 import { writeTrashAudit, type TrashEntityType } from '@/server/repositories/trashAuditLogs'
+import { runAutoArchiveCompletedRelays } from '@/server/jobs/autoArchiveCompletedRelays'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -192,5 +193,16 @@ export async function runPurgeArchivedItems(
 export const purgeArchivedItemsTask = schedules.task({
   id: 'purge-archived-items',
   cron: '0 3 * * *', // daily at 03:00 UTC
-  run: () => runPurgeArchivedItems({}),
+  run: async () => {
+    // Run the completed-relay auto-archive first so any batch that ages
+    // into the archive window today gets stamped before purge sees it.
+    // Purge filters by deletedAt < (now - 30d), so a batch archived in
+    // this same firing cannot also be purged in this firing.
+    //
+    // Two passes composed under one schedule per Phase 3 item 21 (Wave F6):
+    // single cron firing time, two responsibilities.
+    const autoArchiveResult = await runAutoArchiveCompletedRelays({})
+    const purgeResult = await runPurgeArchivedItems({})
+    return { autoArchive: autoArchiveResult, purge: purgeResult }
+  },
 })

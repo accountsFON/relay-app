@@ -930,6 +930,9 @@ describe('finishBatch', () => {
     expect(batchUpdateCall.data.currentSubState).toBeNull()
     expect(batchUpdateCall.data.currentHolder).toBe('u_am_now')
     expect(batchUpdateCall.data.currentRole).toBe(RelayRole.am)
+    // Phase 3 item 21 (Wave F6): completedAt is the retention anchor for
+    // the auto-archive cron. Must be stamped on the terminal transition.
+    expect(batchUpdateCall.data.completedAt).toBeInstanceOf(Date)
 
     expect(currentTx.tx.relayEvent.create).toHaveBeenCalledOnce()
     const relayEventCall = currentTx.tx.relayEvent.create.mock.calls[0][0]
