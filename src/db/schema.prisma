@@ -670,8 +670,13 @@ model MagicLinkReviewer {
   email     String?
   sessionId String  @unique // signed-cookie session ID; identifies same reviewer across visits
 
-  firstSeen DateTime @default(now())
-  lastSeen  DateTime @default(now())
+  firstSeen      DateTime  @default(now())
+  lastSeen       DateTime  @default(now())
+  /// Set when this reviewer has dismissed (or completed) the first visit
+  /// tutorial modal on /review. Null means the modal has not been shown
+  /// (or shown but POST to mark-seen failed). Per reviewer column because
+  /// one magic link can have multiple reviewers.
+  tutorialSeenAt DateTime?
 
   magicLink      MagicLink       @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
   reviewSessions ReviewSession[]

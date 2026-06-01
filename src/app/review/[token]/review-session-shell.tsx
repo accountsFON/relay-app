@@ -12,6 +12,7 @@ import { SubmitReviewBar } from '@/components/review/submit-review-bar'
 import { SubmitReviewModal } from '@/components/review/submit-review-modal'
 import { ReviewSubmittedScreen } from '@/components/review/review-submitted-screen'
 import { ReturningReviewerBanner } from '@/components/review/returning-reviewer-banner'
+import { ReviewTutorialModal } from '@/components/review/review-tutorial-modal'
 import { submitSessionAction } from '@/server/actions/reviewSessions'
 import {
   addCommentAsReviewer,
@@ -49,6 +50,13 @@ export type ReviewSessionShellProps = {
   sessionStatus: ReviewSessionStatusType | null
   /** Summary snapshot from a submitted session (renders the thanks screen). */
   submittedSummary?: ReviewSessionSummary | null
+  /**
+   * Whether this reviewer has dismissed the first visit tutorial modal.
+   * Defaults to true so the modal does not render unless the parent
+   * explicitly opts in (server resolves the column on /review/[token]
+   * page render).
+   */
+  tutorialSeen?: boolean
 }
 
 /**
@@ -79,6 +87,7 @@ export function ReviewSessionShell({
   initialItems,
   sessionStatus,
   submittedSummary,
+  tutorialSeen = true,
 }: ReviewSessionShellProps) {
   const router = useRouter()
   const [platform, setPlatform] = useState<Platform>('instagram')
@@ -288,8 +297,18 @@ export function ReviewSessionShell({
     ? batchLabel
     : `${clientName} · ${batchLabel}`
 
+  // Phase 4 item 24: first visit tutorial modal. Renders only when the
+  // session is in_progress (no point teaching the surface after submit)
+  // and the reviewer's MagicLinkReviewer.tutorialSeenAt is still null.
+  // Dismissal POSTs to /api/review/[token]/tutorial-seen which sets the
+  // column; subsequent visits skip the modal entirely.
+  const showTutorialModal = localStatus === 'in_progress' && tutorialSeen === false
+
   return (
     <div className="flex flex-col">
+      {showTutorialModal ? (
+        <ReviewTutorialModal token={token} seen={false} />
+      ) : null}
       {showReturningBanner ? (
         <ReturningReviewerBanner
           itemsReviewed={itemsReviewed}

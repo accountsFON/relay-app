@@ -98,16 +98,23 @@ export default async function ReviewPage({
   let recognizedReviewerId: string | null = null
   let recognizedReviewerName: string | null = null
 
+  let recognizedTutorialSeen = true
   if (cookieValue) {
     const session = verifySession(cookieValue)
     if (session && session.magicLinkId === link.id) {
       const reviewer = await db.magicLinkReviewer.findUnique({
         where: { id: session.reviewerId },
-        select: { id: true, name: true, magicLinkId: true },
+        select: {
+          id: true,
+          name: true,
+          magicLinkId: true,
+          tutorialSeenAt: true,
+        },
       })
       if (reviewer && reviewer.magicLinkId === link.id) {
         recognizedReviewerId = reviewer.id
         recognizedReviewerName = reviewer.name
+        recognizedTutorialSeen = reviewer.tutorialSeenAt !== null
       }
     }
   }
@@ -225,6 +232,7 @@ export default async function ReviewPage({
       initialItems={initialItems}
       sessionStatus={sessionStatus}
       submittedSummary={submittedSummary}
+      tutorialSeen={recognizedTutorialSeen}
     />
   )
 }
