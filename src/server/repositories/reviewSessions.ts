@@ -319,3 +319,81 @@ export async function findSessionWithItems(
   if (!row) return null
   return toHydratedSession(row)
 }
+
+// ---- Reminder cron query ----
+
+/// One in_progress session that is past the 48h or 96h reminder threshold
+/// and still has the matching `reminder*SentAt` column null. The cron
+/// consumes this shape directly. When both thresholds are due (e.g. cron
+/// caught up after an outage), `threshold` is set to '96h' so the caller
+/// sends one email at the longer threshold rather than two back to back.
+export interface StaleReviewSession {
+  sessionId: string
+  magicLinkId: string
+  reviewerId: string | null
+  startedAt: Date
+  threshold: '48h' | '96h'
+  reminder48hSentAt: Date | null
+  reminder96hSentAt: Date | null
+}
+
+export interface FindStaleInProgressSessionsOptions {
+  /// Override "now" for tests. Defaults to `new Date()`.
+  now?: Date
+}
+
+/**
+ * Returns every in_progress review session whose `startedAt` is past the
+ * 48h or 96h reminder threshold and whose corresponding `reminder*SentAt`
+ * column is still null. Excludes sessions on revoked or expired magic
+ * links, since those cannot be resumed.
+ *
+ * Used exclusively by the sendReviewReminders cron. The repository owns
+ * the SQL so the job orchestrator stays a pure mapping of stale sessions
+ * to email sends.
+ *
+ * Spec: projects/relay-app/2026-05-19-reviewer-reminder-cron-design.md
+ */
+export async function findStaleInProgressSessions(
+  options: FindStaleInProgressSessionsOptions = {},
+): Promise<StaleReviewSession[]> {
+  const now = options.now ?? new Date()
+  const cutoff48h = new Date(now.getTime() - 48 * 60 * 60 * 1000)
+  const cutoff96h = new Date(now.getTime() - 96 * 60 * 60 * 1000)
+
+  const rows = await db.reviewSession.findMany({
+    where: {
+      status: 'in_progress',
+      magicLink: {
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+      OR: [
+        { startedAt: { lt: cutoff48h }, reminder48hSentAt: null },
+        { startedAt: { lt: cutoff96h }, reminder96hSentAt: null },
+      ],
+    },
+    select: {
+      id: true,
+      magicLinkId: true,
+      reviewerId: true,
+      startedAt: true,
+      reminder48hSentAt: true,
+      reminder96hSentAt: true,
+    },
+  })
+
+  return rows.map((r) => {
+    const past96h = r.startedAt < cutoff96h && r.reminder96hSentAt === null
+    const threshold: '48h' | '96h' = past96h ? '96h' : '48h'
+    return {
+      sessionId: r.id,
+      magicLinkId: r.magicLinkId,
+      reviewerId: r.reviewerId,
+      startedAt: r.startedAt,
+      threshold,
+      reminder48hSentAt: r.reminder48hSentAt,
+      reminder96hSentAt: r.reminder96hSentAt,
+    }
+  })
+}

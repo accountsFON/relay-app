@@ -206,38 +206,38 @@ model User {
 }
 
 model Client {
-  id                 String       @id @default(cuid())
-  organizationId     String
-  assignedAmId       String?
-  assignedDesignerId String?
-  name               String
-  businessSummary    String?      @db.Text
-  brandVoice         String?      @db.Text
-  industry           String?
-  location           String?
-  phone              String?
-  mainCta            String?
-  focus1             String?
-  focus2             String?
-  focus3             String?
-  dos                String?      @db.Text
-  donts              String?      @db.Text
-  postingDays        String       @default("Mon,Wed,Fri")
-  postLength         String?
-  urls               String[]
-  targetAudience     String?      @db.Text
-  holidayHandling    String       @default("Major-US")
-  excludedDates      String[]
-  assetsFolderUrl    String?
-  canvaUrl           String?
-  autoCrawl          String       @default("always")
-  crawledData        String?      @db.Text
-  crawledDataAt      DateTime?
+  id                  String       @id @default(cuid())
+  organizationId      String
+  assignedAmId        String?
+  assignedDesignerId  String?
+  name                String
+  businessSummary     String?      @db.Text
+  brandVoice          String?      @db.Text
+  industry            String?
+  location            String?
+  phone               String?
+  mainCta             String?
+  focus1              String?
+  focus2              String?
+  focus3              String?
+  dos                 String?      @db.Text
+  donts               String?      @db.Text
+  postingDays         String       @default("Mon,Wed,Fri")
+  postLength          String?
+  urls                String[]
+  targetAudience      String?      @db.Text
+  holidayHandling     String       @default("Major-US")
+  excludedDates       String[]
+  assetsFolderUrl     String?
+  canvaUrl            String?
+  autoCrawl           String       @default("always")
+  crawledData         String?      @db.Text
+  crawledDataAt       DateTime?
   clientReviewEnabled Boolean      @default(false)
-  status             ClientStatus @default(active)
-  createdAt          DateTime     @default(now())
-  deletedAt          DateTime?
-  deletedBy          String?
+  status              ClientStatus @default(active)
+  createdAt           DateTime     @default(now())
+  deletedAt           DateTime?
+  deletedBy           String?
 
   organization          Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assignedAm            User?           @relation("AssignedAM", fields: [assignedAmId], references: [id])
@@ -430,18 +430,18 @@ model Membership {
 }
 
 model Batch {
-  id              String    @id @default(cuid())
-  clientId        String
-  label           String
-  currentStep     RelayStep
-  currentSubState String?
-  currentHolder   String
-  currentRole     RelayRole
-  scheduledAt     DateTime?
-  clientReviewEnabled Boolean      @default(true)
-  createdAt       DateTime  @default(now())
-  deletedAt       DateTime?
-  deletedBy       String?
+  id                  String    @id @default(cuid())
+  clientId            String
+  label               String
+  currentStep         RelayStep
+  currentSubState     String?
+  currentHolder       String
+  currentRole         RelayRole
+  scheduledAt         DateTime?
+  clientReviewEnabled Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  deletedAt           DateTime?
+  deletedBy           String?
 
   client                Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   holder                User            @relation("BatchHolder", fields: [currentHolder], references: [id])
@@ -699,6 +699,14 @@ model ReviewSession {
   /// Snapshot of decision counts at submit time, used by the digest email.
   /// Shape: { approved: number, changesRequested: number, captionEdited: number, totalPosts: number }
   submittedSummary Json?
+
+  /// Set by the sendReviewReminders cron when the 48h reminder email fires.
+  /// Null = not yet reminded at this threshold. See
+  /// projects/relay-app/2026-05-19-reviewer-reminder-cron-design.md.
+  reminder48hSentAt DateTime?
+  /// Set by the sendReviewReminders cron when the 96h reminder email fires.
+  /// Null = not yet reminded at this threshold.
+  reminder96hSentAt DateTime?
 
   magicLink MagicLink          @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
   reviewer  MagicLinkReviewer? @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
