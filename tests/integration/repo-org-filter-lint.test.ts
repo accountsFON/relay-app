@@ -75,6 +75,13 @@ const ALLOWLIST = new Set([
   // in later Layer 2/3 tasks) use getOrgContext() then findClientForUser.
   // Same defense-in-depth profile as threads.ts above.
   'reviewSessions.ts',
+  // In-app feedback (Phase 5 item 27) is intentionally not org-scoped.
+  // Rows are operational reports from any signed-in user routed to
+  // platform admins via the weekly digest + urgent paths. The action
+  // layer (src/server/actions/feedback.ts) calls requireOrgContext()
+  // for auth, but stamps userId only , there is no Feedback.organizationId
+  // and admins span orgs by design.
+  'feedback.ts',
 ])
 
 function listTsFiles(dir: string): string[] {
