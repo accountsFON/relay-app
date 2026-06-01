@@ -112,6 +112,32 @@ export function ChecklistPanel({
 
   const isFinishStep = nextStep === RelayStep.completed
 
+  /**
+   * Phase 3 item 16: smart skip CTA on AM review.
+   *
+   * The state machine forward edge from `am_review_design` already lands on
+   * `am_qa_pre_client` (the "skip designer revisions" path is the forward
+   * transition, send-back is the revisions path). The wiring exists; this is
+   * a copy override so the AM sees a destination-named label instead of the
+   * internal step name "Pre-client QA".
+   *
+   *   am_review_design + clientReviewEnabled  -> "Send to client review"
+   *   am_review_design + no client review     -> "Send to final QA"
+   *   anything else                           -> "Pass to ${STEP_LABEL[nextStep]}"
+   *
+   * Server still validates the transition via LEGAL_TRANSITIONS in
+   * passBatonAction, so a stale UI cannot bypass the state machine.
+   */
+  function passButtonLabel(): string {
+    if (!nextStep) return ''
+    if (batch.currentStep === RelayStep.am_review_design) {
+      return batch.clientReviewEnabled
+        ? 'Send to client review'
+        : 'Send to final QA'
+    }
+    return `Pass to ${STEP_LABEL[nextStep]}`
+  }
+
   function confirmSendBack() {
     if (!sendBackTarget || reasonText.trim().length === 0) return
     startTransition(async () => {
@@ -204,7 +230,7 @@ export function ChecklistPanel({
                 className="w-full"
                 onClick={pass}
               >
-                {isPending ? 'Passing…' : `Pass to ${STEP_LABEL[nextStep]}`}
+                {isPending ? 'Passing…' : passButtonLabel()}
                 <ArrowRight />
               </Button>
             </SimpleTooltip>
