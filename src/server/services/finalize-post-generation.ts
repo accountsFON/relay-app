@@ -1,6 +1,6 @@
-import { RelayRole } from '@prisma/client'
 import { db } from '@/db/client'
 import { findContentRunForOrg } from '@/server/repositories/contentRuns'
+import { HOLDER_ROLE } from '@/server/lib/relay-state-machine'
 import { parseLabel, buildBatchLabel } from '@/lib/batch-target-month'
 
 export type FinalizeChoice =
@@ -130,6 +130,13 @@ async function createBatchForRun(
   if (!client) {
     throw new Error(`Client ${clientId} not found in finalize-post-generation`)
   }
+  // Pin currentRole to the step's expected role so the denormalized
+  // Batch.currentRole field can never drift away from
+  // HOLDER_ROLE[currentStep]. A fresh batch always starts at `copy`, so
+  // the role is always `am`; inheriting the previous batch's role would
+  // land the new copy-step batch with `designer` (or any other prior
+  // role) and make BatchCard's role chip disagree with RelayTrack. See
+  // Phase 2 item 8 audit doc (2026-06-01) for the failure mode.
   const newBatch = await db.batch.create({
     data: {
       clientId,
@@ -137,7 +144,7 @@ async function createBatchForRun(
       currentStep: 'copy',
       currentSubState: 'drafted',
       currentHolder: anyBatch?.currentHolder ?? fallbackHolderId,
-      currentRole: anyBatch?.currentRole ?? RelayRole.am,
+      currentRole: HOLDER_ROLE['copy'],
       clientReviewEnabled: client.clientReviewEnabled,
     },
   })

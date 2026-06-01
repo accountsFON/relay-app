@@ -8,9 +8,15 @@ vi.mock('@/server/services/activity', () => ({
   recordActivity: vi.fn(),
 }))
 
-vi.mock('@/server/lib/relay-state-machine', () => ({
-  reseedChecklistForStep: vi.fn(),
-}))
+vi.mock('@/server/lib/relay-state-machine', async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import('@/server/lib/relay-state-machine')
+  >()
+  return {
+    ...actual,
+    reseedChecklistForStep: vi.fn(),
+  }
+})
 
 vi.mock('@/db/client', () => ({
   db: {
@@ -165,10 +171,86 @@ describe('takeOverBatchAction cross-tenant guard', () => {
     })
 
     expect(result).toEqual({ ok: true, changed: true })
+    // Both currentHolder and currentRole are written. Pinning currentRole
+    // to HOLDER_ROLE[currentStep] is the fix described below.
     expect(db.batch.update).toHaveBeenCalledWith({
       where: { id: 'b_mine' },
-      data: { currentHolder: 'new_holder' },
+      data: { currentHolder: 'new_holder', currentRole: 'am' },
     })
+  })
+})
+
+describe('takeOverBatchAction currentRole pinning (Phase 2 item 8 regression)', () => {
+  // The bug: takeOverBatchAction used to update currentHolder without
+  // touching currentRole. If an admin reassigned a designer-held batch
+  // to an AM (any cross-role take over), currentRole stayed `designer`
+  // while currentHolder pointed to the AM. BatchCard reads currentRole
+  // directly while RelayTrack derives the role from STEP_ROLE[currentStep],
+  // so the two surfaces showed different role chips for the same batch.
+  // The fix pins currentRole to HOLDER_ROLE[currentStep] on every
+  // take over so the denormalized field can't drift.
+  it("pins currentRole to the step's expected role on take over (in_design -> designer)", async () => {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'b_design',
+      clientId: 'c_mine',
+      currentHolder: 'old_designer',
+      currentRole: 'am', // stale (was set wrong via some earlier flow)
+      currentStep: 'in_design',
+      label: 'Design Batch',
+      client: { organizationId: 'cuid_org_a' },
+    } as never)
+
+    await takeOverBatchAction({
+      batchId: 'b_design',
+      newHolderId: 'new_designer',
+    })
+
+    expect(db.batch.update).toHaveBeenCalledWith({
+      where: { id: 'b_design' },
+      data: { currentHolder: 'new_designer', currentRole: 'designer' },
+    })
+  })
+
+  it("pins currentRole to the step's expected role on take over (sent_to_client -> client)", async () => {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'b_client',
+      clientId: 'c_mine',
+      currentHolder: 'old_am',
+      currentRole: 'am', // stale, holder is being moved to a client user
+      currentStep: 'sent_to_client',
+      label: 'Client Batch',
+      client: { organizationId: 'cuid_org_a' },
+    } as never)
+
+    await takeOverBatchAction({
+      batchId: 'b_client',
+      newHolderId: 'client_user_1',
+    })
+
+    expect(db.batch.update).toHaveBeenCalledWith({
+      where: { id: 'b_client' },
+      data: { currentHolder: 'client_user_1', currentRole: 'client' },
+    })
+  })
+
+  it('does not write anything when the new holder matches the current holder', async () => {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'b_noop',
+      clientId: 'c_mine',
+      currentHolder: 'same_user',
+      currentRole: 'am',
+      currentStep: 'copy',
+      label: 'No-op Batch',
+      client: { organizationId: 'cuid_org_a' },
+    } as never)
+
+    const result = await takeOverBatchAction({
+      batchId: 'b_noop',
+      newHolderId: 'same_user',
+    })
+
+    expect(result).toEqual({ ok: true, changed: false })
+    expect(db.batch.update).not.toHaveBeenCalled()
   })
 })
 

@@ -5,7 +5,10 @@ import { ActivityKind, EventVisibility, RelayRole, RelayStep } from '@prisma/cli
 import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
 import { recordActivity } from '@/server/services/activity'
-import { reseedChecklistForStep } from '@/server/lib/relay-state-machine'
+import {
+  HOLDER_ROLE,
+  reseedChecklistForStep,
+} from '@/server/lib/relay-state-machine'
 import { buildBatchLabel } from '@/lib/batch-target-month'
 
 /**
@@ -90,9 +93,18 @@ export async function takeOverBatchAction(input: {
     return { ok: true as const, changed: false }
   }
 
+  // Pin currentRole to the step's expected role so the denormalized
+  // Batch.currentRole field can never drift away from
+  // HOLDER_ROLE[currentStep]. BatchCard reads currentRole directly while
+  // RelayTrack derives the role from the step, so any drift would make
+  // those two surfaces visibly disagree. See Phase 2 item 8 audit doc
+  // (2026-06-01) for the failure mode.
   await db.batch.update({
     where: { id: batch.id },
-    data: { currentHolder: input.newHolderId },
+    data: {
+      currentHolder: input.newHolderId,
+      currentRole: HOLDER_ROLE[batch.currentStep],
+    },
   })
 
   await recordActivity({

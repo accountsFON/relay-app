@@ -140,7 +140,10 @@ describe('finalizePostGenerationAction', () => {
 
     expect(result).toEqual({ batchId: 'batch_new' })
 
-    // Batch created with the custom label and holder from the existing batch
+    // Batch created with the custom label and inheriting holder from the
+    // existing batch, but currentRole is pinned to HOLDER_ROLE['copy']
+    // (=am) regardless of what the previous batch's role was. See the
+    // regression test below for the rationale.
     expect(db.batch.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         clientId: 'client_1',
@@ -148,7 +151,7 @@ describe('finalizePostGenerationAction', () => {
         currentStep: 'copy',
         currentSubState: 'drafted',
         currentHolder: 'user_existing',
-        currentRole: 'designer',
+        currentRole: 'am',
       }),
     })
 
@@ -160,6 +163,68 @@ describe('finalizePostGenerationAction', () => {
 
     // No sub-state update call for 'new' (it was already set 'drafted' on create)
     expect(db.batch.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('createBatchForRun currentRole pinning (Phase 2 item 8 regression)', () => {
+  // The bug: createBatchForRun used to write
+  //   currentRole: anyBatch?.currentRole ?? RelayRole.am
+  // so a previous batch sitting at in_design (currentRole=designer) would
+  // seed the new copy-step batch with currentRole=designer. BatchCard
+  // reads currentRole directly while RelayTrack derives the role from
+  // STEP_ROLE[currentStep], so the two surfaces showed different role
+  // chips for the same batch. The fix pins currentRole to
+  // HOLDER_ROLE['copy'] (=am) on every freshly-created batch.
+  beforeEach(() => {
+    vi.mocked(db.batch.create).mockResolvedValue({ id: 'batch_new' } as never)
+  })
+
+  it("pins currentRole to 'am' even when the previous batch was held by a designer", async () => {
+    vi.mocked(db.batch.findFirst).mockResolvedValue({
+      currentHolder: 'designer_user_1',
+      currentRole: 'designer',
+    } as never)
+
+    await finalizePostGenerationAction({
+      choice: 'new',
+      runId: 'run_1',
+      label: 'July 2026',
+    })
+
+    const createCall = vi.mocked(db.batch.create).mock.calls[0][0]
+    expect(createCall.data.currentStep).toBe('copy')
+    expect(createCall.data.currentRole).toBe('am')
+  })
+
+  it("pins currentRole to 'am' even when the previous batch was held by a client", async () => {
+    vi.mocked(db.batch.findFirst).mockResolvedValue({
+      currentHolder: 'client_user_1',
+      currentRole: 'client',
+    } as never)
+
+    await finalizePostGenerationAction({
+      choice: 'new',
+      runId: 'run_1',
+      label: 'Aug 2026',
+    })
+
+    const createCall = vi.mocked(db.batch.create).mock.calls[0][0]
+    expect(createCall.data.currentStep).toBe('copy')
+    expect(createCall.data.currentRole).toBe('am')
+  })
+
+  it("pins currentRole to 'am' when no previous batch exists", async () => {
+    vi.mocked(db.batch.findFirst).mockResolvedValue(null)
+
+    await finalizePostGenerationAction({
+      choice: 'new',
+      runId: 'run_1',
+      label: 'First Batch 2026-06',
+    })
+
+    const createCall = vi.mocked(db.batch.create).mock.calls[0][0]
+    expect(createCall.data.currentStep).toBe('copy')
+    expect(createCall.data.currentRole).toBe('am')
   })
 })
 
