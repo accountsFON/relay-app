@@ -171,17 +171,30 @@ model Organization {
 }
 
 model User {
-  id                  String   @id @default(cuid())
-  clerkUserId         String   @unique
-  organizationId      String
-  role                UserRole @default(admin)
-  email               String
-  name                String
-  avatarUrl           String?
-  linkedClientId      String?
-  permissionOverrides Json?
-  platformOwner       Boolean  @default(false)
-  createdAt           DateTime @default(now())
+  id                   String    @id @default(cuid())
+  clerkUserId          String    @unique
+  organizationId       String
+  role                 UserRole  @default(admin)
+  email                String
+  name                 String
+  avatarUrl            String?
+  linkedClientId       String?
+  permissionOverrides  Json?
+  platformOwner        Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  /// First time guided product tour persistence. Null = tour has not
+  /// been dismissed yet, so the in app TourProvider auto fires (and
+  /// the (app) layout redirects to /welcome on first sign in when
+  /// launchPadDismissedAt is also null). Set when the user finishes
+  /// step 3, ESC dismisses any step, or the Skip button is tapped.
+  /// Phase 4 item 25.
+  onboardingTourSeenAt DateTime?
+  /// Set when the user dismisses /welcome ("Skip, I'll explore" link
+  /// or top right X). Combined with onboardingTourSeenAt to decide
+  /// whether the (app) layout should redirect a first time user to
+  /// /welcome. Reset together by the Settings "Restart guided tour"
+  /// control. Phase 4 item 25.
+  launchPadDismissedAt DateTime?
 
   organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assignedClients   Client[]             @relation("AssignedAM")

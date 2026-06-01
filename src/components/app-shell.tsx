@@ -19,6 +19,7 @@ import { NotificationProvider } from '@/components/notifications/notification-pr
 import { HeaderBell } from '@/components/notifications/header-bell'
 import { NotificationDropdown } from '@/components/notifications/notification-dropdown'
 import { DecorationCorner } from '@/components/decorations/decoration-corner'
+import { TourProvider } from '@/components/onboarding/tour-provider'
 import { Toaster } from 'sonner'
 
 type BadgeKey = 'unreadMentions'
@@ -27,11 +28,19 @@ type NavItem = {
   href: string
   icon: React.ComponentType<{ className?: string }>
   badgeKey?: BadgeKey
+  /**
+   * Optional data-tour-anchor attribute value. The onboarding tour
+   * positions its popovers by `[data-tour-anchor="..."]` selectors;
+   * do not rename or drop these without updating
+   * src/components/onboarding/tour-provider.tsx DEFAULT_TOUR_STOPS
+   * and the matching Playwright spec.
+   */
+  tourAnchor?: string
 }
 const baseNavItems: NavItem[] = [
-  { label: 'My Relay', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Clients', href: '/clients', icon: Users },
-  { label: 'Inbox', href: '/inbox', icon: Inbox, badgeKey: 'unreadMentions' },
+  { label: 'My Relay', href: '/dashboard', icon: LayoutDashboard, tourAnchor: 'my-relay' },
+  { label: 'Clients', href: '/clients', icon: Users, tourAnchor: 'clients' },
+  { label: 'Inbox', href: '/inbox', icon: Inbox, badgeKey: 'unreadMentions', tourAnchor: 'inbox' },
 ]
 const settingsNavItem: NavItem = {
   label: 'Settings',
@@ -66,6 +75,7 @@ export function AppShell({
   userAgencies,
   activeClerkOrgId,
   unreadMentions = 0,
+  tourSeen = true,
 }: {
   children: React.ReactNode
   showAdmin?: boolean
@@ -77,6 +87,13 @@ export function AppShell({
   userAgencies?: AgencyOption[]
   activeClerkOrgId?: string
   unreadMentions?: number
+  /**
+   * Whether this user has dismissed the Phase 4 guided tour. Defaults
+   * to true so the tour does not surprise users in non instrumented
+   * call sites (tests, storybook). The (app) layout passes the real
+   * value from `User.onboardingTourSeenAt !== null`.
+   */
+  tourSeen?: boolean
 }) {
   const navItems = [
     ...baseNavItems,
@@ -100,6 +117,7 @@ export function AppShell({
     <InFlightRunsProvider>
     <NotificationProvider>
     <CompletionNotificationsProvider>
+    <TourProvider tourSeen={tourSeen}>
     <div className="flex h-dvh flex-col md:flex-row bg-neutral-50">
       {sidebarOpen && (
         <div
@@ -153,6 +171,7 @@ export function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour-anchor={item.tourAnchor}
                 className={cn(
                   'flex items-center gap-3 rounded-full px-3 py-2.5 text-[14px] font-medium transition-colors',
                   isActive
@@ -263,6 +282,7 @@ export function AppShell({
         },
       }}
     />
+    </TourProvider>
     </CompletionNotificationsProvider>
     </NotificationProvider>
     </InFlightRunsProvider>
