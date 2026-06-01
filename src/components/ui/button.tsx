@@ -18,10 +18,13 @@ const buttonVariants = cva(
           "border-border bg-card text-foreground hover:bg-neutral-100 hover:text-foreground aria-expanded:bg-neutral-100 aria-expanded:text-foreground",
         ghost:
           "hover:bg-neutral-100 hover:text-foreground aria-expanded:bg-neutral-100 aria-expanded:text-foreground",
-        // Brand v1 has no dedicated destructive red. Coral is the closest warm
-        // accent. Flagged for Caleb review (Phase 2.5C.1).
+        // Brand review item 3 (2026-06-01): solid coral-500 destructive read as
+        // primary CTA in the brand palette. Outline pattern (white pill, coral
+        // border, coral text) signals "warning, click carefully" without
+        // competing with dark-fill primary CTAs. Per items 8 + 9 audit safer
+        // interim recommendation.
         destructive:
-          "bg-coral-500 text-white hover:bg-coral-500/90 focus-visible:border-coral-500/40 focus-visible:ring-coral-500/20",
+          "bg-white border border-coral-500 text-coral-500 hover:bg-coral-50 focus-visible:border-coral-500/40 focus-visible:ring-coral-500/20",
         link: "text-foreground underline-offset-4 hover:underline rounded-none",
       },
       size: {
