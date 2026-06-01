@@ -2,7 +2,8 @@ import { requireClientViewer } from '@/server/middleware/permissions'
 import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { Badge } from '@/components/ui/badge'
-import { CreditCard, Bell, Building2, Plug, Lock } from 'lucide-react'
+import { CreditCard, Bell, Building2, Plug, Lock, Compass } from 'lucide-react'
+import { RestartTourButton } from '@/components/onboarding/restart-tour-button'
 
 export default async function OrgSettingsPage() {
   await requireClientViewer()
@@ -64,6 +65,27 @@ export default async function OrgSettingsPage() {
             </PageSection>
           )
         })}
+
+        {/* Guided tour reset. Phase 4 item 25. Lives above the
+            placeholder copy because it is the one live control on
+            this page. Clears both User onboarding columns and routes
+            back to /welcome. */}
+        <PageSection>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="rounded-full bg-neutral-100 p-2.5 shrink-0">
+                <Compass className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-medium">Guided tour</h3>
+                <p className="text-sm text-muted-foreground">
+                  Restart the 60 second product tour and revisit the welcome launch pad.
+                </p>
+              </div>
+            </div>
+            <RestartTourButton />
+          </div>
+        </PageSection>
       </div>
 
       <p className="mt-10 text-xs text-muted-foreground italic" style={{ fontFamily: 'var(--font-serif)' }}>

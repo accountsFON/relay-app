@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { auth } from '@clerk/nextjs/server'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { db } from '@/db/client'
 import { findUserByClerkId } from '@/server/repositories/users'
@@ -107,6 +108,33 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     visibilityForViewer(ctx),
   ).catch(() => 0)
 
+  // Phase 4 item 25: first time users land on /welcome before they see
+  // any other (app) surface. The redirect fires when BOTH onboarding
+  // columns are null (so a partial state — skipped launch pad but
+  // unfinished tour — does not re trigger the launch pad). Skip when
+  // already on /welcome to avoid a redirect loop, and skip for client
+  // persona users; their onboarding is the magic link review tutorial
+  // (item 24), not this surface.
+  const onboarding = await db.user
+    .findUnique({
+      where: { id: ctx.userDbId },
+      select: { onboardingTourSeenAt: true, launchPadDismissedAt: true },
+    })
+    .catch(() => null)
+  const hdrs = await headers()
+  const currentPath = hdrs.get('x-relay-pathname') ?? ''
+  const tourSeen = !!onboarding?.onboardingTourSeenAt
+  const launchPadDismissed = !!onboarding?.launchPadDismissedAt
+  const isClientPersona = ctx.role === 'client'
+  if (
+    !isClientPersona &&
+    !tourSeen &&
+    !launchPadDismissed &&
+    !currentPath.startsWith('/welcome')
+  ) {
+    redirect('/welcome')
+  }
+
   return (
     <AppShell
       showAdmin={showAdmin}
@@ -118,6 +146,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       userAgencies={userAgencies}
       activeClerkOrgId={ctx.orgId}
       unreadMentions={unreadMentions}
+      tourSeen={tourSeen}
     >
       {children}
     </AppShell>

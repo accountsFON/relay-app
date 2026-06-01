@@ -22,6 +22,14 @@ const isReviewRoute = createRouteMatcher(['/review/(.*)'])
 const MAGIC_LINK_ID_HEADER = 'x-magic-link-id'
 const MAGIC_LINK_BATCH_ID_HEADER = 'x-magic-link-batch-id'
 
+/**
+ * Header bridge from middleware → server layouts. Lets layouts read the
+ * current pathname (which app router does not expose to RSC layouts
+ * directly). Used by (app)/layout.tsx to drive the first time
+ * /welcome redirect for users with both onboarding columns null.
+ */
+const PATHNAME_HEADER = 'x-relay-pathname'
+
 const clerk = clerkMiddleware(async (auth, request) => {
   // Sign-up gate: when public signup is disabled, block the bare /sign-up
   // route unless the request carries a Clerk invite ticket. Catches modal,
@@ -43,6 +51,15 @@ const clerk = clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {
     await auth.protect()
   }
+
+  // Always stamp the pathname header on requests that reach the app.
+  // The (app) layout reads this to decide whether to redirect first
+  // time users to /welcome. Skipping the stamp on a request just means
+  // the layout falls back to its no-op default ("we are not on a
+  // (app) path, do not redirect").
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(PATHNAME_HEADER, pathname)
+  return NextResponse.next({ request: { headers: requestHeaders } })
 })
 
 /**

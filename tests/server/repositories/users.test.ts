@@ -25,6 +25,8 @@ const mockUser: User = {
   permissionOverrides: null,
   platformOwner: false,
   createdAt: new Date(),
+  onboardingTourSeenAt: null,
+  launchPadDismissedAt: null,
 }
 
 beforeEach(() => {
