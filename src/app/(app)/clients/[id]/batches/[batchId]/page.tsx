@@ -116,7 +116,7 @@ export default async function BatchDetailPage({
   }
 
   // Posts query: include archived posts when ?archived=1 is set.
-  // The batch itself being archived does NOT automatically show archived posts —
+  // The batch itself being archived does NOT automatically show archived posts,
   // the toggle remains the user's explicit control.
   const postQuery = showArchived ? db.post.withArchived() : db.post
 

@@ -66,7 +66,7 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
     name: 'softDelete',
 
     // -----------------------------------------------------------------------
-    // Query interceptors — auto-inject deletedAt: null for the 4 models
+    // Query interceptors, auto-inject deletedAt: null for the 4 models
     // unless the caller already set a deletedAt filter in `where`.
     // -----------------------------------------------------------------------
     query: {
@@ -126,7 +126,7 @@ export function applySoftDelete<T extends PrismaClient>(client: T) {
     },
 
     // -----------------------------------------------------------------------
-    // Model helpers — return a delegate that pre-sets `where.deletedAt`
+    // Model helpers, return a delegate that pre-sets `where.deletedAt`
     // to signal the interceptor to skip its default injection.
     // -----------------------------------------------------------------------
     model: {

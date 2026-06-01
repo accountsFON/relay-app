@@ -57,7 +57,7 @@ async function restoreEntity(entityType: TrashEntityType, id: string): Promise<v
 }
 
 // ---------------------------------------------------------------------------
-// RowActions — isolated per-row component so transitions don't bleed
+// RowActions, isolated per-row component so transitions don't bleed
 // ---------------------------------------------------------------------------
 
 function RowActions({
@@ -186,7 +186,7 @@ export function TrashTable({ entityType, rows: initialRows }: Props) {
 
   async function handleBulkPurge() {
     const ids = Array.from(selected)
-    // Purge one at a time — the action only accepts a single ID.
+    // Purge one at a time, the action only accepts a single ID.
     for (const id of ids) {
       await purgeEntityAction(entityType, id)
     }

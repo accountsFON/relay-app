@@ -21,7 +21,7 @@ export default async function OnboardingPage({
   // Detect invite acceptance: explicit ticket in URL, OR a brand-new user
   // (no DB row yet) who already has a Clerk active org. Clerk consumes
   // the ticket during signup and sets the active org, but drops the URL
-  // query param on its post-signup redirect — so for first-time invitees
+  // query param on its post-signup redirect, so for first-time invitees
   // the active-org-but-no-User signal is the only one we have left.
   const isInvite =
     Boolean(inviteTicket) || (!existing && Boolean(clerkActiveOrgId))

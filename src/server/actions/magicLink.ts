@@ -19,7 +19,7 @@ const MAX_EXPIRY_DAYS = 90
 const DEFAULT_EXPIRY_DAYS = 30
 
 function appBaseUrl(): string {
-  // Mirrors the pattern from src/app/(app)/admin/users/invite-actions.ts —
+  // Mirrors the pattern from src/app/(app)/admin/users/invite-actions.ts,
   // prefer the friendly prod alias over per-deployment URLs.
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {

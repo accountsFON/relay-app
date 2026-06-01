@@ -27,7 +27,7 @@ export default async function ReviewLayout({ children }: { children: ReactNode }
   const magicLinkId = hdrs.get('x-magic-link-id')
   // Middleware always attaches this on a validated /review/* request.
   // Absence here means we were rendered without the guard, which should
-  // never happen — fall through to 404 rather than render unbranded chrome.
+  // never happen; fall through to 404 rather than render unbranded chrome.
   if (!magicLinkId) {
     notFound()
   }

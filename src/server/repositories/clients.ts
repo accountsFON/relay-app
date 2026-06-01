@@ -323,7 +323,7 @@ export async function restoreClient({
   clientId,
   actorUserId,
 }: ClientArchiveInput): Promise<void> {
-  // Two-query pattern — same reason as archiveClient.
+  // Two-query pattern, same reason as archiveClient.
   const client = await db.client.withArchived().findFirst({ where: { id: clientId } })
   if (!client) throw new Error(`Client ${clientId} not found`)
   if (!client.deletedAt) throw new Error(`Client ${clientId} is not archived`)

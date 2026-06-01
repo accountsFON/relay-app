@@ -38,7 +38,7 @@ export interface RecipientAddress {
 // ---------------------------------------------------------------------------
 // Notification stub
 //
-// Placeholder — replace the body with a real email send once transport is
+// Placeholder, replace the body with a real email send once transport is
 // added (e.g., Resend). The function signature and call site stay unchanged.
 // ---------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ export async function notifyOrgAdminsOfImpendingPurge(
 }
 
 // ---------------------------------------------------------------------------
-// Inner run logic — exported so integration tests can call it directly
+// Inner run logic, exported so integration tests can call it directly
 // without needing the Trigger.dev harness.
 // ---------------------------------------------------------------------------
 

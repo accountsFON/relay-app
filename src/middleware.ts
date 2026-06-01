@@ -25,7 +25,7 @@ const MAGIC_LINK_BATCH_ID_HEADER = 'x-magic-link-batch-id'
 const clerk = clerkMiddleware(async (auth, request) => {
   // Sign-up gate: when public signup is disabled, block the bare /sign-up
   // route unless the request carries a Clerk invite ticket. Catches modal,
-  // OAuth-initiated, and direct-URL paths uniformly — the page-level gate
+  // OAuth-initiated, and direct-URL paths uniformly, the page-level gate
   // alone was bypassable. Sub-routes like /sign-up/sso-callback or
   // /sign-up/factor-one pass through; those require an already-started flow,
   // which this gate prevents at the entry point.

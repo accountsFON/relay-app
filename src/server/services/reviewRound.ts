@@ -136,7 +136,7 @@ export async function startNextRound(
 
     if (!priorItem) {
       // Post was added to the batch after the prior round. Treat as
-      // new — not reviewed, no prior version context to show.
+      // new, not reviewed, no prior version context to show.
       await db.reviewItem.create({
         data: {
           reviewSessionId: newSession.id,

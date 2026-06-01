@@ -37,7 +37,7 @@ function getSecret(): string {
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
 
 // ---------------------------------------------------------------------------
-// base64url helpers — Node's Buffer 'base64url' encoding strips padding and
+// base64url helpers, Node's Buffer 'base64url' encoding strips padding and
 // uses URL-safe characters; we wrap it for clarity at call sites.
 // ---------------------------------------------------------------------------
 
@@ -55,7 +55,7 @@ function base64urlDecodeToString(input: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// URL token — signToken / verifyToken / hashToken
+// URL token: signToken / verifyToken / hashToken
 // ---------------------------------------------------------------------------
 
 export interface SignTokenInput {
@@ -130,7 +130,7 @@ export function hashToken(token: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Session cookie — signSession / verifySession
+// Session cookie: signSession / verifySession
 // ---------------------------------------------------------------------------
 
 export interface SignSessionInput {

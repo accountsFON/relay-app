@@ -115,7 +115,7 @@ const WEEKDAYS_SHORT = [
 ] as const
 
 function formatPostDate(d: Date): string {
-  // "Tue May 13" — short weekday + short month + day-of-month. UTC for
+  // "Tue May 13", short weekday + short month + day-of-month. UTC for
   // determinism across server timezones (post dates are scheduled in UTC).
   return `${WEEKDAYS_SHORT[d.getUTCDay()]} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`
 }
@@ -393,7 +393,7 @@ export function ReviewSubmittedDigestEmail(props: ReviewSubmittedDigestEmailProp
   // Only items the AM needs to act on. Approvals are summarized in the
   // chip row and intentionally omitted from the per-item section. We
   // double-filter here even though the Layer 2 send call is supposed to
-  // pre-filter — defense in depth keeps the template honest if a future
+  // pre-filter; defense in depth keeps the template honest if a future
   // caller forgets.
   const actionableItems = items.filter(
     (i) => i.decision === 'changes_requested' || i.decision === 'caption_edited',

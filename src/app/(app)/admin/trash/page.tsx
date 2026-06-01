@@ -38,7 +38,7 @@ export default async function AdminTrashPage() {
   const orgId = ctx.organizationDbId
 
   // -------------------------------------------------------------------------
-  // Load archived entities (no include — two-query pattern for safety)
+  // Load archived entities (no include, two-query pattern for safety)
   // -------------------------------------------------------------------------
 
   const [archivedClients, archivedBatches, archivedRuns, archivedPosts] =

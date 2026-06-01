@@ -27,7 +27,7 @@ export async function inviteMember(input: {
   // Path 2) instead of Clerk's hosted UI.
   //
   // Prefer VERCEL_PROJECT_PRODUCTION_URL (the friendly prod alias, e.g.
-  // relay-app-xi.vercel.app — publicly accessible) over VERCEL_URL (the
+  // relay-app-xi.vercel.app, publicly accessible) over VERCEL_URL (the
   // per-deployment URL like relay-71xmnxl3x-...vercel.app, which is gated
   // by Vercel SSO on Hobby plans). Local dev falls back to localhost.
   // Set NEXT_PUBLIC_APP_URL when a real custom domain is wired up.

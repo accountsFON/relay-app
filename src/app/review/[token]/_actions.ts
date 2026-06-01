@@ -149,7 +149,7 @@ export async function leaveCommentAsReviewer(
 
   // The JWT payload's reviewerId is the MagicLinkReviewer.id (set by
   // confirmReviewerIdentity below). We look up directly by row id via
-  // the prisma client — the repository's findReviewerBySession helper
+  // the prisma client; the repository's findReviewerBySession helper
   // keys on sessionId, which we do not store in the JWT.
   const { db } = await import('@/db/client')
   const reviewerRow = await db.magicLinkReviewer.findUnique({

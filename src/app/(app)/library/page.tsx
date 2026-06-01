@@ -36,7 +36,7 @@ interface RouteLink {
 
 export default async function LibraryPage() {
   const ctx = await requireOrgContext()
-  // Beta QA index is agency-internal — bounce client-role users.
+  // Beta QA index is agency-internal; bounce client-role users.
   if (ctx.role === 'client') redirect('/dashboard')
 
   // Fetch one of each entity to seed dynamic-route links.

@@ -40,7 +40,7 @@ export function InFlightAutoFinalizer() {
         payload = { choice: 'replace', runId: run.id, batchId: run.targetBatchId }
       } else if (run.matchingBatch) {
         // No explicit targetBatchId (rare race between probe and
-        // completion). Default to replacing the matching batch — this
+        // completion). Default to replacing the matching batch, this
         // matches the user's intent in the pre-flight Replace flow.
         payload = {
           choice: 'replace',
