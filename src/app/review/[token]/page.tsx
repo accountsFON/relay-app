@@ -7,6 +7,7 @@ import {
   findActiveSession,
   listSessionsForBatch,
 } from '@/server/repositories/reviewSessions'
+import { listThreadsForBatch } from '@/server/repositories/threads'
 import type {
   ReviewItemHydrated,
   ReviewSessionStatusType,
@@ -192,6 +193,12 @@ export default async function ReviewPage({
     },
   })
 
+  // Phase 4 item 22: hydrate open threads per post so the v2 client surface
+  // renders existing image/caption pins as numbered badges. Threads created
+  // by reviewers on prior visits (same magic link, same or other reviewer)
+  // round-trip onto the page. Resolved threads are excluded by default.
+  const threadsByPostId = await listThreadsForBatch({ batchId: link.batch.id })
+
   const feedPosts = posts.map((p) => ({
     post: {
       id: p.id,
@@ -199,6 +206,7 @@ export default async function ReviewPage({
       hashtags: p.hashtags,
       mediaUrl: p.mediaUrls[0] ?? null,
     },
+    threads: threadsByPostId.get(p.id) ?? [],
   }))
 
   // AM name for the thanks screen + reply-by-email hint. Prefer the

@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
-import type { FeedPostProps } from '@/types/preview'
+import type { FeedPostProps, PinLocation } from '@/types/preview'
 import { HeroBand } from '@/components/hero-band'
 import { ReviewProgressBar } from '@/components/review/review-progress-bar'
 import { ReviewPostCard } from '@/components/review/review-post-card'
@@ -13,6 +13,10 @@ import { SubmitReviewModal } from '@/components/review/submit-review-modal'
 import { ReviewSubmittedScreen } from '@/components/review/review-submitted-screen'
 import { ReturningReviewerBanner } from '@/components/review/returning-reviewer-banner'
 import { submitSessionAction } from '@/server/actions/reviewSessions'
+import {
+  addCommentAsReviewer,
+  leaveCommentAsReviewer,
+} from '@/app/review/[token]/_actions'
 import type {
   ReviewDecisionType,
   ReviewItemHydrated,
@@ -22,6 +26,13 @@ import type {
 
 export type ReviewSessionShellPost = {
   post: FeedPostProps['post']
+  /**
+   * Hydrated open threads on the post (image pins, caption pins,
+   * post-level threads). Used by the v2 client surface to render
+   * existing reviewer pins as numbered badges over the image and
+   * highlight ranges in the caption. Defaults to an empty array.
+   */
+  threads?: FeedPostProps['threads']
 }
 
 export type ReviewSessionShellProps = {
@@ -201,6 +212,39 @@ export function ReviewSessionShell({
     [persistDraft],
   )
 
+  /**
+   * Drop a reviewer pin on a post. Persists as a `PostThread` row via the
+   * `leaveCommentAsReviewer` server action (author.kind = 'reviewer'),
+   * then refreshes the page so the new thread hydrates onto the card.
+   */
+  const handleCreatePin = useCallback(
+    async (postId: string, pin: PinLocation, body: string) => {
+      try {
+        await leaveCommentAsReviewer({ token, postId, pin, body })
+        startTransition(() => router.refresh())
+      } catch (err) {
+        console.error('[review-session-shell] leaveCommentAsReviewer failed', err)
+      }
+    },
+    [token, router, startTransition],
+  )
+
+  /**
+   * Append a comment to an existing thread on a post. Mirrors handleCreatePin
+   * but routes to `addCommentAsReviewer` since the thread already exists.
+   */
+  const handleAppendThreadComment = useCallback(
+    async (threadId: string, body: string) => {
+      try {
+        await addCommentAsReviewer({ token, threadId, body })
+        startTransition(() => router.refresh())
+      } catch (err) {
+        console.error('[review-session-shell] addCommentAsReviewer failed', err)
+      }
+    },
+    [token, router, startTransition],
+  )
+
   const handleSubmitClick = useCallback(() => {
     setSubmitModalOpen(true)
   }, [])
@@ -276,7 +320,7 @@ export function ReviewSessionShell({
             No posts in this batch yet.
           </div>
         ) : (
-          posts.map(({ post }) => {
+          posts.map(({ post, threads }) => {
             const reviewItem = itemsByPostId[post.id]
             return (
               <ReviewPostCard
@@ -285,6 +329,7 @@ export function ReviewSessionShell({
                 clientName={clientName}
                 clientAvatarUrl={clientAvatarUrl ?? null}
                 reviewItem={reviewItem}
+                threads={threads}
                 platform={platform}
                 mode="review"
                 disabled={pending || submitting}
@@ -297,6 +342,10 @@ export function ReviewSessionShell({
                 onCaptionEditSave={(draft) =>
                   handleCaptionEditSave(post.id, draft)
                 }
+                onCreatePin={(pin, body) =>
+                  handleCreatePin(post.id, pin, body)
+                }
+                onAppendThreadComment={handleAppendThreadComment}
               />
             )
           })
