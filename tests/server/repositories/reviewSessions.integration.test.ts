@@ -51,6 +51,7 @@ vi.mock('@/db/client', () => ({ db }))
 import {
   findActiveSession,
   findSessionWithItems,
+  findStaleInProgressSessions,
   listSessionsForBatch,
   markSuperseded,
   saveDraftItem,
@@ -495,4 +496,157 @@ describe('findSessionWithItems', () => {
     expect(editedItem?.reviewedAt).toBeInstanceOf(Date)
   })
 
+})
+
+describe('findStaleInProgressSessions', () => {
+  // A fixed "now" so the thresholds are deterministic across the suite.
+  const now = new Date('2026-06-01T14:00:00Z')
+  const h48 = 48 * 60 * 60 * 1000
+  const h96 = 96 * 60 * 60 * 1000
+
+  /**
+   * Helper to insert a ReviewSession at an explicit `startedAt`. Bypasses
+   * the repo's `startSession` because that sets startedAt = now() and we
+   * need to forge older timestamps to exercise the thresholds.
+   */
+  async function insertSessionAt(opts: {
+    startedAt: Date
+    status?: 'in_progress' | 'submitted' | 'superseded'
+    reminder48hSentAt?: Date | null
+    reminder96hSentAt?: Date | null
+    magicLinkId?: string
+  }): Promise<string> {
+    const row = await db.reviewSession.create({
+      data: {
+        magicLinkId: opts.magicLinkId ?? magicLinkId,
+        reviewerId,
+        round: 1,
+        status: opts.status ?? 'in_progress',
+        startedAt: opts.startedAt,
+        reminder48hSentAt: opts.reminder48hSentAt ?? null,
+        reminder96hSentAt: opts.reminder96hSentAt ?? null,
+      },
+    })
+    return row.id
+  }
+
+  it('returns sessions past 48h with no reminder yet, threshold=48h', async () => {
+    const id = await insertSessionAt({ startedAt: new Date(now.getTime() - 50 * 60 * 60 * 1000) })
+
+    const rows = await findStaleInProgressSessions({ now })
+
+    const row = rows.find((r) => r.sessionId === id)
+    expect(row).toBeDefined()
+    expect(row?.threshold).toBe('48h')
+    expect(row?.magicLinkId).toBe(magicLinkId)
+  })
+
+  it('skips sessions younger than 48h', async () => {
+    const id = await insertSessionAt({ startedAt: new Date(now.getTime() - 40 * 60 * 60 * 1000) })
+
+    const rows = await findStaleInProgressSessions({ now })
+    expect(rows.find((r) => r.sessionId === id)).toBeUndefined()
+  })
+
+  it('skips sessions already reminded at 48h when only 48h is due', async () => {
+    const id = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 50 * 60 * 60 * 1000),
+      reminder48hSentAt: new Date(now.getTime() - 1 * 60 * 60 * 1000),
+    })
+
+    const rows = await findStaleInProgressSessions({ now })
+    expect(rows.find((r) => r.sessionId === id)).toBeUndefined()
+  })
+
+  it('returns sessions past 96h with threshold=96h (precedence over 48h)', async () => {
+    const id = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 100 * 60 * 60 * 1000),
+    })
+
+    const rows = await findStaleInProgressSessions({ now })
+    const row = rows.find((r) => r.sessionId === id)
+
+    expect(row).toBeDefined()
+    expect(row?.threshold).toBe('96h')
+  })
+
+  it('still surfaces a 96h session when 48h was already sent', async () => {
+    const id = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 100 * 60 * 60 * 1000),
+      reminder48hSentAt: new Date(now.getTime() - 50 * 60 * 60 * 1000),
+    })
+
+    const rows = await findStaleInProgressSessions({ now })
+    const row = rows.find((r) => r.sessionId === id)
+    expect(row?.threshold).toBe('96h')
+  })
+
+  it('skips sessions where the magic link is revoked', async () => {
+    // Spin up a second magic link so we can mark just that one revoked
+    // without affecting the main fixture.
+    const revokedLink = await db.magicLink.create({
+      data: {
+        batchId,
+        tokenHash: `revoked-${randomUUID()}`,
+        defaultReviewerName: 'X',
+        defaultReviewerEmail: `x-${randomUUID()}@test.invalid`,
+        expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+        revokedAt: new Date(now.getTime() - 1 * 60 * 60 * 1000),
+        createdBy: userId,
+      },
+    })
+    const id = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 50 * 60 * 60 * 1000),
+      magicLinkId: revokedLink.id,
+    })
+
+    const rows = await findStaleInProgressSessions({ now })
+    expect(rows.find((r) => r.sessionId === id)).toBeUndefined()
+  })
+
+  it('skips sessions where the magic link is expired', async () => {
+    const expiredLink = await db.magicLink.create({
+      data: {
+        batchId,
+        tokenHash: `expired-${randomUUID()}`,
+        defaultReviewerName: 'X',
+        defaultReviewerEmail: `x2-${randomUUID()}@test.invalid`,
+        expiresAt: new Date(now.getTime() - 1 * 60 * 60 * 1000),
+        createdBy: userId,
+      },
+    })
+    const id = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 50 * 60 * 60 * 1000),
+      magicLinkId: expiredLink.id,
+    })
+
+    const rows = await findStaleInProgressSessions({ now })
+    expect(rows.find((r) => r.sessionId === id)).toBeUndefined()
+  })
+
+  it('skips submitted and superseded sessions', async () => {
+    const submittedId = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 50 * 60 * 60 * 1000),
+      status: 'submitted',
+    })
+    const supersededId = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 100 * 60 * 60 * 1000),
+      status: 'superseded',
+    })
+
+    const rows = await findStaleInProgressSessions({ now })
+    const sids = rows.map((r) => r.sessionId)
+    expect(sids).not.toContain(submittedId)
+    expect(sids).not.toContain(supersededId)
+  })
+
+  it('returns the right threshold marker for a mixed-age batch', async () => {
+    const a = await insertSessionAt({ startedAt: new Date(now.getTime() - 50 * h48 / 48) }) // 50h, ~48h
+    const b = await insertSessionAt({ startedAt: new Date(now.getTime() - h96 - 60_000) }) // ~96h+1min
+
+    const rows = await findStaleInProgressSessions({ now })
+    const byId = new Map(rows.map((r) => [r.sessionId, r.threshold]))
+    expect(byId.get(a)).toBe('48h')
+    expect(byId.get(b)).toBe('96h')
+  })
 })
