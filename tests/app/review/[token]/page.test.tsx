@@ -43,6 +43,10 @@ const mocks = vi.hoisted(() => {
     findActiveSession: vi.fn(),
     listSessionsForBatch: vi.fn(),
     findManyReviewItems: vi.fn(),
+    // Phase 4 item 22: pins hydration on the v2 client surface. Default
+    // returns an empty Map so existing tests do not need to set anything
+    // up unless they specifically care about thread rendering.
+    listThreadsForBatch: vi.fn().mockResolvedValue(new Map()),
   }
 })
 
@@ -77,6 +81,11 @@ vi.mock('@/server/repositories/reviewSessions', () => ({
   findActiveSession: (...args: unknown[]) => mocks.findActiveSession(...args),
   listSessionsForBatch: (...args: unknown[]) =>
     mocks.listSessionsForBatch(...args),
+}))
+
+vi.mock('@/server/repositories/threads', () => ({
+  listThreadsForBatch: (...args: unknown[]) =>
+    mocks.listThreadsForBatch(...args),
 }))
 
 // Render-only stubs for the child components -- we are testing the page's

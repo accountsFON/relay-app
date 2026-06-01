@@ -6,6 +6,7 @@ import { InstagramFeedPost } from '@/components/preview/instagram-post'
 import { FacebookPost } from '@/components/preview/facebook-post'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps } from '@/types/preview'
+import type { PinLocation } from '@/types/preview'
 import type { ReviewDecisionType, ReviewItemHydrated } from '@/types/review-session'
 import { DecisionButtonRow } from './decision-button-row'
 
@@ -14,6 +15,13 @@ export type ReviewPostCardProps = {
   clientName: string
   clientAvatarUrl?: string | null
   reviewItem?: ReviewItemHydrated
+  /**
+   * Hydrated threads on the post (image pins, caption-range pins,
+   * post-level threads). Passed through to the IG/FB chrome so the
+   * markup overlay can render existing reviewer pins as numbered badges.
+   * Defaults to an empty array.
+   */
+  threads?: FeedPostProps['threads']
   platform: Platform
   /** Only 'review' is supported on the v2 client surface. */
   mode: 'review'
@@ -25,15 +33,38 @@ export type ReviewPostCardProps = {
    * with `{ decision: 'caption_edited', suggestedCaption: draft }`.
    */
   onCaptionEditSave?: (draft: string) => Promise<void> | void
+  /**
+   * Drop a new reviewer pin on the post (image, caption-range, or
+   * post-level). When omitted, the markup overlay + caption-selection
+   * composer hide their drop-a-pin affordances. Wired to the
+   * `leaveCommentAsReviewer` server action by the shell.
+   */
+  onCreatePin?: (pin: PinLocation, body: string) => Promise<void>
+  /**
+   * Append a comment to an existing thread on this post. Wired to
+   * `addCommentAsReviewer` by the shell. When omitted, the pin popover
+   * hides the reply affordance.
+   */
+  onAppendThreadComment?: (threadId: string, body: string) => Promise<void>
   disabled?: boolean
   className?: string
 }
 
 /**
  * Per-post card on the v2 client review surface. Composes the existing
- * InstagramFeedPost / FacebookPost in mode='review' (no `onCreateThread`
- * because v2 bundles feedback into the session, not per-pin threads), then
- * stacks the decision row + comment textarea below.
+ * InstagramFeedPost / FacebookPost in mode='review' with image markup
+ * pins enabled (Phase 4 item 22), then stacks the decision row + Notes
+ * textarea below.
+ *
+ * Feedback gestures, in order of specificity:
+ *   - Pin on the image or caption -> persists as a PostThread row with
+ *     author.kind = 'reviewer' via `onCreatePin`. The AM digest renders
+ *     these inline alongside per-item decisions.
+ *   - Edit Copy on the caption -> inline textarea, persists as
+ *     suggestedCaption via `onCaptionEditSave`.
+ *   - Decision row (Approve / Request Changes / Edit Copy) -> the verdict.
+ *   - Notes textarea -> catch-all for cross-cutting context that does not
+ *     fit a pin or a decision.
  *
  * Caption-edit lives inline inside the platform chrome:
  *   - Tapping Edit Copy in the decision row enters edit mode. The card
@@ -53,11 +84,14 @@ export function ReviewPostCard({
   clientName,
   clientAvatarUrl,
   reviewItem,
+  threads,
   platform,
   mode,
   onDecisionChange,
   onCommentChange,
   onCaptionEditSave,
+  onCreatePin,
+  onAppendThreadComment,
   disabled,
   className,
 }: ReviewPostCardProps) {
@@ -155,14 +189,18 @@ export function ReviewPostCard({
     }
   }, [exitEditMode, onDecisionChange])
 
+  // Per Phase 4 item 22: unified placeholder regardless of decision.
+  // The decision-specific "Tell the team what to change" placeholder is
+  // removed -- Request Changes leans on image/caption pins for the
+  // primary "what to change" affordance, and Notes is the residual
+  // catch-all for cross-cutting context.
   const commentPlaceholder =
-    decision === 'changes_requested'
-      ? 'Tell the team what to change'
-      : 'Add a comment (optional)'
+    'Anything else? Tag people, ask questions, leave context.'
 
-  // Empty threads array: v2 surface intentionally bypasses the per-pin
-  // markup model. The IG/FB post components hide all markup affordances
-  // when no onCreateThread callback is passed.
+  // Phase 4 item 22: image/caption pins are now enabled on the client
+  // review surface. Threads hydrate from the page query; new pins flow
+  // through `onCreatePin` -> `leaveCommentAsReviewer` server action,
+  // which persists a PostThread with author.kind = 'reviewer'.
   const PostComponent = platform === 'instagram' ? InstagramFeedPost : FacebookPost
 
   // captionOverride is set whenever a saved suggestion exists, even when
@@ -202,8 +240,10 @@ export function ReviewPostCard({
       <PostComponent
         post={post}
         client={{ name: clientName, avatarUrl: clientAvatarUrl ?? null }}
-        threads={[]}
+        threads={threads ?? []}
         mode={mode}
+        onCreateThread={onCreatePin}
+        onComment={onAppendThreadComment}
         editing={isEditing}
         captionDraft={isEditing ? captionDraft : undefined}
         onCaptionDraftChange={isEditing ? setCaptionDraft : undefined}
@@ -218,11 +258,21 @@ export function ReviewPostCard({
         disabled={disabled}
       />
 
+      {decision === 'changes_requested' ? (
+        <p
+          data-testid="review-post-card-changes-hint"
+          className="text-[12px] text-muted-foreground"
+        >
+          Pin the parts of the image or caption that need changes, or use Notes
+          below for general comments.
+        </p>
+      ) : null}
+
       <label
         className="block text-[12px] font-medium text-muted-foreground"
         htmlFor={`comment-${post.id}`}
       >
-        <span className="sr-only">Comment for this post</span>
+        <span data-testid="review-post-card-notes-label">Notes (optional)</span>
         <textarea
           id={`comment-${post.id}`}
           data-testid="review-post-card-comment"
