@@ -699,8 +699,9 @@ function ReviewSessionListRow({
         href={`/clients/${clientId}/batches/${batchId}/review-sessions/${sessionId}`}
         className="text-[13px] text-foreground underline-offset-4 hover:underline"
         data-testid={`review-session-open-${sessionId}`}
+        aria-label="Open session detail"
       >
-        Open detail →
+        Open detail <span aria-hidden="true">→</span>
       </Link>
     </div>
   )

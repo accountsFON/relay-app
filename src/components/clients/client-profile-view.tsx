@@ -1071,7 +1071,11 @@ function ScrollableContent({
 }
 
 function EmptyValue() {
-  return <span className="text-neutral-300">—</span>
+  return (
+    <span aria-hidden="true" className="text-neutral-300">
+      –
+    </span>
+  )
 }
 
 function prettyUrl(url: string): string {

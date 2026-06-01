@@ -247,7 +247,7 @@ export default async function LibraryPage() {
         )}
 
         {routes.map((section) => (
-          <PageSection key={section.section} title={`Routes — ${section.section}`}>
+          <PageSection key={section.section} title={`Routes · ${section.section}`}>
             <ul className="divide-y divide-border rounded-md border border-border bg-background">
               {section.items.map((item) => (
                 <li
@@ -285,7 +285,7 @@ export default async function LibraryPage() {
         ))}
 
         {componentGroups.map((group) => (
-          <PageSection key={group.group} title={`Components — ${group.group}`}>
+          <PageSection key={group.group} title={`Components · ${group.group}`}>
             <ul className="divide-y divide-border rounded-md border border-border bg-background">
               {group.items.map((item) => (
                 <li key={item.name} className="flex items-baseline justify-between gap-4 px-4 py-2.5">

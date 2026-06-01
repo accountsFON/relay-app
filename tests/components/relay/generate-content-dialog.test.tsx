@@ -26,7 +26,7 @@ describe('GenerateContentDialog', () => {
   it('renders the picker view on open', async () => {
     await openDialog()
     expect(await screen.findByLabelText(/month/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/re-crawl/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/recrawl/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /start generation/i })).toBeInTheDocument()
   })
 

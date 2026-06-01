@@ -400,7 +400,7 @@ export function ReviewSubmittedDigestEmail(props: ReviewSubmittedDigestEmailProp
   )
 
   const previewText =
-    `${reviewerName} finished reviewing ${clientName} ${monthLabel} — ` +
+    `${reviewerName} finished reviewing ${clientName} ${monthLabel}: ` +
     `${summary.approved} approved, ${summary.changesRequested} changes, ${summary.captionEdited} edits`
 
   return (

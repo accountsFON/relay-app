@@ -113,7 +113,7 @@ export default function PreviewIgDesignPage() {
     <div className="mx-auto flex w-full max-w-[520px] flex-col gap-8 px-4 py-8">
       <header className="space-y-1">
         <h1 className="text-[20px] font-semibold text-foreground">
-          Instagram feed post — design preview
+          Instagram feed post · design preview
         </h1>
         <p className="text-[13px] text-muted-foreground">
           Layer 1 / Task 1.1 reference render. Three sample posts with realistic

@@ -121,7 +121,7 @@ export function CostBreakdown({
                   <span className="font-semibold">Firecrawl</span>
                   <span className="text-muted-foreground"> · Crawl ({breakdown.crawl.urlsCrawled} URLs, {breakdown.crawl.credits} credits)</span>
                 </td>
-                <td className="py-3 text-right text-muted-foreground">—</td>
+                <td aria-hidden="true" className="py-3 text-right text-muted-foreground">–</td>
                 <td className="py-3 text-right tabular-nums">{fmt(breakdown.crawl.usd)}</td>
               </tr>
               <tr className="text-muted-foreground">
@@ -129,7 +129,7 @@ export function CostBreakdown({
                   <span className="font-semibold">Trigger.dev</span>
                   <span> · Compute ({pipelineDurationSeconds}s)</span>
                 </td>
-                <td className="py-3 text-right">—</td>
+                <td aria-hidden="true" className="py-3 text-right">–</td>
                 <td className="py-3 text-right tabular-nums">{fmt(breakdown.infra.triggerDev)}</td>
               </tr>
               <tr className="text-muted-foreground">
@@ -137,7 +137,7 @@ export function CostBreakdown({
                   <span className="font-semibold">Vercel + Neon</span>
                   <span> · Functions + DB</span>
                 </td>
-                <td className="py-3 text-right">—</td>
+                <td aria-hidden="true" className="py-3 text-right">–</td>
                 <td className="py-3 text-right tabular-nums">{fmt(breakdown.infra.vercel + breakdown.infra.neon)}</td>
               </tr>
             </tbody>

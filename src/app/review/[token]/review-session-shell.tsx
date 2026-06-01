@@ -242,7 +242,7 @@ export function ReviewSessionShell({
   // title by reusing the label verbatim in that case.
   const heroTitle = batchLabel.toLowerCase().includes(clientName.toLowerCase())
     ? batchLabel
-    : `${clientName} — ${batchLabel}`
+    : `${clientName} · ${batchLabel}`
 
   return (
     <div className="flex flex-col">
@@ -256,7 +256,7 @@ export function ReviewSessionShell({
       <div className="mx-auto w-full max-w-[880px] px-4 pt-2 pb-4 sm:px-6 md:pt-4">
         <HeroBand
           title={heroTitle}
-          subtitle={`Reviewing ${postsCountLabel} — leave feedback on any post, then submit when you're done.`}
+          subtitle={`Reviewing ${postsCountLabel}. Leave feedback on any post, then submit when you're done.`}
         />
         <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-white px-4 py-4 ring-1 ring-neutral-200 sm:px-6">
           <p className="text-xs text-neutral-600">
