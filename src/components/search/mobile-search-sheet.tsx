@@ -83,7 +83,7 @@ export function MobileSearchSheet({ className }: { className?: string }) {
         <DialogPrimitive.Popup
           data-slot="mobile-search-content"
           className={cn(
-            'fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col gap-4 rounded-t-2xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 outline-none',
+            'fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col gap-4 rounded-t-2xl border border-border bg-white p-4 text-sm text-popover-foreground shadow-lg outline-none',
             'data-open:animate-in data-open:slide-in-from-bottom-full',
             'data-closed:animate-out data-closed:slide-out-to-bottom-full',
           )}

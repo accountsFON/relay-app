@@ -167,7 +167,7 @@ export function PinPopover({
         zIndex: 60,
       }}
       className={cn(
-        'flex flex-col gap-3 rounded-lg border border-[#dbdbdb] bg-white p-3 text-[13px] text-[#262626] shadow-xl',
+        'flex flex-col gap-3 rounded-xl border border-border bg-white p-3 text-[13px] text-[#262626] shadow-lg',
         className,
       )}
     >

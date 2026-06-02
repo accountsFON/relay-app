@@ -116,7 +116,7 @@ export function StuckBatchRow({
               Take over
             </Button>
             {showTakeOver && (
-              <div className="absolute right-0 z-10 mt-1 w-48 rounded-md border bg-popover p-1 shadow-md">
+              <div className="absolute right-0 z-10 mt-1 w-48 rounded-xl border border-border bg-white p-1 shadow-lg">
                 {roster.map((u) => (
                   <button
                     key={u.id}

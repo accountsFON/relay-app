@@ -173,7 +173,7 @@ export function CommentComposer({
         <ul
           role="listbox"
           aria-label="Mention suggestions"
-          className="absolute bottom-full left-2 mb-1 w-72 max-w-[calc(100%-1rem)] overflow-hidden rounded-xl bg-popover shadow-md ring-1 ring-foreground/10"
+          className="absolute bottom-full left-2 mb-1 w-72 max-w-[calc(100%-1rem)] overflow-hidden rounded-xl border border-border bg-white shadow-lg"
         >
           {filteredTargets.map((target, i) => {
             const isHighlighted = i === highlightIndex
@@ -190,7 +190,7 @@ export function CommentComposer({
                   onMouseEnter={() => setHighlightIndex(i)}
                   className={cn(
                     'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] transition-colors',
-                    isHighlighted ? 'bg-neutral-100' : 'bg-popover hover:bg-neutral-200',
+                    isHighlighted ? 'bg-neutral-100' : 'bg-white hover:bg-neutral-200',
                   )}
                 >
                   <span className="truncate font-medium text-foreground">
