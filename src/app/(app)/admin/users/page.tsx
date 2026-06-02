@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { HeroBand } from '@/components/hero-band'
+import { PageSection } from '@/components/ui/page-section'
 import { AdminTabs } from '../admin-tabs'
 import { InviteMemberButton } from './invite-modal'
 import type { UserRole } from '@/lib/types'
@@ -64,40 +64,38 @@ export default async function AdminUsersPage() {
           const list = byRole[role]
           if (list.length === 0) return null
           return (
-            <section key={role}>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-                {ROLE_LABELS[role]}
-              </h2>
-              <Card className="divide-y divide-border">
+            <PageSection key={role} title={ROLE_LABELS[role]}>
+              <ul className="divide-y divide-border rounded-md border border-border bg-background">
                 {list.map((m) => (
-                  <Link
-                    key={m.id}
-                    href={`/admin/users/${m.user.id}`}
-                    className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                      {initials(m.user.name)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground truncate">
-                        {m.user.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {m.user.email}
-                      </p>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground">
-                      <Badge variant="secondary">
-                        {ROLE_BADGE_LABEL[m.role]}
-                      </Badge>
-                    </div>
-                    <span className="text-muted-foreground" aria-hidden>
-                      ›
-                    </span>
-                  </Link>
+                  <li key={m.id}>
+                    <Link
+                      href={`/admin/users/${m.user.id}`}
+                      className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                        {initials(m.user.name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground truncate">
+                          {m.user.name}
+                        </p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {m.user.email}
+                        </p>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground">
+                        <Badge variant="secondary">
+                          {ROLE_BADGE_LABEL[m.role]}
+                        </Badge>
+                      </div>
+                      <span className="text-muted-foreground" aria-hidden>
+                        ›
+                      </span>
+                    </Link>
+                  </li>
                 ))}
-              </Card>
-            </section>
+              </ul>
+            </PageSection>
           )
         })}
       </div>

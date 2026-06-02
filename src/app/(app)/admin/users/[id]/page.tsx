@@ -5,6 +5,7 @@ import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { HeroBand } from '@/components/hero-band'
+import { PageSection } from '@/components/ui/page-section'
 import { AssignmentToggle } from './assignment-toggle'
 import { PermissionEditor } from './permission-editor'
 import { RoleChanger } from './role-changer'
@@ -89,16 +90,15 @@ export default async function AdminUserDetailPage({
         )}
       </div>
 
-      <Card className="mt-10 mb-6 p-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-          Role
-        </h2>
-        <RoleChanger
-          userId={user.id}
-          currentRole={membership.role}
-          isSelf={user.id === ctx.userDbId}
-        />
-      </Card>
+      <div className="mt-10 mb-6">
+        <PageSection title="Role">
+          <RoleChanger
+            userId={user.id}
+            currentRole={membership.role}
+            isSelf={user.id === ctx.userDbId}
+          />
+        </PageSection>
+      </div>
 
       {editableSlot === null ? (
         <Card className="p-6">

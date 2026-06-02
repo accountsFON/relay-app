@@ -4,7 +4,7 @@ import { canEditClients } from '@/server/middleware/permissions'
 import { searchAcrossEntities } from '@/server/repositories/search'
 import { HeroBand } from '@/components/hero-band'
 import { EmptyStateCard } from '@/components/ui/empty-state-card'
-import { Card } from '@/components/ui/card'
+import { PageSection } from '@/components/ui/page-section'
 import { Badge } from '@/components/ui/badge'
 import { PostSearchResultActions } from '@/components/search/post-search-result-actions'
 import { formatRelative } from '@/lib/format-relative'
@@ -59,7 +59,7 @@ export default async function SearchPage({
 
           <div className="mt-6 space-y-10">
             {showSection(filter, 'clients') && results.clients.length > 0 && (
-              <SectionHeader title="Clients" count={results.clients.length}>
+              <PageSection title={`Clients · ${results.clients.length}`}>
                 <ul className="space-y-2">
                   {results.clients.map((c) => (
                     <li key={c.id}>
@@ -91,11 +91,11 @@ export default async function SearchPage({
                     </li>
                   ))}
                 </ul>
-              </SectionHeader>
+              </PageSection>
             )}
 
             {showSection(filter, 'posts') && results.posts.length > 0 && (
-              <SectionHeader title="Posts" count={results.posts.length}>
+              <PageSection title={`Posts · ${results.posts.length}`}>
                 <ul className="space-y-2">
                   {results.posts.map((p) => (
                     <li key={p.id} className="relative">
@@ -127,11 +127,11 @@ export default async function SearchPage({
                     </li>
                   ))}
                 </ul>
-              </SectionHeader>
+              </PageSection>
             )}
 
             {showSection(filter, 'runs') && results.runs.length > 0 && (
-              <SectionHeader title="Runs" count={results.runs.length}>
+              <PageSection title={`Runs · ${results.runs.length}`}>
                 <ul className="space-y-2">
                   {results.runs.map((r) => (
                     <li key={r.id}>
@@ -149,11 +149,11 @@ export default async function SearchPage({
                     </li>
                   ))}
                 </ul>
-              </SectionHeader>
+              </PageSection>
             )}
 
             {showSection(filter, 'comments') && results.comments.length > 0 && (
-              <SectionHeader title="Comments" count={results.comments.length}>
+              <PageSection title={`Comments · ${results.comments.length}`}>
                 <ul className="space-y-2">
                   {results.comments.map((c) => (
                     <li key={c.id}>
@@ -175,7 +175,7 @@ export default async function SearchPage({
                     </li>
                   ))}
                 </ul>
-              </SectionHeader>
+              </PageSection>
             )}
           </div>
         </>
@@ -222,28 +222,6 @@ function FilterRail({
 
 function showSection(filter: string, section: 'clients' | 'posts' | 'runs' | 'comments'): boolean {
   return filter === 'all' || filter === section
-}
-
-function SectionHeader({
-  title,
-  count,
-  children,
-}: {
-  title: string
-  count: number
-  children: React.ReactNode
-}) {
-  return (
-    <Card className="space-y-3 p-5">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
-        </h2>
-        <span className="text-[12px] text-muted-foreground">{count}</span>
-      </div>
-      {children}
-    </Card>
-  )
 }
 
 function formatPostDate(d: Date): string {

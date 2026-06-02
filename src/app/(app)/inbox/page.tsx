@@ -7,6 +7,7 @@ import {
 import { HeroBand } from '@/components/hero-band'
 import { EmptyStateCard } from '@/components/ui/empty-state-card'
 import { Button } from '@/components/ui/button'
+import { PageSection } from '@/components/ui/page-section'
 import { markAllMentionsReadAction } from '@/app/(app)/clients/[id]/activity/actions'
 import { InboxRow } from './inbox-row'
 
@@ -70,18 +71,18 @@ export default async function InboxPage() {
           </div>
         ) : (
           Array.from(byClient.entries()).map(([clientId, group]) => (
-            <section key={clientId} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {group.name}
-                </h2>
+            <PageSection
+              key={clientId}
+              title={group.name}
+              action={
                 <Link
                   href={`/clients/${clientId}`}
-                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  className="text-[13px] font-medium text-foreground underline-offset-4 hover:underline"
                 >
                   Open thread
                 </Link>
-              </div>
+              }
+            >
               <ul className="divide-y divide-border rounded-md border border-border bg-background">
                 {group.rows.map((row) => (
                   <li key={row.mentionId}>
@@ -89,7 +90,7 @@ export default async function InboxPage() {
                   </li>
                 ))}
               </ul>
-            </section>
+            </PageSection>
           ))
         )}
       </div>
