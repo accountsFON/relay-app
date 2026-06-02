@@ -164,53 +164,26 @@ export function AppShell({
         />
 
         <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname.startsWith(item.href)
-            const badgeCount = item.badgeKey ? badgeMap[item.badgeKey] : 0
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-tour-anchor={item.tourAnchor}
-                className={cn(
-                  'flex items-center gap-3 rounded-full px-3 py-2.5 text-[14px] font-medium transition-colors',
-                  isActive
-                    ? 'bg-blue-100 text-neutral-900'
-                    : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
-                )}
-              >
-                <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-blue-500' : 'text-neutral-500')} />
-                <span className="flex-1">{item.label}</span>
-                {badgeCount > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-coral-500 px-1.5 text-[11px] font-medium text-white">
-                    {badgeCount > 99 ? '99+' : badgeCount}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
+          {navItems.map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              isActive={pathname.startsWith(item.href)}
+              badgeCount={item.badgeKey ? badgeMap[item.badgeKey] : 0}
+              dataTourAnchor={item.tourAnchor}
+            />
+          ))}
         </nav>
 
         <div className="px-3 pb-2 pt-1">
-          {(() => {
-            const Icon = settingsNavItem.icon
-            const isActive = pathname.startsWith(settingsNavItem.href)
-            return (
-              <Link
-                href={settingsNavItem.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-full px-3 py-2.5 text-[14px] font-medium transition-colors',
-                  isActive
-                    ? 'bg-blue-100 text-neutral-900'
-                    : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
-                )}
-              >
-                <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-blue-500' : 'text-neutral-500')} />
-                {settingsNavItem.label}
-              </Link>
-            )
-          })()}
+          <NavLink
+            href={settingsNavItem.href}
+            label={settingsNavItem.label}
+            icon={settingsNavItem.icon}
+            isActive={pathname.startsWith(settingsNavItem.href)}
+          />
         </div>
 
         <div className="px-3 pb-1 pt-1">
@@ -294,5 +267,50 @@ export function AppShell({
     </CompletionNotificationsProvider>
     </NotificationProvider>
     </InFlightRunsProvider>
+  )
+}
+
+/**
+ * Shared sidebar nav link. Renders both the main nav loop and the
+ * Settings link below it, so the active state styling and icon
+ * colouring stay aligned between the two. Optional `badgeCount`
+ * shows the unread pill (main nav only); optional `dataTourAnchor`
+ * threads through onboarding tour selectors (see TourProvider
+ * DEFAULT_TOUR_STOPS).
+ */
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+  badgeCount = 0,
+  dataTourAnchor,
+}: {
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  isActive: boolean
+  badgeCount?: number
+  dataTourAnchor?: string
+}) {
+  return (
+    <Link
+      href={href}
+      data-tour-anchor={dataTourAnchor}
+      className={cn(
+        'flex items-center gap-3 rounded-full px-3 py-2.5 text-[14px] font-medium transition-colors',
+        isActive
+          ? 'bg-blue-100 text-neutral-900'
+          : 'text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900'
+      )}
+    >
+      <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-blue-500' : 'text-neutral-500')} />
+      <span className="flex-1">{label}</span>
+      {badgeCount > 0 && (
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-coral-500 px-1.5 text-[11px] font-medium text-white">
+          {badgeCount > 99 ? '99+' : badgeCount}
+        </span>
+      )}
+    </Link>
   )
 }
