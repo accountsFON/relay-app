@@ -1,6 +1,11 @@
 import { notFound } from 'next/navigation'
 import { requireAdminPortal } from '@/server/middleware/permissions'
-import { findUserWithMembershipInOrg } from '@/server/repositories/users'
+import {
+  findUserWithMembershipInOrg,
+  countUserOwnedRecords,
+  listActiveAssignableUsers,
+  countPlatformOwners,
+} from '@/server/repositories/users'
 import { listClientsByOrgWithAssignments } from '@/server/repositories/clients'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +14,7 @@ import { PageSection } from '@/components/ui/page-section'
 import { AssignmentToggle } from './assignment-toggle'
 import { PermissionEditor } from './permission-editor'
 import { RoleChanger } from './role-changer'
+import { ManageUserAccessPanel } from '@/components/admin/manage-user-access-panel'
 import {
   can,
   PERMISSION_KEYS,
@@ -38,6 +44,25 @@ export default async function AdminUserDetailPage({
   if (!membership) notFound()
 
   const clients = await listClientsByOrgWithAssignments(ctx.organizationDbId)
+
+  // Manage-access panel inputs (deactivate / reactivate / hard delete).
+  const canDeactivate = can(
+    { role: ctx.role, platformOwner: ctx.platformOwner },
+    'user.deactivate',
+  )
+  const canHardDelete = ctx.platformOwner === true
+  const isSelf = user.id === ctx.userDbId
+  const platformOwnerCount = user.platformOwner ? await countPlatformOwners() : 0
+  const isLastPlatformOwner = user.platformOwner && platformOwnerCount <= 1
+  const ownedInventory = await countUserOwnedRecords(
+    user.id,
+    ctx.organizationDbId,
+  )
+  const reassignCandidates = await listActiveAssignableUsers(
+    ctx.organizationDbId,
+    user.id,
+  )
+  const isDeactivated = user.deactivatedAt != null
 
   const editableSlot: 'am' | 'designer' | null =
     membership.role === 'account_manager'
@@ -186,6 +211,24 @@ export default async function AdminUserDetailPage({
           initialOverrides={initialOverrides}
         />
       </Card>
+
+      <div className="mt-8">
+        <ManageUserAccessPanel
+          userId={user.id}
+          userEmail={user.email}
+          isDeactivated={isDeactivated}
+          canDeactivate={canDeactivate}
+          canHardDelete={canHardDelete}
+          isSelf={isSelf}
+          isLastPlatformOwner={isLastPlatformOwner}
+          ownedInventory={ownedInventory}
+          reassignCandidates={reassignCandidates.map((u) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+          }))}
+        />
+      </div>
     </div>
   )
 }

@@ -29,6 +29,10 @@ export async function getOrgContext(): Promise<OrgContext | null> {
   const dbUser = await findUserByClerkId(userId)
   if (!dbUser) return null
 
+  // Deactivated users are locked out of every authenticated surface.
+  // Returning null routes them to /no-access.
+  if (dbUser.deactivatedAt) return null
+
   // 0. Platform-owner step-into override. The agency switcher sets a
   // cookie when a platform owner clicks an agency. Lets us route to that
   // org regardless of Clerk's active-org state, which can be stuck when

@@ -9,9 +9,14 @@ import {
 } from '@/server/auth/permissions'
 
 describe('can() — system defaults', () => {
-  it('admin has every permission by default', () => {
+  it('admin has every permission by default (except platform-owner-only keys)', () => {
+    const platformOwnerOnly: PermissionKey[] = ['user.hardDelete']
     for (const key of PERMISSION_KEYS) {
-      expect(can({ role: 'admin' }, key)).toBe(true)
+      if (platformOwnerOnly.includes(key)) {
+        expect(can({ role: 'admin' }, key)).toBe(false)
+      } else {
+        expect(can({ role: 'admin' }, key)).toBe(true)
+      }
     }
   })
 
@@ -41,6 +46,22 @@ describe('can() — system defaults', () => {
     expect(can({ role: 'account_manager' }, 'relay.forceStep')).toBe(false)
     expect(can({ role: 'designer' }, 'relay.forceStep')).toBe(false)
     expect(can({ role: 'client' }, 'relay.forceStep')).toBe(false)
+  })
+
+  it('user.deactivate is admin + platform owner', () => {
+    expect(can({ role: 'admin' }, 'user.deactivate')).toBe(true)
+    expect(can({ role: 'account_manager' }, 'user.deactivate')).toBe(false)
+    expect(can({ role: 'designer' }, 'user.deactivate')).toBe(false)
+    expect(can({ role: 'client' }, 'user.deactivate')).toBe(false)
+    expect(can({ role: 'designer', platformOwner: true }, 'user.deactivate')).toBe(true)
+  })
+
+  it('user.hardDelete is platform owner only', () => {
+    expect(can({ role: 'admin' }, 'user.hardDelete')).toBe(false)
+    expect(can({ role: 'account_manager' }, 'user.hardDelete')).toBe(false)
+    expect(can({ role: 'designer' }, 'user.hardDelete')).toBe(false)
+    expect(can({ role: 'client' }, 'user.hardDelete')).toBe(false)
+    expect(can({ role: 'admin', platformOwner: true }, 'user.hardDelete')).toBe(true)
   })
 })
 

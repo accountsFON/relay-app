@@ -22,6 +22,8 @@ export const PERMISSION_KEYS = [
   'relay.takeOver',
   'relay.completeOnboarding',
   'relay.forceStep',
+  'user.deactivate',
+  'user.hardDelete',
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
@@ -48,6 +50,8 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'relay.takeOver': 'Take over a stuck relay from another holder',
   'relay.completeOnboarding': 'Mark a client onboarding gate complete',
   'relay.forceStep': 'Force a relay to any step (admin override)',
+  'user.deactivate': 'Deactivate a user',
+  'user.hardDelete': 'Permanently delete a user',
 }
 
 type PermissionMatrix = Record<UserRole, Record<PermissionKey, boolean>>
@@ -75,6 +79,8 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.takeOver': true,
     'relay.completeOnboarding': true,
     'relay.forceStep': true,
+    'user.deactivate': true,
+    'user.hardDelete': false,
   },
   account_manager: {
     'client.view': true,
@@ -98,6 +104,8 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.takeOver': false,
     'relay.completeOnboarding': false,
     'relay.forceStep': false,
+    'user.deactivate': false,
+    'user.hardDelete': false,
   },
   designer: {
     'client.view': true,
@@ -121,6 +129,8 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.takeOver': false,
     'relay.completeOnboarding': false,
     'relay.forceStep': false,
+    'user.deactivate': false,
+    'user.hardDelete': false,
   },
   client: {
     'client.view': true,
@@ -144,6 +154,8 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.takeOver': false,
     'relay.completeOnboarding': false,
     'relay.forceStep': false,
+    'user.deactivate': false,
+    'user.hardDelete': false,
   },
 }
 
