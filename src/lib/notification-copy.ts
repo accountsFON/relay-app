@@ -75,7 +75,7 @@ export function renderSummary(row: MentionInboxRow): string {
       const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
       const stepLabel = toStep ? relayStepLabel(toStep) : ''
       const tail = stepLabel ? ` to ${stepLabel}` : ''
-      return `${prefix}${actor} admin moved ${relay}${tail}.`
+      return `${prefix}${actor} force moved ${relay}${tail}.`
     }
     case 'run_completed': {
       const count = payload.postCount

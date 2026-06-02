@@ -35,6 +35,13 @@ describe('can() — system defaults', () => {
     expect(can({ role: 'client' }, 'post.edit')).toBe(false)
     expect(can({ role: 'client' }, 'admin.portal')).toBe(false)
   })
+
+  it('relay.forceStep is admin-only (account_manager denied)', () => {
+    expect(can({ role: 'admin' }, 'relay.forceStep')).toBe(true)
+    expect(can({ role: 'account_manager' }, 'relay.forceStep')).toBe(false)
+    expect(can({ role: 'designer' }, 'relay.forceStep')).toBe(false)
+    expect(can({ role: 'client' }, 'relay.forceStep')).toBe(false)
+  })
 })
 
 describe('can() — resolution priority', () => {

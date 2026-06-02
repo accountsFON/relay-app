@@ -1011,6 +1011,26 @@ describe('forceStep', () => {
     )
   })
 
+  it('sets completedAt when force stepping INTO the completed step', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.final_qa_schedule,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await forceStep({
+      batchId: 'b1',
+      toStep: RelayStep.completed,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.completedAt).toBeInstanceOf(Date)
+    expect(updateData.currentStep).toBe(RelayStep.completed)
+  })
+
   it('rejects a no-op force step (toStep equals current step)', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',

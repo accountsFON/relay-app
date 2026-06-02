@@ -445,6 +445,7 @@ export async function forceStep(input: ForceStepInput) {
       loadUserName(tx, next.userId),
     ])
 
+    const enteringCompleted = input.toStep === RelayStep.completed
     const leavingCompleted = batch.currentStep === RelayStep.completed
     await tx.batch.update({
       where: { id: batch.id },
@@ -453,7 +454,11 @@ export async function forceStep(input: ForceStepInput) {
         currentSubState: null,
         currentHolder: next.userId,
         currentRole: next.role,
-        ...(leavingCompleted ? { completedAt: null } : {}),
+        ...(enteringCompleted
+          ? { completedAt: new Date() }
+          : leavingCompleted
+            ? { completedAt: null }
+            : {}),
       },
     })
 
