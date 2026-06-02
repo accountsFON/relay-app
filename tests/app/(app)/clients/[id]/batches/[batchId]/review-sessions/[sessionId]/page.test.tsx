@@ -7,6 +7,14 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/server/auth/access', () => ({
+  // Real redirectAccessDenied() calls redirect(), which throws to halt the
+  // render. Mirror that so the page short-circuits like in production.
+  redirectAccessDenied: vi.fn(() => {
+    throw new Error('NEXT_REDIRECT:/dashboard?denied=1')
+  }),
+}))
+
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
 }))
@@ -211,7 +219,7 @@ describe('ReviewSessionDetailPage', () => {
     expect(getByTestId('review-item-row-stub-item_c')).toBeTruthy()
   })
 
-  it('notFounds when the user lacks access to the client', async () => {
+  it('redirects to access-denied when the user lacks access to the client', async () => {
     vi.mocked(findClientForUser).mockResolvedValue(null)
 
     await expect(
@@ -220,10 +228,10 @@ describe('ReviewSessionDetailPage', () => {
         batchId: 'batch_1',
         sessionId: 'session_1',
       }),
-    ).rejects.toThrow('NEXT_NOT_FOUND')
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
   })
 
-  it('notFounds when the magic link belongs to a different batch', async () => {
+  it('redirects to access-denied when the magic link belongs to a different batch', async () => {
     vi.mocked(db.magicLink.findUnique).mockResolvedValue({
       ...mockMagicLink,
       batchId: 'other_batch',
@@ -235,7 +243,7 @@ describe('ReviewSessionDetailPage', () => {
         batchId: 'batch_1',
         sessionId: 'session_1',
       }),
-    ).rejects.toThrow('NEXT_NOT_FOUND')
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
   })
 
   describe('addressed-via-activity-event behavior', () => {

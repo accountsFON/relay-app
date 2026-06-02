@@ -1,8 +1,8 @@
-import { notFound } from 'next/navigation'
 import {
   requireClientViewer,
   canEditClients,
 } from '@/server/middleware/permissions'
+import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { listRunsByClient } from '@/server/repositories/contentRuns'
 import {
@@ -52,7 +52,7 @@ export default async function ClientDetailPage({
 
   // findClientForUser now uses withArchived() so archived clients still load.
   const client = await findClientForUser(ctx, id)
-  if (!client) notFound()
+  if (!client) redirectAccessDenied()
 
   // Resolve the display name for the user who archived the client (if any).
   let archivedByName: string | null = null

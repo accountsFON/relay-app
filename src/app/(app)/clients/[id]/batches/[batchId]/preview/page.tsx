@@ -1,7 +1,7 @@
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { requireClientViewer, canEditClients } from '@/server/middleware/permissions'
+import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { listThreadsForBatch } from '@/server/repositories/threads'
@@ -33,10 +33,10 @@ export default async function BatchPreviewPage({
   const { id, batchId } = await params
 
   const client = await findClientForUser(ctx, id)
-  if (!client) notFound()
+  if (!client) redirectAccessDenied()
 
   const batch = await findBatch(batchId)
-  if (!batch || batch.clientId !== client.id) notFound()
+  if (!batch || batch.clientId !== client.id) redirectAccessDenied()
 
   const posts = await db.post.findMany({
     where: { batchId: batch.id },

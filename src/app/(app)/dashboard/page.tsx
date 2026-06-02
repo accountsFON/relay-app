@@ -1,5 +1,7 @@
+import { Suspense, type ReactNode } from 'react'
 import { RelayStep, RelayEventType } from '@prisma/client'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { AccessDeniedToast } from '@/components/dashboard/access-denied-toast'
 import { getMonthlyCostSummary } from '@/server/repositories/contentRuns'
 import {
   listBatchesForOrg,
@@ -175,28 +177,40 @@ export default async function DashboardPage({
         })
       : 0
 
+  let dashboard: ReactNode
   if (ctx.role === 'account_manager' || ctx.role === 'admin') {
-    return (
+    dashboard = (
       <AmDashboard
         ctx={ctx}
         archivedBatchCount={archivedBatchCount}
         showArchived={showArchived}
       />
     )
-  }
-  if (ctx.role === 'designer') {
-    return (
+  } else if (ctx.role === 'designer') {
+    dashboard = (
       <DesignerDashboard
         ctx={ctx}
         archivedBatchCount={archivedBatchCount}
         showArchived={showArchived}
       />
     )
+  } else if (ctx.role === 'client' && ctx.linkedClientId) {
+    dashboard = <ClientDashboard linkedClientId={ctx.linkedClientId} />
+  } else {
+    dashboard = <CostFallback ctx={ctx} dateScope={dateScope} />
   }
-  if (ctx.role === 'client' && ctx.linkedClientId) {
-    return <ClientDashboard linkedClientId={ctx.linkedClientId} />
-  }
-  return <CostFallback ctx={ctx} dateScope={dateScope} />
+
+  return (
+    <>
+      {/* Fires the "no access" toast when reached via redirectAccessDenied
+          (?denied=1), regardless of which role-specific dashboard renders.
+          Wrapped in Suspense because it reads useSearchParams. */}
+      <Suspense fallback={null}>
+        <AccessDeniedToast />
+      </Suspense>
+      {dashboard}
+    </>
+  )
 }
 
 async function AmDashboard({

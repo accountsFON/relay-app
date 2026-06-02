@@ -1,6 +1,6 @@
-import { notFound } from 'next/navigation'
 import { RelayStep } from '@prisma/client'
 import { requireClientViewer, canEditClients } from '@/server/middleware/permissions'
+import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import {
@@ -77,11 +77,11 @@ export default async function BatchDetailPage({
   const showArchived = sp.archived === '1'
 
   const client = await findClientForUser(ctx, id)
-  if (!client) notFound()
+  if (!client) redirectAccessDenied()
 
   // findBatch now uses withArchived() so archived batches still load.
   let batch = await findBatch(batchId)
-  if (!batch || batch.clientId !== client.id) notFound()
+  if (!batch || batch.clientId !== client.id) redirectAccessDenied()
 
   // Spec § Verification step 9: client opening at sent_to_client auto-advances
   // to client_decision. Best-effort; failure logs and renders prior step.

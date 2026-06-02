@@ -16,9 +16,9 @@
  * Layer 2 / Task 2.2.
  */
 
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { requireClientViewer } from '@/server/middleware/permissions'
+import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { findSessionWithItems } from '@/server/repositories/reviewSessions'
@@ -50,13 +50,13 @@ export default async function ReviewSessionDetailPage({
   // Scope: client must be visible to the user, batch must belong to that
   // client, session must belong to a magic link on that batch.
   const client = await findClientForUser(ctx, id)
-  if (!client) notFound()
+  if (!client) redirectAccessDenied()
 
   const batch = await findBatch(batchId)
-  if (!batch || batch.clientId !== client.id) notFound()
+  if (!batch || batch.clientId !== client.id) redirectAccessDenied()
 
   const session = await findSessionWithItems({ reviewSessionId: sessionId })
-  if (!session) notFound()
+  if (!session) redirectAccessDenied()
 
   // Verify the session's magic link is on this batch (existence-leak safe).
   const magicLink = await db.magicLink.findUnique({
@@ -68,7 +68,7 @@ export default async function ReviewSessionDetailPage({
       defaultReviewerEmail: true,
     },
   })
-  if (!magicLink || magicLink.batchId !== batch.id) notFound()
+  if (!magicLink || magicLink.batchId !== batch.id) redirectAccessDenied()
 
   // Pull the reviewer row separately (session.reviewerId may be null on
   // sessions started before name-confirm completed; that path is rare for
