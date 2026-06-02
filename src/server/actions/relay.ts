@@ -13,6 +13,7 @@ import {
   completeRevisionItem,
   dispatchRevisions,
   finishBatch,
+  forceStep,
   passBaton,
   sendBackBaton,
 } from '@/server/services/relay'
@@ -171,6 +172,47 @@ export async function sendBackBatonAction(input: {
     wasOverride: isOverride,
   })
   revalidateBatchSurfaces(holder.clientId, input.batchId)
+  return result
+}
+
+/**
+ * Admin / platform owner override: force a batch to an arbitrary step,
+ * bypassing the LEGAL_TRANSITIONS state machine. The service handles the
+ * holder reassignment, RelayEvent, and force_step activity emission.
+ *
+ * Permission: `relay.forceStep` (admin + platform owner only). Unlike
+ * pass / sendBack / finish, there is NO holder-override escape hatch here:
+ * the matrix already denies AM / designer / client, so requireCan is the
+ * entire gate. Do not add canOverrideHolder logic.
+ */
+export async function forceStepAction(input: {
+  batchId: string
+  toStep: RelayStep
+  reason?: string
+}) {
+  const ctx = await requireCan('relay.forceStep')
+
+  // Cheap scope lookup for revalidatePath targeting. The service runs its
+  // own cross-tenant guard; this select only feeds the revalidation set.
+  const scope = await db.batch.findUnique({
+    where: { id: input.batchId },
+    select: {
+      clientId: true,
+      client: { select: { organizationId: true } },
+    },
+  })
+  if (!scope || scope.client.organizationId !== ctx.organizationDbId) {
+    throw new Error('Relay not found')
+  }
+
+  const result = await forceStep({
+    batchId: input.batchId,
+    toStep: input.toStep,
+    reason: input.reason,
+    actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
+  })
+  revalidateBatchSurfaces(scope.clientId, input.batchId)
   return result
 }
 
