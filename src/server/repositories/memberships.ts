@@ -21,10 +21,13 @@ export async function listMembershipsForUser(userId: string) {
   })
 }
 
-/** All memberships in a given org. Used by /admin/users. */
+/** All memberships in a given org. Used by /admin/users and assignment pickers.
+ *  Excludes memberships whose user has been deactivated (deactivatedAt != null)
+ *  so that deactivated users never appear in AM/designer assignment dropdowns.
+ */
 export async function listMembershipsForOrg(organizationId: string) {
   return db.membership.findMany({
-    where: { organizationId },
+    where: { organizationId, user: { deactivatedAt: null } },
     include: {
       user: {
         select: { id: true, name: true, email: true, avatarUrl: true },
