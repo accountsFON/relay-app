@@ -10,11 +10,17 @@ vi.mock('@/db/client', () => ({
       delete: vi.fn(),
       count: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
   },
 }))
 
 import { db } from '@/db/client'
-import { listMembershipsForOrg } from '@/server/repositories/memberships'
+import {
+  listMembershipsForOrg,
+  updateMembershipRole,
+} from '@/server/repositories/memberships'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -76,5 +82,65 @@ describe('listMembershipsForOrg', () => {
 
     expect(result).toHaveLength(1)
     expect(result[0].user.name).toBe('Jane Smith')
+  })
+})
+
+describe('updateMembershipRole', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const membership = (overrides: Record<string, unknown> = {}): any => ({
+    id: 'mem_1',
+    userId: 'user_1',
+    organizationId: 'cuid_org_1',
+    role: 'account_manager',
+    ...overrides,
+  })
+
+  it('blocks setting the client role when the user has no linkedClientId, and does not update', async () => {
+    vi.mocked(db.membership.findUnique).mockResolvedValue(membership())
+    vi.mocked(db.user.findUnique).mockResolvedValue(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { linkedClientId: null } as any,
+    )
+
+    await expect(updateMembershipRole('mem_1', 'client')).rejects.toThrow(
+      /link this account to a client/i,
+    )
+
+    expect(db.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'user_1' },
+      select: { linkedClientId: true },
+    })
+    expect(db.membership.update).not.toHaveBeenCalled()
+  })
+
+  it('allows setting the client role when the user has a linkedClientId', async () => {
+    vi.mocked(db.membership.findUnique).mockResolvedValue(membership())
+    vi.mocked(db.user.findUnique).mockResolvedValue(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { linkedClientId: 'client_1' } as any,
+    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(db.membership.update).mockResolvedValue({} as any)
+
+    await updateMembershipRole('mem_1', 'client')
+
+    expect(db.membership.update).toHaveBeenCalledWith({
+      where: { id: 'mem_1' },
+      data: { role: 'client' },
+    })
+  })
+
+  it('updates a non-client role change without touching linkedClientId (regression)', async () => {
+    vi.mocked(db.membership.findUnique).mockResolvedValue(membership())
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(db.membership.update).mockResolvedValue({} as any)
+
+    await updateMembershipRole('mem_1', 'designer')
+
+    expect(db.user.findUnique).not.toHaveBeenCalled()
+    expect(db.membership.update).toHaveBeenCalledWith({
+      where: { id: 'mem_1' },
+      data: { role: 'designer' },
+    })
   })
 })

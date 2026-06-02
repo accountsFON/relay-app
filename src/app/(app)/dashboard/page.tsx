@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from 'react'
 import { RelayStep, RelayEventType } from '@prisma/client'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { AccessDeniedToast } from '@/components/dashboard/access-denied-toast'
+import { ClientNoAccessState } from '@/components/dashboard/client-no-access-state'
 import { getMonthlyCostSummary } from '@/server/repositories/contentRuns'
 import {
   listBatchesForOrg,
@@ -196,6 +197,10 @@ export default async function DashboardPage({
     )
   } else if (ctx.role === 'client' && ctx.linkedClientId) {
     dashboard = <ClientDashboard linkedClientId={ctx.linkedClientId} />
+  } else if (ctx.role === 'client') {
+    // Client persona with no linked client. Never show the agency-internal
+    // cost view; surface a clear dead end instead.
+    dashboard = <ClientNoAccessState />
   } else {
     dashboard = <CostFallback ctx={ctx} dateScope={dateScope} />
   }
