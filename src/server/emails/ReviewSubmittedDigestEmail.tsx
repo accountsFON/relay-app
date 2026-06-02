@@ -35,6 +35,36 @@ import {
 import type { ReviewItemHydrated, ReviewSessionSummary } from '@/types/review-session'
 import { diffText, type DiffSegment } from '@/lib/text-diff'
 
+/**
+ * One client-left markup pin on a post, surfaced in the AM digest so the AM
+ * can see pin-based feedback without opening the batch. Mirrors the
+ * `PostThread` + first `PostComment` shape from the threads repo, but flat
+ * and email-friendly. We only carry the first comment body (the pin's
+ * initial text); subsequent replies live in-app and are not inlined.
+ */
+export interface DigestPin {
+  /** PostThread.id, used as a stable React key. */
+  id: string
+  /**
+   * Position kind. `image` = pinned to a point on the image (x,y are
+   * 0..100 percent). `caption` = pinned to a caption character range.
+   * `post` = post-level pin (no specific anchor).
+   */
+  kind: 'image' | 'caption' | 'post'
+  /** Image pin x coord (percent, 0..100). Null for non-image pins. */
+  imageX: number | null
+  /** Image pin y coord (percent, 0..100). Null for non-image pins. */
+  imageY: number | null
+  /** Caption range start char offset, inclusive. Null for non-caption pins. */
+  captionFrom: number | null
+  /** Caption range end char offset, exclusive. Null for non-caption pins. */
+  captionTo: number | null
+  /** First comment body left when the pin was created (i.e. the pin text). */
+  body: string
+  /** Reviewer display name snapshot at pin time. Falls back to 'Reviewer'. */
+  reviewerName: string
+}
+
 /** Item shape the digest needs: hydrated review item plus the current Post. */
 export interface DigestReviewItem extends ReviewItemHydrated {
   post: {
@@ -45,6 +75,13 @@ export interface DigestReviewItem extends ReviewItemHydrated {
   }
   /** 1-based position in the batch (for "Post #N" display). */
   postNumber: number
+  /**
+   * Open, client-left markup pins on this post, in creation order.
+   * Empty array (not undefined) when the post has none, so callers don't
+   * have to special-case the absence. The template suppresses the
+   * subsection when this is empty.
+   */
+  pins: DigestPin[]
 }
 
 export interface ReviewSubmittedDigestEmailProps {
@@ -138,6 +175,38 @@ function formatSubmittedAt(d: Date): string {
     timeZoneName: 'short',
   })
   return `${dateFmt.format(d)} at ${timeFmt.format(d)}`
+}
+
+/**
+ * Human-readable position label for a pin in the email body. We pick the
+ * granularity we can render without an image (so AMs reading on mobile,
+ * dark mode, or with images blocked still get useful spatial context).
+ *
+ * Image pins quantize the (x, y) percent coords into a 3x3 grid of
+ * descriptive zones ("upper left", "center", "lower right", etc.). Caption
+ * pins report the character offset range. Post-level pins say so plainly.
+ *
+ * Kept here (not in a shared util) because the labels are tuned for an
+ * email reader, not the in-app UI which has the visual pin to anchor on.
+ */
+function pinPositionLabel(pin: DigestPin): string {
+  if (pin.kind === 'image' && pin.imageX !== null && pin.imageY !== null) {
+    const horiz = pin.imageX < 33 ? 'left' : pin.imageX < 67 ? 'center' : 'right'
+    const vert = pin.imageY < 33 ? 'upper' : pin.imageY < 67 ? 'middle' : 'lower'
+    // "upper center" reads oddly; collapse to just "top" / "bottom".
+    if (horiz === 'center' && vert !== 'middle') {
+      const tb = vert === 'upper' ? 'top' : 'bottom'
+      return `on image, ${tb} center`
+    }
+    if (horiz === 'center' && vert === 'middle') {
+      return 'on image, center'
+    }
+    return `on image, ${vert} ${horiz}`
+  }
+  if (pin.kind === 'caption' && pin.captionFrom !== null && pin.captionTo !== null) {
+    return `on caption, chars ${pin.captionFrom}..${pin.captionTo}`
+  }
+  return 'on post'
 }
 
 export function buildSubject(props: ReviewSubmittedDigestEmailProps): string {
@@ -246,14 +315,26 @@ function ItemBlock({
 }) {
   const isChanges = item.decision === 'changes_requested'
   const isEdit = item.decision === 'caption_edited'
+  const isApprovedWithPins =
+    item.decision === 'approved' && item.pins.length > 0
 
   const decisionLabel = isChanges
     ? 'Request changes'
     : isEdit
       ? 'Caption edit suggested'
-      : ''
-  const decisionFg = isChanges ? COLORS.changesFg : COLORS.editFg
-  const decisionBg = isChanges ? COLORS.changesBg : COLORS.editBg
+      : isApprovedWithPins
+        ? 'Approved with pins'
+        : ''
+  const decisionFg = isChanges
+    ? COLORS.changesFg
+    : isEdit
+      ? COLORS.editFg
+      : COLORS.approvedFg
+  const decisionBg = isChanges
+    ? COLORS.changesBg
+    : isEdit
+      ? COLORS.editBg
+      : COLORS.approvedBg
 
   // Anchor link to the specific post in the AM-side detail page. The
   // detail page (Layer 2 task 2.2) reads the hash and scrolls.
@@ -360,6 +441,50 @@ function ItemBlock({
         </blockquote>
       ) : null}
 
+      {/* Pins subsection. Surfaced per post so the AM sees client-left
+          markup pins inline. Phase 4 item 22 re-enabled pins on the
+          client review surface; without this block the AM had no way to
+          see them without opening the batch. Suppressed entirely when
+          the post has zero pins (no empty header). */}
+      {item.pins.length > 0 ? (
+        <div data-section="pins" style={{ margin: '8px 0 12px' }}>
+          <Text
+            style={{
+              margin: '0 0 6px',
+              fontSize: 12,
+              color: COLORS.textFaint,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}
+          >
+            Pins ({item.pins.length})
+          </Text>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 20,
+              fontSize: 14,
+              lineHeight: 1.5,
+              color: COLORS.text,
+            }}
+          >
+            {item.pins.map((pin, idx) => (
+              <li
+                key={pin.id}
+                data-pin-id={pin.id}
+                data-pin-kind={pin.kind}
+                style={{ marginBottom: 4 }}
+              >
+                <span style={{ color: COLORS.textMuted }}>
+                  [Pin {idx + 1}] {pinPositionLabel(pin)} ({pin.reviewerName}):
+                </span>{' '}
+                <span style={{ color: COLORS.text }}>{pin.body}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <Link
         href={itemUrl}
         style={{
@@ -395,8 +520,16 @@ export function ReviewSubmittedDigestEmail(props: ReviewSubmittedDigestEmailProp
   // double-filter here even though the Layer 2 send call is supposed to
   // pre-filter; defense in depth keeps the template honest if a future
   // caller forgets.
+  //
+  // Exception (Wave J4): an approved post with one or more client-left
+  // pins still surfaces, because the pin text is feedback the AM needs
+  // to see. Without this carve-out the digest would silently swallow
+  // pins left on otherwise-approved posts.
   const actionableItems = items.filter(
-    (i) => i.decision === 'changes_requested' || i.decision === 'caption_edited',
+    (i) =>
+      i.decision === 'changes_requested' ||
+      i.decision === 'caption_edited' ||
+      i.pins.length > 0,
   )
 
   const previewText =

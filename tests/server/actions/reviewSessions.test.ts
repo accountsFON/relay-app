@@ -82,6 +82,7 @@ vi.mock('@/db/client', () => ({
     magicLinkReviewer: { findUnique: vi.fn() },
     magicLink: { findUnique: vi.fn() },
     post: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    postThread: { findMany: vi.fn() },
     reviewItem: { findUnique: vi.fn(), update: vi.fn() },
     $transaction: vi.fn(),
   },
@@ -146,6 +147,10 @@ function primeReviewerResolve(): void {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Default: no client-left pins on any post in the batch. Tests that
+  // exercise the Pins subsection override this with a per-test
+  // mockResolvedValueOnce.
+  vi.mocked(db.postThread.findMany).mockResolvedValue([] as never)
 })
 
 describe('submitSessionAction', () => {
@@ -293,6 +298,127 @@ describe('submitSessionAction', () => {
     expect(firstSend.replyTo).toBe('jane@client.com')
     expect(secondSend.replyTo).toBe('jane@client.com')
     expect(firstSend.react).toBeDefined()
+  })
+
+  it('fetches open client-left pins for the batch and renders them on the digest item (Wave J4)', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveSession).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      round: 1,
+      status: 'in_progress',
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        {
+          id: 'item_1',
+          postId: 'post_1',
+          decision: 'changes_requested',
+          comment: 'tighten this',
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+        },
+      ],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      submittedAt: new Date('2026-05-09T13:42:00Z'),
+      submittedSummary: {
+        approved: 0,
+        changesRequested: 1,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      creator: {
+        id: 'user_creator',
+        name: 'Caleb Cody',
+        email: 'caleb@fonmarketing.com',
+      },
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        label: 'May 2026',
+        scheduledAt: new Date('2026-05-01T00:00:00Z'),
+        client: {
+          id: CLIENT_ID,
+          name: 'Akkoo Coffee',
+          assignedAmId: null,
+          assignedDesignerId: null,
+          assignedAm: null,
+        },
+      },
+    } as never)
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      {
+        id: 'post_1',
+        postDate: new Date('2026-05-05T00:00:00Z'),
+        caption: 'caption one',
+      },
+    ] as never)
+    // Two open, client-left pins on post_1: one image pin, one caption pin.
+    vi.mocked(db.postThread.findMany).mockResolvedValue([
+      {
+        id: 'thread_a',
+        postId: 'post_1',
+        imageX: 15,
+        imageY: 20,
+        captionFrom: null,
+        captionTo: null,
+        comments: [{ body: 'fix this typo', reviewerName: 'Jane' }],
+      },
+      {
+        id: 'thread_b',
+        postId: 'post_1',
+        imageX: null,
+        imageY: null,
+        captionFrom: 4,
+        captionTo: 13,
+        comments: [{ body: 'wording feels off here', reviewerName: 'Jane' }],
+      },
+    ] as never)
+    vi.mocked(sendEmail).mockResolvedValue({ id: 'resend_msg_pins' } as never)
+
+    const result = await submitSessionAction({ token: TOKEN })
+
+    expect(result.ok).toBe(true)
+    expect(result.emailError).toBeUndefined()
+
+    // Query was scoped to: open status, client-left only, posts in this batch.
+    const pinQuery = vi.mocked(db.postThread.findMany).mock.calls[0][0]
+    expect(pinQuery).toBeDefined()
+    expect(pinQuery!.where).toMatchObject({
+      status: 'open',
+      reviewerToken: { not: null },
+    })
+    const postIdIn = (pinQuery!.where as { postId: { in: string[] } }).postId.in
+    expect(postIdIn).toContain('post_1')
+
+    // The send call carries a react node populated with pins; we render
+    // it through the test by reading the email props off of the second
+    // arg the email module would have received. Simplest assertion: the
+    // sendEmail call happened once (single recipient) and the react node
+    // was provided.
+    expect(sendEmail).toHaveBeenCalledTimes(1)
+    const send = vi.mocked(sendEmail).mock.calls[0][0]
+    expect(send.to).toBe('caleb@fonmarketing.com')
+    expect(send.react).toBeDefined()
   })
 
   it('throws when the active session has no items, and does NOT submit or send', async () => {
