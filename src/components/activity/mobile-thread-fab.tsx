@@ -59,7 +59,7 @@ export function MobileThreadFab({
         <DialogPrimitive.Popup
           data-slot="mobile-thread-fab-content"
           className={cn(
-            'fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col rounded-t-2xl bg-popover text-popover-foreground ring-1 ring-foreground/10 outline-none',
+            'fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col rounded-t-2xl border border-border bg-white text-popover-foreground shadow-lg outline-none',
             'data-open:animate-in data-open:slide-in-from-bottom-full',
             'data-closed:animate-out data-closed:slide-out-to-bottom-full',
           )}
