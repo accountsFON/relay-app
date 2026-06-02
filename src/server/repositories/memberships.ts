@@ -22,15 +22,32 @@ export async function listMembershipsForUser(userId: string) {
 }
 
 /** All memberships in a given org. Used by /admin/users and assignment pickers.
- *  Excludes memberships whose user has been deactivated (deactivatedAt != null)
- *  so that deactivated users never appear in AM/designer assignment dropdowns.
+ *  By default, excludes memberships whose user has been deactivated
+ *  (deactivatedAt != null) so that deactivated users never appear in
+ *  AM/designer assignment dropdowns. Pass `{ includeDeactivated: true }` for the
+ *  admin team roster, where deactivated users must stay visible and reachable so
+ *  an admin can click into their detail page to reactivate or permanently delete
+ *  them.
  */
-export async function listMembershipsForOrg(organizationId: string) {
+export async function listMembershipsForOrg(
+  organizationId: string,
+  options: { includeDeactivated?: boolean } = {},
+) {
+  const { includeDeactivated = false } = options
   return db.membership.findMany({
-    where: { organizationId, user: { deactivatedAt: null } },
+    where: {
+      organizationId,
+      ...(includeDeactivated ? {} : { user: { deactivatedAt: null } }),
+    },
     include: {
       user: {
-        select: { id: true, name: true, email: true, avatarUrl: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
+          deactivatedAt: true,
+        },
       },
     },
     orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],

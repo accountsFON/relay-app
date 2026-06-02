@@ -31,7 +31,9 @@ function initials(name: string): string {
 
 export default async function AdminUsersPage() {
   const ctx = await requireAdminPortal()
-  const memberships = await listMembershipsForOrg(ctx.organizationDbId)
+  const memberships = await listMembershipsForOrg(ctx.organizationDbId, {
+    includeDeactivated: true,
+  })
 
   const byRole: Record<UserRole, typeof memberships> = {
     admin: [],
@@ -76,8 +78,13 @@ export default async function AdminUsersPage() {
                         {initials(m.user.name)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-foreground truncate">
-                          {m.user.name}
+                        <p className="flex items-center gap-2 font-medium text-foreground">
+                          <span className="truncate">{m.user.name}</span>
+                          {m.user.deactivatedAt && (
+                            <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] font-normal text-neutral-600">
+                              Deactivated
+                            </span>
+                          )}
                         </p>
                         <p className="text-sm text-muted-foreground truncate">
                           {m.user.email}

@@ -215,6 +215,21 @@ describe('hardDeleteUserAction', () => {
     expect(hardDeleteUser).not.toHaveBeenCalled()
   })
 
+  it('defense-in-depth: requireCan passes (override granted) but platformOwner is false -> throws, service not called', async () => {
+    // Edge case: a platform owner grants the user.hardDelete override to a
+    // non-owner. requireCan resolves, but the explicit platformOwner assert
+    // must still block the irreversible delete.
+    vi.mocked(requireCan).mockResolvedValue(
+      makeCtx('admin', { platformOwner: false }),
+    )
+    targetInOrg()
+
+    await expect(
+      hardDeleteUserAction({ userId: 'u_target', reassignToUserId: 'u_keep' }),
+    ).rejects.toThrow(/only a platform owner/i)
+    expect(hardDeleteUser).not.toHaveBeenCalled()
+  })
+
   it('account_manager is denied (requireCan throws, service not called)', async () => {
     vi.mocked(requireCan).mockRejectedValue(new Error('Forbidden'))
 

@@ -51,6 +51,9 @@ export async function hardDeleteUserAction(input: {
   reassignToUserId: string
 }) {
   const ctx = await requireCan('user.hardDelete')
+  if (ctx.platformOwner !== true) {
+    throw new Error('Only a platform owner can permanently delete a user.')
+  }
   await assertTargetInOrg(input.userId, ctx.organizationDbId)
   const result = await hardDeleteUser({
     userId: input.userId,

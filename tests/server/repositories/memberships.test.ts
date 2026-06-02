@@ -38,6 +38,21 @@ describe('listMembershipsForOrg', () => {
     })
   })
 
+  it('includeDeactivated: true keeps deactivated users in the result (no user.deactivatedAt filter) for the admin roster', async () => {
+    vi.mocked(db.membership.findMany).mockResolvedValue([])
+
+    await listMembershipsForOrg('cuid_org_1', { includeDeactivated: true })
+
+    expect(db.membership.findMany).toHaveBeenCalledTimes(1)
+    const arg = vi.mocked(db.membership.findMany).mock.calls[0][0]
+
+    // Still scoped to the org
+    expect(arg?.where).toMatchObject({ organizationId: 'cuid_org_1' })
+
+    // The deactivated-user filter must NOT be present
+    expect(arg?.where).not.toHaveProperty('user')
+  })
+
   it('returns memberships with user details when found', async () => {
     const fakeMembership = {
       id: 'mem_1',
