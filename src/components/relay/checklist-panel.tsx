@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils'
 import { STEP_LABEL } from './labels'
 import type { BatchSummary, ChecklistItem } from './types'
 import { SimpleTooltip } from './relay-tooltips'
+import { AdminForceStepSection } from './admin-force-step-section'
 import {
   finishBatchAction,
   passBatonAction,
@@ -53,6 +54,12 @@ export interface ChecklistPanelProps {
   legalSendBackTargets?: { step: RelayStep; label: string }[]
   /** Computed next forward step from validateTransition. */
   nextStep?: RelayStep
+  /**
+   * True only for admin role and platform owner. Reveals the Admin tools
+   * section that force-moves the batch to any step. Stricter than canAct
+   * (AMs do NOT get force step).
+   */
+  canForceStep?: boolean
 }
 
 export function ChecklistPanel({
@@ -61,6 +68,7 @@ export function ChecklistPanel({
   canAct,
   legalSendBackTargets = [],
   nextStep,
+  canForceStep = false,
 }: ChecklistPanelProps) {
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(items.map((i) => [i.id, i.checked]))
@@ -294,6 +302,12 @@ export function ChecklistPanel({
               </div>
             </div>
           )}
+
+          <AdminForceStepSection
+            batchId={batch.id}
+            currentStep={batch.currentStep}
+            canForceStep={canForceStep}
+          />
         </div>
       )}
     </Card>

@@ -21,6 +21,7 @@ vi.mock('@/server/services/relay', () => ({
   finishBatch: vi.fn(),
   dispatchRevisions: vi.fn(),
   completeRevisionItem: vi.fn(),
+  forceStep: vi.fn(),
 }))
 
 vi.mock('@/server/services/activity', () => ({
@@ -44,11 +45,17 @@ vi.mock('next/cache', () => ({
 
 import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
-import { passBaton, sendBackBaton, finishBatch } from '@/server/services/relay'
+import {
+  passBaton,
+  sendBackBaton,
+  finishBatch,
+  forceStep,
+} from '@/server/services/relay'
 import {
   passBatonAction,
   sendBackBatonAction,
   finishBatchAction,
+  forceStepAction,
 } from '@/server/actions/relay'
 import { RelayStep } from '@prisma/client'
 
@@ -324,5 +331,112 @@ describe('finishBatchAction holder gate', () => {
       finishBatchAction({ batchId: 'b1' }),
     ).rejects.toThrow(/relay not found/i)
     expect(finishBatch).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * forceStepAction permission gate.
+ *
+ * Unlike pass / sendBack / finish, forceStep has NO holder-override logic.
+ * The entire gate is `requireCan('relay.forceStep')`. The permission matrix
+ * (Task 1) sets admin + platformOwner true and account_manager / designer /
+ * client false, so AMs are DENIED here even though they override on pass.
+ *
+ * requireCan is mocked, so it does not enforce the matrix in these tests:
+ * - happy path proves the action calls requireCan('relay.forceStep') and the
+ *   service with the right args (the matrix does the real gating in prod).
+ * - denial cases simulate requireCan throwing for a false-matrix role and
+ *   assert the service is never reached.
+ */
+describe('forceStepAction permission gate', () => {
+  beforeEach(() => {
+    vi.mocked(forceStep).mockResolvedValue({
+      batchId: 'b1',
+      toStep: RelayStep.copy,
+      newHolderId: 'u_am',
+    })
+  })
+
+  it('admin: calls requireCan with relay.forceStep and invokes the service', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      clientId: 'c1',
+      client: { organizationId: 'org_1' },
+    } as never)
+
+    const result = await forceStepAction({
+      batchId: 'b1',
+      toStep: RelayStep.copy,
+      reason: 'redo',
+    })
+
+    expect(requireCan).toHaveBeenCalledWith('relay.forceStep')
+    expect(forceStep).toHaveBeenCalledWith({
+      batchId: 'b1',
+      toStep: RelayStep.copy,
+      reason: 'redo',
+      actorId: 'u_actor',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result).toEqual({
+      batchId: 'b1',
+      toStep: RelayStep.copy,
+      newHolderId: 'u_am',
+    })
+  })
+
+  it('platform owner with a non-admin role passes the action', async () => {
+    vi.mocked(requireCan).mockResolvedValue(
+      makeCtx('designer', { platformOwner: true }),
+    )
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      clientId: 'c1',
+      client: { organizationId: 'org_1' },
+    } as never)
+
+    await expect(
+      forceStepAction({ batchId: 'b1', toStep: RelayStep.copy }),
+    ).resolves.toBeDefined()
+    expect(forceStep).toHaveBeenCalled()
+  })
+
+  it('account_manager is denied (requireCan throws, service not called)', async () => {
+    vi.mocked(requireCan).mockRejectedValue(new Error('Forbidden'))
+
+    await expect(
+      forceStepAction({ batchId: 'b1', toStep: RelayStep.copy }),
+    ).rejects.toThrow()
+    expect(vi.mocked(forceStep)).not.toHaveBeenCalled()
+  })
+
+  it('designer is denied (requireCan throws, service not called)', async () => {
+    vi.mocked(requireCan).mockRejectedValue(new Error('Forbidden'))
+
+    await expect(
+      forceStepAction({ batchId: 'b1', toStep: RelayStep.copy }),
+    ).rejects.toThrow()
+    expect(vi.mocked(forceStep)).not.toHaveBeenCalled()
+  })
+
+  it('client is denied (requireCan throws, service not called)', async () => {
+    vi.mocked(requireCan).mockRejectedValue(new Error('Forbidden'))
+
+    await expect(
+      forceStepAction({ batchId: 'b1', toStep: RelayStep.copy }),
+    ).rejects.toThrow()
+    expect(vi.mocked(forceStep)).not.toHaveBeenCalled()
+  })
+
+  it('cross-tenant batch id throws Relay not found (service not called)', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      clientId: 'c1',
+      client: { organizationId: 'org_other' },
+    } as never)
+
+    await expect(
+      forceStepAction({ batchId: 'b1', toStep: RelayStep.copy }),
+    ).rejects.toThrow(/relay not found/i)
+    expect(vi.mocked(forceStep)).not.toHaveBeenCalled()
   })
 })

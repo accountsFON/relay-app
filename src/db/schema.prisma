@@ -62,6 +62,7 @@ enum RelayEventType {
   send_back
   revision_dispatched
   revision_completed
+  force_step
 }
 
 enum RevisionItemType {
@@ -111,6 +112,7 @@ enum ActivityKind {
 
   batch_created
   batch_completed
+  batch_force_stepped
   batch_passed
   batch_sent_back
   batch_revision_dispatched

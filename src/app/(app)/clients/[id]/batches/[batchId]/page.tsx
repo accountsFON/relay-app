@@ -216,6 +216,9 @@ export default async function BatchDetailPage({
   const canAct =
     batch.currentHolder === ctx.userDbId ||
     canOverrideHolder(ctx.role, ctx.platformOwner)
+  // Force step is admin role + platform owner only (stricter than canAct).
+  // AMs are NOT included; to reverse a batch they use the normal Send Back path.
+  const canForceStep = ctx.role === 'admin' || ctx.platformOwner === true
   // Actions (generate content, export, archive) are unavailable on archived batches.
   const isLive = !batch.deletedAt
 
@@ -622,6 +625,7 @@ export default async function BatchDetailPage({
                 canAct={canAct}
                 legalSendBackTargets={sendBackTargets}
                 nextStep={nextStep}
+                canForceStep={canForceStep}
               />
             </>
           )}

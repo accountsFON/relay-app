@@ -69,6 +69,14 @@ export function renderSummary(row: MentionInboxRow): string {
       const tail = stepLabel ? ` to ${stepLabel}` : ''
       return `${prefix}${actor} moved ${relay}${tail}.`
     }
+    case 'batch_force_stepped': {
+      const batchLabel = payload.batchLabel as string | undefined
+      const toStep = payload.toStep as string | undefined
+      const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
+      const stepLabel = toStep ? relayStepLabel(toStep) : ''
+      const tail = stepLabel ? ` to ${stepLabel}` : ''
+      return `${prefix}${actor} force moved ${relay}${tail}.`
+    }
     case 'run_completed': {
       const count = payload.postCount
       if (typeof count === 'number') {

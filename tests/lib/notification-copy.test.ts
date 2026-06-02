@@ -327,3 +327,23 @@ describe('resolveHref, existing kinds', () => {
     expect(resolveHref(row({ kind: 'client_am_assigned' }))).toBe('/clients/c1')
   })
 })
+
+describe('renderSummary, batch_force_stepped', () => {
+  it('renders the force moved copy with batch label and step label', () => {
+    expect(
+      renderSummary(row({ kind: 'batch_force_stepped', batchLabel: 'May batch', toStep: 'copy' })),
+    ).toBe('Cedar Creek · Mollie force moved "May batch" to Copy.')
+  })
+
+  it('falls back to "a relay" when batchLabel is missing', () => {
+    expect(
+      renderSummary(row({ kind: 'batch_force_stepped', toStep: 'copy' })),
+    ).toBe('Cedar Creek · Mollie force moved a relay to Copy.')
+  })
+
+  it('omits the step tail when toStep is missing', () => {
+    expect(
+      renderSummary(row({ kind: 'batch_force_stepped', batchLabel: 'May batch' })),
+    ).toBe('Cedar Creek · Mollie force moved "May batch".')
+  })
+})

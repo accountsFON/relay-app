@@ -361,3 +361,53 @@ describe('EventRenderer copy', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('batch_force_stepped', () => {
+  it('renders the force moved message with human step labels', () => {
+    const event = makeEvent(ActivityKind.batch_force_stepped, {
+      batchId: 'b1',
+      batchLabel: 'May 2026',
+      fromStep: 'am_review_design',
+      toStep: 'copy',
+      fromUserName: 'Mollie',
+      toUserName: 'Julio',
+      newHolderId: 'u_am',
+      reason: null,
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/force moved May 2026 from AM review \(design\) to Copy/),
+    ).toBeInTheDocument()
+  })
+
+  it('inlines the reason when present', () => {
+    const event = makeEvent(ActivityKind.batch_force_stepped, {
+      batchId: 'b1',
+      batchLabel: 'May 2026',
+      fromStep: 'am_review_design',
+      toStep: 'copy',
+      fromUserName: 'Mollie',
+      toUserName: 'Julio',
+      reason: 'redo brief',
+    })
+    render(<EventRenderer event={event} />)
+    const node = screen.getByText(/force moved May 2026 from AM review \(design\) to Copy\. Reason: "redo brief"/)
+    expect(node).toBeInTheDocument()
+    expect(node.textContent ?? '').not.toMatch(/[–—]/) // no em/en dashes
+  })
+
+  it('omits the reason clause when reason is null', () => {
+    const event = makeEvent(ActivityKind.batch_force_stepped, {
+      batchId: 'b1',
+      batchLabel: 'May 2026',
+      fromStep: 'am_review_design',
+      toStep: 'copy',
+      fromUserName: 'Mollie',
+      toUserName: 'Julio',
+      reason: null,
+    })
+    render(<EventRenderer event={event} />)
+    const node = screen.getByText(/force moved May 2026/)
+    expect(node.textContent ?? '').not.toMatch(/Reason:/)
+  })
+})
