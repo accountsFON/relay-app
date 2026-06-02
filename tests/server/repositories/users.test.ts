@@ -24,6 +24,7 @@ const mockUser: User = {
   linkedClientId: null,
   permissionOverrides: null,
   platformOwner: false,
+  deactivatedAt: null,
   createdAt: new Date(),
   onboardingTourSeenAt: null,
   launchPadDismissedAt: null,

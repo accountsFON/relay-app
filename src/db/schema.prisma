@@ -192,6 +192,7 @@ model User {
   linkedClientId       String?
   permissionOverrides  Json?
   platformOwner        Boolean   @default(false)
+  deactivatedAt        DateTime?
   createdAt            DateTime  @default(now())
   /// First time guided product tour persistence. Null = tour has not
   /// been dismissed yet, so the in app TourProvider auto fires (and
