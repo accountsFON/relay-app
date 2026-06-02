@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   ActivityKind,
+  RelayEventType,
   RelayRole,
   RelayStep,
   RevisionItemStatus,
@@ -145,6 +146,7 @@ import {
   completeRevisionItem,
   dispatchRevisions,
   finishBatch,
+  forceStep,
   getNotifyTargetsForStep,
   passBaton,
   sendBackBaton,
@@ -974,5 +976,178 @@ describe('finishBatch', () => {
     expect(activityCall.data.payload).toMatchObject({
       wasOverride: true,
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// forceStep: admin-only escape hatch. Moves a batch from ANY step to ANY
+// other step, bypassing LEGAL_TRANSITIONS entirely. Distinct from passBaton
+// (forward, gated) and sendBackBaton (backward, gated). The role check lives
+// at the action layer; the service does not enforce it.
+// ---------------------------------------------------------------------------
+
+describe('forceStep', () => {
+  it('moves batch bypassing the legal transition table', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    const result = await forceStep({
+      batchId: 'b1',
+      toStep: RelayStep.copy,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.toStep).toBe(RelayStep.copy)
+    expect(currentTx.tx.batch.update.mock.calls[0][0].data.currentStep).toBe(
+      RelayStep.copy,
+    )
+    expect(currentTx.tx.relayEvent.create.mock.calls[0][0].data.type).toBe(
+      RelayEventType.force_step,
+    )
+  })
+
+  it('rejects a no-op force step (toStep equals current step)', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await expect(
+      forceStep({
+        batchId: 'b1',
+        toStep: RelayStep.am_review_design,
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/No op/)
+  })
+
+  it('rejects the retired designs_completed destination', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await expect(
+      forceStep({
+        batchId: 'b1',
+        toStep: RelayStep.designs_completed,
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/retired/)
+  })
+
+  it('preserves revision items (never touches revision tables)', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.implementing_revisions,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await forceStep({
+      batchId: 'b1',
+      toStep: RelayStep.copy,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(currentTx.tx.revisionPlan.deleteMany).not.toHaveBeenCalled()
+    expect(currentTx.tx.revisionItem.update).not.toHaveBeenCalled()
+  })
+
+  it('clears completedAt when leaving the completed step', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.completed,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await forceStep({
+      batchId: 'b1',
+      toStep: RelayStep.am_review_design,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.completedAt).toBe(null)
+    expect(updateData.currentStep).toBe(RelayStep.am_review_design)
+  })
+
+  it('does not set completedAt when not leaving the completed step', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await forceStep({
+      batchId: 'b1',
+      toStep: RelayStep.copy,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect('completedAt' in currentTx.tx.batch.update.mock.calls[0][0].data).toBe(
+      false,
+    )
+  })
+
+  it('refuses when the batch is in a different org', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_other' },
+    })
+    await expect(
+      forceStep({
+        batchId: 'b1',
+        toStep: RelayStep.copy,
+        actorId: 'u_am',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/Relay not found/)
+  })
+
+  it('records a batch_force_stepped activity event with reason in payload', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      currentHolder: 'u_am',
+      label: '2026-05',
+      client: { organizationId: 'org_1' },
+    })
+    await forceStep({
+      batchId: 'b1',
+      toStep: RelayStep.copy,
+      reason: 'reset to redo brief',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(currentTx.tx.activityEvent.create).toHaveBeenCalledOnce()
+    const activityData = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(activityData.kind).toBe(ActivityKind.batch_force_stepped)
+    expect(activityData.payload.reason).toBe('reset to redo brief')
+    expect(activityData.payload.fromStep).toBe(RelayStep.am_review_design)
+    expect(activityData.payload.toStep).toBe(RelayStep.copy)
   })
 })

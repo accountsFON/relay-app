@@ -78,6 +78,14 @@ export interface CompleteRevisionItemInput {
   actorOrganizationId: string
 }
 
+export interface ForceStepInput {
+  batchId: string
+  toStep: RelayStep
+  reason?: string
+  actorId: string
+  actorOrganizationId: string
+}
+
 export class RelayServiceError extends Error {
   constructor(message: string) {
     super(message)
@@ -380,6 +388,114 @@ export async function finishBatch(input: FinishBatchInput) {
     )
 
     return { batchId: batch.id }
+  })
+}
+
+/**
+ * Admin / platform owner only. Moves a batch from its current step to
+ * `toStep`, bypassing the state machine's LEGAL_TRANSITIONS table. Both
+ * directions allowed. Permission gate lives at the action layer
+ * (relay.forceStep); the service does not check roles.
+ *
+ * Distinct from passBaton (forward/auto direction gate) and sendBackBaton
+ * (send_back direction gate). force step has no direction concept and
+ * writes a dedicated RelayEvent type.
+ *
+ * Side effects: updates step + holder + role; clears completedAt when
+ * leaving the completed step (so the auto-archive cron does not re-grab a
+ * reopened batch); reseeds the checklist for the destination; inserts a
+ * force_step RelayEvent; records a batch_force_stepped ActivityEvent
+ * (internal visibility). Does NOT touch RevisionItem rows.
+ */
+export async function forceStep(input: ForceStepInput) {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({
+      where: { id: input.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        currentHolder: true,
+        label: true,
+        client: { select: { organizationId: true } },
+      },
+    })
+    if (!batch) throw new RelayServiceError('Relay not found')
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
+
+    if (input.toStep === batch.currentStep) {
+      throw new RelayServiceError('No op force step: toStep equals current step')
+    }
+    if (input.toStep === RelayStep.designs_completed) {
+      throw new RelayServiceError(
+        'designs_completed is retired and cannot be a force step destination',
+      )
+    }
+
+    const next = await resolveHolderForStep(
+      tx,
+      batch.clientId,
+      input.toStep,
+      input.actorId,
+    )
+    const [fromUserName, toUserName] = await Promise.all([
+      loadUserName(tx, input.actorId),
+      loadUserName(tx, next.userId),
+    ])
+
+    const leavingCompleted = batch.currentStep === RelayStep.completed
+    await tx.batch.update({
+      where: { id: batch.id },
+      data: {
+        currentStep: input.toStep,
+        currentSubState: null,
+        currentHolder: next.userId,
+        currentRole: next.role,
+        ...(leavingCompleted ? { completedAt: null } : {}),
+      },
+    })
+
+    await tx.relayEvent.create({
+      data: {
+        batchId: batch.id,
+        type: RelayEventType.force_step,
+        fromStep: batch.currentStep,
+        toStep: input.toStep,
+        fromUser: input.actorId,
+        toUser: next.userId,
+        reason: input.reason ?? null,
+      },
+    })
+
+    await reseedChecklistForStep(tx, batch.id, input.toStep)
+
+    await recordActivity(
+      {
+        clientId: batch.clientId,
+        actorId: input.actorId,
+        kind: ActivityKind.batch_force_stepped,
+        visibility: EventVisibility.internal,
+        payload: {
+          batchId: batch.id,
+          batchLabel: batch.label,
+          fromStep: batch.currentStep,
+          toStep: input.toStep,
+          fromUserName,
+          toUserName,
+          newHolderId: next.userId,
+          reason: input.reason ?? null,
+        },
+        mentionedUserIds: mentionsExcludingActor(
+          next.notifyUserIds,
+          input.actorId,
+        ),
+      },
+      tx,
+    )
+
+    return { batchId: batch.id, toStep: input.toStep, newHolderId: next.userId }
   })
 }
 
