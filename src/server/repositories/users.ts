@@ -1,4 +1,5 @@
 import { db } from '@/db/client'
+import type { DbTx } from '@/db/client'
 import type { UserRole } from '@/lib/types'
 
 export async function findUserByClerkId(clerkUserId: string) {
@@ -83,6 +84,7 @@ export interface AdminRecipient {
 export async function findAdminRecipients(): Promise<AdminRecipient[]> {
   const rows = await db.user.findMany({
     where: {
+      deactivatedAt: null,
       OR: [{ role: 'admin' }, { platformOwner: true }],
     },
     select: { id: true, name: true, email: true },
@@ -98,4 +100,117 @@ export async function findAdminRecipients(): Promise<AdminRecipient[]> {
     out.push({ id: r.id, name: r.name, email: r.email })
   }
   return out
+}
+
+/**
+ * Set or clear the deactivation timestamp on a user. A non-null
+ * `deactivatedAt` marks the account as deactivated (soft disable); the
+ * auth gate and assignment pickers exclude these users.
+ */
+export async function setUserDeactivated(userId: string, value: boolean) {
+  return db.user.update({
+    where: { id: userId },
+    data: { deactivatedAt: value ? new Date() : null },
+  })
+}
+
+/**
+ * Count every record that points at `userId` via a Restrict FK, scoped
+ * to the org where the scoping field exists. Used to warn an admin (and
+ * gate hard delete) before removing a user, since these rows would block
+ * the delete otherwise.
+ */
+export async function countUserOwnedRecords(
+  userId: string,
+  organizationId: string,
+) {
+  const [
+    heldBatches,
+    assignedAmClients,
+    assignedDesignerClients,
+    triggeredRuns,
+    createdMagicLinks,
+  ] = await Promise.all([
+    db.batch.count({ where: { currentHolder: userId } }),
+    db.client.count({ where: { assignedAmId: userId, organizationId } }),
+    db.client.count({ where: { assignedDesignerId: userId, organizationId } }),
+    db.contentRun.count({ where: { triggeredById: userId } }),
+    db.magicLink.count({ where: { createdBy: userId } }),
+  ])
+  return {
+    heldBatches,
+    assignedAmClients,
+    assignedDesignerClients,
+    triggeredRuns,
+    createdMagicLinks,
+  }
+}
+
+/**
+ * List active (non-deactivated) users in an org, excluding one user.
+ * Powers reassignment pickers so a departing user cannot be chosen as
+ * the new owner of their own records.
+ */
+export async function listActiveAssignableUsers(
+  organizationId: string,
+  excludeUserId: string,
+) {
+  return db.user.findMany({
+    where: {
+      deactivatedAt: null,
+      id: { not: excludeUserId },
+      memberships: { some: { organizationId } },
+    },
+    select: { id: true, name: true, email: true, role: true },
+    orderBy: { name: 'asc' },
+  })
+}
+
+/**
+ * Count platform owners. Used to block deactivating or deleting the last
+ * platform owner.
+ */
+export async function countPlatformOwners() {
+  return db.user.count({ where: { platformOwner: true } })
+}
+
+/**
+ * Move every Restrict FK off `fromUserId` onto `toUserId`, and null any
+ * audit rows that point at `fromUserId` as target (the AuditTarget FK is
+ * Restrict and would otherwise block the row delete). Must run inside the
+ * caller's transaction.
+ */
+export async function reassignUserOwnedRecords(
+  tx: DbTx,
+  fromUserId: string,
+  toUserId: string,
+) {
+  await tx.batch.updateMany({
+    where: { currentHolder: fromUserId },
+    data: { currentHolder: toUserId },
+  })
+  await tx.client.updateMany({
+    where: { assignedAmId: fromUserId },
+    data: { assignedAmId: toUserId },
+  })
+  await tx.client.updateMany({
+    where: { assignedDesignerId: fromUserId },
+    data: { assignedDesignerId: toUserId },
+  })
+  await tx.contentRun.updateMany({
+    where: { triggeredById: fromUserId },
+    data: { triggeredById: toUserId },
+  })
+  await tx.magicLink.updateMany({
+    where: { createdBy: fromUserId },
+    data: { createdBy: toUserId },
+  })
+  await tx.permissionAuditLog.updateMany({
+    where: { actorUserId: fromUserId },
+    data: { actorUserId: toUserId },
+  })
+  await tx.permissionAuditLog.updateMany({
+    where: { targetUserId: fromUserId },
+    data: { targetUserId: null },
+  })
 }
