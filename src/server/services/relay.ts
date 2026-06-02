@@ -478,6 +478,7 @@ export async function forceStep(input: ForceStepInput) {
         kind: ActivityKind.batch_force_stepped,
         visibility: EventVisibility.internal,
         payload: {
+          kind: 'batch_force_stepped',
           batchId: batch.id,
           batchLabel: batch.label,
           fromStep: batch.currentStep,

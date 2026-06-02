@@ -194,6 +194,15 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
           ? `overrode the holder and finished ${p.batchLabel}`
           : `finished ${p.batchLabel}`,
       }
+    case 'batch_force_stepped':
+      if (p.kind !== 'batch_force_stepped') break
+      return {
+        icon: ShieldCheck,
+        tone: 'warning',
+        message: p.reason
+          ? `force moved ${p.batchLabel} from ${relayStepLabel(p.fromStep)} to ${relayStepLabel(p.toStep)}. Reason: "${truncate(p.reason, 60)}"`
+          : `force moved ${p.batchLabel} from ${relayStepLabel(p.fromStep)} to ${relayStepLabel(p.toStep)}`,
+      }
     case 'batch_step_advanced':
       if (p.kind !== 'batch_step_advanced') break
       return {

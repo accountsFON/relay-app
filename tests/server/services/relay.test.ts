@@ -1149,5 +1149,6 @@ describe('forceStep', () => {
     expect(activityData.payload.reason).toBe('reset to redo brief')
     expect(activityData.payload.fromStep).toBe(RelayStep.am_review_design)
     expect(activityData.payload.toStep).toBe(RelayStep.copy)
+    expect(currentTx.tx.activityEvent.create.mock.calls[0][0].data.payload.kind).toBe('batch_force_stepped')
   })
 })

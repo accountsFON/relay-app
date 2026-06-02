@@ -87,6 +87,17 @@ export type ModeledActivityPayload =
       wasOverride?: boolean
     }
   | {
+      kind: 'batch_force_stepped'
+      batchId: string
+      batchLabel: string
+      fromStep: RelayStep
+      toStep: RelayStep
+      fromUserName: string
+      toUserName: string
+      newHolderId?: string
+      reason: string | null
+    }
+  | {
       kind: 'post_thread_opened'
       threadId: string
       postId: string
