@@ -21,6 +21,7 @@ export const PERMISSION_KEYS = [
   'relay.completeRevisionItem',
   'relay.takeOver',
   'relay.completeOnboarding',
+  'relay.forceStep',
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
@@ -46,6 +47,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'relay.completeRevisionItem': 'Mark a revision item complete',
   'relay.takeOver': 'Take over a stuck relay from another holder',
   'relay.completeOnboarding': 'Mark a client onboarding gate complete',
+  'relay.forceStep': 'Force a relay to any step (admin override)',
 }
 
 type PermissionMatrix = Record<UserRole, Record<PermissionKey, boolean>>
@@ -72,6 +74,7 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.completeRevisionItem': true,
     'relay.takeOver': true,
     'relay.completeOnboarding': true,
+    'relay.forceStep': true,
   },
   account_manager: {
     'client.view': true,
@@ -94,6 +97,7 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.completeRevisionItem': true,
     'relay.takeOver': false,
     'relay.completeOnboarding': false,
+    'relay.forceStep': false,
   },
   designer: {
     'client.view': true,
@@ -116,6 +120,7 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.completeRevisionItem': true,
     'relay.takeOver': false,
     'relay.completeOnboarding': false,
+    'relay.forceStep': false,
   },
   client: {
     'client.view': true,
@@ -138,6 +143,7 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.completeRevisionItem': false,
     'relay.takeOver': false,
     'relay.completeOnboarding': false,
+    'relay.forceStep': false,
   },
 }
 
