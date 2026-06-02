@@ -15,7 +15,10 @@ vi.mock('@/server/actions/relay', () => ({
   passBatonAction: vi.fn(),
   sendBackBatonAction: vi.fn(),
   tickChecklistItemAction: vi.fn(),
+  forceStepAction: vi.fn(),
 }))
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function makeBatch(overrides: Partial<BatchSummary> = {}): BatchSummary {
   return {
@@ -108,5 +111,37 @@ describe('ChecklistPanel CTA label (Phase 3 item 16)', () => {
     expect(
       screen.getByRole('button', { name: /pass to in design/i }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('ChecklistPanel admin force-step gating (Task 8)', () => {
+  it('shows the Admin tools section when canForceStep is true', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch()}
+        items={[]}
+        canAct={true}
+        nextStep={RelayStep.am_qa_pre_client}
+        canForceStep={true}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: /admin tools/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('hides the Admin tools section when canForceStep is false', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch()}
+        items={[]}
+        canAct={true}
+        nextStep={RelayStep.am_qa_pre_client}
+        canForceStep={false}
+      />,
+    )
+    expect(
+      screen.queryByRole('button', { name: /admin tools/i }),
+    ).not.toBeInTheDocument()
   })
 })
