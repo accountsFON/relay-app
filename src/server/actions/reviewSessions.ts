@@ -24,6 +24,7 @@ import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import {
   ReviewSubmittedDigestEmail,
   buildSubject,
+  type DigestPin,
   type DigestReviewItem,
   type ReviewSubmittedDigestEmailProps,
 } from '@/server/emails/ReviewSubmittedDigestEmail'
@@ -358,6 +359,63 @@ export async function submitSessionAction(input: {
       })
     : []
 
+  // Pull open, client-left pins for every post in the batch so the digest
+  // can render a Pins subsection per post (Wave J4). Scope:
+  //   - status open  → resolved pins are AM-cleared, no need to re-surface
+  //   - reviewerToken NOT null  → only client-left pins (AMs leave their
+  //     own pins from the AM surface; those are not "client feedback")
+  //   - first comment only  → the pin's initial body; replies live in-app
+  // We index by postId on the client side so the per-item loop below can
+  // attach pins without an N+1.
+  const pinRows =
+    link && posts.length > 0
+      ? await db.postThread.findMany({
+          where: {
+            postId: { in: posts.map((p) => p.id) },
+            status: 'open',
+            reviewerToken: { not: null },
+          },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            postId: true,
+            imageX: true,
+            imageY: true,
+            captionFrom: true,
+            captionTo: true,
+            comments: {
+              orderBy: { createdAt: 'asc' },
+              take: 1,
+              select: { body: true, reviewerName: true },
+            },
+          },
+        })
+      : []
+
+  const pinsByPostId = new Map<string, DigestPin[]>()
+  for (const row of pinRows) {
+    const first = row.comments[0]
+    const kind: DigestPin['kind'] =
+      row.imageX !== null && row.imageY !== null
+        ? 'image'
+        : row.captionFrom !== null && row.captionTo !== null
+          ? 'caption'
+          : 'post'
+    const pin: DigestPin = {
+      id: row.id,
+      kind,
+      imageX: row.imageX,
+      imageY: row.imageY,
+      captionFrom: row.captionFrom,
+      captionTo: row.captionTo,
+      body: first?.body ?? '',
+      reviewerName: first?.reviewerName?.trim() || 'Reviewer',
+    }
+    const bucket = pinsByPostId.get(row.postId)
+    if (bucket) bucket.push(pin)
+    else pinsByPostId.set(row.postId, [pin])
+  }
+
   // Always emit the activity event, it is the durable audit trail and
   // does not depend on the email succeeding. recordActivity is itself
   // try/catch-wrapped so this cannot throw.
@@ -419,6 +477,7 @@ export async function submitSessionAction(input: {
             caption: lookup.post.caption,
           },
           postNumber: lookup.number,
+          pins: pinsByPostId.get(item.postId) ?? [],
         })
       }
       // Email-side ordering: walk in batch order so the AM reads the
