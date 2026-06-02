@@ -171,7 +171,7 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
         </div>
       </PageSection>
 
-      <PageSection title="Crawl Settings">
+      <PageSection title="Crawl settings">
         <Field label="Automatic crawling" htmlFor="autoCrawl">
           <select
             id="autoCrawl"

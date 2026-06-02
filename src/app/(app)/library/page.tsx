@@ -214,7 +214,7 @@ export default async function LibraryPage() {
 
       <div className="mt-10 space-y-8">
         {knownIssues.length > 0 && (
-          <PageSection title="Known Issues & Missing Features">
+          <PageSection title="Known issues & missing features">
             <ul className="divide-y divide-border rounded-md border border-border bg-background">
               {knownIssues.map((issue) => (
                 <li

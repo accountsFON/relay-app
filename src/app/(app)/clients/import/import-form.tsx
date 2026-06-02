@@ -117,7 +117,7 @@ export function ImportForm() {
         <Card className="p-4">
           {result.ok ? (
             <div>
-              <p className="text-sm font-semibold text-green-700">
+              <p className="text-sm font-semibold text-emerald-700">
                 Imported {result.createdCount}{' '}
                 {result.createdCount === 1 ? 'client' : 'clients'}.
               </p>
