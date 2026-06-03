@@ -1,14 +1,9 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { toSocialPlannerCsv, type SocialPlannerPost } from '@/lib/social-planner-csv'
 
-type ExportPost = {
-  date: string
-  caption: string
-  hashtags: string
-  graphicHook: string
-  designerNotes: string
-}
+export type ExportPost = SocialPlannerPost
 
 export function ExportButton({
   posts,
@@ -18,16 +13,7 @@ export function ExportButton({
   filename: string
 }) {
   const handleExport = () => {
-    const headers = ['Date', 'Caption', 'Hashtags', 'Graphic Hook', 'Designer Notes']
-    const rows = posts.map((p) => [
-      p.date,
-      escapeCsv(p.caption),
-      escapeCsv(p.hashtags),
-      escapeCsv(p.graphicHook),
-      escapeCsv(p.designerNotes),
-    ])
-
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+    const csv = toSocialPlannerCsv(posts)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -42,11 +28,4 @@ export function ExportButton({
       Export CSV
     </Button>
   )
-}
-
-function escapeCsv(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`
-  }
-  return value
 }

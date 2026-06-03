@@ -401,8 +401,7 @@ export default async function BatchDetailPage({
                   date: p.postDate.toISOString().split('T')[0],
                   caption: p.caption,
                   hashtags: p.hashtags.join(' '),
-                  graphicHook: p.graphicHook ?? '',
-                  designerNotes: p.designerNotes ?? '',
+                  mediaUrl: p.mediaUrls?.[0] ?? '',
                 }))}
                 filename={`${client.name}-${targetMonth}`}
               />
