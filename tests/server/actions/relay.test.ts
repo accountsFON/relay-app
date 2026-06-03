@@ -56,6 +56,7 @@ import {
   sendBackBatonAction,
   finishBatchAction,
   forceStepAction,
+  tickChecklistItemAction,
 } from '@/server/actions/relay'
 import { RelayStep } from '@prisma/client'
 
@@ -438,5 +439,52 @@ describe('forceStepAction permission gate', () => {
       forceStepAction({ batchId: 'b1', toStep: RelayStep.copy }),
     ).rejects.toThrow(/relay not found/i)
     expect(vi.mocked(forceStep)).not.toHaveBeenCalled()
+  })
+})
+
+describe('tickChecklistItemAction holder-override gate', () => {
+  function seedItemAndBatch(currentHolder: string) {
+    vi.mocked(db.checklistItem.findUnique).mockResolvedValue({
+      id: 'item1',
+      batchId: 'b1',
+    } as never)
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      currentHolder,
+      clientId: 'c1',
+    } as never)
+    vi.mocked(db.checklistItem.update).mockResolvedValue({} as never)
+  }
+
+  it('lets the current holder tick their own item', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    seedItemAndBatch('u_actor') // ctx.userDbId is u_actor
+    const result = await tickChecklistItemAction({ itemId: 'item1', checked: true })
+    expect(result).toEqual({ ok: true })
+    expect(db.checklistItem.update).toHaveBeenCalled()
+  })
+
+  it('lets an admin who is NOT the holder tick (override)', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    seedItemAndBatch('someone_else')
+    const result = await tickChecklistItemAction({ itemId: 'item1', checked: true })
+    expect(result).toEqual({ ok: true })
+    expect(db.checklistItem.update).toHaveBeenCalled()
+  })
+
+  it('lets an account manager who is NOT the holder tick (override)', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    seedItemAndBatch('someone_else')
+    const result = await tickChecklistItemAction({ itemId: 'item1', checked: false })
+    expect(result).toEqual({ ok: true })
+    expect(db.checklistItem.update).toHaveBeenCalled()
+  })
+
+  it('rejects a designer who is NOT the holder', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    seedItemAndBatch('someone_else')
+    await expect(
+      tickChecklistItemAction({ itemId: 'item1', checked: true }),
+    ).rejects.toThrow(/current holder, an AM, or an admin/i)
+    expect(db.checklistItem.update).not.toHaveBeenCalled()
   })
 })
