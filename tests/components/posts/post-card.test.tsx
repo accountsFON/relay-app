@@ -246,3 +246,33 @@ describe('PostCard image section', () => {
     expect(screen.queryByRole('button', { name: 'AI redo' })).not.toBeInTheDocument()
   })
 })
+
+describe('PostCard reflects server updates (restore / redo)', () => {
+  it('renders the updated caption prop, not stale local state', () => {
+    const { rerender } = render(<PostCard post={basePost} canEdit />)
+    expect(
+      screen.getByText(/A wonderful caption that should be visible/i),
+    ).toBeInTheDocument()
+
+    // A restore/redo changes the post body server-side; the new caption
+    // arrives as a prop. The displayed caption must follow the prop, not the
+    // local edit buffer seeded at mount.
+    rerender(
+      <PostCard post={{ ...basePost, caption: 'Restored older caption' }} canEdit />,
+    )
+    expect(screen.getByText('Restored older caption')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/A wonderful caption that should be visible/i),
+    ).not.toBeInTheDocument()
+  })
+
+  it('seeds the edit textarea from the current caption prop when opening edit', () => {
+    const { rerender } = render(<PostCard post={basePost} canEdit />)
+    rerender(
+      <PostCard post={{ ...basePost, caption: 'Updated caption' }} canEdit />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const textarea = screen.getByLabelText('Caption') as HTMLTextAreaElement
+    expect(textarea.value).toBe('Updated caption')
+  })
+})
