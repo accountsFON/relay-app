@@ -24,7 +24,7 @@ export async function updatePostAction(
   // findPostById is now scoped: returns null if the actor has no membership
   // in the post's org. Treat null as "post does not exist" (404 semantics)
   // to avoid leaking existence across org boundaries.
-  const before = await findPostById(postId, ctx.userDbId)
+  const before = await findPostById(postId, ctx)
   if (!before) return
 
   // Snapshot the prior body BEFORE the update so we can restore to it.
@@ -95,7 +95,7 @@ export async function restorePostVersionAction(versionId: string) {
   // Scope-check the post before reading or writing. If the actor has no
   // membership in the post's org, treat it as "not found" (404 semantics
   // matching findClientForUser).
-  const current = await findPostById(version.postId, ctx.userDbId)
+  const current = await findPostById(version.postId, ctx)
   if (!current) throw new Error('Post not found')
 
   await snapshotPostVersion({
@@ -147,7 +147,7 @@ export async function restorePostVersionAction(versionId: string) {
 export async function redoPostAction(postId: string) {
   const ctx = await requireClientEditor()
 
-  const before = await findPostById(postId, ctx.userDbId)
+  const before = await findPostById(postId, ctx)
   if (!before) throw new Error('Post not found')
 
   const result = await redoPostCaption({

@@ -41,7 +41,7 @@ export async function POST(
   }
 
   const ctx = await requirePostMediaEditor()
-  const existing = await findPostById(postId, ctx.userDbId)
+  const existing = await findPostById(postId, ctx)
   if (!existing) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }

@@ -1,7 +1,8 @@
 import { db } from '@/db/client'
 import { writeTrashAudit } from '@/server/repositories/trashAuditLogs'
 import { can } from '@/server/auth/permissions'
-import type { UserRole } from '@/lib/types'
+import { findClientForUser } from '@/server/repositories/clients'
+import type { OrgContext, UserRole } from '@/lib/types'
 
 /**
  * Checks that `actorUserId` holds an org membership for the given
@@ -111,33 +112,23 @@ export async function findPostsByRun(contentRunId: string) {
 }
 
 /**
- * Returns the post if `actorUserId` has membership in the post's
- * organization, else null. Mirrors the existing findClientForUser
- * convention: out-of-scope returns null so callers can `notFound()`
- * (404, not 403) and avoid leaking existence across org boundaries.
+ * Returns the post if the actor's ctx grants access to the post's client,
+ * else null. Delegates to the canonical per-client scope check
+ * (findClientForUser) so every post-write path inherits per-client scoping,
+ * not just org-membership scoping.
  *
- * Without the scope check, any authenticated user who knew (or guessed)
- * a post id could read post bodies from any other agency.
+ * Out-of-scope returns null so callers can `notFound()` (404, not 403) and
+ * avoid leaking existence across org or client boundaries.
  */
-export async function findPostById(id: string, actorUserId: string) {
+export async function findPostById(id: string, ctx: OrgContext) {
   const post = await db.post.findUnique({ where: { id } })
   if (!post) return null
 
-  const client = await db.client.findUnique({
-    where: { id: post.clientId },
-    select: { organizationId: true },
-  })
+  // The post's client must be within the actor's scope (active org + role and
+  // assignment), not merely org membership. Delegates to the canonical scoped
+  // client lookup so every post-write path inherits per-client scoping.
+  const client = await findClientForUser(ctx, post.clientId)
   if (!client) return null
-
-  const membership = await db.membership.findUnique({
-    where: {
-      userId_organizationId: {
-        userId: actorUserId,
-        organizationId: client.organizationId,
-      },
-    },
-  })
-  if (!membership) return null
 
   return post
 }
