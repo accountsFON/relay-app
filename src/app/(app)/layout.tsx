@@ -54,6 +54,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!ctx) {
     const dbUser = await findUserByClerkId(userId)
     if (!dbUser) redirect('/onboarding')
+    if (dbUser.deactivatedAt) redirect('/no-access?reason=closed')
 
     // Ghost-org fallback: Clerk session points at an org that has no DB
     // counterpart (created via Clerk dashboard / API outside our flows).
