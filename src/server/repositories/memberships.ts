@@ -96,6 +96,21 @@ export async function updateMembershipRole(
     }
   }
 
+  // A `client`-role user is scoped to `User.linkedClientId`. With no linked
+  // client they can load no clients and 404 navigating anywhere. Block the
+  // role change until the account is linked so we never mint a broken account.
+  if (newRole === 'client') {
+    const user = await db.user.findUnique({
+      where: { id: current.userId },
+      select: { linkedClientId: true },
+    })
+    if (!user?.linkedClientId) {
+      throw new Error(
+        'Link this account to a client before setting the client role. A client account with no linked client cannot see anything.',
+      )
+    }
+  }
+
   return db.membership.update({
     where: { id: membershipId },
     data: { role: newRole },

@@ -1,5 +1,6 @@
-import { notFound, redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findContentRunForOrg } from '@/server/repositories/contentRuns'
 import { db } from '@/db/client'
@@ -11,7 +12,10 @@ import { db } from '@/db/client'
  *  - If the run has posts but no batchId (rare legacy data), → client page
  *  - If the run has zero posts, look up a batch matching this client +
  *    targetMonth via label heuristic; else fall back to client page
- *  - If the run does not exist OR is not in the actor's scope, 404
+ *  - If the run does not exist OR is not in the actor's scope, redirect to
+ *    a safe home via redirectAccessDenied() (uniform for out-of-scope and
+ *    truly-missing so it stays non-leaky; a role change never dead-ends the
+ *    signed-in user in a 404)
  *
  * Per spec § Section A routing table.
  *
@@ -35,10 +39,10 @@ export default async function RunRedirectPage({
   // used by every other route inside (app)/clients/[id]/. Out-of-scope
   // returns null so we notFound() rather than 403.
   const client = await findClientForUser(ctx, id)
-  if (!client) notFound()
+  if (!client) redirectAccessDenied()
 
   const run = await findContentRunForOrg(runId, ctx.organizationDbId)
-  if (!run || run.clientId !== id) notFound()
+  if (!run || run.clientId !== id) redirectAccessDenied()
 
   const postWithBatch = await db.post.findFirst({
     where: { contentRunId: runId, batchId: { not: null } },
