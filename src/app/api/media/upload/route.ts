@@ -20,7 +20,7 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
  *
  * Permission: SDK mode is authorized inside onBeforeGenerateToken via
  * findPostById. Direct mode is authorized at the top of this handler via
- * requireClientEditor + findPostById (matches the pattern used by
+ * requirePostMediaEditor + findPostById (matches the pattern used by
  * src/server/actions/posts.ts updatePostAction).
  */
 export async function POST(req: NextRequest) {
