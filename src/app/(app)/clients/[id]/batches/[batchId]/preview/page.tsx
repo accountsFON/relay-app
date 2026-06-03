@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { requireClientViewer, canEditClients } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients, canUploadPostMedia } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -91,6 +91,7 @@ export default async function BatchPreviewPage({
 
   // Drive the bulk tray visibility off the same canEdit gate the batch page uses.
   const canEdit = canEditClients(ctx)
+  const canUploadMedia = canUploadPostMedia(ctx)
 
   // Total open thread count across the whole batch powers the
   // Mark batch reviewed confirm dialog copy.
@@ -135,6 +136,7 @@ export default async function BatchPreviewPage({
           client={{ id: client.id, name: client.name }}
           posts={hydratedPosts}
           canEdit={canEdit}
+          canUploadMedia={canUploadMedia}
         />
       </div>
 

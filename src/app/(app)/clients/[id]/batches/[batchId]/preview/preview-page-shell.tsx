@@ -32,6 +32,7 @@ export type PreviewPageShellProps = {
   client: { id: string; name: string }
   posts: ReadonlyArray<PreviewShellPost>
   canEdit: boolean
+  canUploadMedia: boolean
   /**
    * 'internal' = AM Clerk-authenticated; 'review' = magic-link client view.
    * Defaults to 'internal' for backwards compatibility with the existing
@@ -59,6 +60,7 @@ export function PreviewPageShell({
   client,
   posts,
   canEdit,
+  canUploadMedia,
   mode = 'internal',
 }: PreviewPageShellProps) {
   const router = useRouter()
@@ -132,7 +134,7 @@ export function PreviewPageShell({
                   )}
                 </div>
 
-                {canEdit && (
+                {canUploadMedia && (
                   <MediaUpload
                     postId={post.id}
                     currentMediaUrl={post.mediaUrl}

@@ -18,6 +18,7 @@ vi.mock('@/server/auth/access', () => ({
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
   canEditClients: vi.fn(),
+  canUploadPostMedia: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/clients', () => ({
@@ -80,12 +81,14 @@ vi.mock(
       client: { id: string; name: string }
       posts: ReadonlyArray<{ id: string }>
       canEdit: boolean
+      canUploadMedia: boolean
     }) => (
       <div
         data-testid="preview-page-shell-stub"
         data-batch-id={props.batchId}
         data-client-id={props.client.id}
         data-can-edit={String(props.canEdit)}
+        data-can-upload-media={String(props.canUploadMedia)}
       >
         {props.posts.map((p) => (
           <div key={p.id} data-testid="preview-shell-post" data-post-id={p.id} />
@@ -99,6 +102,7 @@ import BatchPreviewPage from '@/app/(app)/clients/[id]/batches/[batchId]/preview
 import {
   requireClientViewer,
   canEditClients,
+  canUploadPostMedia,
 } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -158,6 +162,7 @@ describe('BatchPreviewPage', () => {
     vi.clearAllMocks()
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtx)
     vi.mocked(canEditClients).mockReturnValue(true)
+    vi.mocked(canUploadPostMedia).mockReturnValue(true)
     vi.mocked(findClientForUser).mockResolvedValue(mockClient as never)
     vi.mocked(findBatch).mockResolvedValue(mockBatch as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)

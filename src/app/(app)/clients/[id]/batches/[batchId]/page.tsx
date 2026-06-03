@@ -1,5 +1,5 @@
 import { RelayStep } from '@prisma/client'
-import { requireClientViewer, canEditClients } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients, canUploadPostMedia } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -67,6 +67,7 @@ export default async function BatchDetailPage({
 }) {
   const ctx = await requireClientViewer()
   const canEdit = canEditClients(ctx)
+  const canUploadMedia = canUploadPostMedia(ctx)
   const { id, batchId } = await params
   const sp = await searchParams
   const dateScope = parseDateScope({
@@ -583,6 +584,7 @@ export default async function BatchDetailPage({
                             canEdit={canEdit}
                             postNumber={idx + 1}
                             mediaUrl={post.mediaUrls?.[0] ?? null}
+                            canUploadMedia={canUploadMedia}
                           />
                           <PostVersionHistory postId={post.id} versions={versionRows} />
                         </div>
