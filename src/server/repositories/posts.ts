@@ -1,7 +1,7 @@
 import { db } from '@/db/client'
 import { writeTrashAudit } from '@/server/repositories/trashAuditLogs'
 import { can } from '@/server/auth/permissions'
-import { findClientForUser } from '@/server/repositories/clients'
+import { getClientScopeFilter } from '@/server/auth/scope'
 import type { OrgContext, UserRole } from '@/lib/types'
 
 /**
@@ -113,9 +113,8 @@ export async function findPostsByRun(contentRunId: string) {
 
 /**
  * Returns the post if the actor's ctx grants access to the post's client,
- * else null. Delegates to the canonical per-client scope check
- * (findClientForUser) so every post-write path inherits per-client scoping,
- * not just org-membership scoping.
+ * else null. Performs an inline scoped client lookup so every post-write path
+ * inherits per-client scoping, not just org-membership scoping.
  *
  * Out-of-scope returns null so callers can `notFound()` (404, not 403) and
  * avoid leaking existence across org or client boundaries.
@@ -124,10 +123,19 @@ export async function findPostById(id: string, ctx: OrgContext) {
   const post = await db.post.findUnique({ where: { id } })
   if (!post) return null
 
-  // The post's client must be within the actor's scope (active org + role and
-  // assignment), not merely org membership. Delegates to the canonical scoped
-  // client lookup so every post-write path inherits per-client scoping.
-  const client = await findClientForUser(ctx, post.clientId)
+  // The post's client must be within the actor's scope: same active org AND
+  // (admin/platformOwner: any; AM: assigned-AM; designer: assigned-designer;
+  // client: linked). Uses the default soft-delete-filtered findFirst so writes
+  // on archived clients are excluded, matching the prior behavior. This closes
+  // the direct-API write gap on every path that authorizes via findPostById.
+  const client = await db.client.findFirst({
+    where: {
+      id: post.clientId,
+      organizationId: ctx.organizationDbId,
+      ...getClientScopeFilter(ctx),
+    },
+    select: { id: true },
+  })
   if (!client) return null
 
   return post

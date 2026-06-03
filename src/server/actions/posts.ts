@@ -21,9 +21,9 @@ export async function updatePostAction(
 ) {
   const ctx = await requireClientEditor()
 
-  // findPostById is now scoped: returns null if the actor has no membership
-  // in the post's org. Treat null as "post does not exist" (404 semantics)
-  // to avoid leaking existence across org boundaries.
+  // findPostById is now per-client scoped: returns null unless the post's
+  // client is within the actor's scope. Treat null as "post does not exist"
+  // (404 semantics) to avoid leaking existence across org or client boundaries.
   const before = await findPostById(postId, ctx)
   if (!before) return
 
