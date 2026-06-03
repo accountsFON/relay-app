@@ -182,7 +182,7 @@ export function AppShell({
             href={settingsNavItem.href}
             label={settingsNavItem.label}
             icon={settingsNavItem.icon}
-            isActive={pathname.startsWith(settingsNavItem.href)}
+            isActive={pathname.startsWith('/settings')}
           />
         </div>
 

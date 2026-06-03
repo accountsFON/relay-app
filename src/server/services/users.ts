@@ -3,6 +3,7 @@ import { db } from '@/db/client'
 import {
   reassignUserOwnedRecords,
   countPlatformOwners,
+  findOrgsWhereLastActiveAdmin,
 } from '@/server/repositories/users'
 
 /**
@@ -188,4 +189,92 @@ export async function hardDeleteUser(input: {
     reassignedToUserId: input.reassignToUserId,
     clerkDeleted,
   }
+}
+
+/**
+ * Decide whether the given user may close (self deactivate) their own
+ * account, and if not, why. Shared by the settings page (to disable the
+ * button with a reason) and the action (to throw). Blocks the last platform
+ * owner globally and the last active admin of any org the user belongs to,
+ * because a global `deactivatedAt` would orphan that org.
+ */
+export async function getSelfDeactivationBlock(input: {
+  userId: string
+  isPlatformOwner: boolean
+}): Promise<{ blocked: boolean; reason: string | null }> {
+  if (input.isPlatformOwner) {
+    const owners = await countPlatformOwners()
+    if (owners <= 1) {
+      return {
+        blocked: true,
+        reason:
+          'You are the last platform owner. Hand the platform owner role to someone else before closing your account.',
+      }
+    }
+  }
+  const orphanOrgs = await findOrgsWhereLastActiveAdmin(input.userId)
+  if (orphanOrgs.length > 0) {
+    return {
+      blocked: true,
+      reason: `You are the last admin of ${orphanOrgs[0].name}. Make someone else an admin, or have another admin remove you, before closing your account.`,
+    }
+  }
+  return { blocked: false, reason: null }
+}
+
+/**
+ * Self service "delete my account". Implemented as a self initiated soft
+ * deactivation: sets `deactivatedAt` (the auth gate then locks the user out
+ * of every surface and the pickers hide them) and writes a distinct
+ * `user.self_deactivated` audit row. Owned work is NOT reassigned; it waits
+ * for an admin. Runs the shared guard first so the last admin / last platform
+ * owner cannot orphan an org.
+ */
+export async function selfDeactivateUser(input: {
+  actorId: string
+  actorOrganizationId: string
+  actorIsPlatformOwner: boolean
+}) {
+  const block = await getSelfDeactivationBlock({
+    userId: input.actorId,
+    isPlatformOwner: input.actorIsPlatformOwner,
+  })
+  if (block.blocked) {
+    throw new UserServiceError(block.reason ?? 'You cannot close your account.')
+  }
+
+  // Resolve an org to attribute the audit row to. The actor's ctx org is
+  // normally set, but a platform owner with no membership resolves to an
+  // empty org id (placeholder ctx in getOrgContext). Fall back to their
+  // first membership; if they belong to no org at all, skip the audit row
+  // (the deactivatedAt timestamp on the user is itself the record). The
+  // deactivation itself must always proceed.
+  let auditOrgId = input.actorOrganizationId
+  if (!auditOrgId) {
+    const membership = await db.membership.findFirst({
+      where: { userId: input.actorId },
+      orderBy: { createdAt: 'asc' },
+      select: { organizationId: true },
+    })
+    auditOrgId = membership?.organizationId ?? ''
+  }
+
+  return db.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: input.actorId },
+      data: { deactivatedAt: new Date() },
+    })
+    if (auditOrgId) {
+      await tx.permissionAuditLog.create({
+        data: {
+          organizationId: auditOrgId,
+          actorUserId: input.actorId,
+          targetUserId: input.actorId,
+          permissionKey: 'user.self_deactivated',
+          usedPlatformOverride: false,
+        },
+      })
+    }
+    return { userId: input.actorId, deactivated: true }
+  })
 }
