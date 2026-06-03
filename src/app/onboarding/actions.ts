@@ -10,6 +10,7 @@ import {
 } from '@/server/repositories/organizations'
 import { createMembership } from '@/server/repositories/memberships'
 import { isPlatformOwnerEmail } from '@/server/auth/platformOwner'
+import { isAgencyCreationEnabled } from '@/server/auth/agencyCreation'
 import type { UserRole } from '@/lib/types'
 
 export async function completeOnboarding(formData: FormData) {
@@ -37,6 +38,14 @@ export async function completeOnboarding(formData: FormData) {
   // param after consuming it.
   const isInvite =
     Boolean(inviteTicket) || (!existingUser && Boolean(clerkActiveOrgId))
+
+  // Invite-only gate. Self-serve agency creation stays closed until sell-mode
+  // (RELAY_ALLOW_AGENCY_CREATION=true). A no-invite visitor cannot create an
+  // org, so bounce to the invite-only screen before any write. Defense in
+  // depth with the page-level guard in page.tsx.
+  if (!isInvite && !isAgencyCreationEnabled()) {
+    redirect('/invite-only')
+  }
 
   if (existingUser && !isInvite) {
     redirect('/dashboard')
