@@ -350,7 +350,7 @@ export function PostCard({
               </div>
             )}
 
-            {!isEditing && (canEdit || mediaUrl) && (
+            {!isEditing && !isArchived && (canEdit || mediaUrl) && (
               <div className="mt-4 space-y-2">
                 <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                   Image

@@ -225,4 +225,17 @@ describe('PostCard image section', () => {
     expect(screen.queryByTestId('media-upload-current')).not.toBeInTheDocument()
     expect(screen.queryByTestId('media-upload-dropzone')).not.toBeInTheDocument()
   })
+
+  it('hides the image section on an archived post', () => {
+    render(
+      <PostCard
+        post={{ ...basePost, deletedAt: new Date('2026-05-20T00:00:00Z') }}
+        canEdit
+        mediaUrl="https://blob.test/post-media/post-1/x.png"
+      />,
+    )
+    expect(screen.queryByTestId('media-upload-current')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('media-upload-dropzone')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('post-image-readonly')).not.toBeInTheDocument()
+  })
 })
