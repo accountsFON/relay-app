@@ -46,3 +46,11 @@ export function canEditClients(ctx: OrgContext): boolean {
 export function canViewClients(ctx: OrgContext): boolean {
   return can(ctx, 'client.view')
 }
+
+export async function requirePostMediaEditor() {
+  return requireCan('post.media.edit')
+}
+
+export function canUploadPostMedia(ctx: OrgContext): boolean {
+  return can(ctx, 'post.media.edit')
+}

@@ -142,3 +142,24 @@ describe('SYSTEM_DEFAULTS shape', () => {
     expect(SYSTEM_DEFAULTS.client['admin.portal']).toBe(false)
   })
 })
+
+describe('post.media.edit (narrow image upload permission)', () => {
+  it('designer can upload media but cannot edit posts or clients', () => {
+    expect(can({ role: 'designer' }, 'post.media.edit')).toBe(true)
+    expect(can({ role: 'designer' }, 'client.edit')).toBe(false)
+    expect(can({ role: 'designer' }, 'post.edit')).toBe(false)
+  })
+
+  it('account_manager and admin also have post.media.edit', () => {
+    expect(can({ role: 'account_manager' }, 'post.media.edit')).toBe(true)
+    expect(can({ role: 'admin' }, 'post.media.edit')).toBe(true)
+  })
+
+  it('client does not have post.media.edit', () => {
+    expect(can({ role: 'client' }, 'post.media.edit')).toBe(false)
+  })
+
+  it('the read-only override strips post.media.edit', () => {
+    expect(READ_ONLY_OVERRIDE['post.media.edit']).toBe(false)
+  })
+})
