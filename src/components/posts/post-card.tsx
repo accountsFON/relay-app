@@ -51,6 +51,7 @@ export function PostCard({
   defaultCollapsed = false,
   onToggleCollapsed,
   mediaUrl = null,
+  canUploadMedia = false,
 }: {
   post: Post
   canEdit?: boolean
@@ -64,6 +65,8 @@ export function PostCard({
   onToggleCollapsed?: (next: boolean) => void
   /** Post image URL (mediaUrls[0]). Null when no image is attached. */
   mediaUrl?: string | null
+  /** Whether the viewer may upload/replace/remove this post's image (post.media.edit). */
+  canUploadMedia?: boolean
 }) {
   const router = useRouter()
   const listCollapse = usePostListCollapse()
@@ -350,12 +353,12 @@ export function PostCard({
               </div>
             )}
 
-            {!isEditing && !isArchived && (canEdit || mediaUrl) && (
+            {!isEditing && !isArchived && (canUploadMedia || mediaUrl) && (
               <div className="mt-4 space-y-2">
                 <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                   Image
                 </p>
-                {canEdit ? (
+                {canUploadMedia ? (
                   <MediaUpload
                     postId={post.id}
                     currentMediaUrl={mediaUrl}

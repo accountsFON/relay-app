@@ -172,7 +172,7 @@ describe('PostCard QA-edited indicator', () => {
 
 describe('PostCard image section', () => {
   it('editor with no image sees the upload dropzone', () => {
-    render(<PostCard post={basePost} canEdit mediaUrl={null} />)
+    render(<PostCard post={basePost} canUploadMedia mediaUrl={null} />)
     expect(screen.getByTestId('media-upload-dropzone')).toBeInTheDocument()
     expect(screen.queryByTestId('post-image-readonly')).not.toBeInTheDocument()
   })
@@ -181,7 +181,7 @@ describe('PostCard image section', () => {
     render(
       <PostCard
         post={basePost}
-        canEdit
+        canUploadMedia
         mediaUrl="https://blob.test/post-media/post-1/x.png"
       />,
     )
@@ -193,7 +193,7 @@ describe('PostCard image section', () => {
     render(
       <PostCard
         post={basePost}
-        canEdit={false}
+        canUploadMedia={false}
         mediaUrl="https://blob.test/post-media/post-1/x.png"
       />,
     )
@@ -208,7 +208,7 @@ describe('PostCard image section', () => {
   })
 
   it('non editor with no image sees no image section', () => {
-    render(<PostCard post={basePost} canEdit={false} mediaUrl={null} />)
+    render(<PostCard post={basePost} canUploadMedia={false} mediaUrl={null} />)
     expect(screen.queryByTestId('post-image-readonly')).not.toBeInTheDocument()
     expect(screen.queryByTestId('media-upload-dropzone')).not.toBeInTheDocument()
   })
@@ -218,7 +218,7 @@ describe('PostCard image section', () => {
       <PostCard
         post={basePost}
         collapsed
-        canEdit
+        canUploadMedia
         mediaUrl="https://blob.test/post-media/post-1/x.png"
       />,
     )
@@ -230,12 +230,19 @@ describe('PostCard image section', () => {
     render(
       <PostCard
         post={{ ...basePost, deletedAt: new Date('2026-05-20T00:00:00Z') }}
-        canEdit
+        canUploadMedia
         mediaUrl="https://blob.test/post-media/post-1/x.png"
       />,
     )
     expect(screen.queryByTestId('media-upload-current')).not.toBeInTheDocument()
     expect(screen.queryByTestId('media-upload-dropzone')).not.toBeInTheDocument()
     expect(screen.queryByTestId('post-image-readonly')).not.toBeInTheDocument()
+  })
+
+  it('shows the image upload for a media-editor who cannot edit the post', () => {
+    render(<PostCard post={basePost} canEdit={false} canUploadMedia mediaUrl={null} />)
+    expect(screen.getByTestId('media-upload-dropzone')).toBeInTheDocument()
+    // The canEdit-gated AI Redo control stays hidden for a media-only viewer.
+    expect(screen.queryByRole('button', { name: 'AI redo' })).not.toBeInTheDocument()
   })
 })

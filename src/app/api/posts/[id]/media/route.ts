@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { findPostById } from '@/server/repositories/posts'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requirePostMediaEditor } from '@/server/middleware/permissions'
 import { attachMediaToPost } from '@/lib/media'
 
 /**
@@ -13,7 +13,7 @@ import { attachMediaToPost } from '@/lib/media'
  * uploaded the file directly to Vercel Blob using the signed token from
  * /api/media/upload. Returns the updated post.
  *
- * Auth: same shape as /api/media/upload, requireClientEditor + org-scoped
+ * Auth: same shape as /api/media/upload, requirePostMediaEditor + org-scoped
  * findPostById to prevent cross-org writes.
  */
 export async function POST(
@@ -33,14 +33,14 @@ export async function POST(
   }
 
   const url = typeof body.url === 'string' ? body.url : null
-  if (!url) {
+  if (url === null) {
     return NextResponse.json(
       { error: 'url is required' },
       { status: 400 },
     )
   }
 
-  const ctx = await requireClientEditor()
+  const ctx = await requirePostMediaEditor()
   const existing = await findPostById(postId, ctx.userDbId)
   if (!existing) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
