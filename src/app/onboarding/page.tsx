@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { findUserByClerkId } from '@/server/repositories/users'
 import { completeOnboarding } from './actions'
+import { isAgencyCreationEnabled } from '@/server/auth/agencyCreation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +26,14 @@ export default async function OnboardingPage({
   // the active-org-but-no-User signal is the only one we have left.
   const isInvite =
     Boolean(inviteTicket) || (!existing && Boolean(clerkActiveOrgId))
+
+  const creationEnabled = isAgencyCreationEnabled()
+
+  // Invite-only: a no-invite visitor cannot self-serve a new agency while the
+  // flag is off. Send them to the dead-end screen instead of the create form.
+  if (!isInvite && !creationEnabled) {
+    redirect('/invite-only')
+  }
 
   // Existing users with Memberships cannot self-serve a second agency.
   if (existing && !isInvite) redirect('/dashboard')
@@ -66,7 +75,7 @@ export default async function OnboardingPage({
               placeholder="e.g. Julio Aleman"
             />
           </div>
-          {!isInvite && (
+          {!isInvite && creationEnabled && (
             <div className="space-y-2">
               <Label htmlFor="agencyName">Agency name</Label>
               <Input
