@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { usePostListCollapse } from '@/components/posts/post-list-collapse'
 import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { QaEditedIndicator } from '@/components/posts/qa-edited-indicator'
+import { MediaUpload } from '@/components/posts/media-upload'
 
 type Post = {
   id: string
@@ -49,6 +50,7 @@ export function PostCard({
   collapsed: collapsedProp,
   defaultCollapsed = false,
   onToggleCollapsed,
+  mediaUrl = null,
 }: {
   post: Post
   canEdit?: boolean
@@ -60,6 +62,8 @@ export function PostCard({
   defaultCollapsed?: boolean
   /** Called when the user clicks the collapse chevron in uncontrolled mode. */
   onToggleCollapsed?: (next: boolean) => void
+  /** Post image URL (mediaUrls[0]). Null when no image is attached. */
+  mediaUrl?: string | null
 }) {
   const router = useRouter()
   const listCollapse = usePostListCollapse()
@@ -342,6 +346,33 @@ export function PostCard({
                     </p>
                     <p className="text-[14px] text-foreground mt-1">{post.designerNotes}</p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {!isEditing && !isArchived && (canEdit || mediaUrl) && (
+              <div className="mt-4 space-y-2">
+                <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
+                  Image
+                </p>
+                {canEdit ? (
+                  <MediaUpload
+                    postId={post.id}
+                    currentMediaUrl={mediaUrl}
+                    onUploaded={() => router.refresh()}
+                  />
+                ) : (
+                  mediaUrl && (
+                    <div className="rounded-xl overflow-hidden border border-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={mediaUrl}
+                        alt="Post media"
+                        data-testid="post-image-readonly"
+                        className="w-full h-auto block"
+                      />
+                    </div>
+                  )
                 )}
               </div>
             )}

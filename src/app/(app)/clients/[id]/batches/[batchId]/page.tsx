@@ -139,6 +139,7 @@ export default async function BatchDetailPage({
         designerNotes: true,
         contentRunId: true,
         deletedAt: true,
+        mediaUrls: true,
       },
     }),
     db.post.onlyArchived().count({ where: { batchId: batch.id } }),
@@ -582,6 +583,7 @@ export default async function BatchDetailPage({
                             post={post}
                             canEdit={canEdit}
                             postNumber={idx + 1}
+                            mediaUrl={post.mediaUrls?.[0] ?? null}
                           />
                           <PostVersionHistory postId={post.id} versions={versionRows} />
                         </div>

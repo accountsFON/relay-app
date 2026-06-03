@@ -19,6 +19,10 @@ vi.mock('@/app/(app)/trash/actions', () => ({
   restorePostAction: vi.fn(),
 }))
 
+vi.mock('@vercel/blob/client', () => ({
+  upload: vi.fn(),
+}))
+
 const basePost = {
   id: 'post-1',
   postDate: new Date('2026-05-12T12:00:00Z'),
@@ -163,5 +167,75 @@ describe('PostCard QA-edited indicator', () => {
     const post = { ...basePost, preQaCaption: null }
     render(<PostCard post={post} canEdit />)
     expect(screen.queryByText('Edited by QA bot')).not.toBeInTheDocument()
+  })
+})
+
+describe('PostCard image section', () => {
+  it('editor with no image sees the upload dropzone', () => {
+    render(<PostCard post={basePost} canEdit mediaUrl={null} />)
+    expect(screen.getByTestId('media-upload-dropzone')).toBeInTheDocument()
+    expect(screen.queryByTestId('post-image-readonly')).not.toBeInTheDocument()
+  })
+
+  it('editor with an image sees the image plus replace/remove control', () => {
+    render(
+      <PostCard
+        post={basePost}
+        canEdit
+        mediaUrl="https://blob.test/post-media/post-1/x.png"
+      />,
+    )
+    expect(screen.getByTestId('media-upload-current')).toBeInTheDocument()
+    expect(screen.getByTestId('media-upload-remove')).toBeInTheDocument()
+  })
+
+  it('non editor with an image sees the image read only, no controls', () => {
+    render(
+      <PostCard
+        post={basePost}
+        canEdit={false}
+        mediaUrl="https://blob.test/post-media/post-1/x.png"
+      />,
+    )
+    const img = screen.getByTestId('post-image-readonly')
+    expect(img).toBeInTheDocument()
+    expect(img).toHaveAttribute(
+      'src',
+      'https://blob.test/post-media/post-1/x.png',
+    )
+    expect(screen.queryByTestId('media-upload-remove')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('media-upload-dropzone')).not.toBeInTheDocument()
+  })
+
+  it('non editor with no image sees no image section', () => {
+    render(<PostCard post={basePost} canEdit={false} mediaUrl={null} />)
+    expect(screen.queryByTestId('post-image-readonly')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('media-upload-dropzone')).not.toBeInTheDocument()
+  })
+
+  it('hides the image section when the card is collapsed', () => {
+    render(
+      <PostCard
+        post={basePost}
+        collapsed
+        canEdit
+        mediaUrl="https://blob.test/post-media/post-1/x.png"
+      />,
+    )
+    expect(screen.queryByTestId('media-upload-current')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('media-upload-dropzone')).not.toBeInTheDocument()
+  })
+
+  it('hides the image section on an archived post', () => {
+    render(
+      <PostCard
+        post={{ ...basePost, deletedAt: new Date('2026-05-20T00:00:00Z') }}
+        canEdit
+        mediaUrl="https://blob.test/post-media/post-1/x.png"
+      />,
+    )
+    expect(screen.queryByTestId('media-upload-current')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('media-upload-dropzone')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('post-image-readonly')).not.toBeInTheDocument()
   })
 })
