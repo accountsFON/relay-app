@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { findPostById } from '@/server/repositories/posts'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requirePostMediaEditor } from '@/server/middleware/permissions'
 import { attachMediaToPost } from '@/lib/media'
 
 /**
@@ -33,14 +33,14 @@ export async function POST(
   }
 
   const url = typeof body.url === 'string' ? body.url : null
-  if (!url) {
+  if (url === null) {
     return NextResponse.json(
       { error: 'url is required' },
       { status: 400 },
     )
   }
 
-  const ctx = await requireClientEditor()
+  const ctx = await requirePostMediaEditor()
   const existing = await findPostById(postId, ctx.userDbId)
   if (!existing) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })

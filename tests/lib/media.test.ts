@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { matchFilenameToPost, type MatchablePost } from '@/lib/media'
+import { matchFilenameToPost, computeNextMediaUrls, type MatchablePost } from '@/lib/media'
 
 /**
  * Tests for the pure filename-to-post matcher used by the bulk media tray.
@@ -47,5 +47,20 @@ describe('matchFilenameToPost', () => {
     expect(matchFilenameToPost('', posts)).toBeNull()
     // Empty post list.
     expect(matchFilenameToPost('1.jpg', [])).toBeNull()
+  })
+})
+
+describe('computeNextMediaUrls', () => {
+  it('clears to [] when the url is empty (remove)', () => {
+    expect(computeNextMediaUrls(['https://x/a.png'], '')).toEqual([])
+  })
+
+  it('sets index 0 to the url when non-empty', () => {
+    expect(computeNextMediaUrls([], 'https://x/a.png')).toEqual(['https://x/a.png'])
+    expect(computeNextMediaUrls(['old'], 'https://x/b.png')).toEqual(['https://x/b.png'])
+  })
+
+  it('preserves later indices when overwriting index 0', () => {
+    expect(computeNextMediaUrls(['old0', 'keep1'], 'new0')).toEqual(['new0', 'keep1'])
   })
 })

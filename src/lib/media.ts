@@ -97,6 +97,18 @@ export async function getSignedUploadUrl({
 }
 
 /**
+ * Computes the next mediaUrls array for a write. An empty url clears the media
+ * entirely (returns []); a non-empty url overwrites index 0, preserving any
+ * later indices (carousel slots, future v2).
+ */
+export function computeNextMediaUrls(existing: string[], url: string): string[] {
+  if (url === '') return []
+  const next = [...existing]
+  next[0] = url
+  return next
+}
+
+/**
  * Writes the uploaded URL into Post.mediaUrls[0]. Overwrites any existing
  * index 0; later indices (when carousel support lands in v2) are preserved.
  *
@@ -116,8 +128,7 @@ export async function attachMediaToPost({
   })
   if (!post) throw new Error(`Post ${postId} not found`)
 
-  const next = [...(post.mediaUrls ?? [])]
-  next[0] = url
+  const next = computeNextMediaUrls(post.mediaUrls ?? [], url)
 
   return db.post.update({
     where: { id: postId },

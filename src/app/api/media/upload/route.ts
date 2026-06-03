@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { findPostById } from '@/server/repositories/posts'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requirePostMediaEditor } from '@/server/middleware/permissions'
 import { getSignedUploadUrl, buildBlobPathname } from '@/lib/media'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (isSdkBody) {
     // SDK mode: handleUpload signs a token. Auth happens inside
     // onBeforeGenerateToken (postId arrives via clientPayload).
-    const ctx = await requireClientEditor()
+    const ctx = await requirePostMediaEditor()
     const json = await handleUpload({
       body: body as HandleUploadBody,
       request: req,
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const ctx = await requireClientEditor()
+  const ctx = await requirePostMediaEditor()
   const post = await findPostById(postId, ctx.userDbId)
   if (!post) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
