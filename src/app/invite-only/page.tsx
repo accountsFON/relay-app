@@ -2,6 +2,12 @@ import Image from 'next/image'
 import { SignOutButton } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 
+// Invite-only dead-end. Reached only by a signed-in user with no membership,
+// redirected here from /onboarding when self-serve agency creation is off.
+// Deliberately OUTSIDE the (app) route group: that layout bounces no-membership
+// users back to /onboarding, which would loop. It is intentionally NOT in the
+// middleware public-route list either, so Clerk auth-protect applies; only
+// authenticated users arrive via the redirect chain, which is the intended set.
 export default function InviteOnlyPage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">
