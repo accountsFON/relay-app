@@ -13,7 +13,7 @@ import { attachMediaToPost } from '@/lib/media'
  * uploaded the file directly to Vercel Blob using the signed token from
  * /api/media/upload. Returns the updated post.
  *
- * Auth: same shape as /api/media/upload, requirePostMediaEditor + org-scoped
+ * Auth: same shape as /api/media/upload, requirePostMediaEditor + client-scoped
  * findPostById to prevent cross-org writes.
  */
 export async function POST(
@@ -41,7 +41,7 @@ export async function POST(
   }
 
   const ctx = await requirePostMediaEditor()
-  const existing = await findPostById(postId, ctx.userDbId)
+  const existing = await findPostById(postId, ctx)
   if (!existing) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }

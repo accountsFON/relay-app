@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       onBeforeGenerateToken: async (_pathname, clientPayload) => {
         const postId = typeof clientPayload === 'string' ? clientPayload : null
         if (!postId) throw new Error('Missing postId in clientPayload')
-        const post = await findPostById(postId, ctx.userDbId)
+        const post = await findPostById(postId, ctx)
         if (!post) throw new Error('Forbidden: post not found or no access')
         return {
           allowedContentTypes: [
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ctx = await requirePostMediaEditor()
-  const post = await findPostById(postId, ctx.userDbId)
+  const post = await findPostById(postId, ctx)
   if (!post) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }

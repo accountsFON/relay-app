@@ -44,7 +44,21 @@ const { db, pool } = await vi.hoisted(async () => {
 
 vi.mock('@/db/client', () => ({ db }))
 
+import type { OrgContext } from '@/lib/types'
 import { findPostById, updatePost } from '@/server/repositories/posts'
+
+const adminCtx = (organizationDbId: string, userDbId: string): OrgContext => ({
+  userId: `clerk_${userDbId}`,
+  orgId: `clerk_${organizationDbId}`,
+  role: 'admin',
+  plan: 'smb',
+  organizationDbId,
+  userDbId,
+  platformOwner: false,
+  linkedClientId: null,
+  permissionOverrides: null,
+  roleDefaults: {},
+})
 
 afterAll(async () => {
   await pool.end()
@@ -171,24 +185,24 @@ afterEach(async () => {
 
 describe('findPostById', () => {
   it('returns the post when the actor has membership in its org', async () => {
-    const post = await findPostById(postAId, userAId)
+    const post = await findPostById(postAId, adminCtx(orgAId, userAId))
     expect(post).not.toBeNull()
     expect(post!.id).toBe(postAId)
     expect(post!.caption).toBe('Org A original caption')
   })
 
   it('returns null when the actor has membership in a different org (cross-org leak guard)', async () => {
-    const post = await findPostById(postBId, userAId)
+    const post = await findPostById(postBId, adminCtx(orgAId, userAId))
     expect(post).toBeNull()
   })
 
-  it('returns null when the actor has no membership anywhere', async () => {
-    const post = await findPostById(postAId, strangerUserId)
+  it('returns null when the actor is in a different org (different org)', async () => {
+    const post = await findPostById(postAId, adminCtx(orgBId, strangerUserId))
     expect(post).toBeNull()
   })
 
   it('returns null when the post id does not exist', async () => {
-    const post = await findPostById('cl_nonexistent_post_id', userAId)
+    const post = await findPostById('cl_nonexistent_post_id', adminCtx(orgAId, userAId))
     expect(post).toBeNull()
   })
 })
