@@ -3,6 +3,7 @@ import { db } from '@/db/client'
 import {
   reassignUserOwnedRecords,
   countPlatformOwners,
+  findOrgsWhereLastActiveAdmin,
 } from '@/server/repositories/users'
 
 /**
@@ -188,4 +189,35 @@ export async function hardDeleteUser(input: {
     reassignedToUserId: input.reassignToUserId,
     clerkDeleted,
   }
+}
+
+/**
+ * Decide whether the given user may close (self deactivate) their own
+ * account, and if not, why. Shared by the settings page (to disable the
+ * button with a reason) and the action (to throw). Blocks the last platform
+ * owner globally and the last active admin of any org the user belongs to,
+ * because a global `deactivatedAt` would orphan that org.
+ */
+export async function getSelfDeactivationBlock(input: {
+  userId: string
+  isPlatformOwner: boolean
+}): Promise<{ blocked: boolean; reason: string | null }> {
+  if (input.isPlatformOwner) {
+    const owners = await countPlatformOwners()
+    if (owners <= 1) {
+      return {
+        blocked: true,
+        reason:
+          'You are the last platform owner. Hand the platform owner role to someone else before closing your account.',
+      }
+    }
+  }
+  const orphanOrgs = await findOrgsWhereLastActiveAdmin(input.userId)
+  if (orphanOrgs.length > 0) {
+    return {
+      blocked: true,
+      reason: `You are the last admin of ${orphanOrgs[0].name}. Make someone else an admin, or have another admin remove you, before closing your account.`,
+    }
+  }
+  return { blocked: false, reason: null }
 }

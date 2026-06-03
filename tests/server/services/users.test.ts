@@ -10,6 +10,7 @@ type AnyMock = any
 vi.mock('@/server/repositories/users', () => ({
   reassignUserOwnedRecords: vi.fn(),
   countPlatformOwners: vi.fn(async () => 2),
+  findOrgsWhereLastActiveAdmin: vi.fn(async () => []),
 }))
 
 // ---------------------------------------------------------------------------
@@ -73,10 +74,12 @@ import {
   deactivateUser,
   reactivateUser,
   hardDeleteUser,
+  getSelfDeactivationBlock,
 } from '@/server/services/users'
 import {
   reassignUserOwnedRecords,
   countPlatformOwners,
+  findOrgsWhereLastActiveAdmin,
 } from '@/server/repositories/users'
 
 beforeEach(() => {
@@ -90,6 +93,8 @@ beforeEach(() => {
   vi.mocked(reassignUserOwnedRecords).mockResolvedValue(undefined)
   vi.mocked(countPlatformOwners).mockReset()
   vi.mocked(countPlatformOwners).mockResolvedValue(2)
+  vi.mocked(findOrgsWhereLastActiveAdmin).mockReset()
+  vi.mocked(findOrgsWhereLastActiveAdmin).mockResolvedValue([])
 })
 
 // ---------------------------------------------------------------------------
@@ -404,5 +409,45 @@ describe('hardDeleteUser Clerk failure handling', () => {
     // KEY SAFETY PROPERTY: the row was NOT deleted because the Clerk identity
     // could not be removed. The user remains reassigned + deactivated.
     expect(deleteMock).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// getSelfDeactivationBlock
+// ---------------------------------------------------------------------------
+describe('getSelfDeactivationBlock', () => {
+  it('is not blocked for a normal member', async () => {
+    const block = await getSelfDeactivationBlock({
+      userId: 'u_1',
+      isPlatformOwner: false,
+    })
+    expect(block).toEqual({ blocked: false, reason: null })
+  })
+
+  it('blocks the last platform owner', async () => {
+    vi.mocked(countPlatformOwners).mockResolvedValueOnce(1)
+    const block = await getSelfDeactivationBlock({
+      userId: 'u_1',
+      isPlatformOwner: true,
+    })
+    expect(block.blocked).toBe(true)
+    expect(block.reason).toMatch(/last platform owner/i)
+  })
+
+  it('does not run the platform owner check for a non owner', async () => {
+    await getSelfDeactivationBlock({ userId: 'u_1', isPlatformOwner: false })
+    expect(countPlatformOwners).not.toHaveBeenCalled()
+  })
+
+  it('blocks the last admin of an org and names it', async () => {
+    vi.mocked(findOrgsWhereLastActiveAdmin).mockResolvedValueOnce([
+      { id: 'org_solo', name: 'Solo Agency' },
+    ])
+    const block = await getSelfDeactivationBlock({
+      userId: 'u_1',
+      isPlatformOwner: false,
+    })
+    expect(block.blocked).toBe(true)
+    expect(block.reason).toContain('Solo Agency')
   })
 })
