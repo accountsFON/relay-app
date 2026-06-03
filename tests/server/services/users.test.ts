@@ -56,6 +56,7 @@ let currentTx: { tx: AnyMock; calls: Calls }
 
 const findUniqueMock = vi.fn()
 const deleteMock = vi.fn()
+const membershipFindFirstMock = vi.fn()
 
 vi.mock('@/db/client', () => ({
   db: {
@@ -65,6 +66,9 @@ vi.mock('@/db/client', () => ({
     user: {
       findUnique: (args: unknown) => findUniqueMock(args),
       delete: (args: unknown) => deleteMock(args),
+    },
+    membership: {
+      findFirst: (args: unknown) => membershipFindFirstMock(args),
     },
   },
 }))
@@ -90,6 +94,8 @@ beforeEach(() => {
   findUniqueMock.mockReset()
   deleteMock.mockReset()
   deleteMock.mockResolvedValue({})
+  membershipFindFirstMock.mockReset()
+  membershipFindFirstMock.mockResolvedValue(null)
   vi.mocked(reassignUserOwnedRecords).mockReset()
   vi.mocked(reassignUserOwnedRecords).mockResolvedValue(undefined)
   vi.mocked(countPlatformOwners).mockReset()
@@ -490,5 +496,31 @@ describe('selfDeactivateUser', () => {
       }),
     ).rejects.toThrow(UserServiceError)
     expect(currentTx.tx.user.update).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the first membership org for the audit when ctx org is empty', async () => {
+    membershipFindFirstMock.mockResolvedValueOnce({ organizationId: 'org_fallback' })
+    const result = await selfDeactivateUser({
+      actorId: 'u_self',
+      actorOrganizationId: '',
+      actorIsPlatformOwner: true,
+    })
+    expect(result).toEqual({ userId: 'u_self', deactivated: true })
+    expect(currentTx.tx.user.update).toHaveBeenCalledOnce()
+    expect(currentTx.tx.permissionAuditLog.create).toHaveBeenCalledOnce()
+    const auditArgs = currentTx.tx.permissionAuditLog.create.mock.calls[0][0]
+    expect(auditArgs.data.organizationId).toBe('org_fallback')
+  })
+
+  it('still deactivates but skips the audit row when the user has no org at all', async () => {
+    membershipFindFirstMock.mockResolvedValueOnce(null)
+    const result = await selfDeactivateUser({
+      actorId: 'u_self',
+      actorOrganizationId: '',
+      actorIsPlatformOwner: true,
+    })
+    expect(result).toEqual({ userId: 'u_self', deactivated: true })
+    expect(currentTx.tx.user.update).toHaveBeenCalledOnce()
+    expect(currentTx.tx.permissionAuditLog.create).not.toHaveBeenCalled()
   })
 })

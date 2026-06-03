@@ -242,20 +242,39 @@ export async function selfDeactivateUser(input: {
   if (block.blocked) {
     throw new UserServiceError(block.reason ?? 'You cannot close your account.')
   }
+
+  // Resolve an org to attribute the audit row to. The actor's ctx org is
+  // normally set, but a platform owner with no membership resolves to an
+  // empty org id (placeholder ctx in getOrgContext). Fall back to their
+  // first membership; if they belong to no org at all, skip the audit row
+  // (the deactivatedAt timestamp on the user is itself the record). The
+  // deactivation itself must always proceed.
+  let auditOrgId = input.actorOrganizationId
+  if (!auditOrgId) {
+    const membership = await db.membership.findFirst({
+      where: { userId: input.actorId },
+      orderBy: { createdAt: 'asc' },
+      select: { organizationId: true },
+    })
+    auditOrgId = membership?.organizationId ?? ''
+  }
+
   return db.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: input.actorId },
       data: { deactivatedAt: new Date() },
     })
-    await tx.permissionAuditLog.create({
-      data: {
-        organizationId: input.actorOrganizationId,
-        actorUserId: input.actorId,
-        targetUserId: input.actorId,
-        permissionKey: 'user.self_deactivated',
-        usedPlatformOverride: false,
-      },
-    })
+    if (auditOrgId) {
+      await tx.permissionAuditLog.create({
+        data: {
+          organizationId: auditOrgId,
+          actorUserId: input.actorId,
+          targetUserId: input.actorId,
+          permissionKey: 'user.self_deactivated',
+          usedPlatformOverride: false,
+        },
+      })
+    }
     return { userId: input.actorId, deactivated: true }
   })
 }
