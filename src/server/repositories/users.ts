@@ -175,6 +175,35 @@ export async function countPlatformOwners() {
 }
 
 /**
+ * Orgs where `userId` is an admin and there is no OTHER active (non
+ * deactivated) admin. Closing this account would leave each of these orgs
+ * with no one who can manage it, so the self deactivation guard blocks on a
+ * non empty result. Returns the org id + name so the caller can name the
+ * agency in the block message.
+ */
+export async function findOrgsWhereLastActiveAdmin(
+  userId: string,
+): Promise<{ id: string; name: string }[]> {
+  const adminMemberships = await db.membership.findMany({
+    where: { userId, role: 'admin' },
+    include: { organization: { select: { id: true, name: true } } },
+  })
+  const orphaned: { id: string; name: string }[] = []
+  for (const m of adminMemberships) {
+    const otherActiveAdmins = await db.membership.count({
+      where: {
+        organizationId: m.organizationId,
+        role: 'admin',
+        userId: { not: userId },
+        user: { deactivatedAt: null },
+      },
+    })
+    if (otherActiveAdmins === 0) orphaned.push(m.organization)
+  }
+  return orphaned
+}
+
+/**
  * Move every Restrict FK off `fromUserId` onto `toUserId`, and null any
  * audit rows that point at `fromUserId` as target (the AuditTarget FK is
  * Restrict and would otherwise block the row delete). Must run inside the
