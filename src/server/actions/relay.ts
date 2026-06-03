@@ -443,8 +443,19 @@ export async function tickChecklistItemAction(input: {
     select: { currentHolder: true, clientId: true },
   })
   if (!batch) throw new Error('Relay not found')
-  if (batch.currentHolder !== ctx.userDbId && !ctx.platformOwner) {
-    throw new Error('Only the current holder may tick checklist items')
+  // Holder-override gate, matching the page-level canAct flag and the
+  // passBaton / sendBack / finish actions: the current holder ticks their
+  // own items, and AM / admin / platformOwner can tick on any batch they do
+  // not hold. Without this, the UI shows checkboxes to an overriding AM /
+  // admin (canAct is true for them) but the tick action threw "only the
+  // current holder", surfacing as a masked Server Components render error.
+  if (
+    batch.currentHolder !== ctx.userDbId &&
+    !canOverrideHolder(ctx.role, ctx.platformOwner)
+  ) {
+    throw new Error(
+      'Only the current holder, an AM, or an admin can tick checklist items',
+    )
   }
 
   await db.checklistItem.update({
