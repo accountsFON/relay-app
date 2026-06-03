@@ -221,3 +221,41 @@ export async function getSelfDeactivationBlock(input: {
   }
   return { blocked: false, reason: null }
 }
+
+/**
+ * Self service "delete my account". Implemented as a self initiated soft
+ * deactivation: sets `deactivatedAt` (the auth gate then locks the user out
+ * of every surface and the pickers hide them) and writes a distinct
+ * `user.self_deactivated` audit row. Owned work is NOT reassigned; it waits
+ * for an admin. Runs the shared guard first so the last admin / last platform
+ * owner cannot orphan an org.
+ */
+export async function selfDeactivateUser(input: {
+  actorId: string
+  actorOrganizationId: string
+  actorIsPlatformOwner: boolean
+}) {
+  const block = await getSelfDeactivationBlock({
+    userId: input.actorId,
+    isPlatformOwner: input.actorIsPlatformOwner,
+  })
+  if (block.blocked) {
+    throw new UserServiceError(block.reason ?? 'You cannot close your account.')
+  }
+  return db.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: input.actorId },
+      data: { deactivatedAt: new Date() },
+    })
+    await tx.permissionAuditLog.create({
+      data: {
+        organizationId: input.actorOrganizationId,
+        actorUserId: input.actorId,
+        targetUserId: input.actorId,
+        permissionKey: 'user.self_deactivated',
+        usedPlatformOverride: false,
+      },
+    })
+    return { userId: input.actorId, deactivated: true }
+  })
+}

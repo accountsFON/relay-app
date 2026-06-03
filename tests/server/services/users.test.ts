@@ -75,6 +75,7 @@ import {
   reactivateUser,
   hardDeleteUser,
   getSelfDeactivationBlock,
+  selfDeactivateUser,
 } from '@/server/services/users'
 import {
   reassignUserOwnedRecords,
@@ -449,5 +450,45 @@ describe('getSelfDeactivationBlock', () => {
     })
     expect(block.blocked).toBe(true)
     expect(block.reason).toContain('Solo Agency')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// selfDeactivateUser
+// ---------------------------------------------------------------------------
+describe('selfDeactivateUser', () => {
+  it('sets deactivatedAt + writes a user.self_deactivated audit row for the actor', async () => {
+    const result = await selfDeactivateUser({
+      actorId: 'u_self',
+      actorOrganizationId: 'org_1',
+      actorIsPlatformOwner: false,
+    })
+    expect(result).toEqual({ userId: 'u_self', deactivated: true })
+
+    expect(currentTx.tx.user.update).toHaveBeenCalledOnce()
+    const updateArgs = currentTx.tx.user.update.mock.calls[0][0]
+    expect(updateArgs.where).toEqual({ id: 'u_self' })
+    expect(updateArgs.data.deactivatedAt).toBeInstanceOf(Date)
+
+    expect(currentTx.tx.permissionAuditLog.create).toHaveBeenCalledOnce()
+    const auditArgs = currentTx.tx.permissionAuditLog.create.mock.calls[0][0]
+    expect(auditArgs.data.permissionKey).toBe('user.self_deactivated')
+    expect(auditArgs.data.actorUserId).toBe('u_self')
+    expect(auditArgs.data.targetUserId).toBe('u_self')
+    expect(auditArgs.data.organizationId).toBe('org_1')
+  })
+
+  it('throws and does not write when the guard blocks (last admin)', async () => {
+    vi.mocked(findOrgsWhereLastActiveAdmin).mockResolvedValueOnce([
+      { id: 'org_solo', name: 'Solo Agency' },
+    ])
+    await expect(
+      selfDeactivateUser({
+        actorId: 'u_self',
+        actorOrganizationId: 'org_1',
+        actorIsPlatformOwner: false,
+      }),
+    ).rejects.toThrow(UserServiceError)
+    expect(currentTx.tx.user.update).not.toHaveBeenCalled()
   })
 })
