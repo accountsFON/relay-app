@@ -356,6 +356,49 @@ export async function reopenThread(input: ReopenThreadInput): Promise<void> {
 
 export type HydratedThread = FeedPostProps['threads'][number]
 
+// The shape Prisma returns for a thread row when the three list functions
+// include comments with their author. Derived from the findMany call so tsc
+// validates the helper against the actual query result without manual
+// duplication.
+type ThreadRowWithComments = Awaited<
+  ReturnType<typeof db.postThread.findMany<{
+    include: {
+      comments: {
+        orderBy: { createdAt: 'asc' }
+        include: { author: { select: { id: true; name: true; avatarUrl: true } } }
+      }
+    }
+  }>>
+>[number]
+
+/**
+ * Map one PostThread row (with its `comments` include) into the
+ * HydratedThread shape. Defensive: every thread is created with one
+ * comment in createThread, but if a row somehow has none we surface a
+ * placeholder rather than throwing during a render.
+ */
+function toHydratedThread(t: ThreadRowWithComments): HydratedThread {
+  const first = t.comments[0]
+  const firstComment = first
+    ? {
+        author: hydrateAuthor(first),
+        body: first.body,
+        createdAt: first.createdAt,
+      }
+    : {
+        author: { kind: 'client' as const, reviewerName: 'Unknown' },
+        body: '',
+        createdAt: t.createdAt,
+      }
+  return {
+    id: t.id,
+    status: t.status,
+    pin: rowToPin(t),
+    firstComment,
+    commentCount: t.comments.length,
+  }
+}
+
 export interface ListThreadsForPostInput {
   postId: string
   includeResolved?: boolean
@@ -386,30 +429,7 @@ export async function listThreadsForPost(
     },
   })
 
-  return threads.map((t) => {
-    const first = t.comments[0]
-    // Defensive: every thread is created with one comment in createThread.
-    // If the row was created by some other path with no comments, surface a
-    // placeholder rather than throwing during a render.
-    const firstComment = first
-      ? {
-          author: hydrateAuthor(first),
-          body: first.body,
-          createdAt: first.createdAt,
-        }
-      : {
-          author: { kind: 'client' as const, reviewerName: 'Unknown' },
-          body: '',
-          createdAt: t.createdAt,
-        }
-    return {
-      id: t.id,
-      status: t.status,
-      pin: rowToPin(t),
-      firstComment,
-      commentCount: t.comments.length,
-    }
-  })
+  return threads.map(toHydratedThread)
 }
 
 export interface ListThreadsForBatchInput {
@@ -444,27 +464,8 @@ export async function listThreadsForBatch(
 
   const result = new Map<string, HydratedThread[]>()
   for (const t of threads) {
-    const first = t.comments[0]
-    const firstComment = first
-      ? {
-          author: hydrateAuthor(first),
-          body: first.body,
-          createdAt: first.createdAt,
-        }
-      : {
-          author: { kind: 'client' as const, reviewerName: 'Unknown' },
-          body: '',
-          createdAt: t.createdAt,
-        }
-    const hydrated: HydratedThread = {
-      id: t.id,
-      status: t.status,
-      pin: rowToPin(t),
-      firstComment,
-      commentCount: t.comments.length,
-    }
     const list = result.get(t.postId) ?? []
-    list.push(hydrated)
+    list.push(toHydratedThread(t))
     result.set(t.postId, list)
   }
   return result
@@ -504,27 +505,8 @@ export async function listClientThreadsForBatch(
 
   const result = new Map<string, HydratedThread[]>()
   for (const t of threads) {
-    const first = t.comments[0]
-    const firstComment = first
-      ? {
-          author: hydrateAuthor(first),
-          body: first.body,
-          createdAt: first.createdAt,
-        }
-      : {
-          author: { kind: 'client' as const, reviewerName: 'Unknown' },
-          body: '',
-          createdAt: t.createdAt,
-        }
-    const hydrated: HydratedThread = {
-      id: t.id,
-      status: t.status,
-      pin: rowToPin(t),
-      firstComment,
-      commentCount: t.comments.length,
-    }
     const list = result.get(t.postId) ?? []
-    list.push(hydrated)
+    list.push(toHydratedThread(t))
     result.set(t.postId, list)
   }
   return result
