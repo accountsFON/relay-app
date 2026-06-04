@@ -141,4 +141,18 @@ describe('ReviewItemRow', () => {
     expect(screen.getByTestId('addressed-tag')).toBeTruthy()
     expect(screen.queryByTestId('mark-addressed-button')).toBeNull()
   })
+
+  it('hides Mark Addressed when showAddressedButton is false', () => {
+    const onAddressed = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ReviewItemRow
+        item={baseItem()}
+        postNumber={1}
+        mode="pending"
+        showAddressedButton={false}
+        onAddressed={onAddressed}
+      />,
+    )
+    expect(screen.queryByTestId('mark-addressed-button')).toBeNull()
+  })
 })

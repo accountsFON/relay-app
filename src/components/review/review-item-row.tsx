@@ -47,6 +47,9 @@ export interface ReviewItemRowProps {
   onReject?: () => Promise<void>
   /** changes_requested only: AM marks the comment addressed. */
   onAddressed?: () => Promise<void>
+  /** When false, the changes_requested Mark Addressed button is hidden
+   * (the review detail page supplies a post-level button instead). Default true. */
+  showAddressedButton?: boolean
 }
 
 function formatPostDate(date: Date): string {
@@ -69,6 +72,7 @@ export function ReviewItemRow({
   onAccept,
   onReject,
   onAddressed,
+  showAddressedButton = true,
 }: ReviewItemRowProps) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -118,7 +122,9 @@ export function ReviewItemRow({
           comment={item.comment}
           isAddressed={isAddressed}
           isPending={isPending}
-          onAddressed={onAddressed ? () => run(onAddressed) : undefined}
+          onAddressed={
+            onAddressed && showAddressedButton ? () => run(onAddressed) : undefined
+          }
         />
       )}
 
