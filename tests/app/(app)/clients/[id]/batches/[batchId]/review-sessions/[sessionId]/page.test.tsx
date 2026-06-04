@@ -7,6 +7,10 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+}))
+
 vi.mock('@/server/auth/access', () => ({
   // Real redirectAccessDenied() calls redirect(), which throws to halt the
   // render. Mirror that so the page short-circuits like in production.

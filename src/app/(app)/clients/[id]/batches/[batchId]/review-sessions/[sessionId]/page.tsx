@@ -48,6 +48,7 @@ import {
   resolveThreadAction,
   addCommentAction,
 } from '@/server/actions/threads'
+import { revalidatePath } from 'next/cache'
 import type { ReviewSessionSummary } from '@/types/review-session'
 
 function formatPostDate(date: Date): string {
@@ -202,8 +203,10 @@ export default async function ReviewSessionDetailPage({
   const submittedAt = session.submittedAt ?? session.startedAt
   const allAddressed = pending.length === 0 && attention.length > 0
   const isSuperseded = session.status === 'superseded'
-  // Extract primitives from session before renderCard so the closure captures
-  // typed consts, not the nullable session variable.
+  // Extract primitives from session/client/batch before renderCard so the
+  // closure captures typed consts, not the nullable variables.
+  const clientId_ = client.id
+  const batchId_ = batch.id
   const sessionId_ = session.id
   const sessionRound = session.round
 
@@ -233,10 +236,16 @@ export default async function ReviewSessionDetailPage({
     const onResolvePin = async (threadId: string) => {
       'use server'
       await resolveThreadAction({ threadId, resolvedReason: null })
+      revalidatePath(
+        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+      )
     }
     const onCommentPin = async (threadId: string, body: string) => {
       'use server'
       await addCommentAction({ threadId, body })
+      revalidatePath(
+        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+      )
     }
 
     return (
