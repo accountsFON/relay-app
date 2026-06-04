@@ -550,7 +550,7 @@ export async function submitSessionAction(input: {
   let advanced: { toStep: RelayStep; newHolderId: string } | undefined
   if (link && link.creator?.id) {
     try {
-      const decision = mapReviewDecision(summary)
+      const decision = mapReviewDecision(summary, posts.length)
       const moved = await advanceFromClientReview({
         batchId: ctx.batchId,
         decision,

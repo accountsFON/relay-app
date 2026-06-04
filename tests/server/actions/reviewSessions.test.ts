@@ -912,6 +912,89 @@ describe('submitSessionAction', () => {
     expect(call.decision).toBe('changes')
   })
 
+  it('partial review (approved < batch post count) maps to decision "changes" — regression for touched-item denominator bug', async () => {
+    // The bug: summary.totalPosts == items.length (only touched posts).
+    // A client who approves 3 of 10 posts produces { approved: 3, totalPosts: 3 }
+    // which under the OLD code looked like "all approved". The fix uses
+    // posts.length from db.post.findMany (the actual batch post count) instead.
+    primeReviewerResolve()
+    vi.mocked(findActiveSession).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      round: 1,
+      status: 'in_progress',
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        { id: 'item_1', postId: 'post_1', decision: 'approved', comment: null, suggestedCaption: null, acceptedAsPostVersionId: null, updatedSinceLastReview: false, lastReviewedVersionId: null, reviewedAt: new Date() },
+        { id: 'item_2', postId: 'post_2', decision: 'approved', comment: null, suggestedCaption: null, acceptedAsPostVersionId: null, updatedSinceLastReview: false, lastReviewedVersionId: null, reviewedAt: new Date() },
+        { id: 'item_3', postId: 'post_3', decision: 'approved', comment: null, suggestedCaption: null, acceptedAsPostVersionId: null, updatedSinceLastReview: false, lastReviewedVersionId: null, reviewedAt: new Date() },
+      ],
+    } as never)
+    // summary reflects only 3 touched posts — this is what the old code would
+    // have mistaken for "all approved" on a 3-post batch.
+    vi.mocked(submitSession).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      status: 'submitted',
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 3,
+        changesRequested: 0,
+        captionEdited: 0,
+        totalPosts: 3,
+      },
+    } as never)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      creator: {
+        id: 'user_creator',
+        name: 'Caleb Cody',
+        email: 'caleb@fonmarketing.com',
+      },
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        label: 'June 2026',
+        scheduledAt: null,
+        client: {
+          id: CLIENT_ID,
+          name: 'Akkoo Coffee',
+          assignedAmId: null,
+          assignedDesignerId: null,
+          assignedAm: null,
+        },
+      },
+    } as never)
+    // The batch actually has 5 posts — 2 were never touched by the reviewer.
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      { id: 'post_1', postDate: new Date('2026-06-01T00:00:00Z'), caption: 'c1' },
+      { id: 'post_2', postDate: new Date('2026-06-02T00:00:00Z'), caption: 'c2' },
+      { id: 'post_3', postDate: new Date('2026-06-03T00:00:00Z'), caption: 'c3' },
+      { id: 'post_4', postDate: new Date('2026-06-04T00:00:00Z'), caption: 'c4' },
+      { id: 'post_5', postDate: new Date('2026-06-05T00:00:00Z'), caption: 'c5' },
+    ] as never)
+    vi.mocked(sendEmail).mockResolvedValue({ id: 'resend_msg_partial' } as never)
+    vi.mocked(advanceFromClientReview).mockResolvedValue({ advanced: false, reason: 'not_at_client_step' })
+
+    await submitSessionAction({ token: TOKEN })
+
+    expect(advanceFromClientReview).toHaveBeenCalledTimes(1)
+    const call = vi.mocked(advanceFromClientReview).mock.calls[0][0]
+    // Must be 'changes', not 'approved', because 3 approved < 5 batch posts.
+    expect(call.decision).toBe('changes')
+  })
+
   it('advance failure does not fail the submit and surfaces advanceError', async () => {
     primeAllApprovedSubmit()
     vi.mocked(advanceFromClientReview).mockRejectedValue(new Error('relay DB down'))

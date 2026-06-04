@@ -2,25 +2,29 @@ import { RelayStep } from '@prisma/client'
 
 export type ReviewDecision = 'approved' | 'changes'
 
-export interface ReviewDecisionSummary {
+export interface ReviewDecisionCounts {
   approved: number
   changesRequested: number
   captionEdited: number
-  totalPosts: number
 }
 
 /**
- * Map a submitted review summary to a batch-level verdict. Strict: a batch
- * only counts as approved when EVERY post was explicitly approved (no
- * changes, no caption edits, and no undecided posts). Anything else, including
- * a partially reviewed batch, is treated as needing revisions.
+ * Map a submitted review to a batch-level verdict. Strict: approved ONLY when
+ * every post in the batch was explicitly approved. `batchPostCount` MUST be the
+ * batch's post count, NOT the review summary's `totalPosts` (which counts only
+ * the ReviewItems the reviewer touched — untouched posts have no item, so a
+ * partial review would otherwise look fully approved and auto-schedule
+ * unreviewed posts).
  */
-export function mapReviewDecision(summary: ReviewDecisionSummary): ReviewDecision {
+export function mapReviewDecision(
+  counts: ReviewDecisionCounts,
+  batchPostCount: number,
+): ReviewDecision {
   const allApproved =
-    summary.totalPosts > 0 &&
-    summary.approved === summary.totalPosts &&
-    summary.changesRequested === 0 &&
-    summary.captionEdited === 0
+    batchPostCount > 0 &&
+    counts.approved === batchPostCount &&
+    counts.changesRequested === 0 &&
+    counts.captionEdited === 0
   return allApproved ? 'approved' : 'changes'
 }
 
