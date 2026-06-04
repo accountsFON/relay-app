@@ -143,6 +143,7 @@ vi.mock('@/db/client', () => ({
 
 import {
   RelayServiceError,
+  advanceFromClientReview,
   completeRevisionItem,
   dispatchRevisions,
   finishBatch,
@@ -985,6 +986,143 @@ describe('finishBatch', () => {
 // (forward, gated) and sendBackBaton (backward, gated). The role check lives
 // at the action layer; the service does not enforce it.
 // ---------------------------------------------------------------------------
+
+describe('advanceFromClientReview', () => {
+  it('no-ops when clientReviewEnabled is false', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.sent_to_client,
+      clientReviewEnabled: false,
+      label: 'Foo May 2026',
+    })
+    const result = await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'approved',
+      reviewerName: 'Sarah',
+      fallbackUserId: 'user_creator',
+    })
+    expect(result.advanced).toBe(false)
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('no-ops when the batch is not on a client-held step', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      clientReviewEnabled: true,
+      label: 'Foo May 2026',
+    })
+    const result = await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'approved',
+      reviewerName: 'Sarah',
+      fallbackUserId: 'user_creator',
+    })
+    expect(result.advanced).toBe(false)
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('approved at sent_to_client → ready_to_schedule held by AM', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.sent_to_client,
+      clientReviewEnabled: true,
+      label: 'Foo May 2026',
+    })
+    const result = await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'approved',
+      reviewerName: 'Sarah',
+      fallbackUserId: 'user_creator',
+    })
+    expect(result.advanced).toBe(true)
+    expect(result.toStep).toBe(RelayStep.ready_to_schedule)
+    expect(result.newHolderId).toBe('user_am')
+
+    // batch.update sets the right step + holder
+    expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.currentStep).toBe(RelayStep.ready_to_schedule)
+    expect(updateData.currentHolder).toBe('user_am')
+
+    // relayEvent is pass_forward from user_creator to user_am
+    expect(currentTx.tx.relayEvent.create).toHaveBeenCalledOnce()
+    const relayData = currentTx.tx.relayEvent.create.mock.calls[0][0].data
+    expect(relayData.type).toBe(RelayEventType.pass_forward)
+    expect(relayData.fromUser).toBe('user_creator')
+    expect(relayData.toUser).toBe('user_am')
+
+    // activityEvent is client_review_decided with actorId null
+    expect(currentTx.tx.activityEvent.create).toHaveBeenCalledOnce()
+    const activityData = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(activityData.kind).toBe(ActivityKind.client_review_decided)
+    expect(activityData.actorId).toBeNull()
+    expect(activityData.payload.kind).toBe('client_review_decided')
+    expect(activityData.payload.decision).toBe('approved')
+  })
+
+  it('changes at sent_to_client → implementing_revisions', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.sent_to_client,
+      clientReviewEnabled: true,
+      label: 'Foo May 2026',
+    })
+    const result = await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'changes',
+      reviewerName: 'Sarah',
+      fallbackUserId: 'user_creator',
+    })
+    expect(result.advanced).toBe(true)
+    expect(result.toStep).toBe(RelayStep.implementing_revisions)
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.currentStep).toBe(RelayStep.implementing_revisions)
+  })
+
+  it('notifies the new holder AM (without actor exclusion, since actor is null)', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.sent_to_client,
+      clientReviewEnabled: true,
+      label: 'Foo May 2026',
+    })
+    await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'approved',
+      reviewerName: null,
+      fallbackUserId: 'user_creator',
+    })
+    const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
+    // user_am is the AM and there is no actor to exclude, so mention row is present
+    expect(activityCall.data.mentions.create).toEqual([
+      { mentionedUserId: 'user_am' },
+    ])
+  })
+
+  it('also advances from client_decision: approved → ready_to_schedule', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.client_decision,
+      clientReviewEnabled: true,
+      label: 'Foo May 2026',
+    })
+    const result = await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'approved',
+      reviewerName: 'Sarah',
+      fallbackUserId: 'user_creator',
+    })
+    expect(result.advanced).toBe(true)
+    expect(result.toStep).toBe(RelayStep.ready_to_schedule)
+  })
+})
 
 describe('forceStep', () => {
   it('moves batch bypassing the legal transition table', async () => {

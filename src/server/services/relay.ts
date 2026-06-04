@@ -296,6 +296,125 @@ export async function passBaton(input: PassBatonInput) {
   })
 }
 
+export interface AdvanceFromClientReviewInput {
+  batchId: string
+  decision: 'approved' | 'changes'
+  reviewerName: string | null
+  /** A real org user used as RelayEvent.fromUser and as the holder fallback
+   *  when the client has no assigned AM. In practice the magic link creator. */
+  fallbackUserId: string
+}
+
+export interface AdvanceFromClientReviewResult {
+  advanced: boolean
+  toStep?: RelayStep
+  newHolderId?: string
+  reason?: string
+}
+
+/**
+ * Advance a relay in response to a client review submission on the magic
+ * link. Client attributed: the activity event is recorded with a null actor
+ * (the reviewer is not a Clerk user) and the AM/new holder is notified
+ * WITHOUT the actor-exclusion that passBaton applies. Best effort: callers
+ * wrap this so a failure never rolls back the review submission.
+ *
+ * Guard: only acts when clientReviewEnabled and the batch is on a client-held
+ * step (sent_to_client or client_decision); otherwise a no-op so a second
+ * reviewer's submit, or a submit after the AM already moved the batch, is
+ * harmless.
+ */
+export async function advanceFromClientReview(
+  input: AdvanceFromClientReviewInput,
+): Promise<AdvanceFromClientReviewResult> {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({
+      where: { id: input.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        clientReviewEnabled: true,
+        label: true,
+      },
+    })
+    if (!batch) return { advanced: false, reason: 'not_found' }
+
+    const isClientHeld =
+      batch.currentStep === RelayStep.sent_to_client ||
+      batch.currentStep === RelayStep.client_decision
+    if (!batch.clientReviewEnabled || !isClientHeld) {
+      return { advanced: false, reason: 'not_at_client_step' }
+    }
+
+    const toStep =
+      input.decision === 'approved'
+        ? RelayStep.ready_to_schedule
+        : RelayStep.implementing_revisions
+
+    const next = await resolveHolderForStep(
+      tx,
+      batch.clientId,
+      toStep,
+      input.fallbackUserId,
+    )
+    const toUserName = await loadUserName(tx, next.userId)
+
+    await tx.batch.update({
+      where: { id: batch.id },
+      data: {
+        currentStep: toStep,
+        currentSubState: null,
+        currentHolder: next.userId,
+        currentRole: next.role,
+      },
+    })
+
+    await tx.relayEvent.create({
+      data: {
+        batchId: batch.id,
+        type: RelayEventType.pass_forward,
+        fromStep: batch.currentStep,
+        toStep,
+        fromUser: input.fallbackUserId,
+        toUser: next.userId,
+        reason:
+          input.decision === 'approved'
+            ? 'client_approved'
+            : 'client_requested_changes',
+        payload: { reviewerName: input.reviewerName, decision: input.decision },
+      },
+    })
+
+    await reseedChecklistForStep(tx, batch.id, toStep)
+
+    await recordActivity(
+      {
+        clientId: batch.clientId,
+        actorId: null,
+        kind: ActivityKind.client_review_decided,
+        visibility: EventVisibility.internal,
+        payload: {
+          kind: 'client_review_decided',
+          batchId: batch.id,
+          batchLabel: batch.label,
+          fromStep: batch.currentStep,
+          toStep,
+          decision: input.decision,
+          reviewerName: input.reviewerName,
+          toUserName,
+          newHolderId: next.userId,
+          newHolderRole: next.role,
+        },
+        mentionedUserIds: next.notifyUserIds,
+      },
+      tx,
+    )
+
+    return { advanced: true, toStep, newHolderId: next.userId }
+  })
+}
+
 /**
  * Terminal-state transition: advances a batch from final_qa_schedule to
  * completed. Emits batch_completed ActivityEvent with public visibility so
