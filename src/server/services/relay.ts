@@ -347,6 +347,12 @@ export async function advanceFromClientReview(
       return { advanced: false, reason: 'not_at_client_step' }
     }
 
+    // Deliberate single hop: the client review collapses straight to the
+    // outcome, skipping the intermediate `client_decision` step (which exists
+    // only for the logged-in client persona). We therefore do NOT call
+    // validateTransition here; `sent_to_client -> ready_to_schedule` is not a
+    // legal edge in the table by design. Do not "fix" this to route through
+    // client_decision (approved default confirmed by Julio, 2026-06-04 spec).
     const toStep =
       input.decision === 'approved'
         ? RelayStep.ready_to_schedule
