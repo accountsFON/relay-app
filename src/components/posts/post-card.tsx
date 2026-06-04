@@ -116,7 +116,9 @@ export function PostCard({
   }
 
   const handleCopy = () => {
-    const text = `${caption}\n\n${hashtags}`
+    // Copy from props (the live server state), not the edit buffers, so a
+    // redo/restore that changed the post is reflected in what gets copied.
+    const text = `${post.caption}\n\n${post.hashtags.join(' ')}`
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -217,7 +219,20 @@ export function PostCard({
               )}
               {!isEditing && !isArchived && (
                 <SimpleTooltip content="Edit this post">
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      // Seed the edit buffers from the current prop so the form
+                      // starts from the live body even after a redo/restore
+                      // changed it since this card mounted.
+                      setCaption(post.caption)
+                      setHashtags(post.hashtags.join(' '))
+                      setGraphicHook(post.graphicHook ?? '')
+                      setDesignerNotes(post.designerNotes ?? '')
+                      setIsEditing(true)
+                    }}
+                  >
                     Edit
                   </Button>
                 </SimpleTooltip>
@@ -328,7 +343,7 @@ export function PostCard({
             ) : (
               <div className="space-y-3">
                 <p className="text-[15px] text-foreground whitespace-pre-line leading-relaxed">
-                  {caption}
+                  {post.caption}
                 </p>
                 <QaEditedIndicator preQaCaption={post.preQaCaption} />
                 {post.hashtags.length > 0 && (

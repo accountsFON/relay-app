@@ -573,7 +573,9 @@ export default async function BatchDetailPage({
                       const versionRows = versions.map((v) => ({
                         id: v.id,
                         caption: v.caption,
-                        hashtagCount: v.hashtags.length,
+                        hashtags: v.hashtags,
+                        graphicHook: v.graphicHook,
+                        designerNotes: v.designerNotes,
                         createdAt: v.createdAt,
                         authorName: v.author?.name ?? null,
                       }))
