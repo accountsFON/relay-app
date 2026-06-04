@@ -156,6 +156,14 @@ beforeEach(() => {
   // exercise the Pins subsection override this with a per-test
   // mockResolvedValueOnce.
   vi.mocked(db.postThread.findMany).mockResolvedValue([] as never)
+  // Default: the relay advance is a harmless no-op. Without this, a bare
+  // vi.fn() resolves to undefined and `moved.advanced` throws into
+  // advanceError, silently degrading every submit test that does not set
+  // its own return. The advance-specific tests below override per-test.
+  vi.mocked(advanceFromClientReview).mockResolvedValue({
+    advanced: false,
+    reason: 'not_at_client_step',
+  })
 })
 
 describe('submitSessionAction', () => {
