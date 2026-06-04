@@ -276,6 +276,40 @@ describe('EventRenderer copy', () => {
     ).toBeInTheDocument()
   })
 
+  it('renders client_review_decided approved with batch label', () => {
+    const event = makeEvent(ActivityKind.client_review_decided, {
+      batchId: 'b1',
+      batchLabel: 'Cedar Creek May 2026',
+      fromStep: 'sent_to_client',
+      toStep: 'ready_to_schedule',
+      decision: 'approved',
+      reviewerName: 'Sarah',
+      toUserName: 'Mollie',
+      newHolderId: 'user_am',
+      newHolderRole: 'am',
+    })
+    render(<EventRenderer event={event} />)
+    const node = screen.getByText(/approved/)
+    expect(node).toBeInTheDocument()
+    expect(node.textContent ?? '').toMatch(/Cedar Creek May 2026/)
+  })
+
+  it('renders client_review_decided changes with "requested changes"', () => {
+    const event = makeEvent(ActivityKind.client_review_decided, {
+      batchId: 'b1',
+      batchLabel: 'Cedar Creek May 2026',
+      fromStep: 'sent_to_client',
+      toStep: 'implementing_revisions',
+      decision: 'changes',
+      reviewerName: 'Sarah',
+      toUserName: 'Mollie',
+      newHolderId: 'user_am',
+      newHolderRole: 'am',
+    })
+    render(<EventRenderer event={event} />)
+    expect(screen.getByText(/requested changes/)).toBeInTheDocument()
+  })
+
   // ---------------------------------------------------------------------
   // AM / admin holder override copy
   // ---------------------------------------------------------------------

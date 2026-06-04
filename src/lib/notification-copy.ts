@@ -145,6 +145,17 @@ export function renderSummary(row: MentionInboxRow): string {
       const tail = isFirst ? 'first visit' : 'returning'
       return `${prefix}${reviewer} opened the review link (${tail}).`
     }
+    case 'client_review_decided': {
+      const batchLabel = payload.batchLabel as string | undefined
+      const toStep = payload.toStep as string | undefined
+      const decision = payload.decision as string | undefined
+      const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
+      const stepLabel = toStep ? relayStepLabel(toStep) : ''
+      const tail = stepLabel ? ` It is now at ${stepLabel}.` : ''
+      return decision === 'approved'
+        ? `${prefix}Your client approved ${relay}.${tail}`
+        : `${prefix}Your client requested changes on ${relay}.${tail}`
+    }
     case 'post_caption_ai_fixed': {
       const postId = (payload.postId as string) ?? ''
       return `${prefix}${actor} used AI to fix the caption on post ${postId.slice(0, 6)}.`

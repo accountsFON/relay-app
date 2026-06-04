@@ -405,6 +405,17 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         message: `opened round ${p.round} for re-review`,
       }
     }
+    case 'client_review_decided': {
+      if (p.kind !== 'client_review_decided') break
+      return {
+        icon: p.decision === 'approved' ? CheckCircle2 : ArrowLeft,
+        tone: p.decision === 'approved' ? 'success' : 'warning',
+        message:
+          p.decision === 'approved'
+            ? `client approved ${p.batchLabel}, moved to ${relayStepLabel(p.toStep)}`
+            : `client requested changes on ${p.batchLabel}, moved to ${relayStepLabel(p.toStep)}`,
+      }
+    }
   }
   // Fallback for not-yet-modeled kinds.
   return {

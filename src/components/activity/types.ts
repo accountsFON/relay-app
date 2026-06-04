@@ -5,7 +5,7 @@
  * Json is `ActivityPayload` below, keyed by `kind`. The activity-events repo
  * casts; renderers narrow per kind.
  */
-import type { ActivityEvent, ActivityKind, RelayStep } from '@prisma/client'
+import type { ActivityEvent, ActivityKind, RelayRole, RelayStep } from '@prisma/client'
 
 export interface ActivityActor {
   id: string
@@ -169,6 +169,18 @@ export type ModeledActivityPayload =
       kind: 'review_round_started'
       magicLinkId: string
       round: number
+    }
+  | {
+      kind: 'client_review_decided'
+      batchId: string
+      batchLabel: string
+      fromStep: RelayStep
+      toStep: RelayStep
+      decision: 'approved' | 'changes'
+      reviewerName: string | null
+      toUserName: string
+      newHolderId: string
+      newHolderRole: RelayRole
     }
 
 type ModeledKind = ModeledActivityPayload['kind']
