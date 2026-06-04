@@ -464,7 +464,7 @@ model Batch {
   currentHolder       String
   currentRole         RelayRole
   scheduledAt         DateTime?
-  clientReviewEnabled Boolean   @default(true)
+  clientReviewEnabled Boolean   @default(false)
   createdAt           DateTime  @default(now())
   completedAt         DateTime?
   deletedAt           DateTime?
