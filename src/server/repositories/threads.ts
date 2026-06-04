@@ -356,6 +356,49 @@ export async function reopenThread(input: ReopenThreadInput): Promise<void> {
 
 export type HydratedThread = FeedPostProps['threads'][number]
 
+// The shape Prisma returns for a thread row when the three list functions
+// include comments with their author. Derived from the findMany call so tsc
+// validates the helper against the actual query result without manual
+// duplication.
+type ThreadRowWithComments = Awaited<
+  ReturnType<typeof db.postThread.findMany<{
+    include: {
+      comments: {
+        orderBy: { createdAt: 'asc' }
+        include: { author: { select: { id: true; name: true; avatarUrl: true } } }
+      }
+    }
+  }>>
+>[number]
+
+/**
+ * Map one PostThread row (with its `comments` include) into the
+ * HydratedThread shape. Defensive: every thread is created with one
+ * comment in createThread, but if a row somehow has none we surface a
+ * placeholder rather than throwing during a render.
+ */
+function toHydratedThread(t: ThreadRowWithComments): HydratedThread {
+  const first = t.comments[0]
+  const firstComment = first
+    ? {
+        author: hydrateAuthor(first),
+        body: first.body,
+        createdAt: first.createdAt,
+      }
+    : {
+        author: { kind: 'client' as const, reviewerName: 'Unknown' },
+        body: '',
+        createdAt: t.createdAt,
+      }
+  return {
+    id: t.id,
+    status: t.status,
+    pin: rowToPin(t),
+    firstComment,
+    commentCount: t.comments.length,
+  }
+}
+
 export interface ListThreadsForPostInput {
   postId: string
   includeResolved?: boolean
@@ -386,30 +429,7 @@ export async function listThreadsForPost(
     },
   })
 
-  return threads.map((t) => {
-    const first = t.comments[0]
-    // Defensive: every thread is created with one comment in createThread.
-    // If the row was created by some other path with no comments, surface a
-    // placeholder rather than throwing during a render.
-    const firstComment = first
-      ? {
-          author: hydrateAuthor(first),
-          body: first.body,
-          createdAt: first.createdAt,
-        }
-      : {
-          author: { kind: 'client' as const, reviewerName: 'Unknown' },
-          body: '',
-          createdAt: t.createdAt,
-        }
-    return {
-      id: t.id,
-      status: t.status,
-      pin: rowToPin(t),
-      firstComment,
-      commentCount: t.comments.length,
-    }
-  })
+  return threads.map(toHydratedThread)
 }
 
 export interface ListThreadsForBatchInput {
@@ -444,27 +464,49 @@ export async function listThreadsForBatch(
 
   const result = new Map<string, HydratedThread[]>()
   for (const t of threads) {
-    const first = t.comments[0]
-    const firstComment = first
-      ? {
-          author: hydrateAuthor(first),
-          body: first.body,
-          createdAt: first.createdAt,
-        }
-      : {
-          author: { kind: 'client' as const, reviewerName: 'Unknown' },
-          body: '',
-          createdAt: t.createdAt,
-        }
-    const hydrated: HydratedThread = {
-      id: t.id,
-      status: t.status,
-      pin: rowToPin(t),
-      firstComment,
-      commentCount: t.comments.length,
-    }
     const list = result.get(t.postId) ?? []
-    list.push(hydrated)
+    list.push(toHydratedThread(t))
+    result.set(t.postId, list)
+  }
+  return result
+}
+
+export interface ListClientThreadsForBatchInput {
+  batchId: string
+  includeResolved?: boolean
+}
+
+/**
+ * Returns CLIENT-authored threads (reviewerToken != null) for every post in
+ * a batch as a `postId -> threads[]` map. Used by the AM review session
+ * detail page to surface the pins a reviewer left. When includeResolved is
+ * true, resolved pins are returned too so the page can show addressed pins.
+ */
+export async function listClientThreadsForBatch(
+  input: ListClientThreadsForBatchInput,
+): Promise<Map<string, HydratedThread[]>> {
+  const { batchId, includeResolved = false } = input
+  const threads = await db.postThread.findMany({
+    where: {
+      post: { batchId },
+      reviewerToken: { not: null },
+      ...(includeResolved ? {} : { status: 'open' }),
+    },
+    orderBy: { createdAt: 'asc' },
+    include: {
+      comments: {
+        orderBy: { createdAt: 'asc' },
+        include: {
+          author: { select: { id: true, name: true, avatarUrl: true } },
+        },
+      },
+    },
+  })
+
+  const result = new Map<string, HydratedThread[]>()
+  for (const t of threads) {
+    const list = result.get(t.postId) ?? []
+    list.push(toHydratedThread(t))
     result.set(t.postId, list)
   }
   return result
@@ -474,19 +516,26 @@ export interface BulkResolveOnPostInput {
   postId: string
   resolvedBy: string
   resolvedReason: string
+  /** When true, only resolve CLIENT-left pins (reviewerToken != null). */
+  onlyClientPins?: boolean
 }
 
 /**
  * Flip every open thread on a post to resolved with the same reason.
  * Returns the count flipped (zero if no open threads). Used by the AM
- * "bulk-resolve on post" override.
+ * "bulk-resolve on post" override and by the review session detail page
+ * (with onlyClientPins to leave AM-authored pins alone).
  */
 export async function bulkResolveOnPost(
   input: BulkResolveOnPostInput,
 ): Promise<number> {
-  const { postId, resolvedBy, resolvedReason } = input
+  const { postId, resolvedBy, resolvedReason, onlyClientPins = false } = input
   const result = await db.postThread.updateMany({
-    where: { postId, status: 'open' },
+    where: {
+      postId,
+      status: 'open',
+      ...(onlyClientPins ? { reviewerToken: { not: null } } : {}),
+    },
     data: {
       status: 'resolved',
       resolvedAt: new Date(),

@@ -1,19 +1,20 @@
 /**
  * AM-side review session detail page.
  *
- * Renders one submitted ReviewSession with per-item context for the AM:
- *   - reviewer identity, round, submitted timestamp, summary chips
- *   - one row per non-approved ReviewItem (changes_requested or
- *     caption_edited). Approved items are intentionally omitted per design;
- *     they sit on the parent batch page.
- *   - StartNextRoundButton once every pending item has been addressed
+ * Renders one submitted ReviewSession as a list of "attention posts" -- the
+ * union of (a) posts with a non-approved ReviewItem and (b) posts the client
+ * left markup pins on. Each card shows the item decision UI (ReviewItemRow)
+ * and/or the client pins (ReviewPinnedPost), plus a single post-level
+ * "Mark addressed" button that records the item addressed AND resolves the
+ * post's open client pins.
  *
- * Access control mirrors the existing batch page: requireClientViewer +
- * findClientForUser. The session must also belong to a magic link on a batch
- * the AM has access to, we verify that by walking magicLink → batch → client
- * and notFound() if it doesn't match the scoped client.
+ * A post is "handled" when its item (if any) is addressed AND it has no open
+ * client pins. Because the predicate reads live pin status, resolving a pin
+ * anywhere (here or the preview page) reflects in both places with no extra
+ * write. StartNextRound enables only when every attention post is handled.
  *
- * Layer 2 / Task 2.2.
+ * Access control mirrors the batch page: requireClientViewer +
+ * findClientForUser, then walk magicLink -> batch -> client.
  */
 
 import Link from 'next/link'
@@ -22,6 +23,10 @@ import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { findSessionWithItems } from '@/server/repositories/reviewSessions'
+import {
+  listClientThreadsForBatch,
+  type HydratedThread,
+} from '@/server/repositories/threads'
 import { db } from '@/db/client'
 import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -30,14 +35,43 @@ import {
   ReviewItemRow,
   type HydratedItemWithPost,
 } from '@/components/review/review-item-row'
+import { ReviewPinnedPost } from '@/components/review/review-pinned-post'
+import { MarkAddressedButton } from '@/components/review/mark-addressed-button'
 import { StartNextRoundButton } from '@/components/review/start-next-round-button'
 import {
   acceptCaptionEditAction,
   rejectCaptionEditAction,
-  addressItemAction,
   startNextRoundAction,
+  markPostAddressedAction,
 } from '@/server/actions/reviewSessions'
+import {
+  resolveThreadAction,
+  addCommentAction,
+} from '@/server/actions/threads'
+import { revalidatePath } from 'next/cache'
 import type { ReviewSessionSummary } from '@/types/review-session'
+
+function formatPostDate(date: Date): string {
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    }).format(date)
+  } catch {
+    return date.toISOString().slice(0, 10)
+  }
+}
+
+type AttentionPost = {
+  postId: string
+  postNumber: number
+  post: { id: string; postDate: Date; caption: string; mediaUrls: string[] }
+  item: HydratedItemWithPost | null
+  clientThreads: HydratedThread[]
+  handled: boolean
+}
 
 export default async function ReviewSessionDetailPage({
   params,
@@ -47,8 +81,6 @@ export default async function ReviewSessionDetailPage({
   const ctx = await requireClientViewer()
   const { id, batchId, sessionId } = await params
 
-  // Scope: client must be visible to the user, batch must belong to that
-  // client, session must belong to a magic link on that batch.
   const client = await findClientForUser(ctx, id)
   if (!client) redirectAccessDenied()
 
@@ -58,7 +90,6 @@ export default async function ReviewSessionDetailPage({
   const session = await findSessionWithItems({ reviewSessionId: sessionId })
   if (!session) redirectAccessDenied()
 
-  // Verify the session's magic link is on this batch (existence-leak safe).
   const magicLink = await db.magicLink.findUnique({
     where: { id: session.magicLinkId },
     select: {
@@ -70,9 +101,6 @@ export default async function ReviewSessionDetailPage({
   })
   if (!magicLink || magicLink.batchId !== batch.id) redirectAccessDenied()
 
-  // Pull the reviewer row separately (session.reviewerId may be null on
-  // sessions started before name-confirm completed; that path is rare for
-  // submitted sessions, but handle it gracefully).
   const reviewer = session.reviewerId
     ? await db.magicLinkReviewer.findUnique({
         where: { id: session.reviewerId },
@@ -83,17 +111,11 @@ export default async function ReviewSessionDetailPage({
   const reviewerName = reviewer?.name ?? magicLink.defaultReviewerName
   const reviewerEmail = reviewer?.email ?? magicLink.defaultReviewerEmail ?? null
 
-  // Build the 1-indexed post-number map by loading every post in the batch
-  // (only ids + dates needed). Mirrors the ordering on the batch page.
+  // Whole-batch post map (1-indexed numbering matches the batch page).
   const batchPosts = await db.post.findMany({
     where: { batchId: batch.id },
     orderBy: { postDate: 'asc' },
-    select: {
-      id: true,
-      postDate: true,
-      caption: true,
-      mediaUrls: true,
-    },
+    select: { id: true, postDate: true, caption: true, mediaUrls: true },
   })
   const postNumberById = new Map<string, number>()
   const postById = new Map<string, (typeof batchPosts)[number]>()
@@ -102,62 +124,73 @@ export default async function ReviewSessionDetailPage({
     postById.set(p.id, p)
   })
 
-  // Hydrate the non-approved items with their Post data. We omit approved
-  // items per spec (those live on the batch page and don't need per-row
-  // attention).
-  const hydratedItems: HydratedItemWithPost[] = session.items
-    .filter((item) => item.decision !== 'approved' && item.decision !== 'not_reviewed')
-    .map((item) => {
-      const post = postById.get(item.postId)
-      if (!post) return null
-      return {
-        ...item,
-        post: {
-          id: post.id,
-          postDate: post.postDate,
-          caption: post.caption,
-          mediaUrls: post.mediaUrls,
-        },
-      }
+  // Non-approved items, hydrated with their Post, keyed by postId.
+  const itemByPostId = new Map<string, HydratedItemWithPost>()
+  for (const item of session.items) {
+    if (item.decision === 'approved' || item.decision === 'not_reviewed') continue
+    const post = postById.get(item.postId)
+    if (!post) continue
+    itemByPostId.set(item.postId, {
+      ...item,
+      post: {
+        id: post.id,
+        postDate: post.postDate,
+        caption: post.caption,
+        mediaUrls: post.mediaUrls,
+      },
     })
-    .filter((x): x is HydratedItemWithPost => x !== null)
+  }
 
-  // Pending vs addressed:
-  //   - acceptedAsPostVersionId is set by acceptCaptionEditAction when the
-  //     AM accepts a caption suggestion (creates a new PostVersion).
-  //   - addressItemAction (Mark Addressed) and rejectCaptionEditAction
-  //     (Reject Edit) emit a `review_item_addressed` ActivityEvent with
-  //     reviewItemId in the payload. Their server-side state change is
-  //     purely the audit-event write, so the page reads the event stream
-  //     to know which items have been handled.
-  //
-  // An item is addressed if EITHER signal is present.
-  const itemIds = hydratedItems.map((item) => item.id)
+  // Which items are addressed (acceptedAsPostVersionId OR a
+  // review_item_addressed activity event). Mirrors the prior page logic.
+  const itemIds = [...itemByPostId.values()].map((i) => i.id)
   const addressEvents =
     itemIds.length === 0
       ? []
       : await db.activityEvent.findMany({
-          where: {
-            clientId: client.id,
-            kind: 'review_item_addressed',
-          },
+          where: { clientId: client.id, kind: 'review_item_addressed' },
           select: { payload: true },
         })
   const itemIdSet = new Set(itemIds)
   const addressedItemIds = new Set<string>()
   for (const e of addressEvents) {
-    const reviewItemId = (e.payload as { reviewItemId?: string } | null)
-      ?.reviewItemId
-    if (reviewItemId && itemIdSet.has(reviewItemId)) {
-      addressedItemIds.add(reviewItemId)
-    }
+    const reviewItemId = (e.payload as { reviewItemId?: string } | null)?.reviewItemId
+    if (reviewItemId && itemIdSet.has(reviewItemId)) addressedItemIds.add(reviewItemId)
   }
 
-  const isAddressed = (item: HydratedItemWithPost) =>
-    Boolean(item.acceptedAsPostVersionId) || addressedItemIds.has(item.id)
+  // Client pins (open + resolved) for every post in the batch.
+  const clientThreadsByPost = await listClientThreadsForBatch({
+    batchId: batch.id,
+    includeResolved: true,
+  })
 
-  const pending = hydratedItems.filter((item) => !isAddressed(item))
-  const addressed = hydratedItems.filter((item) => isAddressed(item))
+  // Build the attention-post list: union of non-approved items and posts
+  // with client pins.
+  const attention: AttentionPost[] = []
+  for (const p of batchPosts) {
+    const item = itemByPostId.get(p.id) ?? null
+    const clientThreads = clientThreadsByPost.get(p.id) ?? []
+    if (!item && clientThreads.length === 0) continue
+
+    const itemAddressed = item
+      ? Boolean(item.acceptedAsPostVersionId) || addressedItemIds.has(item.id)
+      : true
+    const openPins = clientThreads.filter((t) => t.status === 'open').length
+    const handled = itemAddressed && openPins === 0
+
+    attention.push({
+      postId: p.id,
+      postNumber: postNumberById.get(p.id) ?? 0,
+      post: p,
+      item,
+      clientThreads,
+      handled,
+    })
+  }
+  attention.sort((a, b) => a.postNumber - b.postNumber)
+
+  const pending = attention.filter((a) => !a.handled)
+  const addressed = attention.filter((a) => a.handled)
 
   const summary: ReviewSessionSummary =
     session.submittedSummary ?? {
@@ -167,19 +200,106 @@ export default async function ReviewSessionDetailPage({
       totalPosts: session.items.length,
     }
 
-  // Submitted timestamp falls back to startedAt for in_progress / draft state
-  // (rare on this surface but safe).
   const submittedAt = session.submittedAt ?? session.startedAt
-
-  const allAddressed = pending.length === 0 && hydratedItems.length > 0
+  const allAddressed = pending.length === 0 && attention.length > 0
   const isSuperseded = session.status === 'superseded'
+  // Extract primitives from session/client/batch before renderCard so the
+  // closure captures typed consts, not the nullable variables.
+  const clientId_ = client.id
+  const batchId_ = batch.id
+  const sessionId_ = session.id
+  const sessionRound = session.round
+
+  function renderCard(ap: AttentionPost, mode: 'pending' | 'addressed') {
+    const reviewItemId = ap.item?.id
+
+    const onAccept = ap.item
+      ? async () => {
+          'use server'
+          await acceptCaptionEditAction({ reviewItemId: ap.item!.id })
+        }
+      : undefined
+    const onReject = ap.item
+      ? async () => {
+          'use server'
+          await rejectCaptionEditAction({ reviewItemId: ap.item!.id })
+        }
+      : undefined
+    const onMarkAddressed = async () => {
+      'use server'
+      await markPostAddressedAction({
+        postId: ap.postId,
+        reviewItemId,
+        reviewSessionId: sessionId_,
+      })
+    }
+    const onResolvePin = async (threadId: string) => {
+      'use server'
+      await resolveThreadAction({ threadId, resolvedReason: null })
+      revalidatePath(
+        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+      )
+    }
+    const onCommentPin = async (threadId: string, body: string) => {
+      'use server'
+      await addCommentAction({ threadId, body })
+      revalidatePath(
+        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+      )
+    }
+
+    return (
+      <div
+        key={ap.postId}
+        data-testid={`attention-post-${ap.postId}`}
+        className="space-y-3"
+      >
+        {ap.item ? (
+          <ReviewItemRow
+            item={ap.item}
+            postNumber={ap.postNumber}
+            mode={mode}
+            showAddressedButton={false}
+            onAccept={onAccept}
+            onReject={onReject}
+          />
+        ) : (
+          <h3 className="text-sm font-semibold text-foreground">
+            {`Post #${ap.postNumber} · ${formatPostDate(ap.post.postDate)}`}
+          </h3>
+        )}
+
+        {ap.clientThreads.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {`Client pins (${ap.clientThreads.length})`}
+            </p>
+            <ReviewPinnedPost
+              postId={ap.postId}
+              mediaUrl={ap.post.mediaUrls[0] ?? null}
+              caption={ap.post.caption}
+              threads={ap.clientThreads}
+              onResolve={mode === 'pending' ? onResolvePin : undefined}
+              onComment={mode === 'pending' ? onCommentPin : undefined}
+            />
+          </div>
+        )}
+
+        {mode === 'pending' && (
+          <div className="flex justify-end">
+            <MarkAddressedButton onClick={onMarkAddressed} />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <ReviewSessionHeader
         reviewerName={reviewerName}
         reviewerEmail={reviewerEmail}
-        round={session.round}
+        round={sessionRound}
         submittedAt={submittedAt}
         summary={summary}
         backHref={`/clients/${client.id}/batches/${batch.id}`}
@@ -190,63 +310,27 @@ export default async function ReviewSessionDetailPage({
           {pending.length === 0 ? (
             <EmptyState
               title={
-                hydratedItems.length === 0
-                  ? 'Reviewer approved every post'
-                  : 'Every item handled'
+                attention.length === 0
+                  ? 'Nothing to act on'
+                  : 'Every post handled'
               }
               description={
-                hydratedItems.length === 0
-                  ? 'No changes requested and no caption edits. You can move this batch forward.'
+                attention.length === 0
+                  ? 'No changes requested, no caption edits, and no open client pins. You can move this batch forward.'
                   : 'You can start the next round whenever the team is ready.'
               }
             />
           ) : (
-            <div className="space-y-3">
-              {pending.map((item) => {
-                const reviewItemId = item.id
-                // Bind reviewItemId into closures over the server actions.
-                // Server actions can be passed directly to client components;
-                // the closure is serialized via the action reference + the
-                // captured argument.
-                const onAccept = async () => {
-                  'use server'
-                  await acceptCaptionEditAction({ reviewItemId })
-                }
-                const onReject = async () => {
-                  'use server'
-                  await rejectCaptionEditAction({ reviewItemId })
-                }
-                const onAddressed = async () => {
-                  'use server'
-                  await addressItemAction({ reviewItemId })
-                }
-                return (
-                  <ReviewItemRow
-                    key={item.id}
-                    item={item}
-                    postNumber={postNumberById.get(item.postId) ?? 0}
-                    mode="pending"
-                    onAccept={onAccept}
-                    onReject={onReject}
-                    onAddressed={onAddressed}
-                  />
-                )
-              })}
+            <div className="space-y-8">
+              {pending.map((ap) => renderCard(ap, 'pending'))}
             </div>
           )}
         </PageSection>
 
         {addressed.length > 0 && (
           <PageSection title={`Already addressed (${addressed.length})`}>
-            <div className="space-y-3">
-              {addressed.map((item) => (
-                <ReviewItemRow
-                  key={item.id}
-                  item={item}
-                  postNumber={postNumberById.get(item.postId) ?? 0}
-                  mode="addressed"
-                />
-              ))}
+            <div className="space-y-8">
+              {addressed.map((ap) => renderCard(ap, 'addressed'))}
             </div>
           </PageSection>
         )}
@@ -255,7 +339,7 @@ export default async function ReviewSessionDetailPage({
           <div className="flex justify-end" data-testid="start-next-round-row">
             <StartNextRoundButton
               magicLinkId={magicLink.id}
-              nextRound={session.round + 1}
+              nextRound={sessionRound + 1}
               onClick={async () => {
                 'use server'
                 await startNextRoundAction({ magicLinkId: magicLink.id })
