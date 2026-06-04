@@ -20,6 +20,7 @@ import { recordActivity } from '@/server/services/activity'
 import { sendEmail } from '@/lib/resend'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
+import { bulkResolveOnPost } from '@/server/repositories/threads'
 import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import {
   ReviewSubmittedDigestEmail,
@@ -901,4 +902,78 @@ export async function startNextRoundAction(input: {
   return emailError
     ? { ok: true, newSessionId: newSession.id, newRound: newSession.round, emailError }
     : { ok: true, newSessionId: newSession.id, newRound: newSession.round }
+}
+
+const REVIEW_PIN_RESOLVE_REASON = 'Addressed from review session'
+
+/**
+ * AM clears a whole post from the review session detail page in one click:
+ * records the review item addressed (when a non-approved item is present)
+ * AND resolves every open CLIENT pin on the post. The two halves of the
+ * mirror. For an approved-but-pinned post there is no reviewItemId, so the
+ * action only bulk-resolves pins.
+ *
+ * Auth: requireClientEditor + findClientForUser scopes the post to the AM's
+ * assignments (same gate as the other AM-side review actions). clientId and
+ * batchId are derived server-side from the post; reviewSessionId is used only
+ * for path revalidation.
+ */
+export async function markPostAddressedAction(input: {
+  postId: string
+  reviewItemId?: string
+  reviewSessionId: string
+}): Promise<{ ok: true; pinsResolved: number }> {
+  const ctx = await requireClientEditor()
+
+  if (!input.postId || typeof input.postId !== 'string') {
+    throw new ReviewSessionActionError('postId required')
+  }
+
+  const post = await db.post.findUnique({
+    where: { id: input.postId },
+    select: { id: true, clientId: true, batchId: true },
+  })
+  if (!post || !post.batchId) {
+    throw new ReviewSessionActionError('Post not found')
+  }
+
+  const client = await findClientForUser(ctx, post.clientId)
+  if (!client) throw new ReviewSessionActionError('Post not found')
+
+  // Address the review item half, when present.
+  if (input.reviewItemId) {
+    const item = await db.reviewItem.findUnique({
+      where: { id: input.reviewItemId },
+      select: { id: true, postId: true, decision: true },
+    })
+    if (!item || item.postId !== input.postId) {
+      throw new ReviewSessionActionError('Review item does not belong to this post')
+    }
+    if (item.decision === 'changes_requested' || item.decision === 'caption_edited') {
+      await recordActivity({
+        clientId: post.clientId,
+        postId: post.id,
+        actorId: ctx.userDbId,
+        kind: ActivityKind.review_item_addressed,
+        visibility: EventVisibility.internal,
+        payload: {
+          postId: post.id,
+          reviewItemId: item.id,
+          decision: item.decision,
+          addressedBy: ctx.userDbId,
+        },
+      })
+    }
+  }
+
+  // Resolve the pins half (client pins only, leave any AM pins alone).
+  const pinsResolved = await bulkResolveOnPost({
+    postId: post.id,
+    resolvedBy: ctx.userDbId,
+    resolvedReason: REVIEW_PIN_RESOLVE_REASON,
+    onlyClientPins: true,
+  })
+
+  revalidateAmReviewPaths(post.clientId, post.batchId, input.reviewSessionId)
+  return { ok: true, pinsResolved }
 }
