@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { ActivityKind, EventVisibility } from '@prisma/client'
+import { ActivityKind, EventVisibility, RelayStep } from '@prisma/client'
 import { signToken, verifySession, verifyToken, hashToken } from '@/lib/magic-link'
 import { db } from '@/db/client'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
@@ -15,6 +15,8 @@ import {
   submitSession,
 } from '@/server/repositories/reviewSessions'
 import { startNextRound } from '@/server/services/reviewRound'
+import { advanceFromClientReview } from '@/server/services/relay'
+import { mapReviewDecision } from '@/lib/relay-review-decision'
 import { snapshotPostVersion } from '@/server/services/postVersions'
 import { recordActivity } from '@/server/services/activity'
 import { sendEmail } from '@/lib/resend'
@@ -267,6 +269,10 @@ export interface SubmitSessionActionResult {
   summary: ReviewSessionSummary
   /** Soft warning: submission succeeded but the digest email did not send. */
   emailError?: string
+  /** Soft warning: submission succeeded but the state-machine advance failed. */
+  advanceError?: string
+  /** Present when the submit advanced the relay. */
+  advanced?: { toStep: RelayStep; newHolderId: string }
 }
 
 /**
@@ -540,8 +546,36 @@ export async function submitSessionAction(input: {
     }
   }
 
+  let advanceError: string | undefined
+  let advanced: { toStep: RelayStep; newHolderId: string } | undefined
+  if (link && link.creator?.id) {
+    try {
+      const decision = mapReviewDecision(summary)
+      const moved = await advanceFromClientReview({
+        batchId: ctx.batchId,
+        decision,
+        reviewerName: reviewer?.name ?? null,
+        fallbackUserId: link.creator.id,
+      })
+      if (moved.advanced && moved.toStep && moved.newHolderId) {
+        advanced = { toStep: moved.toStep, newHolderId: moved.newHolderId }
+      }
+    } catch (err) {
+      advanceError = err instanceof Error ? err.message : String(err)
+      console.error('[review] submitSessionAction advance failed', {
+        reviewSessionId: active.id,
+        magicLinkId: ctx.magicLinkId,
+        err: advanceError,
+      })
+    }
+  }
+
   revalidateReviewerPaths(input.token, ctx.clientId, ctx.batchId)
-  return emailError ? { ok: true, summary, emailError } : { ok: true, summary }
+  const result: SubmitSessionActionResult = { ok: true, summary }
+  if (emailError) result.emailError = emailError
+  if (advanceError) result.advanceError = advanceError
+  if (advanced) result.advanced = advanced
+  return result
 }
 
 // ---- AM-side actions ----

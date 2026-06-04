@@ -73,6 +73,10 @@ vi.mock('@/server/services/activity', async () => {
   }
 })
 
+vi.mock('@/server/services/relay', () => ({
+  advanceFromClientReview: vi.fn(),
+}))
+
 vi.mock('@/lib/resend', () => ({
   sendEmail: vi.fn(),
 }))
@@ -104,6 +108,7 @@ import { snapshotPostVersion } from '@/server/services/postVersions'
 import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
+import { advanceFromClientReview } from '@/server/services/relay'
 import {
   acceptCaptionEditAction,
   addressItemAction,
@@ -723,6 +728,207 @@ describe('submitSessionAction', () => {
     // Email send was attempted exactly once (single recipient, link creator
     // == assigned AM).
     expect(sendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  // Helper shared by the advanceFromClientReview tests.
+  function primeAllApprovedSubmit(): void {
+    primeReviewerResolve()
+    vi.mocked(findActiveSession).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      round: 1,
+      status: 'in_progress',
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        {
+          id: 'item_1',
+          postId: 'post_1',
+          decision: 'approved',
+          comment: null,
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+        },
+      ],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      status: 'submitted',
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 1,
+        changesRequested: 0,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      creator: {
+        id: 'user_creator',
+        name: 'Caleb Cody',
+        email: 'caleb@fonmarketing.com',
+      },
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        label: 'June 2026',
+        scheduledAt: null,
+        client: {
+          id: CLIENT_ID,
+          name: 'Akkoo Coffee',
+          assignedAmId: null,
+          assignedDesignerId: null,
+          assignedAm: null,
+        },
+      },
+    } as never)
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      {
+        id: 'post_1',
+        postDate: new Date('2026-06-05T00:00:00Z'),
+        caption: 'caption one',
+      },
+    ] as never)
+    vi.mocked(sendEmail).mockResolvedValue({ id: 'resend_msg_adv' } as never)
+  }
+
+  it('calls advanceFromClientReview with the mapped target on submit', async () => {
+    primeAllApprovedSubmit()
+    vi.mocked(advanceFromClientReview).mockResolvedValue({ advanced: false, reason: 'not_at_client_step' })
+
+    await submitSessionAction({ token: TOKEN })
+
+    expect(advanceFromClientReview).toHaveBeenCalledTimes(1)
+    const call = vi.mocked(advanceFromClientReview).mock.calls[0][0]
+    expect(call.decision).toBe('approved')
+    expect(call.batchId).toBe(BATCH_ID)
+    expect(call.reviewerName).toBe('Jane Client')
+    expect(call.fallbackUserId).toBe('user_creator')
+  })
+
+  it('any-change summary maps to decision "changes"', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveSession).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      round: 1,
+      status: 'in_progress',
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        {
+          id: 'item_1',
+          postId: 'post_1',
+          decision: 'changes_requested',
+          comment: 'fix this',
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+        },
+      ],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      status: 'submitted',
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 0,
+        changesRequested: 1,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      creator: {
+        id: 'user_creator',
+        name: 'Caleb Cody',
+        email: 'caleb@fonmarketing.com',
+      },
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        label: 'June 2026',
+        scheduledAt: null,
+        client: {
+          id: CLIENT_ID,
+          name: 'Akkoo Coffee',
+          assignedAmId: null,
+          assignedDesignerId: null,
+          assignedAm: null,
+        },
+      },
+    } as never)
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      {
+        id: 'post_1',
+        postDate: new Date('2026-06-05T00:00:00Z'),
+        caption: 'caption one',
+      },
+    ] as never)
+    vi.mocked(sendEmail).mockResolvedValue({ id: 'resend_msg_chg' } as never)
+    vi.mocked(advanceFromClientReview).mockResolvedValue({ advanced: false, reason: 'not_at_client_step' })
+
+    await submitSessionAction({ token: TOKEN })
+
+    expect(advanceFromClientReview).toHaveBeenCalledTimes(1)
+    const call = vi.mocked(advanceFromClientReview).mock.calls[0][0]
+    expect(call.decision).toBe('changes')
+  })
+
+  it('advance failure does not fail the submit and surfaces advanceError', async () => {
+    primeAllApprovedSubmit()
+    vi.mocked(advanceFromClientReview).mockRejectedValue(new Error('relay DB down'))
+
+    const result = await submitSessionAction({ token: TOKEN })
+
+    expect(result.ok).toBe(true)
+    expect((result as { advanceError?: string }).advanceError).toMatch(/relay DB down/)
+  })
+
+  it('successful advance is reported on the result', async () => {
+    primeAllApprovedSubmit()
+    vi.mocked(advanceFromClientReview).mockResolvedValue({
+      advanced: true,
+      toStep: 'ready_to_schedule' as never,
+      newHolderId: 'user_am',
+    })
+
+    const result = await submitSessionAction({ token: TOKEN })
+
+    expect(result.ok).toBe(true)
+    expect((result as { advanced?: { toStep: string; newHolderId: string } }).advanced).toEqual({
+      toStep: 'ready_to_schedule',
+      newHolderId: 'user_am',
+    })
   })
 })
 
