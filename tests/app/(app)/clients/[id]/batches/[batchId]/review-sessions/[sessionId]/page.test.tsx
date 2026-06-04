@@ -31,6 +31,30 @@ vi.mock('@/server/repositories/reviewSessions', () => ({
   findSessionWithItems: vi.fn(),
 }))
 
+vi.mock('@/server/repositories/threads', () => ({
+  listClientThreadsForBatch: vi.fn(),
+}))
+// The page imports thread server actions; stub the module so the node/jsdom
+// test does not pull server-only deps.
+vi.mock('@/server/actions/threads', () => ({
+  resolveThreadAction: vi.fn(),
+  addCommentAction: vi.fn(),
+}))
+vi.mock('@/server/actions/reviewSessions', () => ({
+  acceptCaptionEditAction: vi.fn(),
+  rejectCaptionEditAction: vi.fn(),
+  startNextRoundAction: vi.fn(),
+  markPostAddressedAction: vi.fn(),
+}))
+vi.mock('@/components/review/review-pinned-post', () => ({
+  ReviewPinnedPost: (props: { postId: string }) => (
+    <div data-testid={`review-pinned-post-stub-${props.postId}`} />
+  ),
+}))
+vi.mock('@/components/review/mark-addressed-button', () => ({
+  MarkAddressedButton: () => <div data-testid="mark-post-addressed-button-stub" />,
+}))
+
 vi.mock('@/db/client', () => ({
   db: {
     magicLink: { findUnique: vi.fn() },
@@ -68,6 +92,7 @@ import { requireClientViewer } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { findSessionWithItems } from '@/server/repositories/reviewSessions'
+import { listClientThreadsForBatch } from '@/server/repositories/threads'
 import { db } from '@/db/client'
 
 const mockCtx = {
@@ -202,6 +227,7 @@ describe('ReviewSessionDetailPage', () => {
     // Default: no addressed events. Specific tests override this to simulate
     // Mark Addressed / Reject Edit clicks.
     vi.mocked(db.activityEvent.findMany).mockResolvedValue([])
+    vi.mocked(listClientThreadsForBatch).mockResolvedValue(new Map())
   })
 
   it('renders the header + one row per non-approved item (omits approved)', async () => {
@@ -339,5 +365,54 @@ describe('ReviewSessionDetailPage', () => {
         getByTestId('review-item-row-stub-item_c').getAttribute('data-mode'),
       ).toBe('addressed')
     })
+  })
+
+  function clientThread(id: string, status: 'open' | 'resolved') {
+    return {
+      id,
+      status,
+      pin: { kind: 'image' as const, x: 10, y: 20 },
+      firstComment: {
+        author: { kind: 'client' as const, reviewerName: 'Sarah' },
+        body: 'fix it',
+        createdAt: new Date('2026-05-15T10:00:00Z'),
+      },
+      commentCount: 1,
+    }
+  }
+
+  it('shows an approved-but-pinned post in the pending section', async () => {
+    // post_a is approved (filtered from items) but carries an open client pin.
+    vi.mocked(listClientThreadsForBatch).mockResolvedValue(
+      new Map([['post_a', [clientThread('th1', 'open')]]]),
+    )
+    const ui = await ReviewSessionDetailPage({
+      params: Promise.resolve({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_1' }),
+    })
+    const { getByTestId } = render(ui)
+    expect(getByTestId('review-pinned-post-stub-post_a')).toBeTruthy()
+  })
+
+  it('moves a post to addressed once its client pins are all resolved', async () => {
+    vi.mocked(listClientThreadsForBatch).mockResolvedValue(
+      new Map([['post_a', [clientThread('th1', 'resolved')]]]),
+    )
+    const ui = await ReviewSessionDetailPage({
+      params: Promise.resolve({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_1' }),
+    })
+    const { queryByTestId, getByText } = render(ui)
+    expect(queryByTestId('review-pinned-post-stub-post_a')).toBeTruthy()
+    expect(getByText(/Already addressed/)).toBeTruthy()
+  })
+
+  it('keeps Start next round hidden while a client pin is open', async () => {
+    vi.mocked(listClientThreadsForBatch).mockResolvedValue(
+      new Map([['post_a', [clientThread('th1', 'open')]]]),
+    )
+    const ui = await ReviewSessionDetailPage({
+      params: Promise.resolve({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_1' }),
+    })
+    const { queryByTestId } = render(ui)
+    expect(queryByTestId('start-next-round-button-stub')).toBeNull()
   })
 })
