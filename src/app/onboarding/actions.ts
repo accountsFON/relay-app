@@ -13,6 +13,19 @@ import { isPlatformOwnerEmail } from '@/server/auth/platformOwner'
 import { isAgencyCreationEnabled } from '@/server/auth/agencyCreation'
 import type { UserRole } from '@/lib/types'
 
+/**
+ * Where a freshly onboarded user lands. Non-client roles get the /welcome
+ * launch pad; clients skip it (the (app) layout never routes a client persona
+ * to /welcome). Returning the final destination here keeps onboarding to a
+ * SINGLE redirect: we used to redirect to /dashboard and let the (app) layout
+ * bounce first-timers on to /welcome, but that second (nested) redirect during
+ * a server-action navigation rendered the welcome page blank until a manual
+ * reload. One hop from here avoids the chained redirect.
+ */
+function firstDestination(role: UserRole): string {
+  return role === 'client' ? '/dashboard' : '/welcome'
+}
+
 export async function completeOnboarding(formData: FormData) {
   const { userId, orgId: clerkActiveOrgId } = await auth()
   const clerkUser = await currentUser()
@@ -114,7 +127,9 @@ export async function completeOnboarding(formData: FormData) {
     role: 'admin',
   })
 
-  redirect('/dashboard')
+  // Brand-new agency creator is always an admin -> the /welcome launch pad,
+  // in a single redirect (see firstDestination).
+  redirect(firstDestination('admin'))
 }
 
 async function handleInviteOnboarding(input: {
@@ -175,5 +190,8 @@ async function handleInviteOnboarding(input: {
     role,
   })
 
-  redirect('/dashboard')
+  // One hop to the role-correct destination (clients skip /welcome). Avoids
+  // the onboarding -> /dashboard -> layout -> /welcome double redirect that
+  // rendered the welcome page blank on first sign up.
+  redirect(firstDestination(role))
 }
