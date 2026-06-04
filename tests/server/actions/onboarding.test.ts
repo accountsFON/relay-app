@@ -87,7 +87,7 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'New Person', agencyName: 'Acme Marketing' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/dashboard')
+    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
 
     expect(createOrganization).toHaveBeenCalledOnce()
     expect(createMembership).toHaveBeenCalledWith(
@@ -111,11 +111,34 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'Invited Person' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/dashboard')
+    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
 
     expect(createOrganization).not.toHaveBeenCalled()
     expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_admark', role: 'designer' }),
+    )
+  })
+
+  it('sends an invited client to /dashboard, not /welcome (clients skip the launch pad)', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'clerk_cli', orgId: 'clerk_org_admark' } as never)
+    vi.mocked(findUserByClerkId).mockResolvedValue(null as never)
+    vi.mocked(isAgencyCreationEnabled).mockReturnValue(false)
+    vi.mocked(findOrgByClerkId).mockResolvedValue({ id: 'org_admark' } as never)
+    vi.mocked(createUser).mockResolvedValue({ id: 'u_cli', platformOwner: false } as never)
+    vi.mocked(clerkClient).mockResolvedValue({
+      users: {
+        getOrganizationMembershipList: vi.fn().mockResolvedValue({
+          data: [{ organization: { id: 'clerk_org_admark' }, role: 'client' }],
+        }),
+      },
+    } as never)
+
+    await expect(
+      completeOnboarding(form({ displayName: 'Client Person' })),
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard')
+
+    expect(createMembership).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org_admark', role: 'client' }),
     )
   })
 })
