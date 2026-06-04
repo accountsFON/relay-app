@@ -1021,6 +1021,20 @@ describe('advanceFromClientReview', () => {
       fallbackUserId: 'user_creator',
     })
     expect(result.advanced).toBe(false)
+    expect(result.reason).toBe('not_at_client_step')
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('no-ops when the batch does not exist (batch === null)', async () => {
+    // makeTx's batch.findUnique returns null by default; no override needed.
+    const result = await advanceFromClientReview({
+      batchId: 'does-not-exist',
+      decision: 'approved',
+      reviewerName: null,
+      fallbackUserId: 'user_creator',
+    })
+    expect(result.advanced).toBe(false)
+    expect(result.reason).toBe('not_found')
     expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
   })
 

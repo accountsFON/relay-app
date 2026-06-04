@@ -393,6 +393,10 @@ export async function advanceFromClientReview(
         clientId: batch.clientId,
         actorId: null,
         kind: ActivityKind.client_review_decided,
+        // Always internal: this event is shown to the AM/holder, not to the
+        // client reviewer. Deliberately diverges from passBaton's
+        // CLIENT_FACING_STEPS visibility (ready_to_schedule is client-facing
+        // there); do not "fix" this to match passBaton.
         visibility: EventVisibility.internal,
         payload: {
           kind: 'client_review_decided',
