@@ -195,6 +195,13 @@ describe('renderSummary, new kinds (parity sweep)', () => {
       renderSummary(row({ kind: 'preview_review_submitted', commentCount: 4 })),
     ).toBe('Cedar Creek · Mollie finished reviewing the preview (4 comments).')
   })
+
+  it('renders copy for revision_images_requested', () => {
+    const summary = renderSummary(
+      row({ kind: 'revision_images_requested', batchLabel: 'May batch' }),
+    )
+    expect(summary).toMatch(/image|graphic|revision/i)
+  })
 })
 
 describe('renderSummary, AM / admin holder override', () => {
@@ -328,6 +335,14 @@ describe('resolveHref, existing kinds', () => {
     expect(resolveHref(row({ kind: 'client_am_assigned' }))).toBe(
       '/clients/c1#comment-e1',
     )
+  })
+
+  it('anchors revision_images_requested to the review session page', () => {
+    expect(
+      resolveHref(
+        row({ kind: 'revision_images_requested', batchId: 'b1', reviewSessionId: 's1' }),
+      ),
+    ).toBe('/clients/c1/batches/b1/review-sessions/s1')
   })
 })
 

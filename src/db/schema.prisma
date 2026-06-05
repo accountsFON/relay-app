@@ -121,6 +121,7 @@ enum ActivityKind {
   review_round_started
   preview_review_submitted
   client_review_decided
+  revision_images_requested
 }
 
 enum ReviewSessionStatus {

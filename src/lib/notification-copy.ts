@@ -167,6 +167,11 @@ export function renderSummary(row: MentionInboxRow): string {
       const count = (payload.commentCount as number) ?? 0
       return `${prefix}${actor} finished reviewing the preview (${count} comments).`
     }
+    case 'revision_images_requested': {
+      const batchLabel = payload.batchLabel as string | undefined
+      const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
+      return `${prefix}${actor} needs image revisions on ${relay}. Open the review to see the pinned graphics.`
+    }
     default:
       return `${prefix}${actor} mentioned you.`
   }
@@ -193,6 +198,12 @@ export function resolveHref(row: MentionInboxRow): string {
 
   if (row.event.postId && row.postBatchId) {
     return `/clients/${clientId}/batches/${row.postBatchId}#post-${row.event.postId}`
+  }
+  const reviewSessionId =
+    typeof payload.reviewSessionId === 'string' ? payload.reviewSessionId : null
+  const batchForReview = typeof payload.batchId === 'string' ? payload.batchId : null
+  if (reviewSessionId && batchForReview) {
+    return `/clients/${clientId}/batches/${batchForReview}/review-sessions/${reviewSessionId}`
   }
   const batchId = typeof payload.batchId === 'string' ? payload.batchId : null
   if (batchId) {
