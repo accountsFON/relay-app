@@ -95,19 +95,36 @@ describe('completeOnboarding invite-only gate', () => {
     )
   })
 
-  it('lets an invited user join the inviting org regardless of the flag', async () => {
+  // Helper: mock clerkClient so the invited user's invitation (matched by
+  // email 'new@example.com', the default currentUser email) is returned with
+  // the given Clerk binary role + publicMetadata.
+  function mockInvitation(opts: {
+    role: 'org:admin' | 'org:member'
+    relayRole?: string
+  }) {
+    vi.mocked(clerkClient).mockResolvedValue({
+      organizations: {
+        getOrganizationInvitationList: vi.fn().mockResolvedValue({
+          data: [
+            {
+              emailAddress: 'new@example.com',
+              role: opts.role,
+              publicMetadata:
+                opts.relayRole !== undefined ? { relayRole: opts.relayRole } : {},
+            },
+          ],
+        }),
+      },
+    } as never)
+  }
+
+  it('honors the invited role from the invitation publicMetadata (designer)', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'clerk_inv', orgId: 'clerk_org_admark' } as never)
     vi.mocked(findUserByClerkId).mockResolvedValue(null as never)
     vi.mocked(isAgencyCreationEnabled).mockReturnValue(false)
     vi.mocked(findOrgByClerkId).mockResolvedValue({ id: 'org_admark' } as never)
     vi.mocked(createUser).mockResolvedValue({ id: 'u_inv', platformOwner: false } as never)
-    vi.mocked(clerkClient).mockResolvedValue({
-      users: {
-        getOrganizationMembershipList: vi.fn().mockResolvedValue({
-          data: [{ organization: { id: 'clerk_org_admark' }, role: 'designer' }],
-        }),
-      },
-    } as never)
+    mockInvitation({ role: 'org:member', relayRole: 'designer' })
 
     await expect(
       completeOnboarding(form({ displayName: 'Invited Person' })),
@@ -119,19 +136,47 @@ describe('completeOnboarding invite-only gate', () => {
     )
   })
 
+  it('honors an invited account_manager (does NOT default to admin)', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'clerk_am', orgId: 'clerk_org_admark' } as never)
+    vi.mocked(findUserByClerkId).mockResolvedValue(null as never)
+    vi.mocked(isAgencyCreationEnabled).mockReturnValue(false)
+    vi.mocked(findOrgByClerkId).mockResolvedValue({ id: 'org_admark' } as never)
+    vi.mocked(createUser).mockResolvedValue({ id: 'u_am', platformOwner: false } as never)
+    mockInvitation({ role: 'org:member', relayRole: 'account_manager' })
+
+    await expect(
+      completeOnboarding(form({ displayName: 'AM Person' })),
+    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+
+    expect(createMembership).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org_admark', role: 'account_manager' }),
+    )
+  })
+
+  it('honors an invited admin (relayRole admin -> admin)', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'clerk_adm', orgId: 'clerk_org_admark' } as never)
+    vi.mocked(findUserByClerkId).mockResolvedValue(null as never)
+    vi.mocked(isAgencyCreationEnabled).mockReturnValue(false)
+    vi.mocked(findOrgByClerkId).mockResolvedValue({ id: 'org_admark' } as never)
+    vi.mocked(createUser).mockResolvedValue({ id: 'u_adm', platformOwner: false } as never)
+    mockInvitation({ role: 'org:admin', relayRole: 'admin' })
+
+    await expect(
+      completeOnboarding(form({ displayName: 'Admin Person' })),
+    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+
+    expect(createMembership).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org_admark', role: 'admin' }),
+    )
+  })
+
   it('sends an invited client to /dashboard, not /welcome (clients skip the launch pad)', async () => {
     vi.mocked(auth).mockResolvedValue({ userId: 'clerk_cli', orgId: 'clerk_org_admark' } as never)
     vi.mocked(findUserByClerkId).mockResolvedValue(null as never)
     vi.mocked(isAgencyCreationEnabled).mockReturnValue(false)
     vi.mocked(findOrgByClerkId).mockResolvedValue({ id: 'org_admark' } as never)
     vi.mocked(createUser).mockResolvedValue({ id: 'u_cli', platformOwner: false } as never)
-    vi.mocked(clerkClient).mockResolvedValue({
-      users: {
-        getOrganizationMembershipList: vi.fn().mockResolvedValue({
-          data: [{ organization: { id: 'clerk_org_admark' }, role: 'client' }],
-        }),
-      },
-    } as never)
+    mockInvitation({ role: 'org:member', relayRole: 'client' })
 
     await expect(
       completeOnboarding(form({ displayName: 'Client Person' })),
@@ -139,6 +184,45 @@ describe('completeOnboarding invite-only gate', () => {
 
     expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_admark', role: 'client' }),
+    )
+  })
+
+  // Regression: the bug. A metadata-less (legacy) invite at member level must
+  // NOT become an admin. Fail-safe falls back to account_manager, never admin.
+  it('fail-safe: a metadata-less org:member invite becomes account_manager, NOT admin', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'clerk_legacy', orgId: 'clerk_org_admark' } as never)
+    vi.mocked(findUserByClerkId).mockResolvedValue(null as never)
+    vi.mocked(isAgencyCreationEnabled).mockReturnValue(false)
+    vi.mocked(findOrgByClerkId).mockResolvedValue({ id: 'org_admark' } as never)
+    vi.mocked(createUser).mockResolvedValue({ id: 'u_legacy', platformOwner: false } as never)
+    mockInvitation({ role: 'org:member' }) // no relayRole metadata
+
+    await expect(
+      completeOnboarding(form({ displayName: 'Legacy Member' })),
+    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+
+    expect(createMembership).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org_admark', role: 'account_manager' }),
+    )
+    expect(createMembership).not.toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'admin' }),
+    )
+  })
+
+  it('fail-safe: a metadata-less org:admin invite still maps to admin', async () => {
+    vi.mocked(auth).mockResolvedValue({ userId: 'clerk_legadm', orgId: 'clerk_org_admark' } as never)
+    vi.mocked(findUserByClerkId).mockResolvedValue(null as never)
+    vi.mocked(isAgencyCreationEnabled).mockReturnValue(false)
+    vi.mocked(findOrgByClerkId).mockResolvedValue({ id: 'org_admark' } as never)
+    vi.mocked(createUser).mockResolvedValue({ id: 'u_legadm', platformOwner: false } as never)
+    mockInvitation({ role: 'org:admin' }) // no relayRole metadata
+
+    await expect(
+      completeOnboarding(form({ displayName: 'Legacy Admin' })),
+    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+
+    expect(createMembership).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org_admark', role: 'admin' }),
     )
   })
 })

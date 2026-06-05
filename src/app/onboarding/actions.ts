@@ -166,23 +166,43 @@ async function handleInviteOnboarding(input: {
     })
   }
 
-  // Read the role Clerk attached to this user's organization membership
-  // when the invite was accepted.
+  // Resolve the role this user was invited with. Clerk's built-in membership
+  // role is only org:admin / org:member and CANNOT express our four roles, so
+  // the chosen role rides on the invitation's publicMetadata (set by
+  // inviteMember). Read it back from the invitation, matched by email.
+  //
+  // (Earlier this read `getOrganizationMembershipList().role` and compared it
+  // to our role names, but Clerk returns 'org:admin' / 'org:member', which
+  // never matched, so every invited user fell through to admin. That was the
+  // bug: invited staff/clients silently became admins.)
   const clerk = await clerkClient()
-  const memberships = await clerk.users.getOrganizationMembershipList({
-    userId: input.clerkUserId,
-  })
-  const thisMembership = memberships.data.find(
-    (m) => m.organization.id === clerkActiveOrgId,
+  const { data: invitations } =
+    await clerk.organizations.getOrganizationInvitationList({
+      organizationId: clerkActiveOrgId,
+      status: ['accepted', 'pending'],
+      // Newest-first; a freshly accepted invite sits at the front. A miss
+      // (very large org, or a legacy invite) falls through to the fail-safe
+      // below, which never escalates to admin.
+      limit: 100,
+    })
+  const myInvite = invitations.find(
+    (i) => i.emailAddress.toLowerCase() === input.email.toLowerCase(),
   )
 
-  // Map Clerk's role string to our UserRole. Clerk role keys configured in
-  // dashboard are expected to match: admin, account_manager, designer, client.
   const KNOWN_ROLES: UserRole[] = ['admin', 'account_manager', 'designer', 'client']
-  const clerkRole = thisMembership?.role ?? 'admin'
-  const role = KNOWN_ROLES.includes(clerkRole as UserRole)
-    ? (clerkRole as UserRole)
-    : 'admin'
+  const invitedRole = myInvite?.publicMetadata?.relayRole
+  // Fail-safe role resolution. Only an explicit, known relayRole grants the
+  // exact role. Without it (legacy / metadata-less invite) fall back to the
+  // binary Clerk role: org:admin -> admin, anything else -> account_manager.
+  // NEVER default a member-level invite to admin (the privilege-escalation
+  // bug this fixes); an admin can promote later if the fallback under-grants.
+  const role: UserRole =
+    typeof invitedRole === 'string' &&
+    KNOWN_ROLES.includes(invitedRole as UserRole)
+      ? (invitedRole as UserRole)
+      : myInvite?.role === 'org:admin'
+        ? 'admin'
+        : 'account_manager'
 
   await createMembership({
     userId: user.id,
