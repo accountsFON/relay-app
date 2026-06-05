@@ -31,6 +31,12 @@ import {
   listClientThreadsForBatch,
   type HydratedThread,
 } from '@/server/repositories/threads'
+import {
+  listActivityForClient,
+  visibilityForViewer,
+} from '@/server/repositories/activityEvents'
+import { listMembershipsForOrg } from '@/server/repositories/memberships'
+import { buildMentionRoster } from '@/lib/mentions'
 import { db } from '@/db/client'
 import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -56,6 +62,7 @@ import {
   addCommentAction,
 } from '@/server/actions/threads'
 import { revalidatePath } from 'next/cache'
+import { ActivityThread } from '@/components/activity/activity-thread'
 import type { ReviewSessionSummary } from '@/types/review-session'
 
 function formatPostDate(date: Date): string {
@@ -117,6 +124,19 @@ export default async function ReviewSessionDetailPage({
 
   const reviewerName = reviewer?.name ?? magicLink.defaultReviewerName
   const reviewerEmail = reviewer?.email ?? magicLink.defaultReviewerEmail ?? null
+
+  // Load activity events and mention roster for the internal revision chat.
+  // Reuses the same repo path as the batch detail page so both rails stay in
+  // sync. visibilityForViewer(ctx) filters out client-visible events for
+  // AM/designer viewers, keeping this rail internal-only.
+  const [activityEvents, memberships] = await Promise.all([
+    listActivityForClient(client.id, {
+      limit: 30,
+      visibilityFilter: visibilityForViewer(ctx),
+    }),
+    listMembershipsForOrg(ctx.organizationDbId),
+  ])
+  const mentionTargets = buildMentionRoster(memberships)
 
   // Whole-batch post map (1-indexed numbering matches the batch page).
   const batchPosts = await db.post.findMany({
@@ -413,6 +433,28 @@ export default async function ReviewSessionDetailPage({
             .
           </p>
         )}
+      </div>
+
+      {/* Internal revision chat -- AM and designer @-mention pings only.
+          visibilityForViewer(ctx) already strips client-visible events so
+          this rail never surfaces client-facing comments here. The client
+          has no access to this page, so all composer posts are internal. */}
+      <div
+        aria-label="Internal thread"
+        data-testid="review-activity-thread"
+        className="mt-8 rounded-2xl bg-card h-[32rem] flex flex-col overflow-hidden"
+      >
+        <h2 className="shrink-0 px-4 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Internal thread
+        </h2>
+        <div className="min-h-0 flex-1 px-4 pb-4">
+          <ActivityThread
+            clientId={client.id}
+            events={activityEvents}
+            mentionTargets={mentionTargets}
+            hideComposer={!canEditClients(ctx)}
+          />
+        </div>
       </div>
     </div>
   )

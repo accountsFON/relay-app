@@ -96,6 +96,19 @@ vi.mock('@/db/client', () => ({
   },
 }))
 
+vi.mock('@/server/repositories/activityEvents', () => ({
+  listActivityForClient: vi.fn().mockResolvedValue([]),
+  visibilityForViewer: vi.fn().mockReturnValue(['public', 'internal']),
+}))
+
+vi.mock('@/server/repositories/memberships', () => ({
+  listMembershipsForOrg: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('@/components/activity/activity-thread', () => ({
+  ActivityThread: () => <div data-component="activity-thread-stub" />,
+}))
+
 // Stub the client components so the server-side page render under jsdom
 // doesn't attempt to hydrate the real React Transition / useTransition trees.
 vi.mock('@/components/review/review-item-row', () => ({
@@ -668,6 +681,17 @@ describe('ReviewSessionDetailPage', () => {
       expect(
         card.querySelector('[data-testid="media-upload-current"]'),
       ).toBeNull()
+    })
+  })
+
+  describe('activity chat for internal revision pings (Task 12)', () => {
+    it('renders the activity chat on the review session page', async () => {
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+      expect(getByTestId('review-activity-thread')).toBeTruthy()
     })
   })
 })
