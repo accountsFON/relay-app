@@ -83,6 +83,7 @@ vi.mock('@/lib/resend', () => ({
 
 vi.mock('@/server/repositories/threads', () => ({
   bulkResolveOnPost: vi.fn().mockResolvedValue(0),
+  bulkReopenOnPost: vi.fn().mockResolvedValue(0),
 }))
 
 vi.mock('@/db/client', () => ({
@@ -92,6 +93,7 @@ vi.mock('@/db/client', () => ({
     post: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     postThread: { findMany: vi.fn() },
     reviewItem: { findUnique: vi.fn(), update: vi.fn() },
+    activityEvent: { findFirst: vi.fn() },
     $transaction: vi.fn(),
   },
 }))
@@ -113,7 +115,7 @@ import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { advanceFromClientReview } from '@/server/services/relay'
-import { bulkResolveOnPost } from '@/server/repositories/threads'
+import { bulkResolveOnPost, bulkReopenOnPost } from '@/server/repositories/threads'
 import {
   acceptCaptionEditAction,
   addressItemAction,
@@ -121,6 +123,7 @@ import {
   rejectCaptionEditAction,
   startNextRoundAction,
   submitSessionAction,
+  unmarkPostAddressedAction,
 } from '@/server/actions/reviewSessions'
 
 const TOKEN = 'raw-token-abc'
@@ -1370,5 +1373,158 @@ describe('startNextRoundAction', () => {
     // The signToken mock returns the literal 'reminted-token-abc'; the
     // URL builder prefixes it with the `/review/` path.
     expect(sendArgs.reviewUrl).toContain('/review/reminted-token-abc')
+  })
+})
+
+// ---- unmarkPostAddressedAction ----
+
+const UNMARK_POST_ID = 'cuid_post_unmark'
+const UNMARK_ITEM_ID = 'cuid_item_unmark'
+const UNMARK_SESSION_ID = 'cuid_session_unmark'
+
+function primeUnmarkPost(): void {
+  vi.mocked(db.post.findUnique).mockResolvedValue({
+    id: UNMARK_POST_ID,
+    clientId: CLIENT_ID,
+    batchId: BATCH_ID,
+    caption: 'current caption',
+    hashtags: ['#tag'],
+    graphicHook: null,
+    designerNotes: null,
+  } as never)
+  vi.mocked(bulkReopenOnPost).mockResolvedValue(3)
+}
+
+describe('unmarkPostAddressedAction', () => {
+  it('pins-only (no reviewItemId): re-opens client pins, skips reviewItem.update, records review_item_unaddressed with unaccepted:false', async () => {
+    primeAmCtx()
+    primeUnmarkPost()
+
+    const result = await unmarkPostAddressedAction({
+      postId: UNMARK_POST_ID,
+      reviewSessionId: UNMARK_SESSION_ID,
+    })
+
+    expect(result).toEqual({ ok: true, pinsReopened: 3 })
+    expect(bulkReopenOnPost).toHaveBeenCalledWith({
+      postId: UNMARK_POST_ID,
+      onlyClientPins: true,
+      resolvedReason: 'Addressed from review session',
+    })
+    expect(db.reviewItem.update).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activity = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activity.kind).toBe(ActivityKind.review_item_unaddressed)
+    expect(activity.clientId).toBe(CLIENT_ID)
+    expect(activity.actorId).toBe(AM_USER_DB_ID)
+    expect(activity.payload).toMatchObject({
+      postId: UNMARK_POST_ID,
+      reviewItemId: null,
+      unaccepted: false,
+      pinsReopened: 3,
+    })
+  })
+
+  it('flag path (reviewItemId present, acceptedAsPostVersionId null): calls reviewItem.update to clear addressedAt, records unaccepted:false', async () => {
+    primeAmCtx()
+    primeUnmarkPost()
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      id: UNMARK_ITEM_ID,
+      postId: UNMARK_POST_ID,
+      acceptedAsPostVersionId: null,
+    } as never)
+
+    const result = await unmarkPostAddressedAction({
+      postId: UNMARK_POST_ID,
+      reviewItemId: UNMARK_ITEM_ID,
+      reviewSessionId: UNMARK_SESSION_ID,
+    })
+
+    expect(result).toEqual({ ok: true, pinsReopened: 3 })
+    expect(db.reviewItem.update).toHaveBeenCalledWith({
+      where: { id: UNMARK_ITEM_ID },
+      data: { addressedAt: null, addressedBy: null },
+    })
+    expect(db.$transaction).not.toHaveBeenCalled()
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activity = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activity.payload).toMatchObject({ unaccepted: false })
+  })
+
+  it('accept path: un-accepts caption edit — snapshots revert version, runs $transaction, records unaccepted:true', async () => {
+    primeAmCtx()
+    primeUnmarkPost()
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      id: UNMARK_ITEM_ID,
+      postId: UNMARK_POST_ID,
+      acceptedAsPostVersionId: 'pv1',
+    } as never)
+    vi.mocked(db.activityEvent.findFirst).mockResolvedValue({
+      payload: { oldCaption: 'OLD caption text' },
+    } as never)
+    vi.mocked(snapshotPostVersion).mockResolvedValue({ id: 'pvNew' } as never)
+    vi.mocked(db.$transaction).mockResolvedValue([{}, {}] as never)
+
+    const result = await unmarkPostAddressedAction({
+      postId: UNMARK_POST_ID,
+      reviewItemId: UNMARK_ITEM_ID,
+      reviewSessionId: UNMARK_SESSION_ID,
+    })
+
+    expect(result).toEqual({ ok: true, pinsReopened: 3 })
+    expect(snapshotPostVersion).toHaveBeenCalledWith({
+      postId: UNMARK_POST_ID,
+      authorId: AM_USER_DB_ID,
+      body: expect.objectContaining({ caption: 'OLD caption text' }),
+    })
+    expect(db.$transaction).toHaveBeenCalledTimes(1)
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activity = vi.mocked(recordActivity).mock.calls[0][0]
+    expect(activity.payload).toMatchObject({ unaccepted: true })
+  })
+
+  it('accept path with no accept event: throws without blanking the caption', async () => {
+    primeAmCtx()
+    primeUnmarkPost()
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      id: UNMARK_ITEM_ID,
+      postId: UNMARK_POST_ID,
+      acceptedAsPostVersionId: 'pv1',
+    } as never)
+    vi.mocked(db.activityEvent.findFirst).mockResolvedValue(null)
+
+    await expect(
+      unmarkPostAddressedAction({
+        postId: UNMARK_POST_ID,
+        reviewItemId: UNMARK_ITEM_ID,
+        reviewSessionId: UNMARK_SESSION_ID,
+      }),
+    ).rejects.toThrow(/Cannot un-accept: no prior caption recorded/)
+
+    expect(snapshotPostVersion).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
+    expect(recordActivity).not.toHaveBeenCalled()
+  })
+
+  it('review item not on the post: throws', async () => {
+    primeAmCtx()
+    primeUnmarkPost()
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      id: UNMARK_ITEM_ID,
+      postId: 'some-other-post',
+      acceptedAsPostVersionId: null,
+    } as never)
+
+    await expect(
+      unmarkPostAddressedAction({
+        postId: UNMARK_POST_ID,
+        reviewItemId: UNMARK_ITEM_ID,
+        reviewSessionId: UNMARK_SESSION_ID,
+      }),
+    ).rejects.toThrow(/does not belong/)
+
+    expect(db.reviewItem.update).not.toHaveBeenCalled()
+    expect(recordActivity).not.toHaveBeenCalled()
   })
 })

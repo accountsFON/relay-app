@@ -22,7 +22,7 @@ import { recordActivity } from '@/server/services/activity'
 import { sendEmail } from '@/lib/resend'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
-import { bulkResolveOnPost } from '@/server/repositories/threads'
+import { bulkResolveOnPost, bulkReopenOnPost } from '@/server/repositories/threads'
 import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import {
   ReviewSubmittedDigestEmail,
@@ -1024,4 +1024,123 @@ export async function markPostAddressedAction(input: {
 
   revalidateAmReviewPaths(post.clientId, post.batchId, input.reviewSessionId)
   return { ok: true, pinsResolved }
+}
+
+/**
+ * Inverse of markPostAddressedAction: returns a handled post to "needs
+ * action" on the review session detail page. Re-opens the client pins that
+ * Mark addressed resolved (review reason only) AND un-addresses the review
+ * item — clearing addressedAt, or un-accepting a caption edit (revert the
+ * post caption to its pre-accept value + append a PostVersion).
+ */
+export async function unmarkPostAddressedAction(input: {
+  postId: string
+  reviewItemId?: string
+  reviewSessionId: string
+}): Promise<{ ok: true; pinsReopened: number }> {
+  const ctx = await requireClientEditor()
+
+  if (!input.postId || typeof input.postId !== 'string') {
+    throw new ReviewSessionActionError('postId required')
+  }
+
+  const post = await db.post.findUnique({
+    where: { id: input.postId },
+    select: {
+      id: true,
+      clientId: true,
+      batchId: true,
+      caption: true,
+      hashtags: true,
+      graphicHook: true,
+      designerNotes: true,
+    },
+  })
+  if (!post || !post.batchId) {
+    throw new ReviewSessionActionError('Post not found')
+  }
+
+  const client = await findClientForUser(ctx, post.clientId)
+  if (!client) throw new ReviewSessionActionError('Post not found')
+
+  // Re-open the pins half: only client pins resolved via the review session.
+  const pinsReopened = await bulkReopenOnPost({
+    postId: post.id,
+    onlyClientPins: true,
+    resolvedReason: REVIEW_PIN_RESOLVE_REASON,
+  })
+
+  // Un-address the item half, when present.
+  let unaccepted = false
+  if (input.reviewItemId) {
+    const item = await db.reviewItem.findUnique({
+      where: { id: input.reviewItemId },
+      select: { id: true, postId: true, acceptedAsPostVersionId: true },
+    })
+    if (!item || item.postId !== input.postId) {
+      throw new ReviewSessionActionError('Review item does not belong to this post')
+    }
+
+    if (item.acceptedAsPostVersionId) {
+      const acceptEvent = await db.activityEvent.findFirst({
+        where: { postId: post.id, kind: ActivityKind.review_caption_edit_accepted },
+        orderBy: { createdAt: 'desc' },
+        select: { payload: true },
+      })
+      const payload = acceptEvent?.payload
+      const oldCaption =
+        payload && typeof payload === 'object' && !Array.isArray(payload) && 'oldCaption' in payload
+          ? String((payload as Record<string, unknown>).oldCaption)
+          : null
+      if (oldCaption === null) {
+        throw new ReviewSessionActionError(
+          'Cannot un-accept: no prior caption recorded for this post',
+        )
+      }
+      const snapshot = await snapshotPostVersion({
+        postId: post.id,
+        authorId: ctx.userDbId,
+        body: {
+          caption: oldCaption,
+          hashtags: post.hashtags,
+          graphicHook: post.graphicHook,
+          designerNotes: post.designerNotes,
+        },
+      })
+      if (!snapshot) {
+        throw new ReviewSessionActionError('Failed to snapshot caption revert')
+      }
+      await db.$transaction([
+        db.post.update({ where: { id: post.id }, data: { caption: oldCaption } }),
+        db.reviewItem.update({
+          where: { id: item.id },
+          data: { acceptedAsPostVersionId: null },
+        }),
+      ])
+      unaccepted = true
+    } else {
+      await db.reviewItem.update({
+        where: { id: item.id },
+        data: { addressedAt: null, addressedBy: null },
+      })
+    }
+  }
+
+  await recordActivity({
+    clientId: post.clientId,
+    postId: post.id,
+    actorId: ctx.userDbId,
+    kind: ActivityKind.review_item_unaddressed,
+    visibility: EventVisibility.internal,
+    payload: {
+      kind: 'review_item_unaddressed',
+      postId: post.id,
+      reviewItemId: input.reviewItemId ?? null,
+      unaccepted,
+      pinsReopened,
+    },
+  })
+
+  revalidateAmReviewPaths(post.clientId, post.batchId, input.reviewSessionId)
+  return { ok: true, pinsReopened }
 }
