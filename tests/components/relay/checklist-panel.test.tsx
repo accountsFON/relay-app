@@ -214,6 +214,58 @@ describe('ChecklistPanel tick does not block the Pass button', () => {
   })
 })
 
+describe('ChecklistPanel multiple forward targets', () => {
+  beforeEach(() => {
+    refreshMock.mockReset()
+    vi.mocked(passBatonAction).mockReset()
+    vi.mocked(passBatonAction).mockResolvedValue(undefined as never)
+  })
+
+  const twoTargets = [
+    { step: RelayStep.sent_to_client, label: 'Send back to client for re-review' },
+    { step: RelayStep.final_qa_schedule, label: 'Proceed to scheduling' },
+  ]
+  const revItem = (checked: boolean) => ({
+    id: 'r1', batchId: 'batch-1', step: RelayStep.implementing_revisions,
+    label: 'Revisions complete', required: true, checked,
+    checkedBy: null, checkedAt: null,
+  })
+
+  it('renders one enabled button per forward target when required items are checked', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.implementing_revisions })}
+        items={[revItem(true)]} canAct legalForwardTargets={twoTargets}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /send back to client for re-review/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /proceed to scheduling/i })).toBeEnabled()
+  })
+
+  it('passes to the chosen forward step', async () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.implementing_revisions })}
+        items={[revItem(true)]} canAct legalForwardTargets={twoTargets}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /proceed to scheduling/i }))
+    await waitFor(() => expect(passBatonAction).toHaveBeenCalledWith({
+      batchId: 'batch-1', toStep: RelayStep.final_qa_schedule,
+    }))
+  })
+
+  it('disables the forward buttons until required items are checked', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.implementing_revisions })}
+        items={[revItem(false)]} canAct legalForwardTargets={twoTargets}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /proceed to scheduling/i })).toBeDisabled()
+  })
+})
+
 describe('ChecklistPanel admin force-step gating (Task 8)', () => {
   it('shows the Admin tools section when canForceStep is true', () => {
     render(

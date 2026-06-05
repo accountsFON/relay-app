@@ -60,6 +60,13 @@ export interface ChecklistPanelProps {
    * (AMs do NOT get force step).
    */
   canForceStep?: boolean
+  /**
+   * More than one legal forward step (e.g. step 10 revisions: re-review vs
+   * schedule). When length > 1, the panel renders one forward button per
+   * target instead of the single nextStep button. The server still validates
+   * every transition.
+   */
+  legalForwardTargets?: { step: RelayStep; label: string }[]
 }
 
 export function ChecklistPanel({
@@ -69,6 +76,7 @@ export function ChecklistPanel({
   legalSendBackTargets = [],
   nextStep,
   canForceStep = false,
+  legalForwardTargets,
 }: ChecklistPanelProps) {
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(items.map((i) => [i.id, i.checked]))
@@ -107,6 +115,17 @@ export function ChecklistPanel({
     startActing(async () => {
       try {
         await passBatonAction({ batchId: batch.id, toStep: nextStep })
+        router.refresh()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Pass failed')
+      }
+    })
+  }
+
+  function passTo(toStep: RelayStep) {
+    startActing(async () => {
+      try {
+        await passBatonAction({ batchId: batch.id, toStep })
         router.refresh()
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Pass failed')
@@ -225,7 +244,22 @@ export function ChecklistPanel({
           {error && (
             <p className="text-[11px] text-destructive">{error}</p>
           )}
-          {isFinishStep ? (
+          {legalForwardTargets && legalForwardTargets.length > 1 ? (
+            <div className="space-y-2">
+              {legalForwardTargets.map((t) => (
+                <Button
+                  key={t.step}
+                  type="button"
+                  disabled={!allRequiredChecked || isActing}
+                  className="w-full"
+                  onClick={() => passTo(t.step)}
+                >
+                  {t.label}
+                  <ArrowRight />
+                </Button>
+              ))}
+            </div>
+          ) : isFinishStep ? (
             <SimpleTooltip content="Mark this relay finished. Archive it later from the My Relay dashboard.">
               <Button
                 type="button"

@@ -186,6 +186,17 @@ export default async function BatchDetailPage({
   )
   const nextStep =
     forwardTransitions.length === 1 ? forwardTransitions[0].to : undefined
+  const FORWARD_LABEL_OVERRIDE: Partial<Record<RelayStep, string>> = {
+    [RelayStep.sent_to_client]: 'Send back to client for re-review',
+    [RelayStep.final_qa_schedule]: 'Proceed to scheduling',
+  }
+  const legalForwardTargets =
+    forwardTransitions.length > 1
+      ? forwardTransitions.map((t) => ({
+          step: t.to,
+          label: FORWARD_LABEL_OVERRIDE[t.to] ?? `Pass to ${STEP_LABEL[t.to]}`,
+        }))
+      : undefined
 
   const daysOnCurrentStep = Math.max(
     0,
@@ -628,6 +639,7 @@ export default async function BatchDetailPage({
                 legalSendBackTargets={sendBackTargets}
                 nextStep={nextStep}
                 canForceStep={canForceStep}
+                legalForwardTargets={legalForwardTargets}
               />
             </>
           )}
