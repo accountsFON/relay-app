@@ -69,10 +69,11 @@ describe('legalNextSteps', () => {
     expect(next).toContain(RelayStep.implementing_revisions)
   })
 
-  it('lists both router options from revisions_complete', () => {
-    const next = legalNextSteps(RelayStep.revisions_complete, true).map((t) => t.to)
-    expect(next).toContain(RelayStep.sent_to_client)
-    expect(next).toContain(RelayStep.final_qa_schedule)
+  it('revisions_complete has no outgoing edges (retired routing step)', () => {
+    // revisions_complete enum is retained for historical rows but the
+    // workspace redesign (2026-06-05) removed all edges through it.
+    const next = legalNextSteps(RelayStep.revisions_complete, true)
+    expect(next).toEqual([])
   })
 })
 
@@ -208,6 +209,12 @@ describe('go back on every step', () => {
         expect(legalSendBackTargets(step as RelayStep, true)).toEqual([])
         continue
       }
+      // Workspace redesign (2026-06-05) retired all routing through
+      // revisions_complete. The enum is preserved for historical rows only.
+      if (step === RelayStep.revisions_complete) {
+        expect(legalSendBackTargets(step as RelayStep, true)).toEqual([])
+        continue
+      }
       const targets = legalSendBackTargets(step as RelayStep, true)
       expect(
         targets.length,
@@ -232,10 +239,11 @@ describe('go back on every step', () => {
     ])
   })
 
-  it('sent_to_client can go back to both am_qa_pre_client and revisions_complete', () => {
+  it('sent_to_client can go back to am_qa_pre_client only (revisions_complete routing retired)', () => {
     const targets = legalSendBackTargets(RelayStep.sent_to_client, true)
     expect(targets).toContain(RelayStep.am_qa_pre_client)
-    expect(targets).toContain(RelayStep.revisions_complete)
+    expect(targets).not.toContain(RelayStep.revisions_complete)
+    expect(targets).toHaveLength(1)
   })
 
   it('client_decision can go back to sent_to_client', () => {
@@ -256,16 +264,17 @@ describe('go back on every step', () => {
     ])
   })
 
-  it('revisions_complete can go back to implementing_revisions', () => {
-    expect(legalSendBackTargets(RelayStep.revisions_complete, true)).toEqual([
-      RelayStep.implementing_revisions,
-    ])
+  it('revisions_complete has no send-back targets (retired routing step)', () => {
+    // Workspace redesign (2026-06-05): revisions_complete is retained for
+    // historical rows but has no live edges in either direction.
+    expect(legalSendBackTargets(RelayStep.revisions_complete, true)).toEqual([])
   })
 
-  it('final_qa_schedule can go back to both ready_to_schedule and revisions_complete', () => {
+  it('final_qa_schedule can go back to ready_to_schedule only (revisions_complete routing retired)', () => {
     const targets = legalSendBackTargets(RelayStep.final_qa_schedule, true)
     expect(targets).toContain(RelayStep.ready_to_schedule)
-    expect(targets).toContain(RelayStep.revisions_complete)
+    expect(targets).not.toContain(RelayStep.revisions_complete)
+    expect(targets).toHaveLength(1)
   })
 })
 
@@ -330,6 +339,28 @@ describe('state machine, no review flow', () => {
   it('transitionsFor returns FULL when on, NO_REVIEW when off', () => {
     expect(transitionsFor(true)).toBe(LEGAL_TRANSITIONS)
     expect(transitionsFor(false)).toBe(LEGAL_TRANSITIONS_NO_REVIEW)
+  })
+})
+
+describe('implementing_revisions transitions (workspace redesign)', () => {
+  it('offers exactly two forward targets', () => {
+    const fwd = legalNextSteps(RelayStep.implementing_revisions, true)
+      .filter((t) => t.direction === 'forward')
+      .map((t) => t.to)
+      .sort()
+    expect(fwd).toEqual([RelayStep.final_qa_schedule, RelayStep.sent_to_client].sort())
+  })
+  it('allows forward to sent_to_client and final_qa_schedule', () => {
+    expect(validateTransition(RelayStep.implementing_revisions, RelayStep.sent_to_client, true).ok).toBe(true)
+    expect(validateTransition(RelayStep.implementing_revisions, RelayStep.final_qa_schedule, true).ok).toBe(true)
+  })
+  it('no longer routes to copy / design_revisions / revisions_complete', () => {
+    for (const to of [RelayStep.copy, RelayStep.design_revisions, RelayStep.revisions_complete]) {
+      expect(validateTransition(RelayStep.implementing_revisions, to, true).ok).toBe(false)
+    }
+  })
+  it('keeps the send-back safety edge to client_decision', () => {
+    expect(validateTransition(RelayStep.implementing_revisions, RelayStep.client_decision, true).ok).toBe(true)
   })
 })
 

@@ -67,7 +67,6 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
 
   { from: RelayStep.sent_to_client, to: RelayStep.client_decision, direction: 'auto' },
   { from: RelayStep.sent_to_client, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
-  { from: RelayStep.sent_to_client, to: RelayStep.revisions_complete, direction: 'send_back' },
 
   { from: RelayStep.client_decision, to: RelayStep.ready_to_schedule, direction: 'forward' },
   { from: RelayStep.client_decision, to: RelayStep.implementing_revisions, direction: 'forward' },
@@ -76,18 +75,17 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
   { from: RelayStep.ready_to_schedule, to: RelayStep.final_qa_schedule, direction: 'forward' },
   { from: RelayStep.ready_to_schedule, to: RelayStep.client_decision, direction: 'send_back' },
 
-  { from: RelayStep.implementing_revisions, to: RelayStep.copy, direction: 'revision' },
-  { from: RelayStep.implementing_revisions, to: RelayStep.design_revisions, direction: 'revision' },
-  { from: RelayStep.implementing_revisions, to: RelayStep.revisions_complete, direction: 'auto' },
+  // Revisions workspace redesign (2026-06-05): step 10 is a normal
+  // checklist-gated step. The AM ticks "Revisions complete", then chooses one
+  // of two forward paths. The old revision/auto router and the dead
+  // revisions_complete edges are removed; the revisions_complete enum member
+  // is RETAINED for historical rows but no longer routed through.
+  { from: RelayStep.implementing_revisions, to: RelayStep.sent_to_client, direction: 'forward' },
+  { from: RelayStep.implementing_revisions, to: RelayStep.final_qa_schedule, direction: 'forward' },
   { from: RelayStep.implementing_revisions, to: RelayStep.client_decision, direction: 'send_back' },
-
-  { from: RelayStep.revisions_complete, to: RelayStep.sent_to_client, direction: 'forward' },
-  { from: RelayStep.revisions_complete, to: RelayStep.final_qa_schedule, direction: 'forward' },
-  { from: RelayStep.revisions_complete, to: RelayStep.implementing_revisions, direction: 'send_back' },
 
   { from: RelayStep.final_qa_schedule, to: RelayStep.completed, direction: 'forward' },
   { from: RelayStep.final_qa_schedule, to: RelayStep.ready_to_schedule, direction: 'send_back' },
-  { from: RelayStep.final_qa_schedule, to: RelayStep.revisions_complete, direction: 'send_back' },
 
   { from: RelayStep.completed, to: RelayStep.final_qa_schedule, direction: 'send_back' },
 ] as const
