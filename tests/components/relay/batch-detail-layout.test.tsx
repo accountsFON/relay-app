@@ -146,16 +146,16 @@ describe('Batch detail: sticky right rail stacks every widget', () => {
     expect(rail.className).toMatch(/lg:overflow-y-auto/)
   })
 
-  it('renders the composer above the event list when canEdit is allowed', () => {
+  it('renders the composer below the event list (pinned to the bottom)', () => {
     renderRail({ events: [], hideComposer: false })
     const rail = screen.getByTestId('client-thread-rail')
     expect(within(rail).getByRole('textbox')).toBeInTheDocument()
-    // Composer at top means the textbox precedes the (empty) event list element
+    // Composer at the bottom means the event list element precedes the textbox
     // inside the activity-thread container.
-    const thread = within(rail).getByText(/no activity yet/i)
+    const list = within(rail).getByText(/no activity yet/i)
     const composer = within(rail).getByRole('textbox')
     expect(
-      composer.compareDocumentPosition(thread) &
+      list.compareDocumentPosition(composer) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })

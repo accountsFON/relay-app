@@ -259,12 +259,14 @@ export default async function ClientDetailPage({
           title="Activity"
           description="Comments and system events for this client."
         >
-          <ActivityThread
-            clientId={client.id}
-            events={activity}
-            mentionTargets={mentionTargets}
-            hideComposer={!canEdit || !isLive}
-          />
+          <div className="h-[32rem] max-h-[70vh]">
+            <ActivityThread
+              clientId={client.id}
+              events={activity}
+              mentionTargets={mentionTargets}
+              hideComposer={!canEdit || !isLive}
+            />
+          </div>
         </PageSection>
       </div>
     </div>
