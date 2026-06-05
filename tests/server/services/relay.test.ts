@@ -4,8 +4,6 @@ import {
   RelayEventType,
   RelayRole,
   RelayStep,
-  RevisionItemStatus,
-  RevisionItemType,
 } from '@prisma/client'
 
 type Calls = Record<string, unknown[][]>
@@ -21,11 +19,6 @@ function makeTx(): { tx: AnyMock; calls: Calls } {
     'activityEvent.create': [],
     'checklistItem.deleteMany': [],
     'checklistItem.createMany': [],
-    'revisionPlan.deleteMany': [],
-    'revisionPlan.create': [],
-    'revisionItem.findUnique': [],
-    'revisionItem.update': [],
-    'revisionItem.count': [],
   }
 
   const tx = {
@@ -86,46 +79,6 @@ function makeTx(): { tx: AnyMock; calls: Calls } {
         return { count: 0 }
       }),
     },
-    revisionPlan: {
-      deleteMany: vi.fn(async (args: unknown) => {
-        calls['revisionPlan.deleteMany'].push([args])
-        return { count: 0 }
-      }),
-      create: vi.fn(async (args: unknown) => {
-        calls['revisionPlan.create'].push([args])
-        return {
-          id: 'plan_1',
-          items: [
-            {
-              id: 'item_1',
-              type: RevisionItemType.copy,
-              description: 'Tighten captions',
-              assignedTo: 'user_am',
-            },
-            {
-              id: 'item_2',
-              type: RevisionItemType.design,
-              description: 'Bigger logo',
-              assignedTo: 'user_designer',
-            },
-          ],
-        }
-      }),
-    },
-    revisionItem: {
-      findUnique: vi.fn(async (args: unknown) => {
-        calls['revisionItem.findUnique'].push([args])
-        return null
-      }),
-      update: vi.fn(async (args: unknown) => {
-        calls['revisionItem.update'].push([args])
-        return {}
-      }),
-      count: vi.fn(async (args: unknown) => {
-        calls['revisionItem.count'].push([args])
-        return 0
-      }),
-    },
   }
 
   return { tx, calls }
@@ -144,8 +97,6 @@ vi.mock('@/db/client', () => ({
 import {
   RelayServiceError,
   advanceFromClientReview,
-  completeRevisionItem,
-  dispatchRevisions,
   finishBatch,
   forceStep,
   getNotifyTargetsForStep,
@@ -563,133 +514,6 @@ describe('sendBackBaton wasOverride flag', () => {
   })
 })
 
-describe('dispatchRevisions', () => {
-  it('refuses empty plans', async () => {
-    await expect(
-      dispatchRevisions({ batchId: 'b1', actorId: 'u1', actorOrganizationId: 'org_1', items: [] }),
-    ).rejects.toThrow(/at least one/)
-  })
-
-  it('refuses if batch not at implementing_revisions', async () => {
-    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
-      id: 'b1',
-      clientId: 'c1',
-      currentStep: RelayStep.copy,
-      client: { organizationId: 'org_1' },
-    })
-    await expect(
-      dispatchRevisions({
-        batchId: 'b1',
-        actorId: 'u_am',
-        actorOrganizationId: 'org_1',
-        items: [
-          {
-            type: RevisionItemType.copy,
-            description: 'tighten',
-            assignedTo: 'u_am',
-          },
-        ],
-      }),
-    ).rejects.toThrow(/implementing_revisions/)
-  })
-
-  it('creates plan + RelayEvent + ActivityEvent per item', async () => {
-    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
-      id: 'b1',
-      clientId: 'c1',
-      currentStep: RelayStep.implementing_revisions,
-      label: '2026-05',
-      client: { organizationId: 'org_1' },
-    })
-    const result = await dispatchRevisions({
-      batchId: 'b1',
-      actorId: 'u_am',
-      actorOrganizationId: 'org_1',
-      items: [
-        {
-          type: RevisionItemType.copy,
-          description: 'tighten',
-          assignedTo: 'u_am',
-        },
-        {
-          type: RevisionItemType.design,
-          description: 'logo',
-          assignedTo: 'user_designer',
-        },
-      ],
-    })
-    expect(result.itemCount).toBe(2)
-    expect(currentTx.tx.relayPlan?.create).toBeUndefined()
-    expect(currentTx.tx.revisionPlan.create).toHaveBeenCalledOnce()
-    expect(currentTx.tx.relayEvent.create).toHaveBeenCalledTimes(2)
-    expect(currentTx.tx.activityEvent.create).toHaveBeenCalledTimes(2)
-  })
-})
-
-describe('completeRevisionItem', () => {
-  it('throws if item not found', async () => {
-    currentTx.tx.revisionItem.findUnique.mockResolvedValueOnce(null)
-    await expect(
-      completeRevisionItem({ itemId: 'i1', actorId: 'u1', actorOrganizationId: 'org_1' }),
-    ).rejects.toThrow(/not found/)
-  })
-
-  it('returns alreadyComplete=true if item is complete', async () => {
-    currentTx.tx.revisionItem.findUnique.mockResolvedValueOnce({
-      id: 'i1',
-      type: RevisionItemType.copy,
-      status: RevisionItemStatus.complete,
-      plan: { batchId: 'b1' },
-    })
-    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u1', actorOrganizationId: 'org_1' })
-    expect(result.alreadyComplete).toBe(true)
-    expect(result.autoAdvanced).toBe(false)
-  })
-
-  it('does NOT auto-advance when items remain', async () => {
-    currentTx.tx.revisionItem.findUnique.mockResolvedValueOnce({
-      id: 'i1',
-      type: RevisionItemType.copy,
-      status: RevisionItemStatus.pending,
-      plan: { batchId: 'b1' },
-    })
-    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
-      id: 'b1',
-      clientId: 'c1',
-      currentStep: RelayStep.implementing_revisions,
-      label: '2026-05',
-      client: { organizationId: 'org_1' },
-    })
-    currentTx.tx.revisionItem.count.mockResolvedValueOnce(1)
-    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u_am', actorOrganizationId: 'org_1' })
-    expect(result.autoAdvanced).toBe(false)
-    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
-  })
-
-  it('auto-advances 11b → 12 when last item completes', async () => {
-    currentTx.tx.revisionItem.findUnique.mockResolvedValueOnce({
-      id: 'i1',
-      type: RevisionItemType.design,
-      status: RevisionItemStatus.pending,
-      plan: { batchId: 'b1' },
-    })
-    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
-      id: 'b1',
-      clientId: 'c1',
-      currentStep: RelayStep.implementing_revisions,
-      label: '2026-05',
-      client: { organizationId: 'org_1' },
-    })
-    currentTx.tx.revisionItem.count.mockResolvedValueOnce(0)
-    const result = await completeRevisionItem({ itemId: 'i1', actorId: 'u_am', actorOrganizationId: 'org_1' })
-    expect(result.autoAdvanced).toBe(true)
-    expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
-    const updateArgs = currentTx.tx.batch.update.mock.calls[0][0]
-    expect(updateArgs.data.currentStep).toBe(RelayStep.revisions_complete)
-    expect(updateArgs.data.currentRole).toBe(RelayRole.am)
-  })
-})
-
 // ---------------------------------------------------------------------------
 // Cross-tenant scope: each service function must reject batches whose
 // organization does not match the caller's `actorOrganizationId`. Treated
@@ -737,58 +561,6 @@ describe('cross-tenant scope guards', () => {
       }),
     ).rejects.toThrow(/relay not found/i)
     expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
-  })
-
-  it('dispatchRevisions refuses when the batch is in a different org', async () => {
-    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
-      id: 'b1',
-      clientId: 'c1',
-      currentStep: RelayStep.implementing_revisions,
-      label: '2026-05',
-      client: { organizationId: 'org_OTHER' },
-    })
-    await expect(
-      dispatchRevisions({
-        batchId: 'b1',
-        actorId: 'u_am',
-        actorOrganizationId: 'org_1',
-        items: [
-          {
-            type: RevisionItemType.copy,
-            description: 'tighten',
-            assignedTo: 'u_am',
-          },
-        ],
-      }),
-    ).rejects.toThrow(/relay not found/i)
-    expect(currentTx.tx.revisionPlan.create).not.toHaveBeenCalled()
-  })
-
-  it('completeRevisionItem refuses when the batch is in a different org', async () => {
-    currentTx.tx.revisionItem.findUnique.mockResolvedValueOnce({
-      id: 'i1',
-      type: RevisionItemType.copy,
-      status: RevisionItemStatus.pending,
-      plan: { batchId: 'b1' },
-    })
-    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
-      id: 'b1',
-      clientId: 'c1',
-      currentStep: RelayStep.implementing_revisions,
-      label: '2026-05',
-      client: { organizationId: 'org_OTHER' },
-    })
-    await expect(
-      completeRevisionItem({
-        itemId: 'i1',
-        actorId: 'u_am',
-        actorOrganizationId: 'org_1',
-      }),
-    ).rejects.toThrow(/relay not found/i)
-    // CRITICAL: the revisionItem.update must NOT have fired. The scope
-    // check moves the batch lookup before the update specifically so a
-    // cross-org caller cannot mutate item state before the check.
-    expect(currentTx.tx.revisionItem.update).not.toHaveBeenCalled()
   })
 })
 
@@ -1219,25 +991,6 @@ describe('forceStep', () => {
         actorOrganizationId: 'org_1',
       }),
     ).rejects.toThrow(/retired/)
-  })
-
-  it('preserves revision items (never touches revision tables)', async () => {
-    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
-      id: 'b1',
-      clientId: 'c1',
-      currentStep: RelayStep.implementing_revisions,
-      currentHolder: 'u_am',
-      label: '2026-05',
-      client: { organizationId: 'org_1' },
-    })
-    await forceStep({
-      batchId: 'b1',
-      toStep: RelayStep.copy,
-      actorId: 'u_am',
-      actorOrganizationId: 'org_1',
-    })
-    expect(currentTx.tx.revisionPlan.deleteMany).not.toHaveBeenCalled()
-    expect(currentTx.tx.revisionItem.update).not.toHaveBeenCalled()
   })
 
   it('clears completedAt when leaving the completed step', async () => {

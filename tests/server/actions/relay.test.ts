@@ -19,8 +19,6 @@ vi.mock('@/server/services/relay', () => ({
   passBaton: vi.fn(),
   sendBackBaton: vi.fn(),
   finishBatch: vi.fn(),
-  dispatchRevisions: vi.fn(),
-  completeRevisionItem: vi.fn(),
   forceStep: vi.fn(),
 }))
 

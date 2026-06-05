@@ -5,13 +5,10 @@ import {
   ActivityKind,
   EventVisibility,
   type RelayStep,
-  type RevisionItemType,
 } from '@prisma/client'
 import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
 import {
-  completeRevisionItem,
-  dispatchRevisions,
   finishBatch,
   forceStep,
   passBaton,
@@ -213,58 +210,6 @@ export async function forceStepAction(input: {
     actorOrganizationId: ctx.organizationDbId,
   })
   revalidateBatchSurfaces(scope.clientId, input.batchId)
-  return result
-}
-
-export async function dispatchRevisionsAction(input: {
-  batchId: string
-  items: { type: RevisionItemType; description: string; assignedTo: string }[]
-}) {
-  const ctx = await requireCan('relay.composeRevisionPlan')
-  // Cheap scope lookup so we know which client surfaces to revalidate.
-  // The service does its own cross-tenant check; this select is only used
-  // for revalidatePath targeting.
-  const scope = await db.batch.findUnique({
-    where: { id: input.batchId },
-    select: {
-      clientId: true,
-      client: { select: { organizationId: true } },
-    },
-  })
-  if (!scope || scope.client.organizationId !== ctx.organizationDbId) {
-    throw new Error('Relay not found')
-  }
-  const result = await dispatchRevisions({
-    batchId: input.batchId,
-    items: input.items,
-    actorId: ctx.userDbId,
-    actorOrganizationId: ctx.organizationDbId,
-  })
-  revalidateBatchSurfaces(scope.clientId, input.batchId)
-  return result
-}
-
-export async function completeRevisionItemAction(input: { itemId: string }) {
-  const ctx = await requireCan('relay.completeRevisionItem')
-  const result = await completeRevisionItem({
-    itemId: input.itemId,
-    actorId: ctx.userDbId,
-    actorOrganizationId: ctx.organizationDbId,
-  })
-  // Resolve the batch surfaces AFTER the service runs so we revalidate the
-  // exact batch the item belongs to. Service already enforced cross-tenant
-  // scope. Cheap selects only.
-  const item = await db.revisionItem.findUnique({
-    where: { id: input.itemId },
-    select: { plan: { select: { batch: { select: { id: true, clientId: true } } } } },
-  })
-  if (item) {
-    revalidateBatchSurfaces(item.plan.batch.clientId, item.plan.batch.id)
-  } else {
-    // Should be unreachable (service would have thrown), but stay safe.
-    revalidatePath('/dashboard')
-    revalidatePath('/inbox')
-  }
   return result
 }
 
