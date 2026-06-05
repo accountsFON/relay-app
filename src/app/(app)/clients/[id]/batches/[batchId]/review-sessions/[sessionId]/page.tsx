@@ -18,7 +18,11 @@
  */
 
 import Link from 'next/link'
-import { requireClientViewer } from '@/server/middleware/permissions'
+import {
+  requireClientViewer,
+  canEditClients,
+  canUploadPostMedia,
+} from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -38,6 +42,8 @@ import {
 import { ReviewPinnedPost } from '@/components/review/review-pinned-post'
 import { MarkAddressedButton } from '@/components/review/mark-addressed-button'
 import { StartNextRoundButton } from '@/components/review/start-next-round-button'
+import { ReviewAttentionCard } from '@/components/review/review-attention-card'
+import { updatePostAction } from '@/server/actions/posts'
 import {
   acceptCaptionEditAction,
   rejectCaptionEditAction,
@@ -193,6 +199,12 @@ export default async function ReviewSessionDetailPage({
   const batchId_ = batch.id
   const sessionId_ = session.id
   const sessionRound = session.round
+  // Edit affordances are server-computed from OrgContext, mirroring the batch
+  // detail page: caption edit gates on client.edit, image upload on
+  // post.media.edit. Designers have no route access here yet (later task), so
+  // today these resolve true for admin/AM only.
+  const canEditCaption = canEditClients(ctx)
+  const canUploadImage = canUploadPostMedia(ctx)
 
   function renderCard(ap: AttentionPost, mode: 'pending' | 'addressed') {
     const reviewItemId = ap.item?.id
@@ -239,14 +251,30 @@ export default async function ReviewSessionDetailPage({
         `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
       )
     }
+    const updateCaption = async (postId: string, caption: string) => {
+      'use server'
+      await updatePostAction(postId, { caption })
+      revalidatePath(
+        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+      )
+    }
 
     return (
-      <div
+      <ReviewAttentionCard
         key={ap.postId}
-        data-testid={`attention-post-${ap.postId}`}
-        className="space-y-3"
+        postId={ap.postId}
+        postNumber={ap.postNumber}
+        caption={ap.post.caption}
+        mediaUrls={ap.post.mediaUrls}
+        canEditCaption={canEditCaption}
+        canUploadImage={canUploadImage}
+        updateCaption={updateCaption}
       >
-        {ap.item ? (
+        <div
+          data-testid={`attention-post-${ap.postId}`}
+          className="space-y-3"
+        >
+          {ap.item ? (
           <ReviewItemRow
             item={ap.item}
             postNumber={ap.postNumber}
@@ -289,7 +317,8 @@ export default async function ReviewSessionDetailPage({
             <MarkAddressedButton onClick={onMarkAddressed} />
           )}
         </div>
-      </div>
+        </div>
+      </ReviewAttentionCard>
     )
   }
 

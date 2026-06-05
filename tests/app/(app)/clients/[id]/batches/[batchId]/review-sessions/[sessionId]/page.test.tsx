@@ -1,10 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, fireEvent } from '@testing-library/react'
 
+const routerRefresh = vi.fn()
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
   }),
+  useRouter: () => ({ refresh: routerRefresh }),
+}))
+
+// ReviewAttentionCard's MediaUpload control imports @vercel/blob/client; stub
+// it so the real card can render under jsdom without the blob SDK.
+vi.mock('@vercel/blob/client', () => ({
+  upload: vi.fn(),
+}))
+
+vi.mock('@/server/actions/posts', () => ({
+  updatePostAction: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -21,6 +33,8 @@ vi.mock('@/server/auth/access', () => ({
 
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
+  canEditClients: vi.fn(),
+  canUploadPostMedia: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/clients', () => ({
@@ -94,11 +108,16 @@ vi.mock('@/components/review/start-next-round-button', () => ({
 }))
 
 import ReviewSessionDetailPage from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/page'
-import { requireClientViewer } from '@/server/middleware/permissions'
+import {
+  requireClientViewer,
+  canEditClients,
+  canUploadPostMedia,
+} from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { findSessionWithItems } from '@/server/repositories/reviewSessions'
 import { listClientThreadsForBatch } from '@/server/repositories/threads'
+import { updatePostAction } from '@/server/actions/posts'
 import { db } from '@/db/client'
 
 const mockCtx = {
@@ -234,6 +253,9 @@ describe('ReviewSessionDetailPage', () => {
     vi.mocked(db.magicLinkReviewer.findUnique).mockResolvedValue(mockReviewer as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)
     vi.mocked(listClientThreadsForBatch).mockResolvedValue(new Map())
+    // Default both edit capabilities off; tests that need them opt in.
+    vi.mocked(canEditClients).mockReturnValue(false)
+    vi.mocked(canUploadPostMedia).mockReturnValue(false)
   })
 
   it('renders the header + one row per non-approved item (omits approved)', async () => {
@@ -441,4 +463,52 @@ describe('ReviewSessionDetailPage', () => {
     const unmarkBtns = queryAllByTestId('unmark-post-addressed-button')
     expect(unmarkBtns.length).toBe(1)
   })
+
+  describe('AM inline caption edit (Task 7)', () => {
+    it('does not render the caption editor when canEditClients is false', async () => {
+      vi.mocked(canEditClients).mockReturnValue(false)
+      const { queryAllByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+      expect(queryAllByTestId('edit-caption-button').length).toBe(0)
+    })
+
+    it('edits and saves a caption, calling updatePostAction with the new caption for the right post', async () => {
+      vi.mocked(canEditClients).mockReturnValue(true)
+      // Only post_b is an attention post (changes_requested); post_c too.
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // Open the editor for post_b.
+      const card = getByTestId('review-attention-card-post_b')
+      const editButton = card.querySelector(
+        '[data-testid="edit-caption-button"]',
+      ) as HTMLElement
+      expect(editButton).toBeTruthy()
+      fireEvent.click(editButton)
+
+      // Change the textarea.
+      const textarea = card.querySelector(
+        '[data-testid="caption-editor-textarea"]',
+      ) as HTMLTextAreaElement
+      expect(textarea).toBeTruthy()
+      fireEvent.change(textarea, { target: { value: 'B reworked caption' } })
+
+      // Save.
+      const saveButton = card.querySelector(
+        '[data-testid="caption-editor-save"]',
+      ) as HTMLElement
+      fireEvent.click(saveButton)
+
+      expect(vi.mocked(updatePostAction)).toHaveBeenCalledWith('post_b', {
+        caption: 'B reworked caption',
+      })
+    })
+  })
+
 })
