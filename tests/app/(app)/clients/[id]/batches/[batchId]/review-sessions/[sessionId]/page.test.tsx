@@ -66,8 +66,20 @@ vi.mock('@/server/actions/reviewSessions', () => ({
   unmarkPostAddressedAction: vi.fn(),
 }))
 vi.mock('@/components/review/review-pinned-post', () => ({
-  ReviewPinnedPost: (props: { postId: string }) => (
-    <div data-testid={`review-pinned-post-stub-${props.postId}`} />
+  ReviewPinnedPost: (props: {
+    postId: string
+    threads?: ReadonlyArray<{
+      id: string
+      firstComment: { body: string }
+    }>
+  }) => (
+    <div data-testid={`review-pinned-post-stub-${props.postId}`}>
+      {(props.threads ?? []).map((t) => (
+        <span key={t.id} data-testid={`pin-comment-${t.id}`}>
+          {t.firstComment.body}
+        </span>
+      ))}
+    </div>
   ),
 }))
 vi.mock('@/components/review/mark-addressed-button', () => ({
@@ -462,6 +474,122 @@ describe('ReviewSessionDetailPage', () => {
     // no un-address button on pending cards
     const unmarkBtns = queryAllByTestId('unmark-post-addressed-button')
     expect(unmarkBtns.length).toBe(1)
+  })
+
+  describe('designer image-pin lane (Task 9)', () => {
+    // post_b carries an image pin ("make logo bigger") + a caption pin
+    // ("extra detail"). post_c carries only a caption pin ("caption only").
+    function imagePin(id: string, body: string) {
+      return {
+        id,
+        status: 'open' as const,
+        pin: { kind: 'image' as const, x: 10, y: 20 },
+        firstComment: {
+          author: { kind: 'client' as const, reviewerName: 'Sarah' },
+          body,
+          createdAt: new Date('2026-05-15T10:00:00Z'),
+        },
+        commentCount: 1,
+      }
+    }
+    function captionPin(id: string, body: string) {
+      return {
+        id,
+        status: 'open' as const,
+        pin: { kind: 'caption' as const, from: 0, to: 4 },
+        firstComment: {
+          author: { kind: 'client' as const, reviewerName: 'Sarah' },
+          body,
+          createdAt: new Date('2026-05-15T10:05:00Z'),
+        },
+        commentCount: 1,
+      }
+    }
+
+    const designerCtx = { ...mockCtx, role: 'designer' as const }
+
+    function mockLaneThreads() {
+      vi.mocked(listClientThreadsForBatch).mockResolvedValue(
+        new Map([
+          [
+            'post_b',
+            [
+              imagePin('img_b', 'make logo bigger'),
+              captionPin('cap_b', 'extra detail'),
+            ],
+          ],
+          ['post_c', [captionPin('cap_c', 'caption only')]],
+        ]),
+      )
+    }
+
+    beforeEach(() => {
+      // Designers can upload images but cannot edit captions.
+      vi.mocked(canUploadPostMedia).mockReturnValue(true)
+      vi.mocked(canEditClients).mockReturnValue(false)
+    })
+
+    it('designer view shows only posts that have an image pin', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
+      mockLaneThreads()
+
+      const { getByTestId, queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // post_b has an image pin -> visible
+      expect(getByTestId('review-attention-card-post_b')).toBeTruthy()
+      // post_c has only a caption pin -> hidden for designers
+      expect(queryByTestId('review-attention-card-post_c')).toBeNull()
+    })
+
+    it('designer view shows the image pin comment plus other comments on the post', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
+      mockLaneThreads()
+
+      const { getByText } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // Both the image-pin comment AND the caption-pin comment on post_b show.
+      expect(getByText(/make logo bigger/i)).toBeTruthy()
+      expect(getByText(/extra detail/i)).toBeTruthy()
+    })
+
+    it('designer cannot edit captions or mark addressed', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
+      mockLaneThreads()
+
+      const { queryAllByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // No caption editor affordance.
+      expect(queryAllByTestId('edit-caption-button').length).toBe(0)
+      // No per-post Mark addressed / un-address buttons.
+      expect(queryAllByTestId('mark-post-addressed-button').length).toBe(0)
+      expect(queryAllByTestId('unmark-post-addressed-button').length).toBe(0)
+    })
+
+    it('AM view still shows all attention posts (image + caption-only)', async () => {
+      // mockCtx is account_manager by default.
+      mockLaneThreads()
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      expect(getByTestId('review-attention-card-post_b')).toBeTruthy()
+      expect(getByTestId('review-attention-card-post_c')).toBeTruthy()
+    })
   })
 
   describe('AM inline caption edit (Task 7)', () => {

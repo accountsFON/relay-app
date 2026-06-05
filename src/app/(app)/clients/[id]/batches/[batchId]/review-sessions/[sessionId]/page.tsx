@@ -179,8 +179,19 @@ export default async function ReviewSessionDetailPage({
   }
   attention.sort((a, b) => a.postNumber - b.postNumber)
 
-  const pending = attention.filter((a) => !a.handled)
-  const addressed = attention.filter((a) => a.handled)
+  // Designer lane: designers see ONLY attention posts that carry at least one
+  // IMAGE pin (a client thread whose hydrated pin.kind === 'image'). AM/admin
+  // see every attention post, unchanged. Within a shown post the FULL set of
+  // client threads is preserved (image + caption + post pins) so the designer
+  // reads every comment, not just the image pin's.
+  const isDesigner = ctx.role === 'designer'
+  function hasImagePin(ap: AttentionPost): boolean {
+    return ap.clientThreads.some((t) => t.pin.kind === 'image')
+  }
+  const visiblePosts = isDesigner ? attention.filter(hasImagePin) : attention
+
+  const pending = visiblePosts.filter((a) => !a.handled)
+  const addressed = visiblePosts.filter((a) => a.handled)
 
   const summary: ReviewSessionSummary =
     session.submittedSummary ?? {
@@ -191,7 +202,7 @@ export default async function ReviewSessionDetailPage({
     }
 
   const submittedAt = session.submittedAt ?? session.startedAt
-  const allAddressed = pending.length === 0 && attention.length > 0
+  const allAddressed = pending.length === 0 && visiblePosts.length > 0
   const isSuperseded = session.status === 'superseded'
   // Extract primitives from session/client/batch before renderCard so the
   // closure captures typed consts, not the nullable variables.
@@ -201,26 +212,34 @@ export default async function ReviewSessionDetailPage({
   const sessionRound = session.round
   // Edit affordances are server-computed from OrgContext, mirroring the batch
   // detail page: caption edit gates on client.edit, image upload on
-  // post.media.edit. Designers have no route access here yet (later task), so
-  // today these resolve true for admin/AM only.
-  const canEditCaption = canEditClients(ctx)
+  // post.media.edit. Designers get a focused lane: they CAN upload/replace
+  // images (post.media.edit) but CANNOT edit captions, accept/reject caption
+  // edits, or mark addressed (those are AM-only), so caption edit is forced
+  // off for them even though the underlying permission check would never grant
+  // client.edit to a designer anyway.
+  const canEditCaption = !isDesigner && canEditClients(ctx)
   const canUploadImage = canUploadPostMedia(ctx)
 
   function renderCard(ap: AttentionPost, mode: 'pending' | 'addressed') {
     const reviewItemId = ap.item?.id
 
-    const onAccept = ap.item
-      ? async () => {
-          'use server'
-          await acceptCaptionEditAction({ reviewItemId: ap.item!.id })
-        }
-      : undefined
-    const onReject = ap.item
-      ? async () => {
-          'use server'
-          await rejectCaptionEditAction({ reviewItemId: ap.item!.id })
-        }
-      : undefined
+    // Designers get a read-only decision row: no Accept/Reject affordances
+    // (accepting/rejecting caption edits is AM-only). Passing undefined makes
+    // ReviewItemRow render its decision body non-interactive.
+    const onAccept =
+      ap.item && !isDesigner
+        ? async () => {
+            'use server'
+            await acceptCaptionEditAction({ reviewItemId: ap.item!.id })
+          }
+        : undefined
+    const onReject =
+      ap.item && !isDesigner
+        ? async () => {
+            'use server'
+            await rejectCaptionEditAction({ reviewItemId: ap.item!.id })
+          }
+        : undefined
     const onMarkAddressed = async () => {
       'use server'
       await markPostAddressedAction({
@@ -305,18 +324,21 @@ export default async function ReviewSessionDetailPage({
           </div>
         )}
 
-        <div className="flex justify-end">
-          {mode === 'addressed' ? (
-            <MarkAddressedButton
-              onClick={onUnmarkAddressed}
-              label={ap.item?.acceptedAsPostVersionId ? 'Undo accept' : 'Move back to unaddressed'}
-              variant="outline"
-              testId="unmark-post-addressed-button"
-            />
-          ) : (
-            <MarkAddressedButton onClick={onMarkAddressed} />
-          )}
-        </div>
+        {/* Mark addressed / un-address is AM-only; designers never see it. */}
+        {!isDesigner && (
+          <div className="flex justify-end">
+            {mode === 'addressed' ? (
+              <MarkAddressedButton
+                onClick={onUnmarkAddressed}
+                label={ap.item?.acceptedAsPostVersionId ? 'Undo accept' : 'Move back to unaddressed'}
+                variant="outline"
+                testId="unmark-post-addressed-button"
+              />
+            ) : (
+              <MarkAddressedButton onClick={onMarkAddressed} />
+            )}
+          </div>
+        )}
         </div>
       </ReviewAttentionCard>
     )
