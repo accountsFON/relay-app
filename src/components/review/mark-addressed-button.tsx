@@ -12,9 +12,13 @@ import { Button } from '@/components/ui/button'
 export function MarkAddressedButton({
   onClick,
   label = 'Mark addressed',
+  variant = 'default',
+  testId = 'mark-post-addressed-button',
 }: {
   onClick: () => Promise<void>
   label?: string
+  variant?: 'default' | 'outline'
+  testId?: string
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -22,9 +26,9 @@ export function MarkAddressedButton({
   return (
     <div className="flex flex-col items-end gap-1">
       <Button
-        variant="default"
+        variant={variant}
         size="sm"
-        data-testid="mark-post-addressed-button"
+        data-testid={testId}
         disabled={isPending}
         onClick={() => {
           setError(null)

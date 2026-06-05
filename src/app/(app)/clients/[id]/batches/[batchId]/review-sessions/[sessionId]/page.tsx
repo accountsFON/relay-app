@@ -43,6 +43,7 @@ import {
   rejectCaptionEditAction,
   startNextRoundAction,
   markPostAddressedAction,
+  unmarkPostAddressedAction,
 } from '@/server/actions/reviewSessions'
 import {
   resolveThreadAction,
@@ -216,6 +217,14 @@ export default async function ReviewSessionDetailPage({
         reviewSessionId: sessionId_,
       })
     }
+    const onUnmarkAddressed = async () => {
+      'use server'
+      await unmarkPostAddressedAction({
+        postId: ap.postId,
+        reviewItemId,
+        reviewSessionId: sessionId_,
+      })
+    }
     const onResolvePin = async (threadId: string) => {
       'use server'
       await resolveThreadAction({ threadId, resolvedReason: null })
@@ -268,11 +277,18 @@ export default async function ReviewSessionDetailPage({
           </div>
         )}
 
-        {mode === 'pending' && (
-          <div className="flex justify-end">
+        <div className="flex justify-end">
+          {mode === 'addressed' ? (
+            <MarkAddressedButton
+              onClick={onUnmarkAddressed}
+              label={ap.item?.acceptedAsPostVersionId ? 'Undo accept' : 'Move back to unaddressed'}
+              variant="outline"
+              testId="unmark-post-addressed-button"
+            />
+          ) : (
             <MarkAddressedButton onClick={onMarkAddressed} />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     )
   }

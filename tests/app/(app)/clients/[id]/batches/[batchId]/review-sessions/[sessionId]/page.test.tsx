@@ -49,6 +49,7 @@ vi.mock('@/server/actions/reviewSessions', () => ({
   rejectCaptionEditAction: vi.fn(),
   startNextRoundAction: vi.fn(),
   markPostAddressedAction: vi.fn(),
+  unmarkPostAddressedAction: vi.fn(),
 }))
 vi.mock('@/components/review/review-pinned-post', () => ({
   ReviewPinnedPost: (props: { postId: string }) => (
@@ -56,7 +57,9 @@ vi.mock('@/components/review/review-pinned-post', () => ({
   ),
 }))
 vi.mock('@/components/review/mark-addressed-button', () => ({
-  MarkAddressedButton: () => <div data-testid="mark-post-addressed-button-stub" />,
+  MarkAddressedButton: (props: { testId?: string }) => (
+    <div data-testid={props.testId ?? 'mark-post-addressed-button'} />
+  ),
 }))
 
 vi.mock('@/db/client', () => ({
@@ -410,5 +413,32 @@ describe('ReviewSessionDetailPage', () => {
     })
     const { queryByTestId } = render(ui)
     expect(queryByTestId('start-next-round-button-stub')).toBeNull()
+  })
+
+  it('pending cards render mark-post-addressed-button and addressed cards render unmark-post-addressed-button', async () => {
+    // item_b (changes_requested, addressedAt null) -> pending
+    // item_c (caption_edited, addressedAt set) -> addressed
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      ...mockSession,
+      items: mockSession.items.map((it) =>
+        it.id === 'item_c'
+          ? { ...it, addressedAt: new Date('2026-05-15T13:30:00Z') }
+          : it,
+      ),
+    } as never)
+
+    const { getAllByTestId, queryAllByTestId } = await renderPage({
+      id: 'client_1',
+      batchId: 'batch_1',
+      sessionId: 'session_1',
+    })
+
+    // pending card (item_b) should have the mark-addressed button
+    expect(getAllByTestId('mark-post-addressed-button').length).toBeGreaterThanOrEqual(1)
+    // addressed card (item_c) should have the unmark-addressed button
+    expect(getAllByTestId('unmark-post-addressed-button').length).toBeGreaterThanOrEqual(1)
+    // no un-address button on pending cards
+    const unmarkBtns = queryAllByTestId('unmark-post-addressed-button')
+    expect(unmarkBtns.length).toBe(1)
   })
 })
