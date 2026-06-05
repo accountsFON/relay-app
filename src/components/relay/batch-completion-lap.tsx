@@ -1,6 +1,7 @@
 /**
  * BatchCompletionLap: celebratory overlay shown the FIRST time a viewer
- * lands on a batch at the terminal `final_qa_schedule` step. Avatars of the
+ * lands on a batch at the terminal `completed` step (after the final step is
+ * finished). Avatars of the
  * AM, Designer, client, and current holder do one race-lap around a trophy,
  * then fade. Persists a per-batch localStorage flag so the celebration only
  * fires once per viewer per batch.
