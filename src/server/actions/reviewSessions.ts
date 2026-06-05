@@ -557,6 +557,7 @@ export async function submitSessionAction(input: {
         decision,
         reviewerName: reviewer?.name ?? null,
         fallbackUserId: link.creator.id,
+        reviewSessionId: active.id,
       })
       if (moved.advanced && moved.toStep && moved.newHolderId) {
         advanced = { toStep: moved.toStep, newHolderId: moved.newHolderId }

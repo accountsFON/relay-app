@@ -19,6 +19,7 @@ function makeTx(): { tx: AnyMock; calls: Calls } {
     'activityEvent.create': [],
     'checklistItem.deleteMany': [],
     'checklistItem.createMany': [],
+    'postThread.count': [],
   }
 
   const tx = {
@@ -77,6 +78,14 @@ function makeTx(): { tx: AnyMock; calls: Calls } {
       createMany: vi.fn(async (args: unknown) => {
         calls['checklistItem.createMany'].push([args])
         return { count: 0 }
+      }),
+    },
+    postThread: {
+      // Defaults to 0 open image pins so the designer-notify branch is a no-op
+      // unless a test overrides it with mockResolvedValueOnce.
+      count: vi.fn(async (args: unknown) => {
+        calls['postThread.count'].push([args])
+        return 0
       }),
     },
   }
@@ -773,6 +782,7 @@ describe('advanceFromClientReview', () => {
       decision: 'approved',
       reviewerName: 'Sarah',
       fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
     })
     expect(result.advanced).toBe(false)
     expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
@@ -791,6 +801,7 @@ describe('advanceFromClientReview', () => {
       decision: 'approved',
       reviewerName: 'Sarah',
       fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
     })
     expect(result.advanced).toBe(false)
     expect(result.reason).toBe('not_at_client_step')
@@ -804,6 +815,7 @@ describe('advanceFromClientReview', () => {
       decision: 'approved',
       reviewerName: null,
       fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
     })
     expect(result.advanced).toBe(false)
     expect(result.reason).toBe('not_found')
@@ -823,6 +835,7 @@ describe('advanceFromClientReview', () => {
       decision: 'approved',
       reviewerName: 'Sarah',
       fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
     })
     expect(result.advanced).toBe(true)
     expect(result.toStep).toBe(RelayStep.ready_to_schedule)
@@ -863,6 +876,7 @@ describe('advanceFromClientReview', () => {
       decision: 'changes',
       reviewerName: 'Sarah',
       fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
     })
     expect(result.advanced).toBe(true)
     expect(result.toStep).toBe(RelayStep.implementing_revisions)
@@ -883,6 +897,7 @@ describe('advanceFromClientReview', () => {
       decision: 'approved',
       reviewerName: null,
       fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
     })
     const activityCall = currentTx.tx.activityEvent.create.mock.calls[0][0]
     // user_am is the AM and there is no actor to exclude, so mention row is present
@@ -904,9 +919,66 @@ describe('advanceFromClientReview', () => {
       decision: 'approved',
       reviewerName: 'Sarah',
       fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
     })
     expect(result.advanced).toBe(true)
     expect(result.toStep).toBe(RelayStep.ready_to_schedule)
+  })
+
+  it('notifies the assigned designer when a changes round has image pins', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.sent_to_client,
+      clientReviewEnabled: true,
+      label: 'Foo May 2026',
+    })
+    // open image-pin count > 0
+    currentTx.tx.postThread.count.mockResolvedValueOnce(3)
+    await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'changes',
+      reviewerName: 'Sarah',
+      fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
+    })
+    // Two activity events: client_review_decided, then revision_images_requested.
+    const calls = currentTx.tx.activityEvent.create.mock.calls
+    expect(calls).toHaveLength(2)
+    const designerEvent = calls[1][0].data
+    expect(designerEvent.kind).toBe(ActivityKind.revision_images_requested)
+    expect(designerEvent.actorId).toBeNull()
+    expect(designerEvent.payload.reviewSessionId).toBe('s1')
+    expect(designerEvent.payload.batchId).toBe('b1')
+    expect(designerEvent.mentions.create).toEqual([
+      { mentionedUserId: 'user_designer' },
+    ])
+    // The count query scopes to open image pins (imageX not null) on this batch.
+    const countArgs = currentTx.tx.postThread.count.mock.calls[0][0]
+    expect(countArgs.where.imageX).toEqual({ not: null })
+    expect(countArgs.where.status).toBe('open')
+  })
+
+  it('does not notify a designer when the round has no image pins', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.sent_to_client,
+      clientReviewEnabled: true,
+      label: 'Foo May 2026',
+    })
+    // open image-pin count == 0 (makeTx default), so no designer notify.
+    await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'changes',
+      reviewerName: 'Sarah',
+      fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
+    })
+    const calls = currentTx.tx.activityEvent.create.mock.calls
+    // Only client_review_decided; no revision_images_requested.
+    expect(calls).toHaveLength(1)
+    expect(calls[0][0].data.kind).toBe(ActivityKind.client_review_decided)
   })
 })
 

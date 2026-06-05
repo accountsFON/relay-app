@@ -283,6 +283,9 @@ export interface AdvanceFromClientReviewInput {
   /** A real org user used as RelayEvent.fromUser and as the holder fallback
    *  when the client has no assigned AM. In practice the magic link creator. */
   fallbackUserId: string
+  /** The review session being submitted. Threaded through so a designer
+   *  notification (image-pin revisions) can deep link to its detail page. */
+  reviewSessionId: string
 }
 
 export interface AdvanceFromClientReviewResult {
@@ -400,6 +403,45 @@ export async function advanceFromClientReview(
       },
       tx,
     )
+
+    if (toStep === RelayStep.implementing_revisions) {
+      const clientForDesigner = await tx.client.findUnique({
+        where: { id: batch.clientId },
+        select: { assignedDesignerId: true },
+      })
+      const designerId = clientForDesigner?.assignedDesignerId ?? null
+      if (designerId) {
+        // PostThread has NO pinKind column; an image pin is a thread with
+        // imageX set (imageX/imageY = image, captionFrom/captionTo = caption,
+        // all null = post-level).
+        const openImagePins = await tx.postThread.count({
+          where: {
+            post: { batchId: batch.id },
+            reviewerToken: { not: null },
+            status: 'open',
+            imageX: { not: null },
+          },
+        })
+        if (openImagePins > 0) {
+          await recordActivity(
+            {
+              clientId: batch.clientId,
+              actorId: null,
+              kind: ActivityKind.revision_images_requested,
+              visibility: EventVisibility.internal,
+              payload: {
+                kind: 'revision_images_requested',
+                batchId: batch.id,
+                batchLabel: batch.label,
+                reviewSessionId: input.reviewSessionId,
+              },
+              mentionedUserIds: [designerId],
+            },
+            tx,
+          )
+        }
+      }
+    }
 
     return { advanced: true, toStep, newHolderId: next.userId }
   })
