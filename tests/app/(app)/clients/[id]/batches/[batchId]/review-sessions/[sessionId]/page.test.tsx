@@ -35,6 +35,7 @@ vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
   canEditClients: vi.fn(),
   canUploadPostMedia: vi.fn(),
+  canComment: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/clients', () => ({
@@ -106,7 +107,12 @@ vi.mock('@/server/repositories/memberships', () => ({
 }))
 
 vi.mock('@/components/activity/activity-thread', () => ({
-  ActivityThread: () => <div data-component="activity-thread-stub" />,
+  ActivityThread: (props: { hideComposer?: boolean }) => (
+    <div
+      data-component="activity-thread-stub"
+      data-hide-composer={String(Boolean(props.hideComposer))}
+    />
+  ),
 }))
 
 // Stub the client components so the server-side page render under jsdom
@@ -137,6 +143,7 @@ import {
   requireClientViewer,
   canEditClients,
   canUploadPostMedia,
+  canComment,
 } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -281,6 +288,7 @@ describe('ReviewSessionDetailPage', () => {
     // Default both edit capabilities off; tests that need them opt in.
     vi.mocked(canEditClients).mockReturnValue(false)
     vi.mocked(canUploadPostMedia).mockReturnValue(false)
+    vi.mocked(canComment).mockReturnValue(false)
   })
 
   it('renders the header + one row per non-approved item (omits approved)', async () => {
@@ -692,6 +700,54 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       })
       expect(getByTestId('review-activity-thread')).toBeTruthy()
+    })
+  })
+
+  describe('composer gate on the internal thread (Task 12b)', () => {
+    function threadStub(container: HTMLElement): HTMLElement {
+      return container.querySelector(
+        '[data-component="activity-thread-stub"]',
+      ) as HTMLElement
+    }
+
+    it('shows the composer for comment-capable users (canComment true)', async () => {
+      vi.mocked(canComment).mockReturnValue(true)
+      const { container } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+      expect(threadStub(container).getAttribute('data-hide-composer')).toBe(
+        'false',
+      )
+    })
+
+    it('hides the composer for users without client.comment (canComment false)', async () => {
+      vi.mocked(canComment).mockReturnValue(false)
+      const { container } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+      expect(threadStub(container).getAttribute('data-hide-composer')).toBe(
+        'true',
+      )
+    })
+
+    it('shows the composer for a designer (designer has client.comment)', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'designer' as const,
+      })
+      vi.mocked(canComment).mockReturnValue(true)
+      const { container } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+      expect(threadStub(container).getAttribute('data-hide-composer')).toBe(
+        'false',
+      )
     })
   })
 })

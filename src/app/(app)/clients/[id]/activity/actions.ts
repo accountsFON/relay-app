@@ -15,7 +15,7 @@
 import { revalidatePath } from 'next/cache'
 import { ActivityKind } from '@prisma/client'
 import { db } from '@/db/client'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireCan } from '@/server/middleware/permissions'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { findClientForUser } from '@/server/repositories/clients'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
@@ -41,7 +41,11 @@ export async function postCommentAction(
     throw new Error('Comment body cannot be empty')
   }
 
-  const ctx = await requireClientEditor()
+  // Gate on the narrow client.comment permission (admin / AM / designer), NOT
+  // client.edit. Designers must be able to post internal @-mention pings even
+  // though they can't edit clients/posts. Clients never get client.comment, so
+  // they still cannot post here. Comments stay internal (default visibility).
+  const ctx = await requireCan('client.comment')
 
   // Verify client visibility before writing. Spec § Permission scoping
   // piggybacks on findClientForUser; without this check, a malicious caller

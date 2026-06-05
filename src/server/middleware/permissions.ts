@@ -54,3 +54,7 @@ export async function requirePostMediaEditor() {
 export function canUploadPostMedia(ctx: OrgContext): boolean {
   return can(ctx, 'post.media.edit')
 }
+
+export function canComment(ctx: OrgContext): boolean {
+  return can(ctx, 'client.comment')
+}

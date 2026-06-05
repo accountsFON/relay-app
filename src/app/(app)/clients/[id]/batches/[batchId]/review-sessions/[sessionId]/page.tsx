@@ -22,6 +22,7 @@ import {
   requireClientViewer,
   canEditClients,
   canUploadPostMedia,
+  canComment,
 } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
@@ -239,6 +240,12 @@ export default async function ReviewSessionDetailPage({
   // client.edit to a designer anyway.
   const canEditCaption = !isDesigner && canEditClients(ctx)
   const canUploadImage = canUploadPostMedia(ctx)
+  // Internal-thread composer gates on the narrow client.comment permission
+  // (admin / AM / designer), so designers can post @-mention pings here even
+  // though they can't edit captions, resolve pins, or mark addressed. Clients
+  // lack client.comment AND have no access to this page, so the rail stays
+  // internal-only. Comments default to internal visibility.
+  const canPostComment = canComment(ctx)
 
   function renderCard(ap: AttentionPost, mode: 'pending' | 'addressed') {
     const reviewItemId = ap.item?.id
@@ -452,7 +459,7 @@ export default async function ReviewSessionDetailPage({
             clientId={client.id}
             events={activityEvents}
             mentionTargets={mentionTargets}
-            hideComposer={!canEditClients(ctx)}
+            hideComposer={!canPostComment}
           />
         </div>
       </div>

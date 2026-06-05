@@ -163,3 +163,28 @@ describe('post.media.edit (narrow image upload permission)', () => {
     expect(READ_ONLY_OVERRIDE['post.media.edit']).toBe(false)
   })
 })
+
+describe('client.comment (narrow internal-comment permission)', () => {
+  it('defaults true for admin, account_manager, and designer', () => {
+    expect(can({ role: 'admin' }, 'client.comment')).toBe(true)
+    expect(can({ role: 'account_manager' }, 'client.comment')).toBe(true)
+    expect(can({ role: 'designer' }, 'client.comment')).toBe(true)
+  })
+
+  it('defaults false for client (clients can never post internal comments)', () => {
+    expect(can({ role: 'client' }, 'client.comment')).toBe(false)
+  })
+
+  it('designer can comment but still cannot edit clients or posts', () => {
+    expect(can({ role: 'designer' }, 'client.comment')).toBe(true)
+    expect(can({ role: 'designer' }, 'client.edit')).toBe(false)
+    expect(can({ role: 'designer' }, 'post.edit')).toBe(false)
+  })
+
+  it('SYSTEM_DEFAULTS encodes the same matrix', () => {
+    expect(SYSTEM_DEFAULTS.admin['client.comment']).toBe(true)
+    expect(SYSTEM_DEFAULTS.account_manager['client.comment']).toBe(true)
+    expect(SYSTEM_DEFAULTS.designer['client.comment']).toBe(true)
+    expect(SYSTEM_DEFAULTS.client['client.comment']).toBe(false)
+  })
+})
