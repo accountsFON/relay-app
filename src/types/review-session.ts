@@ -52,4 +52,5 @@ export interface ReviewItemHydrated {
   updatedSinceLastReview: boolean
   lastReviewedVersionId: string | null
   reviewedAt: Date | null
+  addressedAt: Date | null
 }

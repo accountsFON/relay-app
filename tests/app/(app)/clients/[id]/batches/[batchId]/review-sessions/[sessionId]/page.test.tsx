@@ -64,7 +64,6 @@ vi.mock('@/db/client', () => ({
     magicLink: { findUnique: vi.fn() },
     magicLinkReviewer: { findUnique: vi.fn() },
     post: { findMany: vi.fn() },
-    activityEvent: { findMany: vi.fn() },
   },
 }))
 
@@ -146,6 +145,7 @@ const mockSession = {
       comment: null,
       suggestedCaption: null,
       acceptedAsPostVersionId: null,
+      addressedAt: null,
       updatedSinceLastReview: false,
       lastReviewedVersionId: null,
       reviewedAt: new Date('2026-05-15T11:00:00Z'),
@@ -157,6 +157,7 @@ const mockSession = {
       comment: 'Please rework intro.',
       suggestedCaption: null,
       acceptedAsPostVersionId: null,
+      addressedAt: null,
       updatedSinceLastReview: false,
       lastReviewedVersionId: null,
       reviewedAt: new Date('2026-05-15T11:15:00Z'),
@@ -168,6 +169,7 @@ const mockSession = {
       comment: null,
       suggestedCaption: 'Suggested caption text.',
       acceptedAsPostVersionId: null,
+      addressedAt: null,
       updatedSinceLastReview: false,
       lastReviewedVersionId: null,
       reviewedAt: new Date('2026-05-15T11:30:00Z'),
@@ -228,9 +230,6 @@ describe('ReviewSessionDetailPage', () => {
     vi.mocked(db.magicLink.findUnique).mockResolvedValue(mockMagicLink as never)
     vi.mocked(db.magicLinkReviewer.findUnique).mockResolvedValue(mockReviewer as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)
-    // Default: no addressed events. Specific tests override this to simulate
-    // Mark Addressed / Reject Edit clicks.
-    vi.mocked(db.activityEvent.findMany).mockResolvedValue([])
     vi.mocked(listClientThreadsForBatch).mockResolvedValue(new Map())
   })
 
@@ -276,17 +275,16 @@ describe('ReviewSessionDetailPage', () => {
     ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
   })
 
-  describe('addressed-via-activity-event behavior', () => {
-    it('moves a changes_requested item to addressed when a Mark Addressed event exists', async () => {
-      vi.mocked(db.activityEvent.findMany).mockResolvedValue([
-        {
-          payload: {
-            reviewItemId: 'item_b',
-            decision: 'changes_requested',
-            addressedBy: 'user_db_1',
-          },
-        },
-      ] as never)
+  describe('addressed state derived from addressedAt column', () => {
+    it('moves a changes_requested item to addressed when addressedAt is set', async () => {
+      vi.mocked(findSessionWithItems).mockResolvedValue({
+        ...mockSession,
+        items: mockSession.items.map((it) =>
+          it.id === 'item_b'
+            ? { ...it, addressedAt: new Date('2026-05-15T13:00:00Z') }
+            : it,
+        ),
+      } as never)
 
       const { getByTestId } = await renderPage({
         id: 'client_1',
@@ -298,22 +296,20 @@ describe('ReviewSessionDetailPage', () => {
       const row = getByTestId('review-item-row-stub-item_b')
       expect(row.getAttribute('data-mode')).toBe('addressed')
 
-      // The other non-approved item (caption_edited without an event) stays pending.
+      // The other non-approved item (caption_edited with addressedAt null) stays pending.
       const captionRow = getByTestId('review-item-row-stub-item_c')
       expect(captionRow.getAttribute('data-mode')).toBe('pending')
     })
 
-    it('moves a caption_edited item to addressed when a Reject Edit event exists', async () => {
-      vi.mocked(db.activityEvent.findMany).mockResolvedValue([
-        {
-          payload: {
-            reviewItemId: 'item_c',
-            decision: 'caption_edited',
-            action: 'rejected_caption_edit',
-            addressedBy: 'user_db_1',
-          },
-        },
-      ] as never)
+    it('moves a caption_edited item to addressed when addressedAt is set', async () => {
+      vi.mocked(findSessionWithItems).mockResolvedValue({
+        ...mockSession,
+        items: mockSession.items.map((it) =>
+          it.id === 'item_c'
+            ? { ...it, addressedAt: new Date('2026-05-15T13:30:00Z') }
+            : it,
+        ),
+      } as never)
 
       const { getByTestId } = await renderPage({
         id: 'client_1',
@@ -324,17 +320,13 @@ describe('ReviewSessionDetailPage', () => {
       const captionRow = getByTestId('review-item-row-stub-item_c')
       expect(captionRow.getAttribute('data-mode')).toBe('addressed')
 
-      // changes_requested item without an event stays pending.
+      // changes_requested item with addressedAt null stays pending.
       const changesRow = getByTestId('review-item-row-stub-item_b')
       expect(changesRow.getAttribute('data-mode')).toBe('pending')
     })
 
-    it('ignores events whose payload reviewItemId is not in this session', async () => {
-      // Event from some other session's item id. Should not affect this page.
-      vi.mocked(db.activityEvent.findMany).mockResolvedValue([
-        { payload: { reviewItemId: 'item_from_some_other_session' } },
-      ] as never)
-
+    it('keeps items pending when addressedAt is null and acceptedAsPostVersionId is null', async () => {
+      // Default mockSession has both items with addressedAt: null — confirm they're pending.
       const { getByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',

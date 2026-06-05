@@ -81,6 +81,10 @@ vi.mock('@/lib/resend', () => ({
   sendEmail: vi.fn(),
 }))
 
+vi.mock('@/server/repositories/threads', () => ({
+  bulkResolveOnPost: vi.fn().mockResolvedValue(0),
+}))
+
 vi.mock('@/db/client', () => ({
   db: {
     magicLinkReviewer: { findUnique: vi.fn() },
@@ -109,9 +113,11 @@ import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { advanceFromClientReview } from '@/server/services/relay'
+import { bulkResolveOnPost } from '@/server/repositories/threads'
 import {
   acceptCaptionEditAction,
   addressItemAction,
+  markPostAddressedAction,
   rejectCaptionEditAction,
   startNextRoundAction,
   submitSessionAction,
@@ -1193,6 +1199,27 @@ describe('addressItemAction', () => {
     })
   })
 
+  it('persists addressedAt + addressedBy on the ReviewItem', async () => {
+    primeAmCtx()
+    primeAmReviewItem({
+      decision: 'changes_requested',
+      comment: 'Fix the copy',
+      suggestedCaption: null,
+    })
+
+    await addressItemAction({ reviewItemId: REVIEW_ITEM_ID })
+
+    expect(db.reviewItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: REVIEW_ITEM_ID },
+        data: expect.objectContaining({
+          addressedAt: expect.any(Date),
+          addressedBy: AM_USER_DB_ID,
+        }),
+      }),
+    )
+  })
+
   it('throws when the item is approved or not_reviewed', async () => {
     primeAmCtx()
     primeAmReviewItem({ decision: 'approved' })
@@ -1202,6 +1229,101 @@ describe('addressItemAction', () => {
     ).rejects.toThrow(/Cannot mark a approved item as addressed/)
 
     expect(recordActivity).not.toHaveBeenCalled()
+  })
+})
+
+describe('rejectCaptionEditAction — addressedAt persistence', () => {
+  it('persists addressedAt + addressedBy on the ReviewItem after emitting activity', async () => {
+    primeAmCtx()
+    primeAmReviewItem({ decision: 'caption_edited' })
+
+    const result = await rejectCaptionEditAction({ reviewItemId: REVIEW_ITEM_ID })
+
+    expect(result.ok).toBe(true)
+    expect(db.reviewItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: REVIEW_ITEM_ID },
+        data: expect.objectContaining({
+          addressedAt: expect.any(Date),
+          addressedBy: AM_USER_DB_ID,
+        }),
+      }),
+    )
+  })
+})
+
+describe('markPostAddressedAction — addressedAt persistence', () => {
+  const MARK_POST_ID = 'cuid_post_mark'
+  const MARK_ITEM_ID = 'cuid_item_mark'
+  const MARK_SESSION_ID = 'cuid_session_mark'
+
+  function primeMarkPost(decision: string = 'changes_requested'): void {
+    vi.mocked(db.post.findUnique).mockResolvedValue({
+      id: MARK_POST_ID,
+      clientId: CLIENT_ID,
+      batchId: BATCH_ID,
+    } as never)
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      id: MARK_ITEM_ID,
+      postId: MARK_POST_ID,
+      decision,
+    } as never)
+    vi.mocked(bulkResolveOnPost).mockResolvedValue(0)
+  }
+
+  it('persists addressedAt + addressedBy on the ReviewItem for a changes_requested item', async () => {
+    primeAmCtx()
+    primeMarkPost('changes_requested')
+
+    await markPostAddressedAction({
+      postId: MARK_POST_ID,
+      reviewItemId: MARK_ITEM_ID,
+      reviewSessionId: MARK_SESSION_ID,
+    })
+
+    expect(db.reviewItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: MARK_ITEM_ID },
+        data: expect.objectContaining({
+          addressedAt: expect.any(Date),
+          addressedBy: AM_USER_DB_ID,
+        }),
+      }),
+    )
+  })
+
+  it('persists addressedAt + addressedBy on the ReviewItem for a caption_edited item', async () => {
+    primeAmCtx()
+    primeMarkPost('caption_edited')
+
+    await markPostAddressedAction({
+      postId: MARK_POST_ID,
+      reviewItemId: MARK_ITEM_ID,
+      reviewSessionId: MARK_SESSION_ID,
+    })
+
+    expect(db.reviewItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: MARK_ITEM_ID },
+        data: expect.objectContaining({
+          addressedAt: expect.any(Date),
+          addressedBy: AM_USER_DB_ID,
+        }),
+      }),
+    )
+  })
+
+  it('does NOT call db.reviewItem.update for an approved item', async () => {
+    primeAmCtx()
+    primeMarkPost('approved')
+
+    await markPostAddressedAction({
+      postId: MARK_POST_ID,
+      reviewItemId: MARK_ITEM_ID,
+      reviewSessionId: MARK_SESSION_ID,
+    })
+
+    expect(db.reviewItem.update).not.toHaveBeenCalled()
   })
 })
 

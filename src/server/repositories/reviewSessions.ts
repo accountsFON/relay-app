@@ -64,6 +64,7 @@ function toHydratedItem(row: ReviewItem): ReviewItemHydrated {
     updatedSinceLastReview: row.updatedSinceLastReview,
     lastReviewedVersionId: row.lastReviewedVersionId,
     reviewedAt: row.reviewedAt,
+    addressedAt: row.addressedAt,
   }
 }
 

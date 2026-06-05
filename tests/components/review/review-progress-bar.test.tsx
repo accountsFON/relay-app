@@ -14,6 +14,7 @@ function makeItem(
     comment: null,
     suggestedCaption: null,
     acceptedAsPostVersionId: null,
+    addressedAt: null,
     updatedSinceLastReview: false,
     lastReviewedVersionId: null,
     reviewedAt: new Date(),

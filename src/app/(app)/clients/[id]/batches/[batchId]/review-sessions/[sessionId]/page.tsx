@@ -141,23 +141,6 @@ export default async function ReviewSessionDetailPage({
     })
   }
 
-  // Which items are addressed (acceptedAsPostVersionId OR a
-  // review_item_addressed activity event). Mirrors the prior page logic.
-  const itemIds = [...itemByPostId.values()].map((i) => i.id)
-  const addressEvents =
-    itemIds.length === 0
-      ? []
-      : await db.activityEvent.findMany({
-          where: { clientId: client.id, kind: 'review_item_addressed' },
-          select: { payload: true },
-        })
-  const itemIdSet = new Set(itemIds)
-  const addressedItemIds = new Set<string>()
-  for (const e of addressEvents) {
-    const reviewItemId = (e.payload as { reviewItemId?: string } | null)?.reviewItemId
-    if (reviewItemId && itemIdSet.has(reviewItemId)) addressedItemIds.add(reviewItemId)
-  }
-
   // Client pins (open + resolved) for every post in the batch.
   const clientThreadsByPost = await listClientThreadsForBatch({
     batchId: batch.id,
@@ -173,7 +156,7 @@ export default async function ReviewSessionDetailPage({
     if (!item && clientThreads.length === 0) continue
 
     const itemAddressed = item
-      ? Boolean(item.acceptedAsPostVersionId) || addressedItemIds.has(item.id)
+      ? Boolean(item.acceptedAsPostVersionId) || item.addressedAt != null
       : true
     const openPins = clientThreads.filter((t) => t.status === 'open').length
     const handled = itemAddressed && openPins === 0

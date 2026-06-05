@@ -800,6 +800,11 @@ export async function rejectCaptionEditAction(input: {
     },
   })
 
+  await db.reviewItem.update({
+    where: { id: item.reviewItemId },
+    data: { addressedAt: new Date(), addressedBy: ctx.userDbId },
+  })
+
   revalidateAmReviewPaths(item.clientId, item.batchId, item.reviewSessionId)
   return { ok: true }
 }
@@ -835,6 +840,11 @@ export async function addressItemAction(input: {
       decision: item.decision,
       addressedBy: ctx.userDbId,
     },
+  })
+
+  await db.reviewItem.update({
+    where: { id: item.reviewItemId },
+    data: { addressedAt: new Date(), addressedBy: ctx.userDbId },
   })
 
   revalidateAmReviewPaths(item.clientId, item.batchId, item.reviewSessionId)
@@ -996,6 +1006,10 @@ export async function markPostAddressedAction(input: {
           decision: item.decision,
           addressedBy: ctx.userDbId,
         },
+      })
+      await db.reviewItem.update({
+        where: { id: item.id },
+        data: { addressedAt: new Date(), addressedBy: ctx.userDbId },
       })
     }
   }

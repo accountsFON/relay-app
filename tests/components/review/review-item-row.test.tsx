@@ -13,6 +13,7 @@ function baseItem(overrides: Partial<HydratedItemWithPost> = {}): HydratedItemWi
     comment: 'Please reword the intro.',
     suggestedCaption: null,
     acceptedAsPostVersionId: null,
+    addressedAt: null,
     updatedSinceLastReview: false,
     lastReviewedVersionId: null,
     reviewedAt: new Date('2026-05-15T11:00:00Z'),

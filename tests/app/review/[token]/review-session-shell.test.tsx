@@ -170,6 +170,7 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
       comment: null,
       suggestedCaption: 'A prior suggestion',
       acceptedAsPostVersionId: null,
+      addressedAt: null,
       updatedSinceLastReview: false,
       lastReviewedVersionId: null,
       reviewedAt: new Date(),

@@ -19,7 +19,7 @@ vi.mock('@/server/services/activity', async () => {
 })
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/db/client', () => ({
-  db: { post: { findUnique: vi.fn() }, reviewItem: { findUnique: vi.fn() } },
+  db: { post: { findUnique: vi.fn() }, reviewItem: { findUnique: vi.fn(), update: vi.fn() } },
 }))
 
 import { db } from '@/db/client'
