@@ -1063,11 +1063,17 @@ export async function unmarkPostAddressedAction(input: {
   const client = await findClientForUser(ctx, post.clientId)
   if (!client) throw new ReviewSessionActionError('Post not found')
 
-  // Re-open the pins half: only client pins resolved via the review session.
+  // Re-open the pins half: ALL resolved client pins on the post, regardless of
+  // how they were resolved. A post becomes "handled" when its client pins are
+  // resolved, and in practice that happens via the per-pin Resolve popover,
+  // which records resolvedReason = null (not the Mark addressed reason). So
+  // scoping the re-open to REVIEW_PIN_RESOLVE_REASON made un-address a no-op
+  // for those posts; reopening every client pin is the true inverse of
+  // "this post has no open client pins". (AM-authored pins stay untouched via
+  // onlyClientPins.)
   const pinsReopened = await bulkReopenOnPost({
     postId: post.id,
     onlyClientPins: true,
-    resolvedReason: REVIEW_PIN_RESOLVE_REASON,
   })
 
   // Un-address the item half, when present.

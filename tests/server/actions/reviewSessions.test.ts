@@ -1406,11 +1406,17 @@ describe('unmarkPostAddressedAction', () => {
     })
 
     expect(result).toEqual({ ok: true, pinsReopened: 3 })
+    // Re-opens ALL resolved client pins on the post, NOT just ones resolved
+    // via Mark addressed. In practice client pins get resolved with a null
+    // reason (the per-pin Resolve popover), so a reason-scoped re-open would
+    // be a no-op and the post would never move back. Must NOT pass
+    // resolvedReason.
     expect(bulkReopenOnPost).toHaveBeenCalledWith({
       postId: UNMARK_POST_ID,
       onlyClientPins: true,
-      resolvedReason: 'Addressed from review session',
     })
+    const reopenArg = vi.mocked(bulkReopenOnPost).mock.calls[0][0]
+    expect('resolvedReason' in reopenArg).toBe(false)
     expect(db.reviewItem.update).not.toHaveBeenCalled()
     expect(db.$transaction).not.toHaveBeenCalled()
     expect(recordActivity).toHaveBeenCalledTimes(1)
