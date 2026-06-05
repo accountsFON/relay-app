@@ -172,14 +172,34 @@ export function renderSummary(row: MentionInboxRow): string {
   }
 }
 
+/**
+ * Full deep link for a notification, including the anchor fragment the
+ * destination page's <EventAnchor /> consumes. Precedence:
+ *
+ *   1. Post event (`event.postId` + a resolvable batch) ->
+ *      `/clients/{c}/batches/{b}#post-{postId}` (scrolls to the post card)
+ *   2. Batch-scoped non-post event (`payload.batchId`) ->
+ *      `/clients/{c}/batches/{b}#comment-{eventId}` (scrolls to the thread row)
+ *   3. Run event (`runId` only) -> `/clients/{c}/runs/{runId}` (nothing to anchor)
+ *   4. Client thread fallback -> `/clients/{c}#comment-{eventId}`
+ *
+ * Both consumers (the bell row and the inbox row) use this verbatim, so the
+ * fragment lives here, not in the row components.
+ */
 export function resolveHref(row: MentionInboxRow): string {
   const payload = row.event.payload as Record<string, unknown>
+  const clientId = row.client.id
+  const eventId = row.event.id
+
+  if (row.event.postId && row.postBatchId) {
+    return `/clients/${clientId}/batches/${row.postBatchId}#post-${row.event.postId}`
+  }
   const batchId = typeof payload.batchId === 'string' ? payload.batchId : null
   if (batchId) {
-    return `/clients/${row.client.id}/batches/${batchId}`
+    return `/clients/${clientId}/batches/${batchId}#comment-${eventId}`
   }
   if (row.event.runId) {
-    return `/clients/${row.client.id}/runs/${row.event.runId}`
+    return `/clients/${clientId}/runs/${row.event.runId}`
   }
-  return `/clients/${row.client.id}`
+  return `/clients/${clientId}#comment-${eventId}`
 }

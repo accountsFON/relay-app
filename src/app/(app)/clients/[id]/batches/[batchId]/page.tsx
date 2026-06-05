@@ -582,7 +582,11 @@ export default async function BatchDetailPage({
                         authorName: v.author?.name ?? null,
                       }))
                       return (
-                        <div key={post.id} className="space-y-2">
+                        <div
+                          key={post.id}
+                          data-post-id={post.id}
+                          className="space-y-2"
+                        >
                           <PostCard
                             post={post}
                             canEdit={canEdit}

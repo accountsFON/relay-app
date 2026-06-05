@@ -16,7 +16,8 @@ const SAMPLE = {
   mentionId: 'm1',
   kind: 'batch_passed',
   summary: 'Mollie passed Cedar Creek to you.',
-  href: '/clients/c1/batches/b1',
+  // href already carries the anchor fragment from resolveHref.
+  href: '/clients/c1/batches/b1#comment-e1',
   createdAt: new Date(Date.now() - 60_000).toISOString(),
   runId: null,
 }
@@ -34,7 +35,7 @@ describe('NotificationRow', () => {
     expect(screen.getByText(/1m ago/i)).toBeInTheDocument()
   })
 
-  it('on click: calls markRead, navigates to href#comment-eventId, closes dropdown', () => {
+  it('on click: calls markRead, navigates to item.href verbatim, closes dropdown', () => {
     render(<NotificationRow item={SAMPLE} />)
     fireEvent.click(screen.getByRole('button'))
     expect(markReadMock).toHaveBeenCalledWith('e1')

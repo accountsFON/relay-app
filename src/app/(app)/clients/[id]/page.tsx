@@ -13,6 +13,7 @@ import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { db } from '@/db/client'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { ActivityThread } from '@/components/activity/activity-thread'
+import { EventAnchor } from '@/components/notifications/event-anchor'
 import { buildMentionRoster } from '@/lib/mentions'
 import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
@@ -101,6 +102,9 @@ export default async function ClientDetailPage({
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+      {/* Scrolls to + highlights the activity thread row when a notification
+          deep links here with a #comment-... fragment. */}
+      <EventAnchor />
       {client.deletedAt && (
         <div className="mb-6">
           <RestoreClientBanner

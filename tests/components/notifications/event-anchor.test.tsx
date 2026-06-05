@@ -36,6 +36,20 @@ describe('EventAnchor', () => {
     )
   })
 
+  it('scrolls to the post card matching #post-XYZ on mount', async () => {
+    window.history.replaceState({}, '', '/somewhere#post-p7')
+    document.body.innerHTML = '<div data-post-id="p7">the post</div>'
+    render(<EventAnchor />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: 'smooth', block: 'center' }),
+    )
+    const target = document.querySelector('[data-post-id="p7"]') as HTMLElement
+    expect(target.classList.contains('bg-neutral-100')).toBe(true)
+  })
+
   it('adds and then removes the highlight class', async () => {
     vi.useFakeTimers()
     window.history.replaceState({}, '', '/somewhere#comment-e1')

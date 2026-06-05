@@ -17,6 +17,7 @@ function makeRow(overrides: Partial<MentionInboxRow> = {}): MentionInboxRow {
     mentionId: 'mention-1',
     readAt: null,
     client: { id: 'client-1', name: 'Cedar Creek Dental' },
+    postBatchId: null,
     event: {
       id: 'event-1',
       clientId: 'client-1',
@@ -49,10 +50,12 @@ describe('InboxRow run_completed', () => {
     expect(screen.getByText(/Cedar Creek Dental ·/)).toBeInTheDocument()
   })
 
-  it('deep-links to the generated batch when batchId is in payload', () => {
+  it('deep-links to the generated batch (with anchor fragment) when batchId is in payload', () => {
     render(<InboxRow row={makeRow()} />)
     const link = screen.getByRole('link')
-    expect(link.getAttribute('href')).toBe('/clients/client-1/batches/batch-9')
+    expect(link.getAttribute('href')).toBe(
+      '/clients/client-1/batches/batch-9#comment-event-1',
+    )
   })
 
   it('falls back to the run page when no batchId is in payload', () => {
@@ -92,6 +95,7 @@ describe('InboxRow new copy', () => {
       mentionId: 'mention-x',
       readAt: null,
       client: { id: 'client-1', name: 'Cedar Creek Dental' },
+      postBatchId: null,
       event: {
         id: 'event-x',
         clientId: 'client-1',
