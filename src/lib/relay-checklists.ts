@@ -52,8 +52,7 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
     { label: 'AM confirmed relay ready to schedule' },
   ],
   [RelayStep.implementing_revisions]: [
-    { label: 'Revision plan composed' },
-    { label: 'All revision items dispatched' },
+    { label: 'Revisions complete' },
   ],
   [RelayStep.revisions_complete]: [
     { label: 'Revision-vs-client decision made (loop or schedule)' },
