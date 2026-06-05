@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { usePathname } from 'next/navigation'
 import { TourPopover, type TourStop } from '@/components/onboarding/tour-popover'
+import { useIsMobile } from '@/hooks/use-is-mobile'
 
 type TourContextValue = {
   /** Whether the tour is currently rendered. */
@@ -80,6 +81,15 @@ export type TourProviderProps = {
    * other routes (settings, client detail, review screens).
    */
   autoFirePaths?: string[]
+  /**
+   * Reports whether the tour currently wants the mobile nav drawer
+   * open. True only while the tour is active AND the viewport is below
+   * the `md` breakpoint (the sidebar nav lives in a hidden drawer
+   * there, so the popover's anchors are off screen). AppShell uses this
+   * to OR the drawer open without fighting its own sidebarOpen state.
+   * Reports false when the tour deactivates or on desktop.
+   */
+  onTourNavChange?: (open: boolean) => void
 }
 
 const DEFAULT_AUTOFIRE_PATHS = ['/dashboard']
@@ -113,8 +123,10 @@ export function TourProvider({
   stops = DEFAULT_TOUR_STOPS,
   onMarkSeen,
   autoFirePaths = DEFAULT_AUTOFIRE_PATHS,
+  onTourNavChange,
 }: TourProviderProps) {
   const pathname = usePathname()
+  const isMobile = useIsMobile()
   // Single state object so all tour related transitions happen in one
   // atomic update. `seededFor` tracks which tourSeen prop value the
   // current state was derived from; comparing against the live prop
@@ -236,6 +248,15 @@ export function TourProvider({
       return { ...prev, currentIndex: next }
     })
   }, [stops.length, persistSeen])
+
+  // Tell AppShell whether the tour needs the mobile nav drawer open.
+  // Only on mobile + while active; reports false otherwise (tour
+  // deactivated, or desktop where the nav is always visible). AppShell
+  // ORs this with its own sidebarOpen, so this never fights the
+  // pathname-change auto-close (which only touches sidebarOpen).
+  useEffect(() => {
+    onTourNavChange?.(active && isMobile)
+  }, [active, isMobile, onTourNavChange])
 
   const value = useMemo<TourContextValue>(
     () => ({ active, currentIndex, start, dismiss }),
