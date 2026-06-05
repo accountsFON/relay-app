@@ -216,4 +216,11 @@ export interface MentionInboxRow {
   readAt: Date | null
   event: ActivityEventView
   client: { id: string; name: string }
+  /**
+   * Batch the event's post belongs to, when the event targets a post
+   * (`event.postId` set) and that post still has a batch. Lets the
+   * notification deep link route to the batch page and scroll to the post
+   * card. Null for non-post events or posts orphaned by a batch SetNull.
+   */
+  postBatchId: string | null
 }

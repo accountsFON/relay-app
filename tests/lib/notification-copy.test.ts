@@ -20,6 +20,7 @@ function row(input: Record<string, unknown>, overrides: Partial<MentionInboxRow>
     mentionId: 'm1',
     readAt: null,
     client: { id: 'c1', name: 'Cedar Creek', ...(overrides.client ?? {}) },
+    postBatchId: overrides.postBatchId ?? null,
     event: {
       id: 'e1',
       createdAt: new Date('2026-05-21T12:00:00Z'),
@@ -308,13 +309,13 @@ describe('renderSummary, production payload shape (no kind in payload)', () => {
 })
 
 describe('resolveHref, existing kinds', () => {
-  it('uses batchId when present in payload', () => {
+  it('batch event routes to the batch page with a #comment fragment', () => {
     expect(
       resolveHref(row({ kind: 'batch_passed', batchId: 'b1' })),
-    ).toBe('/clients/c1/batches/b1')
+    ).toBe('/clients/c1/batches/b1#comment-e1')
   })
 
-  it('uses runId when no batchId', () => {
+  it('uses runId (no fragment) when no batchId or post', () => {
     expect(
       resolveHref(row({ kind: 'run_completed' }, { event: {
         id: 'e1', kind: 'run_completed', runId: 'r1', payload: {},
@@ -323,8 +324,78 @@ describe('resolveHref, existing kinds', () => {
     ).toBe('/clients/c1/runs/r1')
   })
 
-  it('falls back to client root when neither batchId nor runId', () => {
-    expect(resolveHref(row({ kind: 'client_am_assigned' }))).toBe('/clients/c1')
+  it('falls back to the client root with a #comment fragment', () => {
+    expect(resolveHref(row({ kind: 'client_am_assigned' }))).toBe(
+      '/clients/c1#comment-e1',
+    )
+  })
+})
+
+describe('resolveHref, post-targeted events', () => {
+  it('post event with a resolvable batch routes to the batch page with #post', () => {
+    expect(
+      resolveHref(
+        row(
+          { kind: 'post_thread_opened' },
+          {
+            postBatchId: 'b9',
+            event: {
+              id: 'e1',
+              kind: 'post_thread_opened',
+              postId: 'p7',
+              runId: null,
+              payload: {},
+              createdAt: new Date('2026-05-21T12:00:00Z'),
+              actor: { id: 'u1', name: 'Mollie', avatarUrl: null },
+            } as MentionInboxRow['event'],
+          },
+        ),
+      ),
+    ).toBe('/clients/c1/batches/b9#post-p7')
+  })
+
+  it('post event takes precedence over a batchId in the payload', () => {
+    expect(
+      resolveHref(
+        row(
+          { kind: 'post_thread_opened', batchId: 'b1' },
+          {
+            postBatchId: 'b9',
+            event: {
+              id: 'e1',
+              kind: 'post_thread_opened',
+              postId: 'p7',
+              runId: null,
+              payload: { batchId: 'b1' },
+              createdAt: new Date('2026-05-21T12:00:00Z'),
+              actor: { id: 'u1', name: 'Mollie', avatarUrl: null },
+            } as MentionInboxRow['event'],
+          },
+        ),
+      ),
+    ).toBe('/clients/c1/batches/b9#post-p7')
+  })
+
+  it('orphaned post (postId set, no batch) falls back to the client root', () => {
+    expect(
+      resolveHref(
+        row(
+          { kind: 'post_thread_opened' },
+          {
+            postBatchId: null,
+            event: {
+              id: 'e1',
+              kind: 'post_thread_opened',
+              postId: 'p7',
+              runId: null,
+              payload: {},
+              createdAt: new Date('2026-05-21T12:00:00Z'),
+              actor: { id: 'u1', name: 'Mollie', avatarUrl: null },
+            } as MentionInboxRow['event'],
+          },
+        ),
+      ),
+    ).toBe('/clients/c1#comment-e1')
   })
 })
 

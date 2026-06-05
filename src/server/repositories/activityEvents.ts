@@ -152,6 +152,9 @@ export async function listMentionsForUser(
         include: {
           actor: { select: { id: true, name: true, avatarUrl: true } },
           client: { select: { id: true, name: true } },
+          // Post's batch lets the deep link route to the batch page and
+          // scroll to the post card for post-targeted events.
+          post: { select: { batchId: true } },
         },
       },
     },
@@ -161,6 +164,7 @@ export async function listMentionsForUser(
     mentionId: m.id,
     readAt: m.readAt,
     client: { id: m.event.client.id, name: m.event.client.name },
+    postBatchId: m.event.post?.batchId ?? null,
     event: {
       id: m.event.id,
       clientId: m.event.clientId,

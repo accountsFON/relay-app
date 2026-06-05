@@ -12,7 +12,9 @@ export function NotificationRow({ item }: { item: NotificationItemDTO }) {
 
   const handleClick = () => {
     void markRead(item.eventId)
-    router.push(`${item.href}#comment-${item.eventId}`)
+    // item.href already carries the anchor fragment (#post-... / #comment-...)
+    // from resolveHref; navigate to it verbatim.
+    router.push(item.href)
     closeDropdown()
   }
 

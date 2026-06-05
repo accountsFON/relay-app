@@ -59,7 +59,7 @@ describe('GET /api/notifications/summary', () => {
       eventId: 'e1',
       kind: 'batch_passed',
       summary: expect.stringContaining('Mollie passed'),
-      href: '/clients/c1/batches/b1',
+      href: '/clients/c1/batches/b1#comment-e1',
     })
   })
 
