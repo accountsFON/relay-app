@@ -418,6 +418,24 @@ describe('EventRenderer copy', () => {
   })
 })
 
+describe('revision_images_requested', () => {
+  it('renders with "Image revisions requested — designer notified" message (actorless)', () => {
+    const event = makeEvent(
+      ActivityKind.revision_images_requested,
+      {
+        batchId: 'b1',
+        batchLabel: 'Greenway Mar 2026',
+        reviewSessionId: 'rs9',
+      },
+      { actor: null },
+    )
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/Image revisions requested — designer notified/),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('batch_force_stepped', () => {
   it('renders the force moved message with human step labels', () => {
     const event = makeEvent(ActivityKind.batch_force_stepped, {

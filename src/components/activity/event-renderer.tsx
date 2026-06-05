@@ -25,6 +25,7 @@ import {
   Check,
   CircleDot,
   Eye,
+  Image,
   Link as LinkIcon,
   MessageCircle,
   MessageSquarePlus,
@@ -424,6 +425,14 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
           p.decision === 'approved'
             ? `client approved ${p.batchLabel}, moved to ${relayStepLabel(p.toStep)}`
             : `client requested changes on ${p.batchLabel}, moved to ${relayStepLabel(p.toStep)}`,
+      }
+    }
+    case 'revision_images_requested': {
+      if (p.kind !== 'revision_images_requested') break
+      return {
+        icon: Image,
+        tone: 'default',
+        message: 'Image revisions requested — designer notified',
       }
     }
   }

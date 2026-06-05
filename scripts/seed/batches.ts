@@ -68,8 +68,9 @@ const BATCH_SPECS: BatchSpec[] = [
   },
   { clientIdx: 7, month: '2026-04', step: RelayStep.copy, subState: 'approved' },
 
-  // Greenway Landscaping — revisions_complete Mar, in_design Apr.
-  { clientIdx: 8, month: '2026-03', step: RelayStep.revisions_complete, checkedCount: 1 },
+  // Greenway Landscaping — final_qa_schedule Mar (was revisions_complete; that step has no outgoing
+  // transitions after the revisions-workspace redesign and would strand demo cards), in_design Apr.
+  { clientIdx: 8, month: '2026-03', step: RelayStep.final_qa_schedule, checkedCount: 1 },
   { clientIdx: 8, month: '2026-04', step: RelayStep.in_design },
 
   // Bread & Bowl — am_review_design Apr only.
@@ -87,8 +88,9 @@ const BATCH_SPECS: BatchSpec[] = [
   // (was designs_completed; Phase 3 item 15 PR1 retired that step.)
   { clientIdx: 12, month: '2026-04', step: RelayStep.am_review_design },
 
-  // Solstice Photography — revisions_complete Mar, in_design Apr.
-  { clientIdx: 13, month: '2026-03', step: RelayStep.revisions_complete, checkedCount: 2 },
+  // Solstice Photography — final_qa_schedule Mar (was revisions_complete; that step has no outgoing
+  // transitions after the revisions-workspace redesign and would strand demo cards), in_design Apr.
+  { clientIdx: 13, month: '2026-03', step: RelayStep.final_qa_schedule, checkedCount: 2 },
   { clientIdx: 13, month: '2026-04', step: RelayStep.in_design },
 
   // Halcyon HVAC — final_qa_schedule Mar, in_design Apr.

@@ -190,6 +190,12 @@ export type ModeledActivityPayload =
       newHolderId: string
       newHolderRole: RelayRole
     }
+  | {
+      kind: 'revision_images_requested'
+      batchId: string
+      batchLabel: string
+      reviewSessionId: string
+    }
 
 type ModeledKind = ModeledActivityPayload['kind']
 type UnmodeledKind = Exclude<ActivityKind, ModeledKind>
