@@ -1482,6 +1482,14 @@ describe('unmarkPostAddressedAction', () => {
     expect(recordActivity).toHaveBeenCalledTimes(1)
     const activity = vi.mocked(recordActivity).mock.calls[0][0]
     expect(activity.payload).toMatchObject({ unaccepted: true })
+    // The accept-event lookup is scoped to THIS item (not just the post),
+    // so un-accepting from an older session reverts to the right round's
+    // caption rather than the latest round's.
+    const findFirstWhere = vi.mocked(db.activityEvent.findFirst).mock.calls[0][0]?.where
+    expect(findFirstWhere).toMatchObject({
+      postId: UNMARK_POST_ID,
+      payload: { path: ['reviewItemId'], equals: UNMARK_ITEM_ID },
+    })
   })
 
   it('accept path with no accept event: throws without blanking the caption', async () => {

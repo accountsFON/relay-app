@@ -1082,15 +1082,28 @@ export async function unmarkPostAddressedAction(input: {
     }
 
     if (item.acceptedAsPostVersionId) {
+      // Scope to THIS item's accept event: a post can have multiple accepted
+      // caption edits across review rounds (one ReviewItem per session per
+      // post), each its own event with the same postId. Keying on postId
+      // alone would revert to the wrong round's caption when un-accepting
+      // from a superseded session view.
       const acceptEvent = await db.activityEvent.findFirst({
-        where: { postId: post.id, kind: ActivityKind.review_caption_edit_accepted },
+        where: {
+          postId: post.id,
+          kind: ActivityKind.review_caption_edit_accepted,
+          payload: { path: ['reviewItemId'], equals: input.reviewItemId },
+        },
         orderBy: { createdAt: 'desc' },
         select: { payload: true },
       })
       const payload = acceptEvent?.payload
       const oldCaption =
-        payload && typeof payload === 'object' && !Array.isArray(payload) && 'oldCaption' in payload
-          ? String((payload as Record<string, unknown>).oldCaption)
+        payload &&
+        typeof payload === 'object' &&
+        !Array.isArray(payload) &&
+        'oldCaption' in payload &&
+        typeof (payload as Record<string, unknown>).oldCaption === 'string'
+          ? ((payload as Record<string, unknown>).oldCaption as string)
           : null
       if (oldCaption === null) {
         throw new ReviewSessionActionError(
