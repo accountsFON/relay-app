@@ -34,6 +34,7 @@ import { listVersionsForPost } from '@/server/services/postVersions'
 import { resolveBatchTargetMonth } from '@/lib/batch-target-month'
 import { resolveCanvaUrl } from '@/lib/canva'
 import { canOverrideHolder } from '@/lib/relay-holder-override'
+import { isRelayCelebrationStep } from '@/lib/relay-celebration'
 import { PostCard } from '@/components/posts/post-card'
 import { EventAnchor } from '@/components/notifications/event-anchor'
 import {
@@ -275,9 +276,10 @@ export default async function BatchDetailPage({
     isLive && isClientHeldStep && !hasLinkedClientUser && canAct
 
   // Celebration participants: AM, Designer, current holder, and any linked
-  // client users. Only loaded when the batch has reached the terminal step
-  // so the cost is paid once per batch lifetime, not on every page render.
-  const isBatchComplete = batch.currentStep === RelayStep.final_qa_schedule
+  // client users. Only loaded once the batch has reached the terminal
+  // `completed` step (after the final step is finished), so the cost is paid
+  // once per batch lifetime, not on every page render.
+  const isBatchComplete = isRelayCelebrationStep(batch.currentStep)
   let celebrationParticipants: Array<{
     id: string
     name: string
