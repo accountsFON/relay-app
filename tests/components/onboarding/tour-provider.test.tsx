@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import {
   TourProvider,
@@ -11,6 +11,23 @@ const pathnameMock = vi.fn(() => '/dashboard')
 vi.mock('next/navigation', () => ({
   usePathname: () => pathnameMock(),
 }))
+
+// useIsMobile reads window.matchMedia; default the env to desktop and
+// let individual tests flip it to mobile before render.
+function setMatchMedia(matches: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn(() => ({
+      matches,
+      media: '(max-width: 767px)',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  )
+}
 
 const stops: TourStop[] = [
   { id: 'a', anchorSelector: '[data-tour-anchor="a"]', title: 'A', body: 'a body' },
@@ -34,6 +51,11 @@ function ActiveProbe() {
 
 beforeEach(() => {
   pathnameMock.mockReturnValue('/dashboard')
+  setMatchMedia(false)
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('TourProvider', () => {
@@ -148,6 +170,68 @@ describe('TourProvider', () => {
     for (const stop of DEFAULT_TOUR_STOPS) {
       expect(stop.anchorSelector).toMatch(/^\[data-tour-anchor="/)
     }
+  })
+
+  it('reports onTourNavChange(true) when the tour is active on mobile', () => {
+    setMatchMedia(true)
+    pathnameMock.mockReturnValue('/dashboard')
+    const onTourNavChange = vi.fn()
+    render(
+      <TourProvider
+        tourSeen={false}
+        stops={stops}
+        onMarkSeen={vi.fn()}
+        onTourNavChange={onTourNavChange}
+      >
+        <ActiveProbe />
+      </TourProvider>,
+    )
+
+    // Tour auto fired on /dashboard + mobile => wants the nav open.
+    expect(screen.getByTestId('active')).toHaveTextContent('yes')
+    expect(onTourNavChange).toHaveBeenCalledWith(true)
+  })
+
+  it('reports onTourNavChange(false) on desktop even when active', () => {
+    setMatchMedia(false)
+    pathnameMock.mockReturnValue('/dashboard')
+    const onTourNavChange = vi.fn()
+    render(
+      <TourProvider
+        tourSeen={false}
+        stops={stops}
+        onMarkSeen={vi.fn()}
+        onTourNavChange={onTourNavChange}
+      >
+        <ActiveProbe />
+      </TourProvider>,
+    )
+
+    expect(screen.getByTestId('active')).toHaveTextContent('yes')
+    // Active but desktop => nav should stay closed.
+    expect(onTourNavChange).toHaveBeenLastCalledWith(false)
+    expect(onTourNavChange).not.toHaveBeenCalledWith(true)
+  })
+
+  it('reports onTourNavChange(false) when the tour is dismissed on mobile', () => {
+    setMatchMedia(true)
+    pathnameMock.mockReturnValue('/dashboard')
+    const onTourNavChange = vi.fn()
+    render(
+      <TourProvider
+        tourSeen={false}
+        stops={stops}
+        onMarkSeen={vi.fn()}
+        onTourNavChange={onTourNavChange}
+      >
+        <ActiveProbe />
+      </TourProvider>,
+    )
+
+    expect(onTourNavChange).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByTestId('tour-popover-skip'))
+    expect(screen.getByTestId('active')).toHaveTextContent('no')
+    expect(onTourNavChange).toHaveBeenLastCalledWith(false)
   })
 
   it('useTourController returns a no-op stub outside a TourProvider', () => {

@@ -106,6 +106,12 @@ export function AppShell({
     unreadMentions: unreadMentions,
   }
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Separate from sidebarOpen: the tour drives this when it goes active
+  // on mobile so the nav drawer slides in behind the popover. Kept
+  // separate so the pathname-change auto-close (which only mutates
+  // sidebarOpen) never fights the tour. The aside visibility is derived
+  // from the OR of the two below.
+  const [tourNavOpen, setTourNavOpen] = useState(false)
   const pathname = usePathname()
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
@@ -118,7 +124,7 @@ export function AppShell({
     <InFlightRunsProvider>
     <NotificationProvider>
     <CompletionNotificationsProvider>
-    <TourProvider tourSeen={tourSeen}>
+    <TourProvider tourSeen={tourSeen} onTourNavChange={setTourNavOpen}>
     <div className="flex h-dvh flex-col md:flex-row bg-neutral-50">
       {sidebarOpen && (
         <div
@@ -131,7 +137,7 @@ export function AppShell({
         className={cn(
           'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-white transition-transform duration-200',
           'md:static md:z-auto md:w-60 md:translate-x-0 md:m-3 md:rounded-3xl md:shadow-sm md:border md:border-neutral-200/60',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          (sidebarOpen || tourNavOpen) ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex h-16 items-center justify-between px-5">

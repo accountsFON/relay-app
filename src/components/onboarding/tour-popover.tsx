@@ -70,10 +70,17 @@ export function TourPopover({
     FALLBACK_POSITION,
   )
 
-  // Place the popover next to its anchor. Runs on every stop change and
-  // on resize / scroll, so the highlight stays visually attached.
+  // Place the popover next to its anchor. While a stop is active we
+  // re-run the position read every animation frame, so the popover
+  // tracks the anchor as it moves, e.g. when the mobile nav drawer
+  // slides in over its 200ms transform and the anchored nav link
+  // travels from off screen to its resting position. A plain
+  // resize/scroll listener missed that transition (no scroll/resize
+  // event fires during a CSS transform). The rAF loop is cheap (one
+  // getBoundingClientRect per frame) and only runs while the tour is up.
   useLayoutEffect(() => {
     if (!stop) return
+    let frame = 0
     const update = () => {
       const target = document.querySelector(stop.anchorSelector)
       if (!target) {
@@ -92,13 +99,12 @@ export function TourPopover({
       )
       setPosition({ top, left })
     }
-    update()
-    window.addEventListener('resize', update)
-    window.addEventListener('scroll', update, true)
-    return () => {
-      window.removeEventListener('resize', update)
-      window.removeEventListener('scroll', update, true)
+    const loop = () => {
+      update()
+      frame = requestAnimationFrame(loop)
     }
+    loop()
+    return () => cancelAnimationFrame(frame)
   }, [stop])
 
   // ESC dismisses; mirrors the review tutorial modal pattern.
@@ -126,7 +132,9 @@ export function TourPopover({
       aria-modal="false"
       aria-labelledby={`tour-popover-title-${stop.id}`}
       className={cn(
-        'fixed z-50 w-[320px] rounded-2xl bg-card p-5 shadow-xl ring-1 ring-neutral-200',
+        // z-[60] keeps the popover above the open mobile sidebar (z-50)
+        // so it renders over the drawer the tour just slid in.
+        'fixed z-[60] w-[320px] rounded-2xl bg-card p-5 shadow-xl ring-1 ring-neutral-200',
         className,
       )}
       style={{ top: position.top, left: position.left }}
