@@ -511,4 +511,35 @@ describe('ReviewSessionDetailPage', () => {
     })
   })
 
+  describe('image upload / replace affordance (Task 8)', () => {
+    it('renders the upload affordance when canUploadPostMedia is true', async () => {
+      vi.mocked(canUploadPostMedia).mockReturnValue(true)
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+      const card = getByTestId('review-attention-card-post_b')
+      // post_b has no media, so the dropzone affordance should render.
+      expect(
+        card.querySelector('[data-testid="media-upload-dropzone"]'),
+      ).toBeTruthy()
+    })
+
+    it('does NOT render the upload affordance when canUploadPostMedia is false', async () => {
+      vi.mocked(canUploadPostMedia).mockReturnValue(false)
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+      const card = getByTestId('review-attention-card-post_b')
+      expect(
+        card.querySelector('[data-testid="media-upload-dropzone"]'),
+      ).toBeNull()
+      expect(
+        card.querySelector('[data-testid="media-upload-current"]'),
+      ).toBeNull()
+    })
+  })
 })
