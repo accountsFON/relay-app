@@ -79,13 +79,12 @@ export function MobileThreadFab({
           <DialogPrimitive.Description className="sr-only">
             Comments and activity for this client.
           </DialogPrimitive.Description>
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 p-4">
             <ActivityThread
               clientId={clientId}
               events={events}
               mentionTargets={mentionTargets}
               hideComposer={hideComposer}
-              composerPosition="top"
             />
           </div>
         </DialogPrimitive.Popup>

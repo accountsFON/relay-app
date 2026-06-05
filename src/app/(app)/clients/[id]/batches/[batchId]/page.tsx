@@ -640,17 +640,19 @@ export default async function BatchDetailPage({
           <div
             aria-label="Client thread"
             data-testid="client-thread-rail"
-            className="hidden rounded-2xl bg-card p-4 lg:block"
+            className="hidden overflow-hidden rounded-2xl bg-card lg:flex lg:h-[36rem] lg:max-h-[calc(100vh-2rem)] lg:flex-col"
           >
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-3">
+            <h2 className="shrink-0 px-4 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               Client thread
             </h2>
-            <ActivityThread
-              clientId={client.id}
-              events={events}
-              mentionTargets={mentionTargets}
-              hideComposer={!canEdit || !isLive}
-            />
+            <div className="min-h-0 flex-1 px-4 pb-4">
+              <ActivityThread
+                clientId={client.id}
+                events={events}
+                mentionTargets={mentionTargets}
+                hideComposer={!canEdit || !isLive}
+              />
+            </div>
           </div>
         </aside>
       </div>
