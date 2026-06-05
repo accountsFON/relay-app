@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { RelayStep, RevisionItemStatus } from '@prisma/client'
+import { RelayStep } from '@prisma/client'
 import {
   amKanbanColumn,
   clientKanbanColumn,
@@ -19,46 +19,14 @@ describe('deriveSubStatus', () => {
     expect(result.daysHere).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows revisions remaining for implementing_revisions', () => {
+  it('reports a static label for implementing_revisions', () => {
     const result = deriveSubStatus({
       currentStep: RelayStep.implementing_revisions,
       currentSubState: null,
       createdAt: new Date(),
-      revisionPlan: {
-        items: [
-          { status: RevisionItemStatus.complete },
-          { status: RevisionItemStatus.pending },
-          { status: RevisionItemStatus.in_progress },
-        ],
-      },
     })
-    expect(result.label).toBe('2 of 3 revisions in progress')
+    expect(result.label).toBe('Implementing revisions')
     expect(result.tone).toBe('progress')
-  })
-
-  it('shows "Plan not yet composed" when 11b has no plan', () => {
-    const result = deriveSubStatus({
-      currentStep: RelayStep.implementing_revisions,
-      currentSubState: null,
-      createdAt: new Date(),
-    })
-    expect(result.label).toBe('Plan not yet composed')
-    expect(result.tone).toBe('attention')
-  })
-
-  it('shows success when all revisions complete', () => {
-    const result = deriveSubStatus({
-      currentStep: RelayStep.implementing_revisions,
-      currentSubState: null,
-      createdAt: new Date(),
-      revisionPlan: {
-        items: [
-          { status: RevisionItemStatus.complete },
-          { status: RevisionItemStatus.complete },
-        ],
-      },
-    })
-    expect(result.tone).toBe('success')
   })
 
   it('humanizes copy sub-states', () => {

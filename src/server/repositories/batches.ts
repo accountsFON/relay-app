@@ -23,7 +23,6 @@ export async function findBatch(id: string) {
       },
       holder: { select: { id: true, name: true, email: true, role: true } },
       checklists: { orderBy: { id: 'asc' } },
-      revisionPlan: { include: { items: true } },
     },
   })
 }
@@ -148,11 +147,6 @@ export async function listBatchesForOrg(
         },
       },
       holder: { select: { id: true, name: true, role: true } },
-      revisionPlan: {
-        include: {
-          items: { select: { id: true, status: true, type: true } },
-        },
-      },
       _count: { select: { posts: true } },
     },
     orderBy: { createdAt: 'desc' },

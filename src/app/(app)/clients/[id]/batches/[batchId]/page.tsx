@@ -23,7 +23,6 @@ import { RelayTrack } from '@/components/relay/relay-track'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
 import { ClientDecisionPanel } from '@/components/relay/client-decision-panel'
 import { CopySubStatePanel } from '@/components/relay/copy-substate-panel'
-import { RevisionPlanComposer } from '@/components/relay/revision-plan-composer'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { STEP_LABEL } from '@/components/relay/labels'
@@ -253,7 +252,6 @@ export default async function BatchDetailPage({
         })
       : null
 
-  const isRevisionsStep = batch.currentStep === RelayStep.implementing_revisions
   const isClientDecisionView =
     ctx.role === 'client' &&
     batch.currentStep === RelayStep.client_decision &&
@@ -612,13 +610,6 @@ export default async function BatchDetailPage({
         >
           {isClientDecisionView ? (
             <ClientDecisionPanel batch={batchSummary} />
-          ) : isRevisionsStep ? (
-            <RevisionPlanComposer
-              batch={batchSummary}
-              assignedAmId={client.assignedAmId}
-              assignedDesignerId={client.assignedDesignerId}
-              meId={ctx.userDbId}
-            />
           ) : (
             <>
               {isCopyPreApproved && (

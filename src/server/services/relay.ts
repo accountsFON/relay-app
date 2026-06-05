@@ -514,7 +514,7 @@ export async function finishBatch(input: FinishBatchInput) {
  * leaving the completed step (so the auto-archive cron does not re-grab a
  * reopened batch); reseeds the checklist for the destination; inserts a
  * force_step RelayEvent; records a batch_force_stepped ActivityEvent
- * (internal visibility). Does NOT touch RevisionItem rows.
+ * (internal visibility).
  */
 export async function forceStep(input: ForceStepInput) {
   return db.$transaction(async (tx) => {

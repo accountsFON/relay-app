@@ -9,7 +9,6 @@ import type {
   Batch,
   ChecklistItem,
   RelayStep,
-  RevisionItem,
 } from '@prisma/client'
 
 export interface BatchHolderView {
@@ -39,9 +38,6 @@ export interface BatchSummary
 
 /** Re-export Prisma's ChecklistItem for component consumption. */
 export type { ChecklistItem }
-
-/** Re-export Prisma's RevisionItem. */
-export type { RevisionItem }
 
 /** Send-back arc data for the relay-track Phase 3 SVG render. */
 export interface SendBackArc {

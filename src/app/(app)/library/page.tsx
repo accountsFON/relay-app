@@ -174,7 +174,6 @@ export default async function LibraryPage() {
         { name: 'ChecklistPanel', path: 'src/components/relay/checklist-panel.tsx' },
         { name: 'ClientDecisionPanel', path: 'src/components/relay/client-decision-panel.tsx' },
         { name: 'CopySubStatePanel', path: 'src/components/relay/copy-substate-panel.tsx' },
-        { name: 'RevisionPlanComposer', path: 'src/components/relay/revision-plan-composer.tsx' },
       ],
     },
     {

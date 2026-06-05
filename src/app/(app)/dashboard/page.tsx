@@ -352,7 +352,6 @@ interface ColumnBatch {
   deletedAt?: Date | null
   client?: { name: string }
   holder?: { name: string }
-  revisionPlan?: { items: { status: import('@prisma/client').RevisionItemStatus }[] } | null
 }
 
 /**
@@ -410,7 +409,6 @@ function KanbanColumn({
                 deletedAt: batch.deletedAt ?? null,
                 client: { name: batch.client?.name ?? '' },
                 holder: { name: batch.holder?.name ?? '' },
-                revisionPlan: batch.revisionPlan ?? null,
               }}
             />
           ))

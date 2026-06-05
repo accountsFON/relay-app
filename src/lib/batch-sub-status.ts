@@ -1,12 +1,9 @@
-import { RelayStep, RevisionItemStatus } from '@prisma/client'
+import { RelayStep } from '@prisma/client'
 
 export interface BatchForSubStatus {
   currentStep: RelayStep
   currentSubState: string | null
   createdAt: Date
-  revisionPlan?: {
-    items: { status: RevisionItemStatus }[]
-  } | null
 }
 
 export interface SubStatus {
@@ -43,24 +40,8 @@ export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
       }
     }
 
-    case RelayStep.implementing_revisions: {
-      const items = batch.revisionPlan?.items ?? []
-      const total = items.length
-      const remaining = items.filter(
-        (i) => i.status !== RevisionItemStatus.complete,
-      ).length
-      if (total === 0) {
-        return { label: 'Plan not yet composed', tone: 'attention', daysHere }
-      }
-      if (remaining === 0) {
-        return { label: 'All revisions complete', tone: 'success', daysHere }
-      }
-      return {
-        label: `${remaining} of ${total} revisions in progress`,
-        tone: 'progress',
-        daysHere,
-      }
-    }
+    case RelayStep.implementing_revisions:
+      return { label: 'Implementing revisions', tone: 'progress', daysHere }
 
     case RelayStep.am_review_design:
       return { label: 'Ready for review', tone: 'attention', daysHere }

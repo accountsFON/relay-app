@@ -28,7 +28,6 @@ function baseBatch() {
     createdAt: new Date('2026-05-01T00:00:00Z'),
     client: { name: 'Cedar Creek Dental' },
     holder: { name: 'Morgan' },
-    revisionPlan: null,
   }
 }
 
