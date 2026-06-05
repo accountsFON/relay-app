@@ -166,6 +166,14 @@ export type ModeledActivityPayload =
       addressedBy: string
     }
   | {
+      kind: 'review_item_unaddressed'
+      postId: string
+      reviewItemId: string | null
+      /** true when this also un-accepted a caption edit (caption reverted). */
+      unaccepted: boolean
+      pinsReopened: number
+    }
+  | {
       kind: 'review_round_started'
       magicLinkId: string
       round: number

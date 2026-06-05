@@ -115,6 +115,9 @@ export function renderSummary(row: MentionInboxRow): string {
       const postId = (payload.postId as string) ?? ''
       return `${prefix}${actor} marked feedback addressed on post ${postId.slice(0, 6)}.`
     }
+    case 'review_item_unaddressed': {
+      return `${prefix}A post was moved back to unaddressed in a review session.`
+    }
     case 'review_round_started': {
       const round = (payload.round as number) ?? 1
       return `${prefix}Round ${round} review opened.`

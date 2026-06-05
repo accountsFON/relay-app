@@ -265,6 +265,28 @@ describe('EventRenderer copy', () => {
     ).toBeInTheDocument()
   })
 
+  it('renders review_item_unaddressed with unaccepted=true containing "unaddressed"', () => {
+    const event = makeEvent(ActivityKind.review_item_unaddressed, {
+      postId: 'p1',
+      reviewItemId: 'i1',
+      unaccepted: true,
+      pinsReopened: 2,
+    })
+    render(<EventRenderer event={event} />)
+    expect(screen.getByText(/unaddressed/)).toBeInTheDocument()
+  })
+
+  it('renders review_item_unaddressed with unaccepted=false containing "unaddressed"', () => {
+    const event = makeEvent(ActivityKind.review_item_unaddressed, {
+      postId: 'p1',
+      reviewItemId: 'i1',
+      unaccepted: false,
+      pinsReopened: 0,
+    })
+    render(<EventRenderer event={event} />)
+    expect(screen.getByText(/unaddressed/)).toBeInTheDocument()
+  })
+
   it('renders review_round_started with the round number', () => {
     const event = makeEvent(ActivityKind.review_round_started, {
       magicLinkId: 'ml2',

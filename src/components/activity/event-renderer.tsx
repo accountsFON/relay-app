@@ -397,6 +397,16 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         message: `marked feedback addressed on ${postRef}`,
       }
     }
+    case 'review_item_unaddressed': {
+      if (p.kind !== 'review_item_unaddressed') break
+      return {
+        icon: ArrowLeft,
+        tone: 'warning',
+        message: p.unaccepted
+          ? 'undid the accepted caption edit and moved the post back to unaddressed'
+          : 'moved a post back to unaddressed',
+      }
+    }
     case 'review_round_started': {
       if (p.kind !== 'review_round_started') break
       return {
