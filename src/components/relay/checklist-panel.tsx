@@ -76,28 +76,35 @@ export function ChecklistPanel({
   const [sendBackTarget, setSendBackTarget] = useState<RelayStep | null>(null)
   const [reasonText, setReasonText] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  // `isActing` gates the destructive state-machine actions (pass / finish /
+  // send-back) only. Ticking a checklist item is intentionally NOT in this
+  // transition: a tick is optimistic local state, so the Pass button can
+  // enable the instant the last required item is checked instead of waiting
+  // on a save + full-page refresh. See tick() below.
+  const [isActing, startActing] = useTransition()
   const router = useRouter()
 
   const requiredItems = items.filter((i) => i.required)
   const allRequiredChecked = requiredItems.every((i) => checked[i.id])
 
   function tick(itemId: string, value: boolean) {
+    // Optimistic local state drives the UI immediately. We deliberately do
+    // NOT call router.refresh() here: the checklist panel owns its checked
+    // state (the server `items` only seed it once), nothing else on the
+    // batch page renders checklist-completion state, and tickChecklistItemAction
+    // already revalidatePath()s for the next navigation. A per-tick refresh
+    // would re-render the heavy batch detail page for no visible change while
+    // blocking the Pass button until it settled.
     setChecked((prev) => ({ ...prev, [itemId]: value }))
-    startTransition(async () => {
-      try {
-        await tickChecklistItemAction({ itemId, checked: value })
-        router.refresh()
-      } catch (e) {
-        setChecked((prev) => ({ ...prev, [itemId]: !value }))
-        setError(e instanceof Error ? e.message : 'Failed to update')
-      }
+    void tickChecklistItemAction({ itemId, checked: value }).catch((e) => {
+      setChecked((prev) => ({ ...prev, [itemId]: !value }))
+      setError(e instanceof Error ? e.message : 'Failed to update')
     })
   }
 
   function pass() {
     if (!nextStep) return
-    startTransition(async () => {
+    startActing(async () => {
       try {
         await passBatonAction({ batchId: batch.id, toStep: nextStep })
         router.refresh()
@@ -108,7 +115,7 @@ export function ChecklistPanel({
   }
 
   function finish() {
-    startTransition(async () => {
+    startActing(async () => {
       try {
         await finishBatchAction({ batchId: batch.id })
         router.refresh()
@@ -148,7 +155,7 @@ export function ChecklistPanel({
 
   function confirmSendBack() {
     if (!sendBackTarget || reasonText.trim().length === 0) return
-    startTransition(async () => {
+    startActing(async () => {
       try {
         await sendBackBatonAction({
           batchId: batch.id,
@@ -184,7 +191,7 @@ export function ChecklistPanel({
                 if (!canAct) return
                 tick(item.id, !checked[item.id])
               }}
-              disabled={!canAct || isPending}
+              disabled={!canAct || isActing}
               className={cn(
                 'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
                 checked[item.id]
@@ -222,11 +229,11 @@ export function ChecklistPanel({
             <SimpleTooltip content="Mark this relay finished. Archive it later from the My Relay dashboard.">
               <Button
                 type="button"
-                disabled={!allRequiredChecked || isPending}
+                disabled={!allRequiredChecked || isActing}
                 className="w-full"
                 onClick={finish}
               >
-                {isPending ? 'Finishing…' : 'Finish'}
+                {isActing ? 'Finishing…' : 'Finish'}
                 <Check />
               </Button>
             </SimpleTooltip>
@@ -234,11 +241,11 @@ export function ChecklistPanel({
             <SimpleTooltip content="Hand the baton to the next person on the relay.">
               <Button
                 type="button"
-                disabled={!allRequiredChecked || isPending}
+                disabled={!allRequiredChecked || isActing}
                 className="w-full"
                 onClick={pass}
               >
-                {isPending ? 'Passing…' : passButtonLabel()}
+                {isActing ? 'Passing…' : passButtonLabel()}
                 <ArrowRight />
               </Button>
             </SimpleTooltip>
@@ -284,9 +291,9 @@ export function ChecklistPanel({
                   type="button"
                   size="sm"
                   onClick={confirmSendBack}
-                  disabled={isPending || reasonText.trim().length === 0}
+                  disabled={isActing || reasonText.trim().length === 0}
                 >
-                  {isPending ? 'Sending…' : 'Confirm send back'}
+                  {isActing ? 'Sending…' : 'Confirm send back'}
                 </Button>
                 <Button
                   type="button"

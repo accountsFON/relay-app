@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { RelayStep, RelayRole } from '@prisma/client'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
 import type { BatchSummary, ChecklistItem } from '@/components/relay/types'
+import {
+  passBatonAction,
+  tickChecklistItemAction,
+} from '@/server/actions/relay'
 
 const refreshMock = vi.fn()
 
@@ -111,6 +115,102 @@ describe('ChecklistPanel CTA label (Phase 3 item 16)', () => {
     expect(
       screen.getByRole('button', { name: /pass to in design/i }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('ChecklistPanel tick does not block the Pass button', () => {
+  beforeEach(() => {
+    refreshMock.mockReset()
+    vi.mocked(tickChecklistItemAction).mockReset()
+    vi.mocked(passBatonAction).mockReset()
+    vi.mocked(tickChecklistItemAction).mockResolvedValue({ ok: true } as never)
+    vi.mocked(passBatonAction).mockResolvedValue(undefined as never)
+  })
+
+  function copyItem(checked: boolean): ChecklistItem {
+    return {
+      id: 'item-copy-1',
+      batchId: 'batch-1',
+      step: RelayStep.copy,
+      label: 'Copy approved',
+      required: true,
+      checked,
+      checkedBy: null,
+      checkedAt: null,
+    }
+  }
+
+  it('keeps the Pass button enabled while the tick is still saving', async () => {
+    // The tick action stays in flight so we can observe the button mid-save.
+    let resolveTick!: () => void
+    const pending = new Promise<void>((r) => {
+      resolveTick = () => r()
+    })
+    vi.mocked(tickChecklistItemAction).mockReturnValue(pending as never)
+
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.copy })}
+        items={[copyItem(false)]}
+        canAct
+        nextStep={RelayStep.in_design}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: /pass to in design/i }),
+    ).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: /check item/i }))
+
+    // The last required item is checked optimistically; the save is still
+    // in flight, but the Pass button must be clickable, not blocked by it.
+    expect(
+      screen.getByRole('button', { name: /pass to in design/i }),
+    ).toBeEnabled()
+
+    resolveTick()
+    await pending
+  })
+
+  it('does not trigger a full page refresh when an item is ticked', async () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.copy })}
+        items={[copyItem(false)]}
+        canAct
+        nextStep={RelayStep.in_design}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /check item/i }))
+
+    await waitFor(() =>
+      expect(tickChecklistItemAction).toHaveBeenCalledWith({
+        itemId: 'item-copy-1',
+        checked: true,
+      }),
+    )
+    expect(refreshMock).not.toHaveBeenCalled()
+  })
+
+  it('still refreshes the page after passing the baton', async () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.copy })}
+        items={[copyItem(true)]}
+        canAct
+        nextStep={RelayStep.in_design}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /pass to in design/i }))
+
+    await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+    expect(passBatonAction).toHaveBeenCalledWith({
+      batchId: 'batch-1',
+      toStep: RelayStep.in_design,
+    })
   })
 })
 
