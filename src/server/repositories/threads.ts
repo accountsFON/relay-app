@@ -545,3 +545,38 @@ export async function bulkResolveOnPost(
   })
   return result.count
 }
+
+export interface BulkReopenOnPostInput {
+  postId: string
+  /** When true, only re-open CLIENT-left pins (reviewerToken != null). */
+  onlyClientPins?: boolean
+  /** When set, only re-open threads resolved with this exact reason. */
+  resolvedReason?: string
+}
+
+/**
+ * Inverse of bulkResolveOnPost: flip resolved threads on a post back to open,
+ * clearing the resolved* fields. Returns the count re-opened. The review
+ * session detail page uses this (onlyClientPins + the review resolve reason)
+ * to undo a Mark addressed without touching pins resolved any other way.
+ */
+export async function bulkReopenOnPost(
+  input: BulkReopenOnPostInput,
+): Promise<number> {
+  const { postId, onlyClientPins = false, resolvedReason } = input
+  const result = await db.postThread.updateMany({
+    where: {
+      postId,
+      status: 'resolved',
+      ...(onlyClientPins ? { reviewerToken: { not: null } } : {}),
+      ...(resolvedReason !== undefined ? { resolvedReason } : {}),
+    },
+    data: {
+      status: 'open',
+      resolvedAt: null,
+      resolvedBy: null,
+      resolvedReason: null,
+    },
+  })
+  return result.count
+}
