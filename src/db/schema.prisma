@@ -129,6 +129,7 @@ enum ActivityKind {
   review_session_submitted
   review_caption_edit_accepted
   review_item_addressed
+  review_item_unaddressed
   review_round_started
   preview_review_submitted
   client_review_decided
@@ -775,6 +776,12 @@ model ReviewItem {
   lastReviewedVersionId  String?
 
   reviewedAt DateTime?
+
+  /// Set when an AM marks this item addressed (Mark addressed / Reject edit).
+  /// Real state so "addressed" is reversible (un-address clears it). Accept
+  /// path uses acceptedAsPostVersionId instead.
+  addressedAt DateTime?
+  addressedBy String?
 
   reviewSession ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
   post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
