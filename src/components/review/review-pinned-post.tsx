@@ -159,16 +159,13 @@ export function ReviewPinnedPost({
             )}
           >
             <span className="font-semibold">
-              {idx + 1}. {pinKindLabel(t.pin)}
+              {idx + 1}. {authorName(t.firstComment.author)}
             </span>
             {' — '}
             <span>
               {t.firstComment.body || (
                 <em className="text-muted-foreground">No comment</em>
               )}
-            </span>{' '}
-            <span className="text-muted-foreground">
-              ({authorName(t.firstComment.author)})
             </span>
           </li>
         ))}

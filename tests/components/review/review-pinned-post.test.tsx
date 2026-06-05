@@ -35,7 +35,11 @@ describe('ReviewPinnedPost', () => {
     expect(screen.getAllByTestId('markup-overlay-pin')).toHaveLength(1) // image pin only
     expect(screen.getByTestId('review-pinned-post-chip')).toBeTruthy() // caption chip
     expect(screen.getAllByTestId('review-pin-comment')).toHaveLength(2) // both in the list
-    expect(screen.getByTestId('review-pinned-post-comment-list')).toHaveTextContent('fix the logo')
+    const list = screen.getByTestId('review-pinned-post-comment-list')
+    expect(list).toHaveTextContent('fix the logo')
+    // The list leads with the client's entered name, not the pin-kind label.
+    expect(list).toHaveTextContent('Sarah')
+    expect(list).not.toHaveTextContent('Image pin')
   })
 
   it('opens the popover on pin click and fires onResolve with the thread id', async () => {
