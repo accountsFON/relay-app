@@ -957,6 +957,8 @@ describe('advanceFromClientReview', () => {
     const countArgs = currentTx.tx.postThread.count.mock.calls[0][0]
     expect(countArgs.where.imageX).toEqual({ not: null })
     expect(countArgs.where.status).toBe('open')
+    // Must exclude AM-side pins (reviewerToken null = internal pin); only client pins count.
+    expect(countArgs.where.reviewerToken).toEqual({ not: null })
   })
 
   it('does not notify a designer when the round has no image pins', async () => {

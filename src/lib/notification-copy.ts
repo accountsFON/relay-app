@@ -170,7 +170,7 @@ export function renderSummary(row: MentionInboxRow): string {
     case 'revision_images_requested': {
       const batchLabel = payload.batchLabel as string | undefined
       const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
-      return `${prefix}${actor} needs image revisions on ${relay}. Open the review to see the pinned graphics.`
+      return `${prefix}Image revisions requested on ${relay}. Open the review to see the pinned graphics.`
     }
     default:
       return `${prefix}${actor} mentioned you.`

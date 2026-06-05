@@ -200,7 +200,8 @@ describe('renderSummary, new kinds (parity sweep)', () => {
     const summary = renderSummary(
       row({ kind: 'revision_images_requested', batchLabel: 'May batch' }),
     )
-    expect(summary).toMatch(/image|graphic|revision/i)
+    expect(summary).toMatch(/image revisions requested/i)
+    expect(summary).not.toMatch(/someone/i)
   })
 })
 
