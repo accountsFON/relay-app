@@ -65,18 +65,6 @@ enum RelayEventType {
   force_step
 }
 
-enum RevisionItemType {
-  copy
-  design
-  am_inline
-}
-
-enum RevisionItemStatus {
-  pending
-  in_progress
-  complete
-}
-
 enum ActivityKind {
   comment
 
@@ -477,7 +465,6 @@ model Batch {
   posts                 Post[]
   checklists            ChecklistItem[]
   relayEvents           RelayEvent[]
-  revisionPlan          RevisionPlan?
   targetedByContentRuns ContentRun[]    @relation("ContentRunTargetBatch")
   magicLinks            MagicLink[]
 
@@ -519,32 +506,6 @@ model ChecklistItem {
 
   @@index([batchId, step])
   @@map("checklist_items")
-}
-
-model RevisionPlan {
-  id        String   @id @default(cuid())
-  batchId   String   @unique
-  createdAt DateTime @default(now())
-
-  batch Batch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  items RevisionItem[]
-
-  @@map("revision_plans")
-}
-
-model RevisionItem {
-  id             String             @id @default(cuid())
-  revisionPlanId String
-  type           RevisionItemType
-  description    String             @db.Text
-  status         RevisionItemStatus @default(pending)
-  assignedTo     String
-  completedAt    DateTime?
-
-  plan RevisionPlan @relation(fields: [revisionPlanId], references: [id], onDelete: Cascade)
-
-  @@index([revisionPlanId, status])
-  @@map("revision_items")
 }
 
 model ActivityEvent {

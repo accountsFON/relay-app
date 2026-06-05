@@ -3,20 +3,12 @@
  * onboarding-gate batches for the unassigned clients. 3 of the in-flight
  * batches are backdated >48h so the Admin Stuck Watchlist has rows.
  *
- * RevisionPlan + RevisionItems are seeded for batches at design_revisions
- * and implementing_revisions (4 plans, mixed item types and statuses).
- *
  * Checklists are seeded via reseedChecklistForStep, with a deterministic
  * subset partially ticked so the "Pass to" button enable/disable surface
  * is testable.
  */
 import type { DbClient } from '@/db/client'
-import {
-  RelayRole,
-  RelayStep,
-  RevisionItemStatus,
-  RevisionItemType,
-} from '@prisma/client'
+import { RelayRole, RelayStep } from '@prisma/client'
 import {
   holderRoleForStep,
   reseedChecklistForStep,
@@ -24,14 +16,6 @@ import {
 import type { SeededClient } from './clients'
 import type { SeededContentRun, TargetMonth } from './content-runs'
 import type { SeededUserMap } from './users'
-
-interface RevisionItemSpec {
-  type: RevisionItemType
-  description: string
-  status: RevisionItemStatus
-  /** 'am' to assign to client AM, 'designer' to assign to client designer. */
-  assignTo: 'am' | 'designer'
-}
 
 interface BatchSpec {
   clientIdx: number
@@ -43,37 +27,11 @@ interface BatchSpec {
   stuck?: boolean
   /** Number of seed checklist items to mark checked (deterministic). 0 means none. */
   checkedCount?: number
-  /** Revision plan + items, only for design_revisions and implementing_revisions. */
-  revisionItems?: RevisionItemSpec[]
 }
 
 const BATCH_SPECS: BatchSpec[] = [
   // Cedar Creek Dental (Casey linked) — design_revisions on Mar, sent_to_client on Apr.
-  {
-    clientIdx: 1,
-    month: '2026-03',
-    step: RelayStep.design_revisions,
-    revisionItems: [
-      {
-        type: RevisionItemType.copy,
-        description: 'Soften the CTA on post 3 — feels too pushy.',
-        status: RevisionItemStatus.in_progress,
-        assignTo: 'am',
-      },
-      {
-        type: RevisionItemType.design,
-        description: 'Recolor the icon row on post 5 to match the cream warm token.',
-        status: RevisionItemStatus.pending,
-        assignTo: 'designer',
-      },
-      {
-        type: RevisionItemType.am_inline,
-        description: 'Reorder posts 7 and 8 to land the offer earlier in the month.',
-        status: RevisionItemStatus.complete,
-        assignTo: 'am',
-      },
-    ],
-  },
+  { clientIdx: 1, month: '2026-03', step: RelayStep.design_revisions },
   { clientIdx: 1, month: '2026-04', step: RelayStep.sent_to_client, checkedCount: 1 },
 
   // Apex Plumbing (Taylor linked) — client_decision Mar, sent_to_client Apr.
@@ -94,26 +52,6 @@ const BATCH_SPECS: BatchSpec[] = [
     month: '2026-03',
     step: RelayStep.implementing_revisions,
     stuck: true,
-    revisionItems: [
-      {
-        type: RevisionItemType.design,
-        description: 'New header background on post 2, oil colored gradient.',
-        status: RevisionItemStatus.in_progress,
-        assignTo: 'designer',
-      },
-      {
-        type: RevisionItemType.design,
-        description: 'Replace stock car photo on post 6 with our shop floor.',
-        status: RevisionItemStatus.pending,
-        assignTo: 'designer',
-      },
-      {
-        type: RevisionItemType.copy,
-        description: 'Tighten captions on posts 4 and 5 — too long.',
-        status: RevisionItemStatus.complete,
-        assignTo: 'am',
-      },
-    ],
   },
   { clientIdx: 5, month: '2026-04', step: RelayStep.copy, subState: 'generating' },
 
@@ -127,20 +65,6 @@ const BATCH_SPECS: BatchSpec[] = [
     month: '2026-03',
     step: RelayStep.implementing_revisions,
     stuck: true,
-    revisionItems: [
-      {
-        type: RevisionItemType.copy,
-        description: 'Update Q1 dates referenced in post 4 — now stale.',
-        status: RevisionItemStatus.in_progress,
-        assignTo: 'am',
-      },
-      {
-        type: RevisionItemType.am_inline,
-        description: 'Swap order of posts 9 and 10 to lead with deadline reminder.',
-        status: RevisionItemStatus.pending,
-        assignTo: 'am',
-      },
-    ],
   },
   { clientIdx: 7, month: '2026-04', step: RelayStep.copy, subState: 'approved' },
 
@@ -175,37 +99,7 @@ const BATCH_SPECS: BatchSpec[] = [
   { clientIdx: 15, month: '2026-04', step: RelayStep.am_review_design },
 
   // Coastal Bay Salon — design_revisions Apr.
-  {
-    clientIdx: 16,
-    month: '2026-04',
-    step: RelayStep.design_revisions,
-    revisionItems: [
-      {
-        type: RevisionItemType.design,
-        description: 'New hero crop for post 1, brighter exposure.',
-        status: RevisionItemStatus.in_progress,
-        assignTo: 'designer',
-      },
-      {
-        type: RevisionItemType.design,
-        description: 'Replace stock model on post 4 with team headshot.',
-        status: RevisionItemStatus.pending,
-        assignTo: 'designer',
-      },
-      {
-        type: RevisionItemType.copy,
-        description: 'Soften the lash extension promo language on post 7.',
-        status: RevisionItemStatus.pending,
-        assignTo: 'am',
-      },
-      {
-        type: RevisionItemType.am_inline,
-        description: 'Confirm hours block at end of every post matches the new schedule.',
-        status: RevisionItemStatus.complete,
-        assignTo: 'am',
-      },
-    ],
-  },
+  { clientIdx: 16, month: '2026-04', step: RelayStep.design_revisions },
 
   // Old Mill Brewing (paused) — copy (drafted) Apr STUCK.
   {
@@ -261,17 +155,6 @@ function resolveHolderUserId(
     default:
       return org.users.admin.id
   }
-}
-
-function resolveAssignee(
-  client: SeededClient,
-  org: SeededUserMap,
-  assignTo: 'am' | 'designer',
-): string {
-  if (assignTo === 'designer') {
-    return client.designerUserId ?? org.users.admin.id
-  }
-  return client.amUserId ?? org.users.admin.id
 }
 
 const STUCK_BACKDATE_DAYS = 5
@@ -372,27 +255,6 @@ export async function seedBatches(
         }
       }
     })
-
-    if (spec.revisionItems && spec.revisionItems.length > 0) {
-      await db.revisionPlan.deleteMany({ where: { batchId } })
-      const plan = await db.revisionPlan.create({
-        data: { batchId },
-        select: { id: true },
-      })
-      for (const item of spec.revisionItems) {
-        await db.revisionItem.create({
-          data: {
-            revisionPlanId: plan.id,
-            type: item.type,
-            description: item.description,
-            status: item.status,
-            assignedTo: resolveAssignee(client, org, item.assignTo),
-            completedAt:
-              item.status === RevisionItemStatus.complete ? new Date() : null,
-          },
-        })
-      }
-    }
 
     result.push({
       id: batchId,
