@@ -26,7 +26,7 @@ export function HeaderBell({ mountId = 'default' }: { mountId?: string } = {}) {
           data-testid="bell-badge"
           className={cn(
             'absolute -right-0.5 -top-0.5 min-w-[16px] h-[16px] rounded-full',
-            'bg-destructive text-destructive-foreground',
+            'bg-sky-600 text-white',
             'text-[10px] leading-none font-medium',
             'inline-flex items-center justify-center px-1',
           )}
