@@ -345,6 +345,14 @@ describe('resolveHref, existing kinds', () => {
       ),
     ).toBe('/clients/c1/batches/b1/review-sessions/s1')
   })
+
+  it('anchors review_session_submitted to the review session page (deep-link fix)', () => {
+    expect(
+      resolveHref(
+        row({ kind: 'review_session_submitted', batchId: 'b1', reviewSessionId: 's1' }),
+      ),
+    ).toBe('/clients/c1/batches/b1/review-sessions/s1')
+  })
 })
 
 describe('resolveHref, post-targeted events', () => {
