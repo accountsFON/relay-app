@@ -57,12 +57,17 @@ export function CommentComposer({
   function submit() {
     if (!canSubmit) return
     setError(null)
+    // Optimistically clear the box so sending feels instant; the message lands
+    // when the post resolves + the thread refreshes. Restore the text if it
+    // fails so nothing is lost.
+    const pendingBody = body
+    setBody('')
     startTransition(async () => {
       try {
-        await postCommentAction({ clientId, body })
-        setBody('')
+        await postCommentAction({ clientId, body: pendingBody })
         router.refresh()
       } catch (e) {
+        setBody(pendingBody)
         setError(e instanceof Error ? e.message : 'Failed to post comment')
       }
     })
