@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { InboxRow } from '@/app/(app)/inbox/inbox-row'
 import { ActivityKind } from '@prisma/client'
 import type { MentionInboxRow } from '@/components/activity/types'
+import { clearMentionAction, markMentionReadAction } from '@/app/(app)/clients/[id]/activity/actions'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -10,6 +11,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/app/(app)/clients/[id]/activity/actions', () => ({
   markMentionReadAction: vi.fn(),
+  clearMentionAction: vi.fn().mockResolvedValue(undefined),
 }))
 
 function makeRow(overrides: Partial<MentionInboxRow> = {}): MentionInboxRow {
@@ -257,5 +259,16 @@ describe('InboxRow unread vs read distinction', () => {
     const summary = screen.getByText(/posts ready/i)
     expect(summary.className).toContain('text-neutral-500')
     expect(summary.className).not.toContain('font-semibold')
+  })
+})
+
+describe('InboxRow clear (X button)', () => {
+  it('clears the mention and removes the row without navigating', () => {
+    const { container } = render(<InboxRow row={makeRow({ readAt: null })} />)
+    const x = screen.getByRole('button', { name: /clear notification/i })
+    fireEvent.click(x)
+    expect(clearMentionAction).toHaveBeenCalledWith('mention-1')
+    expect(markMentionReadAction).not.toHaveBeenCalled()
+    expect(container.querySelector('a')).toBeNull()
   })
 })

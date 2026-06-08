@@ -214,3 +214,33 @@ export async function markMentionRead(
     data: { readAt: new Date() },
   })
 }
+
+/**
+ * Permanently delete a single mention (hard delete). Scoped to the owner so a
+ * user can only clear their own; deleteMany makes a non-owned / stale id a
+ * harmless no-op rather than a throw.
+ */
+export async function deleteMention(
+  mentionId: string,
+  userId: string
+): Promise<void> {
+  await db.mention.deleteMany({
+    where: { id: mentionId, mentionedUserId: userId },
+  })
+}
+
+/**
+ * Permanently delete every mention belonging to the user within one org (the
+ * "Clear all" inbox action). Scoped to the active org so it matches the inbox.
+ */
+export async function deleteAllMentionsForUser(
+  userId: string,
+  organizationId: string
+): Promise<void> {
+  await db.mention.deleteMany({
+    where: {
+      mentionedUserId: userId,
+      event: { client: { organizationId } },
+    },
+  })
+}

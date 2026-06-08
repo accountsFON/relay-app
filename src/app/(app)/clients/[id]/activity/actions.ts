@@ -20,7 +20,11 @@ import { requireOrgContext } from '@/server/middleware/auth'
 import { findClientForUser } from '@/server/repositories/clients'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { recordActivity } from '@/server/services/activity'
-import { markMentionRead as markMentionReadRepo } from '@/server/repositories/activityEvents'
+import {
+  markMentionRead as markMentionReadRepo,
+  deleteMention as deleteMentionRepo,
+  deleteAllMentionsForUser as deleteAllMentionsForUserRepo,
+} from '@/server/repositories/activityEvents'
 import {
   buildMentionRoster,
   resolveMentionedUserIds,
@@ -91,5 +95,17 @@ export async function markAllMentionsReadAction(): Promise<void> {
     where: { mentionedUserId: ctx.userDbId, readAt: null },
     data: { readAt: new Date() },
   })
+  revalidatePath('/inbox')
+}
+
+export async function clearMentionAction(mentionId: string): Promise<void> {
+  const ctx = await requireOrgContext()
+  await deleteMentionRepo(mentionId, ctx.userDbId)
+  revalidatePath('/inbox')
+}
+
+export async function clearAllMentionsAction(): Promise<void> {
+  const ctx = await requireOrgContext()
+  await deleteAllMentionsForUserRepo(ctx.userDbId, ctx.organizationDbId)
   revalidatePath('/inbox')
 }

@@ -11,6 +11,7 @@ import { PageSection } from '@/components/ui/page-section'
 import { cn } from '@/lib/utils'
 import { markAllMentionsReadAction } from '@/app/(app)/clients/[id]/activity/actions'
 import { InboxRow } from './inbox-row'
+import { ClearAllButton } from './clear-all-button'
 
 type InboxView = 'timeline' | 'client'
 
@@ -67,6 +68,9 @@ export default async function InboxPage({
               Mark all read
             </Button>
           </form>
+        )}
+        {mentions.length > 0 && (
+          <ClearAllButton count={mentions.length} unreadCount={unreadCount} />
         )}
       </div>
 
