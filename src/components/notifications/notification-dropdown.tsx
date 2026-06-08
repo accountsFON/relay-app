@@ -20,6 +20,31 @@ export function NotificationDropdown({
     }
   }, [isOpen])
 
+  // Dismiss on a click anywhere outside the panel, or on Escape. The bell +
+  // dropdown are mounted twice (mobile + desktop) sharing one isOpen, so match
+  // ANY notification panel / bell trigger by stable selector rather than this
+  // mount's own ref: clicking a bell is ignored (its toggle owns open/close),
+  // clicking inside any panel is ignored, everything else closes.
+  useEffect(() => {
+    if (!isOpen) return
+    function onPointerDown(e: PointerEvent) {
+      const el = e.target instanceof Element ? e.target : null
+      if (!el) return
+      if (el.closest('[data-testid="notification-dropdown"]')) return
+      if (el.closest('[aria-controls^="notification-dropdown-"]')) return
+      closeDropdown()
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeDropdown()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [isOpen, closeDropdown])
+
   if (!isOpen) return null
 
   return (
