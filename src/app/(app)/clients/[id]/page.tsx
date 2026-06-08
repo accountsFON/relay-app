@@ -1,6 +1,7 @@
 import {
   requireClientViewer,
   canEditClients,
+  canComment,
 } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
@@ -77,6 +78,11 @@ export default async function ClientDetailPage({
     db.batch.onlyArchived().count({ where: { clientId: id } }),
   ])
   const canEdit = canEditClients(ctx)
+  // The thread composer gates on the narrow client.comment permission
+  // (admin / AM / designer), NOT client.edit — designers must be able to post
+  // thread comments even though they can't edit client profiles. Mirrors the
+  // postCommentAction server gate; the external client role lacks it.
+  const canPostComment = canComment(ctx)
   const canManageTeam = can(ctx, 'admin.portal')
   const mentionTargets = buildMentionRoster(memberships)
 
@@ -277,7 +283,7 @@ export default async function ClientDetailPage({
                 clientId={client.id}
                 events={activity}
                 mentionTargets={mentionTargets}
-                hideComposer={!canEdit || !isLive}
+                hideComposer={!canPostComment || !isLive}
               />
             </div>
           </div>
@@ -287,7 +293,7 @@ export default async function ClientDetailPage({
         clientId={client.id}
         events={activity}
         mentionTargets={mentionTargets}
-        hideComposer={!canEdit || !isLive}
+        hideComposer={!canPostComment || !isLive}
       />
     </div>
   )
