@@ -447,6 +447,10 @@ export async function submitSessionAction(input: {
       kind: ActivityKind.review_session_submitted,
       visibility: EventVisibility.internal,
       payload: {
+        // batchId is required for the notification to deep-link to the review
+        // session detail page (resolveHref needs reviewSessionId + batchId);
+        // without it the notification falls back to the generic client page.
+        batchId: link.batch.id,
         reviewSessionId: active.id,
         magicLinkId: ctx.magicLinkId,
         round: submitted.round,

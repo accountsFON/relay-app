@@ -293,6 +293,9 @@ describe('submitSessionAction', () => {
     expect(activityInput.kind).toBe(ActivityKind.review_session_submitted)
     expect(activityInput.actorId).toBeNull()
     expect(activityInput.payload).toMatchObject({
+      // batchId lets the notification deep-link to the review session detail
+      // page instead of falling back to the generic client page.
+      batchId: BATCH_ID,
       reviewSessionId: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       round: 1,
