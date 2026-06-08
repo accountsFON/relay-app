@@ -52,6 +52,7 @@ RULES:
 - Hashtags: 3-8 relevant tags per post.
 - Vary openings (question, imperative, contrast, micro-story, stat-led).
 - Respect brand voice from Brief; use Facts for specifics; do not invent.
+- The Client Brief reflects the client profile and is authoritative. Cross-reference each Supporting Fact against the Brief: if a fact from the crawled website contradicts the Brief, follow the Brief and ignore the conflicting fact. Use Facts only for specifics that do not conflict with the Brief.
 - Return ONLY the JSON object (no extra commentary, no markdown).
 - If no concrete evidence exists in the input, use generic, non-specific language.
 - Do NOT include a call-to-action, phone number, address, "Visit our website" / "Book now" / "Call us today" closings, or any contact info in the caption. The CTA is appended deterministically after generation. Stop the caption at the end of the body.
