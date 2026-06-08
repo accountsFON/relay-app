@@ -190,7 +190,7 @@ export default async function ClientDetailPage({
 
       <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-10 lg:order-1">
-          <div>
+          <div className="space-y-10">
             <InFlightBanner clientId={client.id} />
             <ActiveBatchesSection
               clientId={client.id}
