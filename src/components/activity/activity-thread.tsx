@@ -18,6 +18,7 @@
  */
 import { CommentComposer } from './comment-composer'
 import { ChatScrollArea } from './chat-scroll-area'
+import { ThreadLivePoller } from './thread-live-poller'
 import { EventRenderer } from './event-renderer'
 import type { ActivityEventView } from './types'
 import type { MentionTarget } from '@/lib/mentions'
@@ -70,6 +71,9 @@ export function ActivityThread({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3" data-component="activity-thread">
+      {/* Polls for new events and soft-refreshes the thread in place, so
+          messages from other people appear without a manual reload. */}
+      <ThreadLivePoller clientId={clientId} latestEventId={events[0]?.id ?? null} />
       <ChatScrollArea scrollKey={scrollKey} className="min-h-0 flex-1">
         {list}
       </ChatScrollArea>
