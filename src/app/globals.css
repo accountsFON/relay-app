@@ -37,6 +37,7 @@
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -122,6 +123,7 @@
   --accent: var(--neutral-900);
   --accent-foreground: var(--neutral-50);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: var(--neutral-50);
   --border: rgba(5, 13, 22, 0.08);
   --border-strong: rgba(5, 13, 22, 0.16);
   --input: rgba(5, 13, 22, 0.10);
