@@ -241,3 +241,21 @@ describe('InboxRow new copy', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('InboxRow unread vs read distinction', () => {
+  it('shows a coral unread dot (+ sr-only label) and bold summary when unread', () => {
+    render(<InboxRow row={makeRow({ readAt: null })} />)
+    expect(screen.getByTestId('inbox-unread-dot')).toBeInTheDocument()
+    expect(screen.getByText('Unread')).toBeInTheDocument()
+    expect(screen.getByText(/posts ready/i).className).toContain('font-semibold')
+  })
+
+  it('hides the unread dot and dims the summary when read', () => {
+    render(<InboxRow row={makeRow({ readAt: new Date() })} />)
+    expect(screen.queryByTestId('inbox-unread-dot')).toBeNull()
+    expect(screen.queryByText('Unread')).toBeNull()
+    const summary = screen.getByText(/posts ready/i)
+    expect(summary.className).toContain('text-neutral-500')
+    expect(summary.className).not.toContain('font-semibold')
+  })
+})

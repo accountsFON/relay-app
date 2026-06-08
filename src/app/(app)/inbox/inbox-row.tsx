@@ -61,11 +61,7 @@ export function InboxRow({ row }: { row: MentionInboxRow }) {
     <Link
       href={href}
       onClick={handleClick}
-      className={cn(
-        'group relative flex items-start gap-3 px-4 py-3 transition-colors hover:bg-neutral-50',
-        unread &&
-          'before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r before:bg-coral-100',
-      )}
+      className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-neutral-50"
     >
       <span
         className={cn(
@@ -77,8 +73,8 @@ export function InboxRow({ row }: { row: MentionInboxRow }) {
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            'text-[13px] text-neutral-700',
-            unread && 'font-medium text-neutral-900',
+            'text-[13px]',
+            unread ? 'font-semibold text-neutral-900' : 'text-neutral-500',
           )}
         >
           {summary}
@@ -88,6 +84,16 @@ export function InboxRow({ row }: { row: MentionInboxRow }) {
           {isPending ? ' · marking read…' : ''}
         </p>
       </div>
+      {unread && (
+        <span className="mt-1.5 flex shrink-0 items-center">
+          <span
+            data-testid="inbox-unread-dot"
+            className="size-2 rounded-full bg-coral-500"
+            aria-hidden="true"
+          />
+          <span className="sr-only">Unread</span>
+        </span>
+      )}
     </Link>
   )
 }
