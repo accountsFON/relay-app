@@ -95,4 +95,40 @@ describe('NotificationDropdown', () => {
     const panel = screen.getByRole('dialog', { name: /Notifications/i })
     expect(document.activeElement).toBe(panel)
   })
+
+  it('closes on a pointer-down outside the panel', () => {
+    const closeDropdown = vi.fn()
+    setup([], true, undefined, { closeDropdown })
+    render(<NotificationDropdown />)
+    fireEvent.pointerDown(document.body)
+    expect(closeDropdown).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT close on a pointer-down inside the panel', () => {
+    const closeDropdown = vi.fn()
+    setup([], true, undefined, { closeDropdown })
+    render(<NotificationDropdown />)
+    fireEvent.pointerDown(screen.getByTestId('notification-dropdown'))
+    expect(closeDropdown).not.toHaveBeenCalled()
+  })
+
+  it('does NOT close on a pointer-down on a bell trigger (its own toggle handles it)', () => {
+    const closeDropdown = vi.fn()
+    setup([], true, undefined, { closeDropdown })
+    const bell = document.createElement('button')
+    bell.setAttribute('aria-controls', 'notification-dropdown-desktop')
+    document.body.appendChild(bell)
+    render(<NotificationDropdown />)
+    fireEvent.pointerDown(bell)
+    expect(closeDropdown).not.toHaveBeenCalled()
+    bell.remove()
+  })
+
+  it('closes on Escape', () => {
+    const closeDropdown = vi.fn()
+    setup([], true, undefined, { closeDropdown })
+    render(<NotificationDropdown />)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(closeDropdown).toHaveBeenCalledTimes(1)
+  })
 })
