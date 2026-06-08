@@ -13,6 +13,7 @@ import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { db } from '@/db/client'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
 import { ActivityThread } from '@/components/activity/activity-thread'
+import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { EventAnchor } from '@/components/notifications/event-anchor'
 import { buildMentionRoster } from '@/lib/mentions'
 import { HeroBand } from '@/components/hero-band'
@@ -101,7 +102,7 @@ export default async function ClientDetailPage({
   const isLive = !client.deletedAt
 
   return (
-    <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+    <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
       {/* Scrolls to + highlights the activity thread row when a notification
           deep links here with a #comment-... fragment. */}
       <EventAnchor />
@@ -181,98 +182,113 @@ export default async function ClientDetailPage({
         />
       </div>
 
-      <div className="mt-10">
-        <InFlightBanner clientId={client.id} />
-        <ActiveBatchesSection
-          clientId={client.id}
-          viewerUserId={ctx.userDbId}
-          showArchived={showArchived}
-          archivedBatchCount={archivedBatchCount}
-          canGenerate={canEdit && isLive}
-        />
-      </div>
-
-      <div className="mt-10">
-        {hasActiveRun && <RunStatusPoller />}
-        <PageSection title="Content runs">
-          {runs.length === 0 ? (
-            <EmptyState
-              title="No runs in this scope"
-              description={`Showing ${dateScopeLabel(dateScope).toLowerCase()}. Change the date scope at the top of the page to see runs from a wider window.`}
-            />
-          ) : (
-            <DataRowGroup className="-mx-1">
-              {runs.map((run) => {
-                const isRunning = run.status === 'running'
-                const isQueued = run.status === 'queued'
-                return (
-                  <DataRow
-                    key={run.id}
-                    href={
-                      run.status === 'complete' && run._count.posts > 0
-                        ? `/clients/${client.id}/runs/${run.id}`
-                        : run.status === 'failed'
-                          ? `/clients/${client.id}/runs/${run.id}`
-                          : undefined
-                    }
-                    leading={<RowAvatar icon={<Calendar className="size-5 text-neutral-500" />} />}
-                    title={
-                      <span className="flex items-center gap-2">
-                        <StatusDot status={run.status} />
-                        {formatMonth(run.targetMonth)}
-                      </span>
-                    }
-                    subtitle={
-                      <span>
-                        {isRunning ? (
-                          <span className="text-foreground">Generating content…</span>
-                        ) : isQueued ? (
-                          <span className="text-neutral-500">Queued, waiting to start…</span>
-                        ) : (
-                          run.createdAt.toLocaleDateString()
-                        )}
-                        {run._count.posts > 0 && ` · ${run._count.posts} posts`}
-                        {run.totalCostUsd && ` · $${Number(run.totalCostUsd).toFixed(2)}`}
-                        {run.status === 'failed' && run.errorMessage && (
-                          <span className="ml-2 text-destructive">{run.errorMessage}</span>
-                        )}
-                      </span>
-                    }
-                    trailing={
-                      isLive && canEdit ? (
-                        <div className="flex items-center gap-1">
-                          <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} status={run.status} />
-                          <DeleteRunButton runId={run.id} status={run.status} />
-                        </div>
-                      ) : undefined
-                    }
-                  />
-                )
-              })}
-            </DataRowGroup>
-          )}
-        </PageSection>
-      </div>
-
-      <div className="mt-10">
-        <ClientProfileView client={client} canEdit={isLive && canEdit} />
-      </div>
-
-      <div className="mt-10">
-        <PageSection
-          title="Activity"
-          description="Comments and system events for this client."
-        >
-          <div className="h-[32rem] max-h-[70vh]">
-            <ActivityThread
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-10 lg:order-1">
+          <div>
+            <InFlightBanner clientId={client.id} />
+            <ActiveBatchesSection
               clientId={client.id}
-              events={activity}
-              mentionTargets={mentionTargets}
-              hideComposer={!canEdit || !isLive}
+              viewerUserId={ctx.userDbId}
+              showArchived={showArchived}
+              archivedBatchCount={archivedBatchCount}
+              canGenerate={canEdit && isLive}
             />
           </div>
-        </PageSection>
+
+          <div>
+            {hasActiveRun && <RunStatusPoller />}
+            <PageSection title="Content runs">
+              {runs.length === 0 ? (
+                <EmptyState
+                  title="No runs in this scope"
+                  description={`Showing ${dateScopeLabel(dateScope).toLowerCase()}. Change the date scope at the top of the page to see runs from a wider window.`}
+                />
+              ) : (
+                <DataRowGroup className="-mx-1">
+                  {runs.map((run) => {
+                    const isRunning = run.status === 'running'
+                    const isQueued = run.status === 'queued'
+                    return (
+                      <DataRow
+                        key={run.id}
+                        href={
+                          run.status === 'complete' && run._count.posts > 0
+                            ? `/clients/${client.id}/runs/${run.id}`
+                            : run.status === 'failed'
+                              ? `/clients/${client.id}/runs/${run.id}`
+                              : undefined
+                        }
+                        leading={<RowAvatar icon={<Calendar className="size-5 text-neutral-500" />} />}
+                        title={
+                          <span className="flex items-center gap-2">
+                            <StatusDot status={run.status} />
+                            {formatMonth(run.targetMonth)}
+                          </span>
+                        }
+                        subtitle={
+                          <span>
+                            {isRunning ? (
+                              <span className="text-foreground">Generating content…</span>
+                            ) : isQueued ? (
+                              <span className="text-neutral-500">Queued, waiting to start…</span>
+                            ) : (
+                              run.createdAt.toLocaleDateString()
+                            )}
+                            {run._count.posts > 0 && ` · ${run._count.posts} posts`}
+                            {run.totalCostUsd && ` · $${Number(run.totalCostUsd).toFixed(2)}`}
+                            {run.status === 'failed' && run.errorMessage && (
+                              <span className="ml-2 text-destructive">{run.errorMessage}</span>
+                            )}
+                          </span>
+                        }
+                        trailing={
+                          isLive && canEdit ? (
+                            <div className="flex items-center gap-1">
+                              <RegenRunButton clientId={client.id} targetMonth={run.targetMonth} status={run.status} />
+                              <DeleteRunButton runId={run.id} status={run.status} />
+                            </div>
+                          ) : undefined
+                        }
+                      />
+                    )
+                  })}
+                </DataRowGroup>
+              )}
+            </PageSection>
+          </div>
+
+          <ClientProfileView client={client} canEdit={isLive && canEdit} />
+        </div>
+
+        <aside
+          aria-label="Client thread sidebar"
+          className="lg:sticky lg:top-4 lg:self-start lg:order-2"
+        >
+          <div
+            aria-label="Client thread"
+            data-testid="client-thread-rail"
+            className="hidden overflow-hidden rounded-2xl bg-card lg:flex lg:h-[36rem] lg:max-h-[calc(100vh-2rem)] lg:flex-col"
+          >
+            <h2 className="shrink-0 px-4 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Client thread
+            </h2>
+            <div className="min-h-0 flex-1 px-4 pb-4">
+              <ActivityThread
+                clientId={client.id}
+                events={activity}
+                mentionTargets={mentionTargets}
+                hideComposer={!canEdit || !isLive}
+              />
+            </div>
+          </div>
+        </aside>
       </div>
+      <MobileThreadFab
+        clientId={client.id}
+        events={activity}
+        mentionTargets={mentionTargets}
+        hideComposer={!canEdit || !isLive}
+      />
     </div>
   )
 }
