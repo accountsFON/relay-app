@@ -50,6 +50,7 @@ jobs:
             pipeline:
               - 'src/server/jobs/**'
               - 'src/server/services/**'
+              - 'src/server/prompts/**'
               - 'src/db/schema.prisma'
               - 'trigger.config.ts'
               - 'package.json'
