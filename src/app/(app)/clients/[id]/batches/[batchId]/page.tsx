@@ -1,5 +1,5 @@
 import { RelayStep } from '@prisma/client'
-import { requireClientViewer, canEditClients, canUploadPostMedia } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients, canUploadPostMedia, canComment } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -67,6 +67,10 @@ export default async function BatchDetailPage({
 }) {
   const ctx = await requireClientViewer()
   const canEdit = canEditClients(ctx)
+  // Composer gates on the narrow client.comment permission (admin / AM /
+  // designer), NOT client.edit — designers post thread comments without
+  // edit rights. Mirrors the postCommentAction server gate.
+  const canPostComment = canComment(ctx)
   const canUploadMedia = canUploadPostMedia(ctx)
   const { id, batchId } = await params
   const sp = await searchParams
@@ -657,7 +661,7 @@ export default async function BatchDetailPage({
                 clientId={client.id}
                 events={events}
                 mentionTargets={mentionTargets}
-                hideComposer={!canEdit || !isLive}
+                hideComposer={!canPostComment || !isLive}
               />
             </div>
           </div>
@@ -667,7 +671,7 @@ export default async function BatchDetailPage({
         clientId={client.id}
         events={events}
         mentionTargets={mentionTargets}
-        hideComposer={!canEdit || !isLive}
+        hideComposer={!canPostComment || !isLive}
       />
     </div>
   )
