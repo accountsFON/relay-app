@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
   push:
@@ -64,7 +65,15 @@ jobs:
     # so this job and a local-dev run stay in lockstep automatically.
     name: Deploy Trigger.dev pipeline
     needs: [test, detect-pipeline-changes]
-    if: needs.detect-pipeline-changes.outputs.pipeline == 'true'
+    # Auto-deploy on push to main when a pipeline file changed, OR on a manual
+    # workflow_dispatch (to redeploy the pipeline on demand, e.g. when a change
+    # landed before the path filter covered it). always() lets this evaluate
+    # even though detect-pipeline-changes is skipped on workflow_dispatch.
+    if: >-
+      always() &&
+      needs.test.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' ||
+       needs.detect-pipeline-changes.outputs.pipeline == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
