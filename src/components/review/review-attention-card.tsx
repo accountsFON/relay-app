@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { MediaUpload } from '@/components/posts/media-upload'
+import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
 /**
  * Client wrapper for ONE attention post on the AM review-session detail page.
@@ -49,6 +50,7 @@ export function ReviewAttentionCard({
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState(caption)
   const [isPending, startTransition] = useTransition()
+  useUnsavedChanges(isEditing && draft !== caption)
 
   const mediaUrl = mediaUrls[0] ?? null
 

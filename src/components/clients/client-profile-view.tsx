@@ -12,6 +12,7 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
 import { updateClientAction } from '@/app/(app)/clients/actions'
 import type { ClientUpdate } from '@/lib/schemas/client'
+import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
 const POSTING_DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -149,22 +150,6 @@ function FieldStack({ children }: { children: React.ReactNode }) {
 // ============================================================
 // Editing infrastructure
 // ============================================================
-
-/**
- * Adds a beforeunload listener while `dirty` is true.
- * Browser will prompt user before close/reload/navigation away.
- */
-function useUnsavedChanges(dirty: boolean) {
-  useEffect(() => {
-    if (!dirty) return
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = ''
-    }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [dirty])
-}
 
 /**
  * useFieldEditor: common state machine for one editable field.

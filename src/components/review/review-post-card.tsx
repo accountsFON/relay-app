@@ -9,6 +9,7 @@ import type { FeedPostProps } from '@/types/preview'
 import type { PinLocation } from '@/types/preview'
 import type { ReviewDecisionType, ReviewItemHydrated } from '@/types/review-session'
 import { DecisionButtonRow } from './decision-button-row'
+import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
 export type ReviewPostCardProps = {
   post: FeedPostProps['post']
@@ -110,6 +111,7 @@ export function ReviewPostCard({
   const [captionDraft, setCaptionDraft] = useState<string>(
     savedSuggestion ?? post.caption,
   )
+  useUnsavedChanges(isEditing && captionDraft !== (savedSuggestion ?? post.caption))
   // Snapshot of the decision before the reviewer tapped Edit Copy, so Cancel
   // can restore it. Captured at edit-mode entry.
   const decisionBeforeEditRef = useRef<ReviewDecisionType | null>(null)

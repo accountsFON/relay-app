@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { diffText, type DiffSegment } from '@/lib/text-diff'
+import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
 /**
  * Diff modal for the Fix with AI flow.
@@ -45,6 +46,7 @@ export function DiffModal({
 }: DiffModalProps) {
   const [editing, setEditing] = useState(false)
   const [editedCaption, setEditedCaption] = useState(proposedCaption)
+  useUnsavedChanges(editing && editedCaption !== proposedCaption)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)

@@ -31,6 +31,7 @@ import { usePostListCollapse } from '@/components/posts/post-list-collapse'
 import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { QaEditedIndicator } from '@/components/posts/qa-edited-indicator'
 import { MediaUpload } from '@/components/posts/media-upload'
+import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
 type Post = {
   id: string
@@ -75,6 +76,13 @@ export function PostCard({
   const [hashtags, setHashtags] = useState(post.hashtags.join(' '))
   const [graphicHook, setGraphicHook] = useState(post.graphicHook ?? '')
   const [designerNotes, setDesignerNotes] = useState(post.designerNotes ?? '')
+  const isCaptionDirty =
+    isEditing &&
+    (caption !== post.caption ||
+      hashtags !== post.hashtags.join(' ') ||
+      graphicHook !== (post.graphicHook ?? '') ||
+      designerNotes !== (post.designerNotes ?? ''))
+  useUnsavedChanges(isCaptionDirty)
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
