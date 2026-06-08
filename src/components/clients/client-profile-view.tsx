@@ -17,6 +17,24 @@ const POSTING_DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 type FieldKey = keyof ClientUpdate
 
+/**
+ * Callback ref for inline text editors: focus the field and drop the caret at
+ * the end of the existing text so the user can append immediately. Plain
+ * `autoFocus` lands the caret at the start of a pre-filled value in some
+ * browsers. Module-level so its identity is stable and React invokes it once on
+ * mount (a new closure each render would re-fire and fight the user's caret).
+ */
+function focusAtEnd(el: HTMLInputElement | HTMLTextAreaElement | null) {
+  if (!el) return
+  el.focus()
+  const end = el.value.length
+  try {
+    el.setSelectionRange(end, end)
+  } catch {
+    // Some input types (email, number, …) don't support selection; focus alone is fine.
+  }
+}
+
 export function ClientProfileView({
   client,
   canEdit = false,
@@ -338,7 +356,7 @@ function KeyValueField({
         <>
           <input
             type={kind === 'phone' ? 'tel' : 'text'}
-            autoFocus
+            ref={focusAtEnd}
             value={editor.draft}
             onChange={(e) => editor.setDraft(e.target.value)}
             placeholder={placeholder}
@@ -416,7 +434,7 @@ function NarrativeField({
       {editor.editing ? (
         <>
           <textarea
-            autoFocus
+            ref={focusAtEnd}
             value={editor.draft}
             onChange={(e) => editor.setDraft(e.target.value)}
             rows={6}
@@ -521,7 +539,7 @@ function FocusField({
       {editor.editing ? (
         <>
           <textarea
-            autoFocus
+            ref={focusAtEnd}
             value={editor.draft}
             onChange={(e) => editor.setDraft(e.target.value)}
             rows={4}
@@ -669,7 +687,7 @@ function ChipsField({
       {editor.editing ? (
         <>
           <input
-            autoFocus
+            ref={focusAtEnd}
             value={editor.draft}
             onChange={(e) => editor.setDraft(e.target.value)}
             placeholder={placeholder}
@@ -891,7 +909,7 @@ function UrlListField({
       {editor.editing ? (
         <>
           <input
-            autoFocus
+            ref={focusAtEnd}
             value={editor.draft}
             onChange={(e) => editor.setDraft(e.target.value)}
             placeholder="https://example.com, https://example.com/about"
@@ -970,7 +988,7 @@ function LinkField({
       {editor.editing ? (
         <>
           <input
-            autoFocus
+            ref={focusAtEnd}
             type="url"
             value={editor.draft}
             onChange={(e) => editor.setDraft(e.target.value)}

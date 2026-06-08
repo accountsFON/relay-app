@@ -133,3 +133,50 @@ describe('ClientProfileView, Workflow section', () => {
     ).not.toBeInTheDocument()
   })
 })
+
+describe('ClientProfileView, inline editors focus the caret at the end', () => {
+  beforeEach(() => {
+    updateClientAction.mockReset()
+  })
+
+  it('opens a Focus editor focused with the caret at the end of the text', async () => {
+    const text = 'Drive winter promo sign ups'
+    render(
+      <ClientProfileView client={makeClient({ focus1: text })} canEdit={true} />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /Edit Focus 1/i }))
+    const textarea = screen.getByDisplayValue(text) as HTMLTextAreaElement
+    expect(textarea).toHaveFocus()
+    expect(textarea.selectionStart).toBe(text.length)
+    expect(textarea.selectionEnd).toBe(text.length)
+  })
+
+  it('opens a narrative editor (textarea) focused with the caret at the end', async () => {
+    const text = 'A friendly, expert HVAC contractor serving North Florida.'
+    render(
+      <ClientProfileView
+        client={makeClient({ businessSummary: text })}
+        canEdit={true}
+      />,
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: /Edit Business summary/i }),
+    )
+    const textarea = screen.getByDisplayValue(text) as HTMLTextAreaElement
+    expect(textarea).toHaveFocus()
+    expect(textarea.selectionStart).toBe(text.length)
+    expect(textarea.selectionEnd).toBe(text.length)
+  })
+
+  it('opens a text input editor focused with the caret at the end', async () => {
+    const text = 'Plumbing'
+    render(
+      <ClientProfileView client={makeClient({ industry: text })} canEdit={true} />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /Edit Industry/i }))
+    const input = screen.getByDisplayValue(text) as HTMLInputElement
+    expect(input).toHaveFocus()
+    expect(input.selectionStart).toBe(text.length)
+    expect(input.selectionEnd).toBe(text.length)
+  })
+})
