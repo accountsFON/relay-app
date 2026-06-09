@@ -7,6 +7,7 @@ vi.mock('@/server/middleware/permissions', () => ({
 vi.mock('@/server/repositories/clients', () => ({
   assignClientAm: vi.fn(),
   assignClientDesigner: vi.fn(),
+  findClientById: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/memberships', () => ({
@@ -37,6 +38,7 @@ vi.mock('next/cache', () => ({
 
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import { findMembership } from '@/server/repositories/memberships'
+import { findClientById } from '@/server/repositories/clients'
 import { recordActivity } from '@/server/services/activity'
 import { setClientPrimary } from '@/app/(app)/admin/clients/actions'
 
@@ -97,7 +99,12 @@ describe('setClientPrimary', () => {
     expect(call.mentionedUserIds).toEqual([])
   })
 
-  it('unassigning produces no mentions', async () => {
+  it('unassigning notifies the outgoing AM', async () => {
+    vi.mocked(findClientById).mockResolvedValue({
+      assignedAmId: 'cuid_prev_am',
+      assignedDesignerId: null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
     await setClientPrimary({
       clientId: 'cuid_client_1',
       slot: 'am',
@@ -105,6 +112,21 @@ describe('setClientPrimary', () => {
     })
     const call = vi.mocked(recordActivity).mock.calls[0][0]
     expect(call.kind).toBe('client_am_unassigned')
+    expect(call.mentionedUserIds).toEqual(['cuid_prev_am'])
+  })
+
+  it('does not notify when the unassigned user is the actor themselves', async () => {
+    vi.mocked(findClientById).mockResolvedValue({
+      assignedAmId: 'cuid_actor',
+      assignedDesignerId: null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    await setClientPrimary({
+      clientId: 'cuid_client_1',
+      slot: 'am',
+      userId: null,
+    })
+    const call = vi.mocked(recordActivity).mock.calls[0][0]
     expect(call.mentionedUserIds).toEqual([])
   })
 })

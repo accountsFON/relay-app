@@ -88,6 +88,10 @@ export function renderSummary(row: MentionInboxRow): string {
       return `${prefix}${actor} assigned you as the Account Manager for ${clientName}.`
     case 'client_designer_assigned':
       return `${prefix}${actor} assigned you as the Designer for ${clientName}.`
+    case 'client_am_unassigned':
+      return `${prefix}${actor} removed you as the Account Manager for ${clientName}.`
+    case 'client_designer_unassigned':
+      return `${prefix}${actor} removed you as the Designer for ${clientName}.`
     case 'member_role_changed': {
       const toRole = (payload.toRole as string) ?? 'a new role'
       return `${prefix}${actor} changed your role to ${toRole}.`

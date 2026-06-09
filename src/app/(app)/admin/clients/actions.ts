@@ -5,6 +5,7 @@ import { requireAdminPortal } from '@/server/middleware/permissions'
 import {
   assignClientAm,
   assignClientDesigner,
+  findClientById,
 } from '@/server/repositories/clients'
 import { findMembership } from '@/server/repositories/memberships'
 import { recordActivity, ActivityKind } from '@/server/services/activity'
@@ -20,6 +21,17 @@ export async function setClientPrimary(input: {
   userId: string | null
 }) {
   const ctx = await requireAdminPortal()
+
+  // On unassign (slot cleared) capture the outgoing assignee first so we can
+  // notify them — the slot is about to be set to null.
+  let outgoingUserId: string | null = null
+  if (!input.userId) {
+    const client = await findClientById(input.clientId, ctx.organizationDbId)
+    outgoingUserId =
+      input.slot === 'am'
+        ? (client?.assignedAmId ?? null)
+        : (client?.assignedDesignerId ?? null)
+  }
 
   let assigneeName: string | null = null
   if (input.userId) {
@@ -55,11 +67,16 @@ export async function setClientPrimary(input: {
     kind,
     payload: input.userId
       ? { assignedToId: input.userId, assignedToName: assigneeName }
-      : {},
-    // Notify the new assignee (when there is one and it's not the actor).
-    // Unassign events have no mention target.
-    mentionedUserIds:
-      input.userId && input.userId !== ctx.userDbId ? [input.userId] : [],
+      : { unassignedFromId: outgoingUserId },
+    // Notify the new assignee on assign, or the outgoing assignee on unassign,
+    // unless the admin is acting on their own assignment.
+    mentionedUserIds: input.userId
+      ? input.userId !== ctx.userDbId
+        ? [input.userId]
+        : []
+      : outgoingUserId && outgoingUserId !== ctx.userDbId
+        ? [outgoingUserId]
+        : [],
   })
 
   revalidatePath('/admin/clients')

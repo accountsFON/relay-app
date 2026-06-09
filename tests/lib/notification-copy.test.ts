@@ -96,6 +96,18 @@ describe('renderSummary, existing kinds', () => {
     )
   })
 
+  it('client_am_unassigned names client', () => {
+    expect(renderSummary(row({ kind: 'client_am_unassigned' }))).toBe(
+      'Cedar Creek · Mollie removed you as the Account Manager for Cedar Creek.',
+    )
+  })
+
+  it('client_designer_unassigned names client', () => {
+    expect(renderSummary(row({ kind: 'client_designer_unassigned' }))).toBe(
+      'Cedar Creek · Mollie removed you as the Designer for Cedar Creek.',
+    )
+  })
+
   it('client_designer_assigned names client', () => {
     expect(renderSummary(row({ kind: 'client_designer_assigned' }))).toBe(
       'Cedar Creek · Mollie assigned you as the Designer for Cedar Creek.',
