@@ -34,6 +34,11 @@ import { resolveBatchTargetMonth } from '@/lib/batch-target-month'
 import { resolveCanvaUrl } from '@/lib/canva'
 import { canOverrideHolder } from '@/lib/relay-holder-override'
 import { isRelayCelebrationStep } from '@/lib/relay-celebration'
+import {
+  buildClerkPhotoMap,
+  resolveCelebrationParticipants,
+} from '@/lib/celebration-avatars'
+import { clerkClient } from '@clerk/nextjs/server'
 import { PostCard } from '@/components/posts/post-card'
 import { EventAnchor } from '@/components/notifications/event-anchor'
 import {
@@ -315,12 +320,17 @@ export default async function BatchDetailPage({
           { linkedClientId: client.id },
         ],
       },
-      select: { id: true, name: true, avatarUrl: true },
+      select: { id: true, name: true, avatarUrl: true, clerkUserId: true },
       take: 8,
     })
     // Dedupe while preserving a stable order: AM, Designer, holder, client(s).
     const seen = new Set<string>()
-    const ordered: Array<{ id: string; name: string; avatarUrl: string | null }> = []
+    const ordered: Array<{
+      id: string
+      name: string
+      avatarUrl: string | null
+      clerkUserId: string
+    }> = []
     for (const id of explicitIds) {
       const u = users.find((x) => x.id === id)
       if (u && !seen.has(u.id)) {
@@ -334,7 +344,24 @@ export default async function BatchDetailPage({
         ordered.push(u)
       }
     }
-    celebrationParticipants = ordered
+    // Fall back to a participant's real Clerk profile photo when they have
+    // not uploaded an avatar. Only look up the ones missing an upload, and
+    // best-effort: a Clerk hiccup must never break the completed-batch page.
+    let clerkPhotos = buildClerkPhotoMap([])
+    const needPhoto = ordered.filter((u) => !u.avatarUrl)
+    if (needPhoto.length > 0) {
+      try {
+        const clerk = await clerkClient()
+        const res = await clerk.users.getUserList({
+          userId: needPhoto.map((u) => u.clerkUserId),
+          limit: needPhoto.length,
+        })
+        clerkPhotos = buildClerkPhotoMap(res.data)
+      } catch (err) {
+        console.error('[batch-page] Clerk avatar lookup failed', err)
+      }
+    }
+    celebrationParticipants = resolveCelebrationParticipants(ordered, clerkPhotos)
   }
 
   return (
