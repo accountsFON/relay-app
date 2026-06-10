@@ -44,7 +44,12 @@ export default async function RunRedirectPage({
   const run = await findContentRunForOrg(runId, ctx.organizationDbId)
   if (!run || run.clientId !== id) redirectAccessDenied()
 
-  const postWithBatch = await db.post.findFirst({
+  // withArchived(): a manually-archived batch soft-deletes its posts in the
+  // same cascade, so a plain query would miss them and dead-end on the client
+  // page. We still want to land on the (archived) batch, which renders its own
+  // restore banner. Auto-archived batches keep their posts live, so this also
+  // covers them.
+  const postWithBatch = await db.post.withArchived().findFirst({
     where: { contentRunId: runId, batchId: { not: null } },
     select: { batchId: true },
   })
@@ -55,9 +60,10 @@ export default async function RunRedirectPage({
 
   // No posts attached to a batch: try to find a batch for this client whose
   // label matches the run's targetMonth. If multiple, pick most recent.
+  // withArchived() so an archived same-month batch still resolves.
   const monthSlug = run.targetMonth // YYYY-MM
   const monthName = monthNameFromSlug(monthSlug)
-  const candidateBatches = await db.batch.findMany({
+  const candidateBatches = await db.batch.withArchived().findMany({
     where: { clientId: id },
     orderBy: { createdAt: 'desc' },
     select: { id: true, label: true },

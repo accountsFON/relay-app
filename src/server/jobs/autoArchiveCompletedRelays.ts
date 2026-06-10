@@ -9,11 +9,24 @@ import { writeTrashAudit } from '@/server/repositories/trashAuditLogs'
 /**
  * Days a relay sits in the `completed` step before the system auto-archives
  * it. Pairs with PURGE_DAYS (30) in purgeArchivedItems.ts, so the full
- * lifecycle from finish to permanent deletion is 30 + 30 = 60 days.
+ * lifecycle from finish to permanent deletion is 37 + 30 = 67 days.
  *
- * Per Phase 3 backlog brief Item 21, Julio default 2026-06-01.
+ * Extending the window here (rather than PURGE_DAYS) keeps the
+ * notifyImpendingPurge "7 days until permanent deletion" warning accurate,
+ * since that job is tuned to the 30-day purge window.
+ *
+ * Per Phase 3 backlog brief Item 21, Julio default 2026-06-01; window
+ * widened to 37 (67-day total) 2026-06-10.
  */
-const AUTO_ARCHIVE_DAYS = 30
+export const AUTO_ARCHIVE_DAYS = 37
+
+/**
+ * The timestamp before which a completed relay is past its archive window.
+ * A batch whose `completedAt` is older than this gets swept into the archive.
+ */
+export function archiveCutoff(now: Date): Date {
+  return new Date(now.getTime() - AUTO_ARCHIVE_DAYS * 86_400_000)
+}
 
 /**
  * System actor string written to TrashAuditLog so audit consumers can
@@ -71,7 +84,7 @@ export async function runAutoArchiveCompletedRelays(
   options: AutoArchiveRunOptions = {},
 ): Promise<AutoArchiveRunResult> {
   const now = options.now ?? new Date()
-  const cutoff = new Date(now.getTime() - AUTO_ARCHIVE_DAYS * 86_400_000)
+  const cutoff = archiveCutoff(now)
 
   // Find every live, completed batch past the retention window. We pull
   // the organizationId in the select so the audit rollup below does not

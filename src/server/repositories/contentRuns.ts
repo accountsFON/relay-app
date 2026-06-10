@@ -2,6 +2,7 @@ import { db } from '@/db/client'
 import { Prisma } from '@prisma/client'
 import type { DateScope } from '@/lib/date-scope'
 import { dateScopeIncludesMonth } from '@/lib/date-scope'
+import { isEmptyCompletedRun } from '@/lib/content-run-visibility'
 import { parseLabel } from '@/lib/batch-target-month'
 import { writeTrashAudit } from '@/server/repositories/trashAuditLogs'
 import { can } from '@/server/auth/permissions'
@@ -86,10 +87,14 @@ export async function listRunsByClient(
       _count: { select: { posts: true } },
     },
   })
-  if (!opts.dateScope) return runs
+  // Drop completed runs whose content is gone (posts purged) or that produced
+  // nothing — they have nothing to click into. See isEmptyCompletedRun: a
+  // merely-archived batch keeps its post rows, so those runs stay.
+  const visible = runs.filter((r) => !isEmptyCompletedRun(r))
+  if (!opts.dateScope) return visible
   // Runs are month-keyed (targetMonth = "YYYY-MM"), not timestamp-keyed.
   // Filter by month overlap with the scope range per spec edge case.
-  return runs.filter((r) => dateScopeIncludesMonth(opts.dateScope!, r.targetMonth))
+  return visible.filter((r) => dateScopeIncludesMonth(opts.dateScope!, r.targetMonth))
 }
 
 /**

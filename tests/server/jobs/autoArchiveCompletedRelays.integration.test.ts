@@ -6,7 +6,7 @@
  * PrismaClient (same pattern as purgeArchivedItems.integration.test.ts).
  *
  * Phase 3 item 21 (Wave F6) behavior covered:
- *   a. A completed batch past the 30-day window is auto-archived (deletedAt
+ *   a. A completed batch past the 37-day window is auto-archived (deletedAt
  *      stamped, deletedBy = 'system:autoArchiveCompletedRelays').
  *   b. A completed batch inside the window is left alone.
  *   c. A non-completed batch is never touched even if completedAt is somehow
@@ -152,10 +152,10 @@ async function createBatchFixture(opts: {
 }
 
 describe('runAutoArchiveCompletedRelays — happy path', () => {
-  it('archives a completed batch older than 30 days', async () => {
+  it('archives a completed batch older than 37 days', async () => {
     const { batch } = await createBatchFixture({
       currentStep: 'completed',
-      completedAt: daysAgo(35),
+      completedAt: daysAgo(40),
     })
 
     const result = await runAutoArchiveCompletedRelays({ _testOrganizationIds: [orgId] })
@@ -170,8 +170,8 @@ describe('runAutoArchiveCompletedRelays — happy path', () => {
   })
 
   it('writes one rolled-up audit entry per organization', async () => {
-    await createBatchFixture({ currentStep: 'completed', completedAt: daysAgo(35) })
     await createBatchFixture({ currentStep: 'completed', completedAt: daysAgo(40) })
+    await createBatchFixture({ currentStep: 'completed', completedAt: daysAgo(45) })
 
     await runAutoArchiveCompletedRelays({ _testOrganizationIds: [orgId] })
 
@@ -192,7 +192,7 @@ describe('runAutoArchiveCompletedRelays — happy path', () => {
 })
 
 describe('runAutoArchiveCompletedRelays — skip cases', () => {
-  it('leaves a completed batch inside the 30-day window alone', async () => {
+  it('leaves a completed batch inside the 37-day window alone', async () => {
     const { batch } = await createBatchFixture({
       currentStep: 'completed',
       completedAt: daysAgo(5),
@@ -207,10 +207,10 @@ describe('runAutoArchiveCompletedRelays — skip cases', () => {
     expect(after!.deletedAt).toBeNull()
   })
 
-  it('leaves a completed batch at the exact 29-day boundary alone', async () => {
+  it('leaves a completed batch at 35 days alone (inside the widened 37-day window; would have archived under the old 30-day rule)', async () => {
     const { batch } = await createBatchFixture({
       currentStep: 'completed',
-      completedAt: daysAgo(29),
+      completedAt: daysAgo(35),
     })
 
     await runAutoArchiveCompletedRelays({ _testOrganizationIds: [orgId] })
