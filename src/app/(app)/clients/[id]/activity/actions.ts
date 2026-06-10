@@ -92,8 +92,17 @@ export async function markMentionReadAction(mentionId: string): Promise<void> {
 
 export async function markAllMentionsReadAction(): Promise<void> {
   const ctx = await requireOrgContext()
+  // Scope to the active org + the viewer's assigned clients so "Mark all as
+  // read" marks exactly what the inbox shows — never another agency's mentions
+  // (multi-org users) or a client outside the viewer's scope.
   await db.mention.updateMany({
-    where: { mentionedUserId: ctx.userDbId, readAt: null },
+    where: {
+      mentionedUserId: ctx.userDbId,
+      readAt: null,
+      event: {
+        client: { organizationId: ctx.organizationDbId, ...getClientScopeFilter(ctx) },
+      },
+    },
     data: { readAt: new Date() },
   })
   revalidatePath('/inbox')

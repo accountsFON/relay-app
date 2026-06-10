@@ -82,15 +82,22 @@ export default async function InboxPage({
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <ViewToggle view={view} />
-        {totalCount > 0 && unreadCount > 0 && (
+        {totalCount > 0 && (
+          // Primary bulk action: prominent + always visible so it is always
+          // discoverable, disabled when there is nothing left to mark.
           <form
             action={async () => {
               'use server'
               await markAllMentionsReadAction()
             }}
           >
-            <Button type="submit" variant="outline" size="sm">
-              Mark all read
+            <Button
+              type="submit"
+              variant="accent"
+              size="sm"
+              disabled={unreadCount === 0}
+            >
+              Mark all as read
             </Button>
           </form>
         )}

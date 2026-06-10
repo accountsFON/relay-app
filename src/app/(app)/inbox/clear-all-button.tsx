@@ -38,7 +38,15 @@ export function ClearAllButton({
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+      {/* Secondary, de-emphasized: destructive (permanent), so it sits quietly
+          next to the primary "Mark all as read" and warns coral on hover. */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="text-muted-foreground hover:text-destructive"
+        onClick={() => setOpen(true)}
+      >
         Clear all
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
