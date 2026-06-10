@@ -4,7 +4,7 @@ import { db } from '@/db/client'
 import type { DbClient, DbTx } from '@/db/client'
 import { writeTrashAudit } from '@/server/repositories/trashAuditLogs'
 import { can } from '@/server/auth/permissions'
-import type { UserRole } from '@/lib/types'
+import type { UserRole, OrgContext } from '@/lib/types'
 
 type DbOrTx = DbClient | DbTx
 
@@ -191,26 +191,6 @@ export async function listActiveBatchesForClient(
     const aActivity = a.relayEvents[0]?.createdAt ?? a.createdAt
     const bActivity = b.relayEvents[0]?.createdAt ?? b.createdAt
     return bActivity.getTime() - aActivity.getTime()
-  })
-}
-
-/**
- * Lists soft-deleted (archived) batches for a client, sorted by most recently
- * archived first.
- *
- * Used by ActiveBatchesSection when the ShowArchivedToggle is on.
- */
-export async function listArchivedBatchesForClient(clientId: string) {
-  return db.batch.onlyArchived().findMany({
-    where: { clientId },
-    orderBy: { deletedAt: 'desc' },
-    select: {
-      id: true,
-      label: true,
-      currentStep: true,
-      deletedAt: true,
-      createdAt: true,
-    },
   })
 }
 
@@ -422,4 +402,50 @@ export async function listClientPipelineBatches(linkedClientId: string) {
     },
     orderBy: { createdAt: 'desc' },
   })
+}
+
+export interface ArchivedBatchRow {
+  id: string
+  clientId: string
+  clientName: string
+  label: string
+  createdAt: Date
+  deletedAt: Date | null
+}
+
+/**
+ * Archived batches visible to the viewer, newest-archived first.
+ * Admins + platform owners see the whole org; AMs see only their assigned
+ * clients. Two-query pattern (bare onlyArchived + withArchived client names)
+ * mirrors /admin/trash and keeps archived clients' names resolvable.
+ */
+export async function listArchivedBatchesForViewer(
+  ctx: Pick<OrgContext, 'role' | 'platformOwner' | 'organizationDbId' | 'userDbId'>,
+): Promise<ArchivedBatchRow[]> {
+  const scopeToAm = ctx.role === 'account_manager' && !ctx.platformOwner
+  const batches = await db.batch.onlyArchived().findMany({
+    where: {
+      client: {
+        organizationId: ctx.organizationDbId,
+        ...(scopeToAm ? { assignedAmId: ctx.userDbId } : {}),
+      },
+    },
+    orderBy: { deletedAt: 'desc' },
+    select: { id: true, clientId: true, label: true, createdAt: true, deletedAt: true },
+  })
+  if (batches.length === 0) return []
+  const clientIds = [...new Set(batches.map((b) => b.clientId))]
+  const clients = await db.client.withArchived().findMany({
+    where: { id: { in: clientIds } },
+    select: { id: true, name: true },
+  })
+  const nameById = new Map(clients.map((c) => [c.id, c.name]))
+  return batches.map((b) => ({
+    id: b.id,
+    clientId: b.clientId,
+    clientName: nameById.get(b.clientId) ?? 'Unknown client',
+    label: b.label,
+    createdAt: b.createdAt,
+    deletedAt: b.deletedAt,
+  }))
 }

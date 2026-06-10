@@ -51,8 +51,6 @@ export default async function ClientDetailPage({
     from: typeof sp.from === 'string' ? sp.from : null,
     to: typeof sp.to === 'string' ? sp.to : null,
   })
-  const showArchived = sp.archived === '1'
-
   // findClientForUser now uses withArchived() so archived clients still load.
   const client = await findClientForUser(ctx, id)
   if (!client) redirectAccessDenied()
@@ -67,7 +65,7 @@ export default async function ClientDetailPage({
     archivedByName = actor?.name ?? null
   }
 
-  const [runs, activity, memberships, archivedBatchCount] = await Promise.all([
+  const [runs, activity, memberships] = await Promise.all([
     listRunsByClient(id, { dateScope }),
     listActivityForClient(client.id, {
       limit: 30,
@@ -75,7 +73,6 @@ export default async function ClientDetailPage({
       dateRange: { from: dateScope.from, to: dateScope.to },
     }),
     listMembershipsForOrg(ctx.organizationDbId),
-    db.batch.onlyArchived().count({ where: { clientId: id } }),
   ])
   const canEdit = canEditClients(ctx)
   // The thread composer gates on the narrow client.comment permission
@@ -195,8 +192,6 @@ export default async function ClientDetailPage({
             <ActiveBatchesSection
               clientId={client.id}
               viewerUserId={ctx.userDbId}
-              showArchived={showArchived}
-              archivedBatchCount={archivedBatchCount}
               canGenerate={canEdit && isLive}
             />
           </div>

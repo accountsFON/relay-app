@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, MoreHorizontal, Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,12 +10,6 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Dialog,
   DialogContent,
@@ -25,7 +19,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { updatePostAction, redoPostAction } from '@/server/actions/posts'
-import { archivePostAction, restorePostAction } from '@/app/(app)/trash/actions'
 import { cn } from '@/lib/utils'
 import { usePostListCollapse } from '@/components/posts/post-list-collapse'
 import { SimpleTooltip } from '@/components/relay/relay-tooltips'
@@ -85,7 +78,6 @@ export function PostCard({
   useUnsavedChanges(isCaptionDirty)
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [redoConfirmOpen, setRedoConfirmOpen] = useState(false)
   const [localCollapsed, setLocalCollapsed] = useState(defaultCollapsed)
 
@@ -132,21 +124,6 @@ export function PostCard({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleArchive = () => {
-    startTransition(async () => {
-      await archivePostAction(post.id)
-      router.refresh()
-      setArchiveConfirmOpen(false)
-    })
-  }
-
-  const handleRestore = () => {
-    startTransition(async () => {
-      await restorePostAction(post.id)
-      router.refresh()
-    })
-  }
-
   const handleRedo = () => {
     setRedoConfirmOpen(false)
     startTransition(async () => {
@@ -161,8 +138,6 @@ export function PostCard({
       }
     })
   }
-
-  const showOverflowMenu = canEdit
 
   return (
     <>
@@ -258,33 +233,6 @@ export function PostCard({
                     Redo
                   </Button>
                 </SimpleTooltip>
-              )}
-              {showOverflowMenu && (
-                <div className="pointer-events-auto">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      aria-label="Post options"
-                    >
-                      <MoreHorizontal className="size-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {!isArchived && (
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => setArchiveConfirmOpen(true)}
-                        >
-                          Archive post
-                        </DropdownMenuItem>
-                      )}
-                      {isArchived && (
-                        <DropdownMenuItem onClick={handleRestore}>
-                          Restore post
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
               )}
             </div>
           )}
@@ -405,50 +353,7 @@ export function PostCard({
           </div>
         )}
 
-        {!collapsed && isArchived && canEdit && (
-          <div className="px-5 pb-4 pointer-events-auto">
-            <SimpleTooltip content="Restore this post">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRestore}
-                disabled={isPending}
-              >
-                {isPending ? 'Restoring…' : 'Restore post'}
-              </Button>
-            </SimpleTooltip>
-          </div>
-        )}
       </Card>
-
-      <Dialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>Archive this post?</DialogTitle>
-            <DialogDescription>
-              It will move to trash and be permanently deleted in 30 days.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setArchiveConfirmOpen(false)}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleArchive}
-              disabled={isPending}
-            >
-              {isPending ? 'Archiving…' : 'Archive'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={redoConfirmOpen} onOpenChange={setRedoConfirmOpen}>
         <DialogContent showCloseButton={false}>

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
-import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox, BookOpen } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, Menu, ShieldCheck, Globe2, X, Inbox, BookOpen, Archive } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { OrgSwitcher, type AgencyOption } from '@/components/org-switcher'
 import { DateScopePill } from '@/components/date-scope-pill'
@@ -64,10 +64,16 @@ const libraryNavItem: NavItem = {
   href: '/library',
   icon: BookOpen,
 }
+const archiveNavItem: NavItem = {
+  label: 'Archive',
+  href: '/archive',
+  icon: Archive,
+}
 
 export function AppShell({
   children,
   showAdmin = false,
+  showArchive = false,
   platformOwner = false,
   showLibrary = false,
   membershipCount = 1,
@@ -80,6 +86,7 @@ export function AppShell({
 }: {
   children: React.ReactNode
   showAdmin?: boolean
+  showArchive?: boolean
   platformOwner?: boolean
   showLibrary?: boolean
   membershipCount?: number
@@ -98,6 +105,7 @@ export function AppShell({
 }) {
   const navItems = [
     ...baseNavItems,
+    ...(showArchive ? [archiveNavItem] : []),
     ...(showAdmin ? [adminNavItem] : []),
     ...(platformOwner ? [platformNavItem] : []),
     ...(showLibrary ? [libraryNavItem] : []),

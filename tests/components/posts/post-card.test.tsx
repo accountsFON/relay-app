@@ -14,11 +14,6 @@ vi.mock('@/server/actions/posts', () => ({
   updatePostAction: vi.fn(),
 }))
 
-vi.mock('@/app/(app)/trash/actions', () => ({
-  archivePostAction: vi.fn(),
-  restorePostAction: vi.fn(),
-}))
-
 vi.mock('@vercel/blob/client', () => ({
   upload: vi.fn(),
 }))
@@ -244,6 +239,48 @@ describe('PostCard image section', () => {
     expect(screen.getByTestId('media-upload-dropzone')).toBeInTheDocument()
     // The canEdit-gated AI Redo control stays hidden for a media-only viewer.
     expect(screen.queryByRole('button', { name: 'AI redo' })).not.toBeInTheDocument()
+  })
+})
+
+describe('PostCard archived state (cascade-archived, read only)', () => {
+  const archivedPost = {
+    ...basePost,
+    deletedAt: new Date('2026-05-20T00:00:00Z'),
+  }
+
+  it('shows the Archived badge for an archived post', () => {
+    render(<PostCard post={archivedPost} canEdit />)
+    expect(screen.getByText('Archived')).toBeInTheDocument()
+  })
+
+  it('applies the read-only archived styling to the card', () => {
+    render(<PostCard post={archivedPost} canEdit />)
+    const card = document.querySelector(
+      '[data-post-id="post-1"][data-archived="1"]',
+    )
+    expect(card).not.toBeNull()
+    expect(card?.className).toContain('grayscale')
+  })
+
+  it('no longer exposes per-post archive/restore affordances', () => {
+    render(<PostCard post={archivedPost} canEdit />)
+    // The per-post overflow menu and its Archive/Restore items are gone;
+    // restore now lives in the version history panel.
+    expect(
+      screen.queryByRole('button', { name: 'Post options' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Restore post' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Restore post')).not.toBeInTheDocument()
+  })
+
+  it('shows no Archive post affordance on an active post', () => {
+    render(<PostCard post={basePost} canEdit />)
+    expect(
+      screen.queryByRole('button', { name: 'Post options' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Archive post')).not.toBeInTheDocument()
   })
 })
 

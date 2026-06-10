@@ -27,7 +27,6 @@ import {
 } from '@/components/relay/dashboard-relay-track'
 import type { RunnerRelay } from '@/components/relay/relay-runner-card'
 import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
-import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { DashboardSelectMode } from '@/components/relay/dashboard-select-mode'
 
 /**
@@ -168,34 +167,11 @@ export default async function DashboardPage({
     from: typeof sp.from === 'string' ? sp.from : null,
     to: typeof sp.to === 'string' ? sp.to : null,
   })
-  const showArchived = sp.archived === '1'
-
-  // Archived batch count for the org. Drives the toggle label on the
-  // AM / Designer relay track dashboards.
-  const archivedBatchCount =
-    ctx.role === 'account_manager' || ctx.role === 'admin' || ctx.role === 'designer'
-      ? await db.batch.onlyArchived().count({
-          where: { client: { organizationId: ctx.organizationDbId } },
-        })
-      : 0
-
   let dashboard: ReactNode
   if (ctx.role === 'account_manager' || ctx.role === 'admin') {
-    dashboard = (
-      <AmDashboard
-        ctx={ctx}
-        archivedBatchCount={archivedBatchCount}
-        showArchived={showArchived}
-      />
-    )
+    dashboard = <AmDashboard ctx={ctx} />
   } else if (ctx.role === 'designer') {
-    dashboard = (
-      <DesignerDashboard
-        ctx={ctx}
-        archivedBatchCount={archivedBatchCount}
-        showArchived={showArchived}
-      />
-    )
+    dashboard = <DesignerDashboard ctx={ctx} />
   } else if (ctx.role === 'client' && ctx.linkedClientId) {
     dashboard = <ClientDashboard linkedClientId={ctx.linkedClientId} />
   } else if (ctx.role === 'client') {
@@ -221,14 +197,10 @@ export default async function DashboardPage({
 
 async function AmDashboard({
   ctx,
-  archivedBatchCount,
-  showArchived,
 }: {
   ctx: { organizationDbId: string; userDbId: string; role: string }
-  archivedBatchCount: number
-  showArchived: boolean
 }) {
-  const allBatches = await listBatchesForOrg(ctx.organizationDbId, { showArchived })
+  const allBatches = await listBatchesForOrg(ctx.organizationDbId)
   // For AMs, scope to relays on clients they're assigned to. Admins see all.
   const myBatches =
     ctx.role === 'admin'
@@ -253,9 +225,6 @@ async function AmDashboard({
             : 'Your relays, moving across the track.'
         }
       />
-      <div className="mt-4">
-        <ShowArchivedToggle countArchived={archivedBatchCount} />
-      </div>
       <DashboardSelectMode relays={selectableRelays}>
         <div className="mt-8">
           <DashboardRelayTrack
@@ -270,14 +239,10 @@ async function AmDashboard({
 
 async function DesignerDashboard({
   ctx,
-  archivedBatchCount,
-  showArchived,
 }: {
   ctx: { organizationDbId: string; userDbId: string }
-  archivedBatchCount: number
-  showArchived: boolean
 }) {
-  const allBatches = await listBatchesForOrg(ctx.organizationDbId, { showArchived })
+  const allBatches = await listBatchesForOrg(ctx.organizationDbId)
   // Designer view: relays on clients assigned to this designer. Matches the
   // legacy DesignerDashboard scope so designers do not suddenly see other
   // designers' queues.
@@ -294,9 +259,6 @@ async function DesignerDashboard({
         title="My relay"
         subtitle="Your design queue, moving across the track."
       />
-      <div className="mt-4">
-        <ShowArchivedToggle countArchived={archivedBatchCount} />
-      </div>
       <div className="mt-8">
         <DashboardRelayTrack stations={stations} viewerRole="designer" />
       </div>

@@ -12,6 +12,7 @@ import { getOrgContext } from '@/server/middleware/auth'
 import { can } from '@/server/auth/permissions'
 import { getClientScopeFilter } from '@/server/auth/scope'
 import { AppShell } from '@/components/app-shell'
+import { isArchiveViewer } from '@/lib/archive-access'
 import { MaintenanceScreen } from '@/components/maintenance-screen'
 import { Button } from '@/components/ui/button'
 
@@ -121,6 +122,7 @@ export async function AppChrome({
       : undefined
 
   const showAdmin = can(ctx, 'admin.portal')
+  const showArchive = isArchiveViewer(ctx)
   const showLibrary = ctx.role !== 'client' // Beta QA index is agency-internal
   const unreadMentions = await unreadMentionCount(
     ctx.userDbId,
@@ -159,6 +161,7 @@ export async function AppChrome({
   return (
     <AppShell
       showAdmin={showAdmin}
+      showArchive={showArchive}
       platformOwner={ctx.platformOwner}
       showLibrary={showLibrary}
       membershipCount={memberships.length}
