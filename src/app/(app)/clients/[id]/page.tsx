@@ -203,10 +203,10 @@ export default async function ClientDetailPage({
 
           <div>
             {hasActiveRun && <RunStatusPoller />}
-            <PageSection title="Content runs">
+            <PageSection title="Content Generation">
               {runs.length === 0 ? (
                 <EmptyState
-                  title="No runs in this scope"
+                  title="No content ready yet"
                   description={`Showing ${dateScopeLabel(dateScope).toLowerCase()}. Change the date scope at the top of the page to see runs from a wider window.`}
                 />
               ) : (

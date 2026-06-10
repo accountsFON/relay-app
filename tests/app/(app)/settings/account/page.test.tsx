@@ -75,7 +75,7 @@ describe('AccountSettingsPage', () => {
     const panel = screen.getByTestId('panel')
     expect(panel).toHaveAttribute('data-email', 'me@example.com')
     expect(panel).toHaveAttribute('data-blocked', 'false')
-    expect(panel.getAttribute('data-inventory')).toMatch(/2 batches/i)
+    expect(panel.getAttribute('data-inventory')).toMatch(/2 relays/i)
     // The profile-photo uploader is wired with the self user + current avatar.
     const uploader = screen.getByTestId('avatar-uploader')
     expect(uploader).toHaveAttribute('data-user', 'u_self')

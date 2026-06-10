@@ -24,7 +24,7 @@ function daysUntilPurge(deletedAt: Date): number {
 
 /**
  * /admin/trash: Org-Admin-only page that shows all soft-deleted entities
- * across 4 tabs (Clients, Batches, Runs, Posts). Admins can:
+ * across 4 tabs (Clients, Relays, Runs, Posts). Admins can:
  *   - Restore: undo the soft-delete
  *   - Permanently delete (single): typed-confirm with entity label
  *   - Permanently delete (bulk): typed-confirm with count

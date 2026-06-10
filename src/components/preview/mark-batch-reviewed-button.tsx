@@ -65,7 +65,7 @@ export function MarkBatchReviewedButton({
         setOpen(false)
         setReason('')
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to advance batch')
+        setError(err instanceof Error ? err.message : 'Failed to advance relay')
       }
     })
   }
@@ -81,15 +81,15 @@ export function MarkBatchReviewedButton({
         className={className}
       >
         <CheckCircle2 className="size-3.5 shrink-0" aria-hidden="true" />
-        <span>Mark batch reviewed</span>
+        <span>Mark relay reviewed</span>
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Mark batch reviewed</DialogTitle>
+            <DialogTitle>Mark relay reviewed</DialogTitle>
             <DialogDescription>
-              This will advance the batch in the relay workflow
+              This will advance the relay in the workflow
               {openThreadCount > 0 ? (
                 <>
                   {' '}AND auto-resolve{' '}

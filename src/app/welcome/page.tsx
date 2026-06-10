@@ -46,14 +46,14 @@ const AM_CARDS: LaunchPadCard[] = [
   {
     id: 'generate-content',
     title: 'Generate a month of content',
-    body: 'Open a client, pick a month, and let Relay draft the batch.',
+    body: 'Open a client, pick a month, and let Relay generate the posts.',
     href: '/clients',
     cta: 'Open clients',
   },
   {
     id: 'review-batch',
-    title: 'Review and pass a batch',
-    body: 'Check the batches waiting on you, give the green light, and move them forward.',
+    title: 'Review and pass a relay',
+    body: 'Check the relays waiting on you, give the green light, and move them forward.',
     href: '/dashboard',
     cta: 'See my queue',
   },
@@ -63,23 +63,23 @@ const DESIGNER_CARDS: LaunchPadCard[] = [
   {
     id: 'open-queue',
     title: 'Open your design queue',
-    body: 'Every batch waiting on you, grouped by client. Start with the oldest.',
+    body: 'Every relay waiting on you, grouped by client. Start with the oldest.',
     href: '/dashboard',
     cta: 'Open queue',
   },
   {
     id: 'edit-graphic',
     title: 'Edit a post graphic',
-    body: 'Pick a holding batch, jump into the designs, and refine until it sings.',
+    body: 'Pick a holding relay, jump into the designs, and refine until it sings.',
     href: '/dashboard',
-    cta: 'Browse batches',
+    cta: 'Browse relays',
   },
   {
     id: 'pass-to-am',
     title: 'Pass to AM review',
-    body: 'When the designs are tight, hand the batch back to the AM for the next step.',
+    body: 'When the designs are tight, hand the relay back to the AM for the next step.',
     href: '/dashboard',
-    cta: 'View batches',
+    cta: 'View relays',
   },
 ]
 

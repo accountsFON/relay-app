@@ -103,7 +103,7 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
               <DropdownMenuTrigger
                 onClick={(e) => e.stopPropagation()}
                 onKeyDown={(e) => e.stopPropagation()}
-                aria-label="Batch options"
+                aria-label="Relay options"
                 className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <MoreHorizontal className="size-4" />
@@ -117,7 +117,7 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
                     variant="destructive"
                     onClick={() => setArchiveConfirmOpen(true)}
                   >
-                    Archive batch
+                    Archive relay
                   </DropdownMenuItem>
                 )}
                 {isArchived && (
@@ -125,7 +125,7 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
                     onClick={handleRestore}
                     disabled={isPending}
                   >
-                    Restore batch
+                    Restore relay
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -153,7 +153,7 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
       <Dialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Archive this batch?</DialogTitle>
+            <DialogTitle>Archive this relay?</DialogTitle>
             <DialogDescription>
               It will move to trash and be permanently deleted in 30 days.
             </DialogDescription>

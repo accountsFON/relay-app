@@ -336,7 +336,7 @@ export function ReviewSessionShell({
       <FeedShell platform={platform} onPlatformChange={setPlatform}>
         {posts.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-600">
-            No posts in this batch yet.
+            No posts in this relay yet.
           </div>
         ) : (
           posts.map(({ post, threads }) => {

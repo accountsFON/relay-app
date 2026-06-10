@@ -68,28 +68,28 @@ describe('KanbanCard overflow menu', () => {
     refreshMock.mockReset()
   })
 
-  it('shows "Archive batch" when the batch is live', async () => {
+  it('shows "archive relay" when the batch is live', async () => {
     const user = userEvent.setup()
     render(<KanbanCard batch={baseBatch()} />)
-    await user.click(screen.getByRole('button', { name: /batch options/i }))
+    await user.click(screen.getByRole('button', { name: /relay options/i }))
     expect(
-      await screen.findByRole('menuitem', { name: /archive batch/i }),
+      await screen.findByRole('menuitem', { name: /archive relay/i }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: /restore batch/i }),
+      screen.queryByRole('menuitem', { name: /restore relay/i }),
     ).not.toBeInTheDocument()
   })
 
-  it('shows "Restore batch" when the batch is archived', async () => {
+  it('shows "restore relay" when the batch is archived', async () => {
     const user = userEvent.setup()
     const archived = { ...baseBatch(), deletedAt: new Date('2026-05-10T00:00:00Z') }
     render(<KanbanCard batch={archived} />)
-    await user.click(screen.getByRole('button', { name: /batch options/i }))
+    await user.click(screen.getByRole('button', { name: /relay options/i }))
     expect(
-      await screen.findByRole('menuitem', { name: /restore batch/i }),
+      await screen.findByRole('menuitem', { name: /restore relay/i }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('menuitem', { name: /archive batch/i }),
+      screen.queryByRole('menuitem', { name: /archive relay/i }),
     ).not.toBeInTheDocument()
   })
 
@@ -97,12 +97,12 @@ describe('KanbanCard overflow menu', () => {
     const user = userEvent.setup()
     archiveBatchMock.mockResolvedValue(undefined)
     render(<KanbanCard batch={baseBatch()} />)
-    await user.click(screen.getByRole('button', { name: /batch options/i }))
+    await user.click(screen.getByRole('button', { name: /relay options/i }))
     await user.click(
-      await screen.findByRole('menuitem', { name: /archive batch/i }),
+      await screen.findByRole('menuitem', { name: /archive relay/i }),
     )
     expect(
-      await screen.findByText(/archive this batch\?/i),
+      await screen.findByText(/archive this relay\?/i),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^archive$/i }))
     await waitFor(() => {
@@ -113,9 +113,9 @@ describe('KanbanCard overflow menu', () => {
   it('cancels the archive when Cancel is clicked', async () => {
     const user = userEvent.setup()
     render(<KanbanCard batch={baseBatch()} />)
-    await user.click(screen.getByRole('button', { name: /batch options/i }))
+    await user.click(screen.getByRole('button', { name: /relay options/i }))
     await user.click(
-      await screen.findByRole('menuitem', { name: /archive batch/i }),
+      await screen.findByRole('menuitem', { name: /archive relay/i }),
     )
     await user.click(screen.getByRole('button', { name: /cancel/i }))
     expect(archiveBatchMock).not.toHaveBeenCalled()
@@ -126,9 +126,9 @@ describe('KanbanCard overflow menu', () => {
     restoreBatchMock.mockResolvedValue(undefined)
     const archived = { ...baseBatch(), deletedAt: new Date('2026-05-10T00:00:00Z') }
     render(<KanbanCard batch={archived} />)
-    await user.click(screen.getByRole('button', { name: /batch options/i }))
+    await user.click(screen.getByRole('button', { name: /relay options/i }))
     await user.click(
-      await screen.findByRole('menuitem', { name: /restore batch/i }),
+      await screen.findByRole('menuitem', { name: /restore relay/i }),
     )
     await waitFor(() => {
       expect(restoreBatchMock).toHaveBeenCalledWith('batch-1')
@@ -154,7 +154,7 @@ describe('KanbanCard navigation', () => {
   it('does not navigate when the overflow menu trigger is clicked', async () => {
     const user = userEvent.setup()
     render(<KanbanCard batch={baseBatch()} />)
-    await user.click(screen.getByRole('button', { name: /batch options/i }))
+    await user.click(screen.getByRole('button', { name: /relay options/i }))
     expect(pushMock).not.toHaveBeenCalled()
   })
 })

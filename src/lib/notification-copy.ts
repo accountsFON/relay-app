@@ -80,9 +80,9 @@ export function renderSummary(row: MentionInboxRow): string {
     case 'run_completed': {
       const count = payload.postCount
       if (typeof count === 'number') {
-        return `${prefix}Generation complete: ${count} posts ready for your review.`
+        return `${prefix}Content generation complete: ${count} posts ready for your review.`
       }
-      return `${prefix}Generation complete: posts ready for your review.`
+      return `${prefix}Content generation complete: posts ready for your review.`
     }
     case 'client_am_assigned':
       return `${prefix}${actor} assigned you as the Account Manager for ${clientName}.`

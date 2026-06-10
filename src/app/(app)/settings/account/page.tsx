@@ -16,7 +16,7 @@ function inventoryWarning(inv: Inventory): string {
   const parts: string[] = []
   if (inv.heldBatches > 0) {
     parts.push(
-      `${inv.heldBatches} ${inv.heldBatches === 1 ? 'batch' : 'batches'}`,
+      `${inv.heldBatches} ${inv.heldBatches === 1 ? 'relay' : 'relays'}`,
     )
   }
   if (inv.assignedAmClients > 0) {

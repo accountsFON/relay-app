@@ -52,7 +52,7 @@ describe('AdminForceStepSection', () => {
     ).toBeInTheDocument()
     // Collapsed: the step dropdown is not rendered yet.
     expect(
-      screen.queryByRole('combobox', { name: /move this batch to/i }),
+      screen.queryByRole('combobox', { name: /move this relay to/i }),
     ).not.toBeInTheDocument()
   })
 
@@ -63,7 +63,7 @@ describe('AdminForceStepSection', () => {
     await user.click(screen.getByRole('button', { name: /admin tools/i }))
 
     expect(
-      await screen.findByRole('combobox', { name: /move this batch to/i }),
+      await screen.findByRole('combobox', { name: /move this relay to/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByPlaceholderText(/reason.*optional/i),
@@ -77,7 +77,7 @@ describe('AdminForceStepSection', () => {
     await user.click(screen.getByRole('button', { name: /admin tools/i }))
 
     const select = (await screen.findByRole('combobox', {
-      name: /move this batch to/i,
+      name: /move this relay to/i,
     })) as HTMLSelectElement
     const values = Array.from(select.options).map((o) => o.value)
 
@@ -97,7 +97,7 @@ describe('AdminForceStepSection', () => {
     expect(forceBtn).toBeDisabled()
 
     const select = await screen.findByRole('combobox', {
-      name: /move this batch to/i,
+      name: /move this relay to/i,
     })
     await user.selectOptions(select, RelayStep.copy)
 
@@ -110,7 +110,7 @@ describe('AdminForceStepSection', () => {
 
     await user.click(screen.getByRole('button', { name: /admin tools/i }))
     await user.selectOptions(
-      await screen.findByRole('combobox', { name: /move this batch to/i }),
+      await screen.findByRole('combobox', { name: /move this relay to/i }),
       RelayStep.copy,
     )
     await user.click(await screen.findByRole('button', { name: /force step/i }))
@@ -118,7 +118,7 @@ describe('AdminForceStepSection', () => {
     const dialog = await screen.findByRole('dialog')
     await waitFor(() => {
       expect(dialog.textContent).toContain(
-        'Force this batch from AM review (design) to Copy',
+        'Force this relay from AM review (design) to Copy',
       )
     })
   })
@@ -131,7 +131,7 @@ describe('AdminForceStepSection', () => {
 
     await user.click(screen.getByRole('button', { name: /admin tools/i }))
     await user.selectOptions(
-      await screen.findByRole('combobox', { name: /move this batch to/i }),
+      await screen.findByRole('combobox', { name: /move this relay to/i }),
       RelayStep.copy,
     )
     await user.type(
@@ -162,7 +162,7 @@ describe('AdminForceStepSection', () => {
 
     await user.click(screen.getByRole('button', { name: /admin tools/i }))
     await user.selectOptions(
-      await screen.findByRole('combobox', { name: /move this batch to/i }),
+      await screen.findByRole('combobox', { name: /move this relay to/i }),
       RelayStep.copy,
     )
     await user.click(await screen.findByRole('button', { name: /force step/i }))
@@ -175,7 +175,7 @@ describe('AdminForceStepSection', () => {
     })
     // Section stays open: the combobox is still in the document.
     expect(
-      screen.getByRole('combobox', { name: /move this batch to/i }),
+      screen.getByRole('combobox', { name: /move this relay to/i }),
     ).toBeInTheDocument()
   })
 })

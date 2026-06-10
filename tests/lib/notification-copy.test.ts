@@ -80,13 +80,13 @@ describe('renderSummary, existing kinds', () => {
 
   it('run_completed includes post count when present', () => {
     expect(renderSummary(row({ kind: 'run_completed', postCount: 30 }))).toBe(
-      'Cedar Creek · Generation complete: 30 posts ready for your review.',
+      'Cedar Creek · Content generation complete: 30 posts ready for your review.',
     )
   })
 
   it('run_completed falls back without post count', () => {
     expect(renderSummary(row({ kind: 'run_completed' }))).toBe(
-      'Cedar Creek · Generation complete: posts ready for your review.',
+      'Cedar Creek · Content generation complete: posts ready for your review.',
     )
   })
 

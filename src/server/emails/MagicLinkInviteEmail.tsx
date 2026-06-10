@@ -236,7 +236,7 @@ export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.Re
 
           <Section style={ctaSectionStyle}>
             <Button href={reviewUrl} style={buttonStyle}>
-              Review the batch
+              Review the relay
             </Button>
           </Section>
 

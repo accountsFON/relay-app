@@ -122,12 +122,12 @@ export function AdminForceStepSection({
       {expanded && (
         <div className="space-y-2 border-t border-amber-200 px-3 py-3">
           <label className="block text-[12px] font-medium text-foreground">
-            Move this batch to:
+            Move this relay to:
             <select
               value={toStep}
               onChange={(e) => setToStep(e.target.value as RelayStep | '')}
               className="mt-1 block w-full rounded border border-border bg-background px-2 py-1 text-[13px]"
-              aria-label="Move this batch to"
+              aria-label="Move this relay to"
             >
               <option value="">Select step…</option>
               {options.map((step) => (
@@ -170,7 +170,7 @@ export function AdminForceStepSection({
             </DialogDescription>
           </DialogHeader>
           <p className="text-[13px] text-foreground">
-            Force this batch from{' '}
+            Force this relay from{' '}
             <span className="font-semibold">{relayStepLabel(currentStep)}</span>{' '}
             to{' '}
             <span className="font-semibold">

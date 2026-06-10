@@ -151,7 +151,7 @@ export function GenerateContentDialog({
   }
 
   const dialogTitle = (() => {
-    if (view.kind === 'confirm') return `Batch already exists`
+    if (view.kind === 'confirm') return `Relay already exists`
     if (lockMonth) return `Generate content for ${formatMonthYear(targetMonth)}`
     return 'Generate content'
   })()
@@ -180,9 +180,9 @@ export function GenerateContentDialog({
           )}
           {view.kind === 'confirm' && (
             <DialogDescription>
-              A batch already exists for {formatMonthYear(monthToUse)} with {view.postCount} post
+              A relay already exists for {formatMonthYear(monthToUse)} with {view.postCount} post
               {view.postCount === 1 ? '' : 's'}. If you continue, the existing posts will be
-              overwritten when the run completes. Current posts stay until the new ones are ready.
+              overwritten when content generation completes. Current posts stay until the new ones are ready.
             </DialogDescription>
           )}
         </DialogHeader>
@@ -227,7 +227,7 @@ export function GenerateContentDialog({
         {view.kind === 'checking' && (
           <div className="py-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
-            Checking for existing batch...
+            Checking for existing relay...
           </div>
         )}
 

@@ -70,7 +70,7 @@ export function ReviewFeed({
       <FeedShell platform={platform} onPlatformChange={setPlatform}>
         {posts.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            No posts in this batch yet.
+            No posts in this relay yet.
           </div>
         ) : (
           posts.map(({ post, threads }) => {

@@ -603,7 +603,7 @@ export default async function BatchDetailPage({
                 ) : (
                   <EmptyState
                     title="No posts on this relay"
-                    description="The relay may pre-date the content run, or posts may have been moved to a different relay."
+                    description="The relay may predate the content generation, or posts may have been moved to a different relay."
                     className="py-12"
                   />
                 )

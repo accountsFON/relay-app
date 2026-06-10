@@ -74,7 +74,7 @@ export function NameModal({ token, defaultName, defaultEmail }: NameModalProps) 
           Confirm who you are
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your comments on this batch will show this name. You can edit it.
+          Your comments on this relay will show this name. You can edit it.
         </p>
 
         <label className="mt-5 block text-sm font-medium text-foreground" htmlFor="reviewer-name">

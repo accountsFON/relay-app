@@ -105,9 +105,9 @@ export function ClientProfileView({
             description={
               <>
                 When on, this client gets steps 8 and 9 in the relay (Sent to
-                client and Client review). When off, batches skip those steps
-                and shorten to 10 total. Changes only apply to new batches;
-                open batches keep the flow they started under.
+                client and Client review). When off, relays skip those steps
+                and shorten to 10 total. Changes only apply to new relays;
+                open relays keep the flow they started under.
               </>
             }
           />

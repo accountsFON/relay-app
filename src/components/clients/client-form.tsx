@@ -200,11 +200,11 @@ export function ClientForm({ mode, defaultValues, onSubmit }: Props) {
               <span className="font-medium">Client Review</span>
               <span className="text-sm text-muted-foreground">
                 When on, this client gets steps 8 and 9 in the relay
-                (Sent to client + Client review). When off, batches skip
+                (Sent to client + Client review). When off, relays skip
                 those steps and shorten to 10 total.
               </span>
               <span className="text-sm text-muted-foreground">
-                Changes only apply to new batches. Open batches keep the
+                Changes only apply to new relays. Open relays keep the
                 flow they started under.
               </span>
             </span>

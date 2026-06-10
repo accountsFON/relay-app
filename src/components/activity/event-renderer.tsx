@@ -343,8 +343,8 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         tone: 'success',
         message:
           month && postCount !== null
-            ? `${month} run complete, ${postCount} posts ready for review`
-            : 'content run complete',
+            ? `${month} content generation complete, ${postCount} posts ready for review`
+            : 'content generation complete',
       }
     }
     case 'run_failed': {

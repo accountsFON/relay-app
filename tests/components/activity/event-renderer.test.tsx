@@ -47,7 +47,7 @@ describe('EventRenderer copy', () => {
     })
     render(<EventRenderer event={event} />)
     const node = screen.getByText(
-      /2026-05 run complete, 13 posts ready for review/,
+      /2026-05 content generation complete, 13 posts ready for review/,
     )
     expect(node).toBeInTheDocument()
     expect(node.textContent ?? '').not.toMatch(/[\u2013\u2014]/)
