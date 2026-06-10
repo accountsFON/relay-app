@@ -79,6 +79,19 @@ describe('EventRenderer copy', () => {
     ).toBeInTheDocument()
   })
 
+  it('lets a system event message wrap instead of clamping to one line', () => {
+    // Regression: client-thread system rows used the CSS `truncate` class, so
+    // long messages (e.g. "Caleb Cody assigned Caleb Cody as ...") were cut
+    // off with no way to read the full text. They must wrap fully instead.
+    const event = makeEvent(ActivityKind.client_am_assigned, {
+      assignedToName: 'Caleb',
+    })
+    render(<EventRenderer event={event} />)
+    const node = screen.getByText(/assigned Caleb as Account Manager/)
+    expect(node.className).not.toMatch(/\btruncate\b/)
+    expect(node.className).toMatch(/break-words/)
+  })
+
   it('renders client_designer_assigned with capital Designer', () => {
     const event = makeEvent(ActivityKind.client_designer_assigned, {
       assignedToName: 'Caleb',

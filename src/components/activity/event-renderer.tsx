@@ -126,18 +126,18 @@ function SystemEventRow({ event, className }: EventRendererProps) {
   return (
     <div
       className={cn(
-        'flex items-center gap-2.5 rounded-md px-3 py-1.5 text-[12px]',
+        'flex items-start gap-2.5 rounded-md px-3 py-1.5 text-[12px]',
         toneClasses(tone),
         className
       )}
       data-event-kind={event.kind}
     >
-      <Icon className="size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1 truncate">
+      <Icon className="mt-0.5 size-3.5 shrink-0" />
+      <p className="min-w-0 flex-1 break-words">
         {event.actor && <span className="font-medium">{event.actor.name} · </span>}
         {message}
       </p>
-      <span className="shrink-0 text-[11px] text-muted-foreground">
+      <span className="mt-0.5 shrink-0 text-[11px] text-muted-foreground">
         {formatRelative(event.createdAt)}
       </span>
     </div>
