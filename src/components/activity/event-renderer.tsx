@@ -46,8 +46,11 @@ import { initials } from '@/lib/initials'
 import { tokenizeBody } from '@/lib/mentions'
 import { relayStepLabel } from '@/lib/relay-step-labels'
 import { formatRelative } from '@/lib/format-relative'
-import type { ActivityEventView } from './types'
+import type { ActivityEventView, FieldChange } from './types'
 import { CaptionAiFixedRow } from './caption-ai-fixed-row'
+import { EditDiffRow } from './edit-diff-row'
+import { ReviewCaptionEditRow } from './review-caption-edit-row'
+import { humanizeFieldName } from './field-labels'
 
 export interface EventRendererProps {
   event: ActivityEventView
@@ -58,20 +61,54 @@ export function EventRenderer({ event, className }: EventRendererProps) {
   if (event.kind === 'comment') {
     return <CommentRow event={event} className={className} />
   }
-  if (
-    event.kind === 'post_caption_ai_fixed' &&
-    event.payload.kind === 'post_caption_ai_fixed'
-  ) {
-    return (
-      <CaptionAiFixedRow
-        actorName={event.actor?.name ?? 'Someone'}
-        postRef={shortPostRef(event.payload.postId)}
-        oldCaption={event.payload.oldCaption}
-        newCaption={event.payload.newCaption}
-        createdAtLabel={formatRelative(event.createdAt)}
-        className={className}
-      />
-    )
+  // NOTE: dispatch on event.kind (the ActivityEvent column, always set by the
+  // read path), NOT event.payload.kind. Writers store the payload object
+  // verbatim WITHOUT a `kind` field (see fixWithAi / reviewSessions), and
+  // recordActivity does not inject one, so event.payload.kind is undefined in
+  // production. Payload fields are read defensively below.
+  if (event.kind === 'post_caption_ai_fixed') {
+    const p = event.payload as { postId?: string; oldCaption?: string; newCaption?: string }
+    if (typeof p.oldCaption === 'string' && typeof p.newCaption === 'string') {
+      return (
+        <CaptionAiFixedRow
+          actorName={event.actor?.name ?? 'Someone'}
+          postRef={shortPostRef(p.postId ?? '')}
+          oldCaption={p.oldCaption}
+          newCaption={p.newCaption}
+          createdAtLabel={formatRelative(event.createdAt)}
+          className={className}
+        />
+      )
+    }
+  }
+  if (event.kind === 'client_profile_edited' || event.kind === 'post_edited') {
+    const changes = (event.payload as { changes?: FieldChange[] }).changes
+    if (changes && changes.length > 0) {
+      return (
+        <EditDiffRow
+          actorName={event.actor?.name ?? 'Someone'}
+          subject={event.kind === 'post_edited' ? 'post' : 'profile'}
+          changes={changes}
+          createdAtLabel={formatRelative(event.createdAt)}
+          className={className}
+        />
+      )
+    }
+  }
+  if (event.kind === 'review_caption_edit_accepted') {
+    const p = event.payload as { postId?: string; oldCaption?: string; newCaption?: string }
+    if (typeof p.oldCaption === 'string' && typeof p.newCaption === 'string') {
+      return (
+        <ReviewCaptionEditRow
+          actorName={event.actor?.name ?? 'Someone'}
+          postRef={shortPostRef(p.postId ?? '')}
+          oldCaption={p.oldCaption}
+          newCaption={p.newCaption}
+          createdAtLabel={formatRelative(event.createdAt)}
+          className={className}
+        />
+      )
+    }
   }
   return <SystemEventRow event={event} className={className} />
 }
@@ -508,52 +545,4 @@ function humanizeKind(kind: ActivityKind): string {
   return kind.replace(/_/g, ' ')
 }
 
-/**
- * Map raw schema field keys to user-readable labels. Used when the activity
- * payload carries a `fieldsChanged` array sourced from a Prisma model or Zod
- * schema. Keys not in the map fall back to a spaced, capitalized form.
- */
-const FIELD_NAME_LABELS: Record<string, string> = {
-  // Client schema
-  name: 'Name',
-  businessSummary: 'Business summary',
-  brandVoice: 'Brand voice',
-  industry: 'Industry',
-  location: 'Location',
-  phone: 'Phone',
-  mainCta: 'Main CTA',
-  focus1: 'Focus 1',
-  focus2: 'Focus 2',
-  focus3: 'Focus 3',
-  dos: 'Dos',
-  donts: 'Donts',
-  postingDays: 'Posting days',
-  postLength: 'Post length',
-  urls: 'URLs',
-  targetAudience: 'Target audience',
-  holidayHandling: 'Holiday handling',
-  excludedDates: 'Excluded dates',
-  assetsFolderUrl: 'Assets folder',
-  canvaUrl: 'Canva URL',
-  autoCrawl: 'Auto crawl',
-  assignedAmId: 'Account Manager',
-  assignedDesignerId: 'Designer',
-  primaryAccountManagerId: 'Account Manager',
-  status: 'Status',
-  // Post schema
-  caption: 'Caption',
-  hashtags: 'Hashtags',
-  graphicHook: 'Graphic hook',
-  designerNotes: 'Designer notes',
-}
-
-function humanizeFieldName(key: string): string {
-  if (FIELD_NAME_LABELS[key]) return FIELD_NAME_LABELS[key]
-  // Convert camelCase or snake_case into Sentence case.
-  const spaced = key
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .toLowerCase()
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
-}
 

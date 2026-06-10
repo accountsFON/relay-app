@@ -1,13 +1,13 @@
 'use client'
 
 /**
- * post_caption_ai_fixed row. Thin wrapper over the shared expandable shell so
- * the collapsible toggle + Before/After body live in one place.
+ * review_caption_edit_accepted row. Expandable before/after for an accepted
+ * client caption edit, reusing the shared shell + caption diff body.
  */
-import { Sparkles } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { ExpandableEventRow, CaptionDiffBody } from './expandable-event-row'
 
-export interface CaptionAiFixedRowProps {
+export interface ReviewCaptionEditRowProps {
   actorName: string
   postRef: string
   oldCaption: string
@@ -16,22 +16,22 @@ export interface CaptionAiFixedRowProps {
   className?: string
 }
 
-export function CaptionAiFixedRow({
+export function ReviewCaptionEditRow({
   actorName,
   postRef,
   oldCaption,
   newCaption,
   createdAtLabel,
   className,
-}: CaptionAiFixedRowProps) {
+}: ReviewCaptionEditRowProps) {
   return (
     <ExpandableEventRow
-      eventKind="post_caption_ai_fixed"
-      icon={<Sparkles className="size-3.5 shrink-0" />}
+      eventKind="review_caption_edit_accepted"
+      icon={<Check className="size-3.5 shrink-0" />}
       header={
         <>
           <span className="font-medium">{actorName}</span>
-          {' '}fixed caption with AI on {postRef}
+          {' '}accepted client caption edit on {postRef}
         </>
       }
       createdAtLabel={createdAtLabel}

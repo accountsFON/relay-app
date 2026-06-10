@@ -16,6 +16,8 @@ import {
   type ClientUpdate,
 } from '@/lib/schemas/client'
 import { recordActivity, ActivityKind } from '@/server/services/activity'
+import { db } from '@/db/client'
+import { diffFieldChanges } from '@/lib/field-changes'
 
 export async function createClientAction(input: ClientInput) {
   const ctx = await requireClientEditor()
@@ -37,6 +39,8 @@ export async function createClientAction(input: ClientInput) {
   redirect(`/clients/${created.id}`)
 }
 
+const USER_ID_FIELDS = new Set(['assignedAmId', 'assignedDesignerId'])
+
 export async function updateClientAction(id: string, input: ClientUpdate) {
   const ctx = await requireClientEditor()
   const parsed = clientUpdateSchema.parse(input)
@@ -52,13 +56,28 @@ export async function updateClientAction(id: string, input: ClientUpdate) {
 
   await updateClient(id, ctx.organizationDbId, parsed)
 
-  const fieldsChanged = diffFields(before as Record<string, unknown>, parsed)
-  if (fieldsChanged.length > 0) {
+  const beforeRec = before as Record<string, unknown>
+  const afterRec = parsed as Record<string, unknown>
+  const userIds = [...USER_ID_FIELDS]
+    .flatMap((f) => [beforeRec[f], afterRec[f]])
+    .filter((v): v is string => typeof v === 'string')
+  const users = userIds.length
+    ? await db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })
+    : []
+  const userName = new Map(users.map((u) => [u.id, u.name]))
+  const changes = diffFieldChanges(beforeRec, afterRec, (field, value) =>
+    // Resolve a non-empty user id to a name; let empty/cleared (unassign) fall
+    // through to formatFieldValue so it renders "(empty)" on both sides.
+    USER_ID_FIELDS.has(field) && typeof value === 'string' && value !== ''
+      ? userName.get(value) ?? value
+      : undefined,
+  )
+  if (changes.length > 0) {
     await recordActivity({
       clientId: id,
       actorId: ctx.userDbId,
       kind: ActivityKind.client_profile_edited,
-      payload: { fieldsChanged },
+      payload: { changes },
     })
   }
 
@@ -85,26 +104,4 @@ export async function deactivateClientAction(id: string) {
   })
 
   revalidatePath('/clients')
-}
-
-function diffFields(
-  before: Record<string, unknown>,
-  after: Record<string, unknown>,
-): string[] {
-  const changed: string[] = []
-  for (const [key, value] of Object.entries(after)) {
-    if (value === undefined) continue
-    const prior = before[key]
-    if (Array.isArray(value) && Array.isArray(prior)) {
-      if (
-        value.length !== prior.length ||
-        value.some((v, i) => v !== prior[i])
-      ) {
-        changed.push(key)
-      }
-      continue
-    }
-    if (prior !== value) changed.push(key)
-  }
-  return changed
 }

@@ -6,6 +6,8 @@
  * casts; renderers narrow per kind.
  */
 import type { ActivityEvent, ActivityKind, RelayRole, RelayStep } from '@prisma/client'
+import type { FieldChange } from '@/lib/field-changes'
+export type { FieldChange }
 
 export interface ActivityActor {
   id: string
@@ -117,6 +119,18 @@ export type ModeledActivityPayload =
       oldCaption: string
       newCaption: string
       postVersionId: string
+    }
+  | {
+      kind: 'client_profile_edited'
+      /** New shape: full diff. Optional for back-compat with historical
+       *  events (and the post restore/redo paths) that only wrote fieldsChanged. */
+      changes?: FieldChange[]
+      fieldsChanged?: string[]
+    }
+  | {
+      kind: 'post_edited'
+      changes?: FieldChange[]
+      fieldsChanged?: string[]
     }
   | {
       kind: 'magic_link_created'

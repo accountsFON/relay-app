@@ -92,6 +92,56 @@ describe('EventRenderer copy', () => {
     expect(node.className).toMatch(/break-words/)
   })
 
+  it('shows an expandable diff for a new-shape client_profile_edited (changes present)', () => {
+    const event = makeEvent(ActivityKind.client_profile_edited, {
+      changes: [{ field: 'assetsFolderUrl', from: '(empty)', to: 'https://drive/x' }],
+    })
+    render(<EventRenderer event={event} />)
+    expect(screen.getByText(/edited profile: Assets folder/)).toBeInTheDocument()
+    expect(screen.queryByText('https://drive/x')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByText('https://drive/x')).toBeInTheDocument()
+  })
+
+  it('falls back to a non-expandable one-liner for an old-shape client_profile_edited (fieldsChanged only)', () => {
+    const event = makeEvent(ActivityKind.client_profile_edited, {
+      fieldsChanged: ['assetsFolderUrl'],
+    })
+    render(<EventRenderer event={event} />)
+    expect(screen.getByText(/edited profile: Assets folder/)).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('makes review_caption_edit_accepted an expandable before/after', () => {
+    const event = makeEvent(ActivityKind.review_caption_edit_accepted, {
+      postId: 'postabc123def',
+      reviewItemId: 'ri1',
+      oldCaption: 'Old caption text',
+      newCaption: 'New caption text',
+      postVersionId: 'pv1',
+    })
+    render(<EventRenderer event={event} />)
+    expect(screen.getByText(/accepted client caption edit on post postab/)).toBeInTheDocument()
+    expect(screen.queryByText('Old caption text')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByText('Old caption text')).toBeInTheDocument()
+    expect(screen.getByText('New caption text')).toBeInTheDocument()
+  })
+
+  it('renders the edit diff even when the payload has no kind field (prod payload shape)', () => {
+    const event = makeEvent(ActivityKind.client_profile_edited, {
+      changes: [{ field: 'mainCta', from: 'A', to: 'B' }],
+    })
+    // Production writers store the payload WITHOUT a `kind` field, and the read
+    // path does not inject one. The renderer must dispatch on event.kind, not
+    // event.payload.kind. Strip the test helper's injected kind to prove it.
+    delete (event.payload as { kind?: unknown }).kind
+    render(<EventRenderer event={event} />)
+    expect(screen.getByText(/edited profile: Main CTA/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByText('B')).toBeInTheDocument()
+  })
+
   it('renders client_designer_assigned with capital Designer', () => {
     const event = makeEvent(ActivityKind.client_designer_assigned, {
       assignedToName: 'Caleb',

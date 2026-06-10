@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { diffFieldChanges } from '@/lib/field-changes'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findPostById, updatePost } from '@/server/repositories/posts'
 import { recordActivity, ActivityKind } from '@/server/services/activity'
@@ -44,38 +45,28 @@ export async function updatePostAction(
   // flow; a throw here would indicate a race or an exotic membership state.
   await updatePost(postId, data, ctx.userDbId)
 
-  const fieldsChanged: string[] = []
-  if (data.caption !== undefined && data.caption !== before.caption) {
-    fieldsChanged.push('caption')
-  }
-  if (
-    data.hashtags !== undefined &&
-    (data.hashtags.length !== before.hashtags.length ||
-      data.hashtags.some((h, i) => h !== before.hashtags[i]))
-  ) {
-    fieldsChanged.push('hashtags')
-  }
-  if (
-    data.graphicHook !== undefined &&
-    data.graphicHook !== before.graphicHook
-  ) {
-    fieldsChanged.push('graphicHook')
-  }
-  if (
-    data.designerNotes !== undefined &&
-    data.designerNotes !== before.designerNotes
-  ) {
-    fieldsChanged.push('designerNotes')
-  }
-
-  if (fieldsChanged.length > 0) {
+  const changes = diffFieldChanges(
+    {
+      caption: before.caption,
+      hashtags: before.hashtags,
+      graphicHook: before.graphicHook,
+      designerNotes: before.designerNotes,
+    },
+    {
+      caption: data.caption,
+      hashtags: data.hashtags,
+      graphicHook: data.graphicHook,
+      designerNotes: data.designerNotes,
+    },
+  )
+  if (changes.length > 0) {
     await recordActivity({
       clientId: before.clientId,
       runId: before.contentRunId,
       postId,
       actorId: ctx.userDbId,
       kind: ActivityKind.post_edited,
-      payload: { fieldsChanged },
+      payload: { changes },
     })
   }
 
