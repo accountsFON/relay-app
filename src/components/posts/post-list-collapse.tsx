@@ -114,7 +114,7 @@ export function PostListExpandAllToggle({
   return (
     <Button
       type="button"
-      variant="ghost"
+      variant="outline"
       size="sm"
       onClick={() => ctx.setAll(ctx.allExpanded)}
       className={className}

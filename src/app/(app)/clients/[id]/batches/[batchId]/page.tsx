@@ -57,7 +57,6 @@ import { Button } from '@/components/ui/button'
 import { MagicLinkRow } from '@/components/batch/magic-link-row'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
 import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
-import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
 import { MissingClientUserBanner } from '@/components/relay/missing-client-user-banner'
 import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
 import { Palette, ExternalLink, Eye } from 'lucide-react'
@@ -84,7 +83,6 @@ export default async function BatchDetailPage({
     from: typeof sp.from === 'string' ? sp.from : null,
     to: typeof sp.to === 'string' ? sp.to : null,
   })
-  const showArchived = sp.archived === '1'
 
   const client = await findClientForUser(ctx, id)
   if (!client) redirectAccessDenied()
@@ -126,18 +124,13 @@ export default async function BatchDetailPage({
     archivedByName = actor?.name ?? null
   }
 
-  // Posts query: include archived posts when ?archived=1 is set.
-  // The batch itself being archived does NOT automatically show archived posts,
-  // the toggle remains the user's explicit control.
-  const postQuery = showArchived ? db.post.withArchived() : db.post
-
-  const [events, posts, archivedCount, memberships, magicLinks, reviewSessions] = await Promise.all([
+  const [events, posts, memberships, magicLinks, reviewSessions] = await Promise.all([
     listActivityForClient(client.id, {
       limit: 30,
       visibilityFilter: visibilityForViewer(ctx),
       dateRange: { from: dateScope.from, to: dateScope.to },
     }),
-    postQuery.findMany({
+    db.post.findMany({
       where: { batchId: batch.id },
       orderBy: { postDate: 'asc' },
       select: {
@@ -152,7 +145,6 @@ export default async function BatchDetailPage({
         mediaUrls: true,
       },
     }),
-    db.post.onlyArchived().count({ where: { batchId: batch.id } }),
     listMembershipsForOrg(ctx.organizationDbId),
     db.magicLink.findMany({
       where: { batchId: batch.id, revokedAt: null },
@@ -585,12 +577,7 @@ export default async function BatchDetailPage({
           <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
             <PageSection
               title={`Posts (${posts.length})`}
-              action={
-                <div className="flex items-center gap-3">
-                  {posts.length > 0 && <PostListExpandAllToggle />}
-                  <ShowArchivedToggle countArchived={archivedCount} />
-                </div>
-              }
+              action={posts.length > 0 ? <PostListExpandAllToggle /> : undefined}
             >
               {posts.length === 0 ? (
                 batchSummary.currentStep === 'onboarding_gate' ||
