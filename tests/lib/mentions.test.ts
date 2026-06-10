@@ -110,6 +110,15 @@ describe('tokenizeBody', () => {
     ])
   })
 
+  it('tokenizes URLs into link tokens alongside mentions', () => {
+    expect(tokenizeBody('hey @julio.aleman see https://example.com/x')).toEqual([
+      { type: 'text', value: 'hey ' },
+      { type: 'mention', handle: 'julio.aleman', raw: '@julio.aleman' },
+      { type: 'text', value: ' see ' },
+      { type: 'link', href: 'https://example.com/x', value: 'https://example.com/x' },
+    ])
+  })
+
   it('returns one text token when no mentions', () => {
     expect(tokenizeBody('plain body')).toEqual([
       { type: 'text', value: 'plain body' },

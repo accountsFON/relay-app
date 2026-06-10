@@ -7,6 +7,7 @@
  * The composer renders this format in the dropdown; the server parses it
  * back to userIds via the org membership roster.
  */
+import { splitOnUrls } from '@/lib/linkify'
 
 /**
  * Matches `@handle` only when the @ is at the start of the string or preceded
@@ -92,6 +93,7 @@ export function buildMentionRoster<
 export type BodyToken =
   | { type: 'text'; value: string }
   | { type: 'mention'; handle: string; raw: string }
+  | { type: 'link'; href: string; value: string }
 
 export function tokenizeBody(body: string): BodyToken[] {
   const tokens: BodyToken[] = []
@@ -99,11 +101,12 @@ export function tokenizeBody(body: string): BodyToken[] {
   for (const m of body.matchAll(HANDLE_RE)) {
     const start = m.index ?? 0
     const end = start + m[0].length
-    if (start > cursor) tokens.push({ type: 'text', value: body.slice(cursor, start) })
+    // Text between mentions is further split into text + clickable-link runs.
+    if (start > cursor) tokens.push(...splitOnUrls(body.slice(cursor, start)))
     tokens.push({ type: 'mention', handle: (m[1] ?? '').toLowerCase(), raw: m[0] })
     cursor = end
   }
-  if (cursor < body.length) tokens.push({ type: 'text', value: body.slice(cursor) })
+  if (cursor < body.length) tokens.push(...splitOnUrls(body.slice(cursor)))
   return tokens
 }
 

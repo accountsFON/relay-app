@@ -138,7 +138,7 @@ function CommentRow({ event, className }: EventRendererProps) {
             {formatRelative(event.createdAt)}
           </p>
         </div>
-        <p className="text-[14px] leading-snug text-foreground whitespace-pre-wrap">
+        <p className="text-[14px] leading-snug text-foreground whitespace-pre-wrap break-words">
           {tokenizeBody(event.payload.body).map((tok, i) =>
             tok.type === 'mention' ? (
               <span
@@ -147,6 +147,16 @@ function CommentRow({ event, className }: EventRendererProps) {
               >
                 @{tok.handle}
               </span>
+            ) : tok.type === 'link' ? (
+              <a
+                key={i}
+                href={tok.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all text-blue-600 underline underline-offset-2 hover:text-blue-700"
+              >
+                {tok.value}
+              </a>
             ) : (
               <span key={i}>{tok.value}</span>
             ),
