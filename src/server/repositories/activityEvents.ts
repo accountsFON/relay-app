@@ -15,7 +15,7 @@
  * Callers MUST verify client visibility before calling listActivityForClient.
  * This repo does not re-check org/scope; it queries by clientId directly.
  */
-import { EventVisibility } from '@prisma/client'
+import { EventVisibility, Prisma } from '@prisma/client'
 import { db } from '@/db/client'
 import type {
   ActivityEventView,
@@ -127,6 +127,14 @@ export interface ListMentionsOptions {
    * owners, members of two agencies) leak mentions across orgs.
    */
   organizationId: string
+  /**
+   * Client-assignment scope (from getClientScopeFilter). Restricts mentions to
+   * clients the viewer is allowed to see: an AM only their assigned clients, a
+   * designer their designed clients, admins/owners all (empty filter). Merged
+   * into the event's client filter so the inbox never surfaces a notification
+   * for a client outside the viewer's scope.
+   */
+  clientScope?: Prisma.ClientWhereInput
 }
 
 export async function listMentionsForUser(
@@ -134,7 +142,7 @@ export async function listMentionsForUser(
   opts: ListMentionsOptions
 ): Promise<MentionInboxRow[]> {
   const eventScope: Record<string, unknown> = {
-    client: { organizationId: opts.organizationId },
+    client: { organizationId: opts.organizationId, ...opts.clientScope },
   }
   if (opts.visibilityFilter) {
     eventScope.visibility = { in: opts.visibilityFilter }
@@ -189,9 +197,10 @@ export async function unreadMentionCount(
   userId: string,
   organizationId: string,
   visibilityFilter?: EventVisibility[],
+  clientScope?: Prisma.ClientWhereInput,
 ): Promise<number> {
   const eventScope: Record<string, unknown> = {
-    client: { organizationId },
+    client: { organizationId, ...clientScope },
   }
   if (visibilityFilter) {
     eventScope.visibility = { in: visibilityFilter }
@@ -200,6 +209,31 @@ export async function unreadMentionCount(
     where: {
       mentionedUserId: userId,
       readAt: null,
+      event: eventScope,
+    },
+  })
+}
+
+/**
+ * Total mention count for a user (all read states), scoped to the active org
+ * and the viewer's client scope. Powers the "Clear all" dialog count so it
+ * reflects exactly what the (now paginated, scoped) inbox would clear.
+ */
+export async function mentionCountForUser(
+  userId: string,
+  organizationId: string,
+  visibilityFilter?: EventVisibility[],
+  clientScope?: Prisma.ClientWhereInput,
+): Promise<number> {
+  const eventScope: Record<string, unknown> = {
+    client: { organizationId, ...clientScope },
+  }
+  if (visibilityFilter) {
+    eventScope.visibility = { in: visibilityFilter }
+  }
+  return db.mention.count({
+    where: {
+      mentionedUserId: userId,
       event: eventScope,
     },
   })
@@ -235,12 +269,13 @@ export async function deleteMention(
  */
 export async function deleteAllMentionsForUser(
   userId: string,
-  organizationId: string
+  organizationId: string,
+  clientScope?: Prisma.ClientWhereInput,
 ): Promise<void> {
   await db.mention.deleteMany({
     where: {
       mentionedUserId: userId,
-      event: { client: { organizationId } },
+      event: { client: { organizationId, ...clientScope } },
     },
   })
 }

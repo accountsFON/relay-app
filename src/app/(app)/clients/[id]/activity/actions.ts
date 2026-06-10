@@ -17,6 +17,7 @@ import { ActivityKind } from '@prisma/client'
 import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { getClientScopeFilter } from '@/server/auth/scope'
 import { findClientForUser } from '@/server/repositories/clients'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { recordActivity } from '@/server/services/activity'
@@ -106,6 +107,10 @@ export async function clearMentionAction(mentionId: string): Promise<void> {
 
 export async function clearAllMentionsAction(): Promise<void> {
   const ctx = await requireOrgContext()
-  await deleteAllMentionsForUserRepo(ctx.userDbId, ctx.organizationDbId)
+  await deleteAllMentionsForUserRepo(
+    ctx.userDbId,
+    ctx.organizationDbId,
+    getClientScopeFilter(ctx),
+  )
   revalidatePath('/inbox')
 }

@@ -6,6 +6,7 @@ import { crawlWebsites } from '@/server/services/websiteCrawler'
 import { extractFacts } from '@/server/services/factsExtractor'
 import { generateCaptions } from '@/server/services/captionGenerator'
 import { createPostsFromCaptions, parseCtaCandidates } from '@/server/services/postParser'
+import { completionMentionUserIds } from '@/lib/content-generation-recipients'
 import { sumCosts, costToCredits, buildCostBreakdown } from '@/server/services/costTracker'
 import type { CostResult, RunCostBreakdown } from '@/server/services/costTracker'
 import { recordActivity, ActivityKind, EventVisibility } from '@/server/services/activity'
@@ -293,10 +294,14 @@ export const generateContentTask = task({
           totalCostUsd: breakdown.total,
           batchId: attachedBatchId,
         },
-        // Only mention the triggering user when the run auto-finalized in
-        // the background. Foreground users land on the batch via the modal
-        // redirect, so no inbox notification is needed for them.
-        mentionedUserIds: attachedBatchId ? [contentRun.triggeredById] : [],
+        // Always notify on completion: the triggering user (so they hear
+        // about it whether they stayed on the page or navigated away) plus the
+        // client's assigned AM if different, so the relay owner knows content
+        // is ready to review even when an admin triggered the generation.
+        mentionedUserIds: completionMentionUserIds(
+          contentRun.triggeredById,
+          client.assignedAmId,
+        ),
       })
 
       return { postCount, totalCostUsd: breakdown.total, breakdown }

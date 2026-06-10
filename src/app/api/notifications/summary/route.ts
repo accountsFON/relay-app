@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { getClientScopeFilter } from '@/server/auth/scope'
 import {
   listMentionsForUser,
   unreadMentionCount,
@@ -27,14 +28,16 @@ export async function GET(_req: NextRequest) {
   try {
     const ctx = await requireOrgContext()
     const visibility = visibilityForViewer(ctx)
+    const clientScope = getClientScopeFilter(ctx)
     const [mentions, count] = await Promise.all([
       listMentionsForUser(ctx.userDbId, {
         organizationId: ctx.organizationDbId,
         limit: 10,
         unreadOnly: true,
         visibilityFilter: visibility,
+        clientScope,
       }),
-      unreadMentionCount(ctx.userDbId, ctx.organizationDbId, visibility),
+      unreadMentionCount(ctx.userDbId, ctx.organizationDbId, visibility, clientScope),
     ])
     const items: NotificationItemDTO[] = mentions.map(toDTO)
     return Response.json(

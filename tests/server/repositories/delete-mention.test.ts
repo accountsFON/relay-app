@@ -30,4 +30,14 @@ describe('deleteAllMentionsForUser', () => {
       },
     })
   })
+
+  it('also scopes to the viewer-assigned clients so Clear all matches the inbox', async () => {
+    await deleteAllMentionsForUser('user-1', 'org-1', { assignedAmId: 'user-1' })
+    expect(db.mention.deleteMany).toHaveBeenCalledWith({
+      where: {
+        mentionedUserId: 'user-1',
+        event: { client: { organizationId: 'org-1', assignedAmId: 'user-1' } },
+      },
+    })
+  })
 })

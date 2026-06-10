@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/server/middleware/auth', () => ({
-  requireOrgContext: vi.fn().mockResolvedValue({ userDbId: 'user-1', organizationDbId: 'org-1' }),
+  requireOrgContext: vi
+    .fn()
+    .mockResolvedValue({ userDbId: 'user-1', organizationDbId: 'org-1', role: 'account_manager' }),
 }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('@/server/repositories/activityEvents', () => ({
@@ -25,9 +27,11 @@ describe('clearMentionAction', () => {
 
 describe('clearAllMentionsAction', () => {
   beforeEach(() => vi.clearAllMocks())
-  it('deletes all mentions for the context user + org and revalidates the inbox', async () => {
+  it('deletes all mentions for the context user + org, scoped to their clients, and revalidates the inbox', async () => {
     await clearAllMentionsAction()
-    expect(deleteAllMentionsForUser).toHaveBeenCalledWith('user-1', 'org-1')
+    expect(deleteAllMentionsForUser).toHaveBeenCalledWith('user-1', 'org-1', {
+      assignedAmId: 'user-1',
+    })
     expect(revalidatePath).toHaveBeenCalledWith('/inbox')
   })
 })

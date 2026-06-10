@@ -88,6 +88,24 @@ describe('GET /api/notifications/summary', () => {
     )
   })
 
+  it('scopes the query to the viewer\'s assigned clients (AM gets assignedAmId filter)', async () => {
+    mockRequireOrgContext.mockResolvedValue({ userDbId: 'u1', organizationDbId: 'org1', role: 'account_manager' })
+    mockUnreadMentionCount.mockResolvedValue(0)
+    mockListMentionsForUser.mockResolvedValue([])
+    const req = new NextRequest('http://localhost/api/notifications/summary')
+    await GET(req)
+    expect(mockListMentionsForUser).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ clientScope: { assignedAmId: 'u1' } }),
+    )
+    expect(mockUnreadMentionCount).toHaveBeenCalledWith(
+      'u1',
+      'org1',
+      expect.anything(),
+      { assignedAmId: 'u1' },
+    )
+  })
+
   it('sets no-store cache header', async () => {
     mockRequireOrgContext.mockResolvedValue({ userDbId: 'u1', organizationDbId: 'org1', role: 'account_manager' })
     mockUnreadMentionCount.mockResolvedValue(0)

@@ -10,6 +10,7 @@ import {
 } from '@/server/repositories/activityEvents'
 import { getOrgContext } from '@/server/middleware/auth'
 import { can } from '@/server/auth/permissions'
+import { getClientScopeFilter } from '@/server/auth/scope'
 import { AppShell } from '@/components/app-shell'
 import { MaintenanceScreen } from '@/components/maintenance-screen'
 import { Button } from '@/components/ui/button'
@@ -125,6 +126,7 @@ export async function AppChrome({
     ctx.userDbId,
     ctx.organizationDbId,
     visibilityForViewer(ctx),
+    getClientScopeFilter(ctx),
   ).catch(() => 0)
 
   // Phase 4 item 25: first time users land on /welcome before they see
