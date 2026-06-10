@@ -35,8 +35,8 @@ describe('RelayTrack', () => {
       clientReviewEnabled: true,
     })
     render(<RelayTrack batch={batch} />)
-    // Desktop + mobile both render the node list, so we get 12 * 2 = 24.
-    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(12 * 2)
+    // One horizontal swipe track on every viewport (no separate mobile stack).
+    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(12)
   })
 
   it('renders 8 nodes when clientReviewEnabled = false', () => {
@@ -46,7 +46,7 @@ describe('RelayTrack', () => {
       clientReviewEnabled: false,
     })
     render(<RelayTrack batch={batch} />)
-    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(8 * 2)
+    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(8)
   })
 
   it('renders the step counter as "Step X of Y" using the right total for the flow', () => {
@@ -75,7 +75,7 @@ describe('RelayTrack', () => {
       clientReviewEnabled: true,
     })
     render(<RelayTrack batch={batch} audience="client" />)
-    // CLIENT_TRACK_VIEW has 3 nodes; rendered in both desktop + mobile = 6.
-    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(3 * 2)
+    // CLIENT_TRACK_VIEW has 3 nodes; one track on every viewport.
+    expect(screen.getAllByTestId('relay-track-node')).toHaveLength(3)
   })
 })

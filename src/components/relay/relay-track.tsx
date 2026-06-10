@@ -9,7 +9,10 @@
  * - Active node: ink-filled circle, white torch, larger. Past: cream-warm + check. Future: cream-80 + number.
  * - Role identity as small uppercase label below each step (not via stock pastel circle backgrounds).
  * - Horizontal scroll with fade-gradient mask on the right edge for overflow.
- * - Mobile (< md): vertical stack with left rail (line + circle) and right pane (label).
+ * - One horizontal swipe track on every viewport (no separate mobile stack):
+ *   on mobile it scrolls horizontally with touch swipe, and the current step is
+ *   auto-scrolled into view, so the compact track never pushes the posts list
+ *   far down the screen.
  * - Client view: pass `audience="client"` to abstract to 3 nodes
  *   (Awaiting Your Approval -> In Production -> Done).
  *
@@ -76,8 +79,7 @@ export function RelayTrack({
         sendBackCount={sendBacks.length}
       />
 
-      <RelayTrackDesktop steps={steps} currentIndex={currentIndex} />
-      <RelayTrackMobile steps={steps} currentIndex={currentIndex} />
+      <RelayTrackScroll steps={steps} currentIndex={currentIndex} />
       <ScrollCurrentIntoView />
     </section>
   )
@@ -145,7 +147,8 @@ function RelayTrackHeader({
 }
 
 /**
- * Desktop track: horizontal scroll with right-edge fade.
+ * The track: horizontal scroll with edge fades, on every viewport. Touch
+ * swipe carries it on mobile; the current step is auto-scrolled into view.
  * Each step has a minimum width so the line + label can breathe.
  * Connecting line is rendered behind the circles via absolute positioning per segment.
  *
@@ -157,7 +160,7 @@ function RelayTrackHeader({
  * The ScrollCurrentIntoView client component below brings the active step
  * into view on mount when the user lands on a batch already past mid relay.
  */
-function RelayTrackDesktop({
+function RelayTrackScroll({
   steps,
   currentIndex,
 }: {
@@ -165,7 +168,7 @@ function RelayTrackDesktop({
   currentIndex: number
 }) {
   return (
-    <div className="relative hidden md:block">
+    <div className="relative">
       {/* Right edge fade hint when content overflows */}
       <div
         aria-hidden
@@ -226,88 +229,6 @@ function RelayTrackDesktop({
         })}
       </ol>
     </div>
-  )
-}
-
-/**
- * Mobile track: vertical stack. Left rail = connecting line + circle, right pane = label.
- * Designed for narrow viewports; up to 13 rows is acceptable on a scrollable mobile screen.
- */
-function RelayTrackMobile({
-  steps,
-  currentIndex,
-}: {
-  steps: RelayStep[]
-  currentIndex: number
-}) {
-  return (
-    <ol className="flex flex-col md:hidden">
-      {steps.map((step, i) => {
-        const isCurrent = i === currentIndex
-        const isPast = i < currentIndex
-        const isFirst = i === 0
-        const isLast = i === steps.length - 1
-        return (
-          <li
-            key={step}
-            data-testid="relay-track-node"
-            className="flex items-stretch gap-3 px-5 first:pt-5 last:pb-5"
-          >
-            <div className="relative flex w-8 flex-col items-center">
-              {/* line above circle (skipped on first) */}
-              <div
-                aria-hidden
-                className={cn(
-                  'w-px flex-1',
-                  isFirst
-                    ? 'invisible'
-                    : i <= currentIndex
-                    ? 'bg-neutral-900'
-                    : 'bg-neutral-50'
-                )}
-              />
-              <div className="my-1">
-                <RelayNodeCircle
-                  step={step}
-                  index={i}
-                  isCurrent={isCurrent}
-                  isPast={isPast}
-                />
-              </div>
-              {/* line below circle (skipped on last) */}
-              <div
-                aria-hidden
-                className={cn(
-                  'w-px flex-1',
-                  isLast
-                    ? 'invisible'
-                    : i < currentIndex
-                    ? 'bg-neutral-900'
-                    : 'bg-neutral-50'
-                )}
-              />
-            </div>
-            <div className="flex-1 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                {ROLE_LABEL[STEP_ROLE[step]]}
-              </p>
-              <p
-                className={cn(
-                  'mt-0.5 text-[14px] font-medium',
-                  isCurrent
-                    ? 'text-foreground'
-                    : isPast
-                    ? 'text-neutral-500'
-                    : 'text-muted-foreground'
-                )}
-              >
-                {STEP_LABEL[step]}
-              </p>
-            </div>
-          </li>
-        )
-      })}
-    </ol>
   )
 }
 

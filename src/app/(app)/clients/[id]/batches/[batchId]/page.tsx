@@ -385,7 +385,9 @@ export default async function BatchDetailPage({
           { label: batch.label },
         ]}
       />
-      <div className="mt-5 flex flex-wrap items-center gap-2">
+      {/* Mobile: one horizontal swipe bar so the actions never stack into
+          several rows and eat vertical space. Desktop (sm+): wrap normally. */}
+      <div className="mt-5 flex items-center gap-2 overflow-x-auto pb-1 [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
         <Button
           variant="secondary"
           size="sm"
