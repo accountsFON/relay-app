@@ -7,6 +7,7 @@ import { getSelfDeactivationBlock } from '@/server/services/users'
 import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { CloseAccountPanel } from '@/components/settings/close-account-panel'
+import { AvatarUploader } from '@/components/settings/avatar-uploader'
 
 type Inventory = Awaited<ReturnType<typeof countUserOwnedRecords>>
 
@@ -43,6 +44,7 @@ export default async function AccountSettingsPage() {
   ])
 
   const userEmail = dbUser?.email ?? ''
+  const displayName = dbUser?.name ?? userEmail ?? 'You'
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-3xl">
@@ -50,7 +52,14 @@ export default async function AccountSettingsPage() {
         title="Account"
         subtitle="Your personal account settings."
       />
-      <div className="mt-8">
+      <div className="mt-8 space-y-8">
+        <PageSection title="Profile photo">
+          <AvatarUploader
+            userDbId={ctx.userDbId}
+            name={displayName}
+            avatarUrl={dbUser?.avatarUrl ?? null}
+          />
+        </PageSection>
         <PageSection title="Danger zone">
           <CloseAccountPanel
             userEmail={userEmail}

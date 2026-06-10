@@ -66,6 +66,7 @@ function makeCtx(role: UserRole, overrides: Partial<OrgContext> = {}): OrgContex
     plan: 'agency',
     organizationDbId: 'org_1',
     userDbId: 'u_actor',
+    avatarUrl: null,
     platformOwner: false,
     linkedClientId: null,
     permissionOverrides: null,

@@ -14,6 +14,7 @@ export type OrgContext = {
   plan: Plan
   organizationDbId: string // DB Organization.id (cuid)
   userDbId: string         // DB User.id (cuid)
+  avatarUrl: string | null  // DB User.avatarUrl, for the account page + first-party header use
   platformOwner: boolean   // grants admin-equivalent access on every Org
   linkedClientId: string | null
   permissionOverrides: Record<string, boolean> | null

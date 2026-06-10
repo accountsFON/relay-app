@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { initials } from '@/lib/initials'
 import { RelayRole } from '@prisma/client'
 import { STEP_LABEL } from './labels'
 import type { BatchSummary } from './types'
@@ -115,11 +116,6 @@ export function BatchCard({
       </Card>
     </Link>
   )
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
 function formatDays(days: number): string {

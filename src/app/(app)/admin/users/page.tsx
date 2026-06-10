@@ -4,8 +4,10 @@ import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { Badge } from '@/components/ui/badge'
 import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { AdminTabs } from '../admin-tabs'
 import { InviteMemberButton } from './invite-modal'
+import { initials } from '@/lib/initials'
 import type { UserRole } from '@/lib/types'
 
 const ROLE_ORDER: UserRole[] = ['admin', 'account_manager', 'designer', 'client']
@@ -20,13 +22,6 @@ const ROLE_BADGE_LABEL: Record<UserRole, string> = {
   account_manager: 'AM',
   designer: 'Designer',
   client: 'Client',
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 export default async function AdminUsersPage() {
@@ -74,9 +69,10 @@ export default async function AdminUsersPage() {
                       href={`/admin/users/${m.user.id}`}
                       className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                        {initials(m.user.name)}
-                      </div>
+                      <Avatar className="size-10 shrink-0">
+                        {m.user.avatarUrl && <AvatarImage src={m.user.avatarUrl} alt="" />}
+                        <AvatarFallback>{initials(m.user.name)}</AvatarFallback>
+                      </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="flex items-center gap-2 font-medium text-foreground">
                           <span className="truncate">{m.user.name}</span>

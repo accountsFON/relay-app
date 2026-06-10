@@ -124,6 +124,7 @@ function toRunner(
     holder: {
       id: batch.holder?.id ?? '',
       name: batch.holder?.name ?? '',
+      avatarUrl: batch.holder?.avatarUrl ?? null,
     },
     lastTransitionAt,
   }

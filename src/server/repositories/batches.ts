@@ -21,7 +21,7 @@ export async function findBatch(id: string) {
           _count: { select: { linkedClientUsers: true } },
         },
       },
-      holder: { select: { id: true, name: true, email: true, role: true } },
+      holder: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } },
       checklists: { orderBy: { id: 'asc' } },
     },
   })
@@ -47,7 +47,7 @@ export async function listBatchesByClient(clientId: string) {
     where: { clientId },
     orderBy: { createdAt: 'desc' },
     include: {
-      holder: { select: { id: true, name: true } },
+      holder: { select: { id: true, name: true, avatarUrl: true } },
       _count: { select: { posts: true } },
     },
   })
@@ -87,7 +87,7 @@ export async function listStuckBatches(orgId: string, idleHours = 48) {
     },
     include: {
       client: { select: { id: true, name: true } },
-      holder: { select: { id: true, name: true, role: true } },
+      holder: { select: { id: true, name: true, role: true, avatarUrl: true } },
     },
     orderBy: { createdAt: 'asc' },
   })
@@ -146,7 +146,7 @@ export async function listBatchesForOrg(
           assignedDesignerId: true,
         },
       },
-      holder: { select: { id: true, name: true, role: true } },
+      holder: { select: { id: true, name: true, role: true, avatarUrl: true } },
       _count: { select: { posts: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -173,7 +173,7 @@ export async function listActiveBatchesForClient(
       currentStep: { not: RelayStepEnum.final_qa_schedule },
     },
     include: {
-      holder: { select: { id: true, name: true, role: true } },
+      holder: { select: { id: true, name: true, role: true, avatarUrl: true } },
       _count: { select: { posts: true } },
       relayEvents: {
         take: 1,

@@ -18,6 +18,7 @@ import { Repeat } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { cn } from '@/lib/utils'
+import { initials } from '@/lib/initials'
 import { SelectModeContext } from '@/components/relay/dashboard-select-mode'
 
 export interface RunnerHolder {
@@ -159,10 +160,3 @@ export function RelayRunnerCard({
   )
 }
 
-function initials(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed) return '?'
-  const parts = trimmed.split(/\s+/)
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase()
-}

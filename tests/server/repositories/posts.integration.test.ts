@@ -54,6 +54,7 @@ const adminCtx = (organizationDbId: string, userDbId: string): OrgContext => ({
   plan: 'smb',
   organizationDbId,
   userDbId,
+  avatarUrl: null,
   platformOwner: false,
   linkedClientId: null,
   permissionOverrides: null,

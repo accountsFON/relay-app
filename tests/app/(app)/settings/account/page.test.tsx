@@ -31,6 +31,19 @@ vi.mock('@/components/settings/close-account-panel', () => ({
   ),
 }))
 
+// Stub the avatar uploader (a client component using useRouter/useTransition);
+// the page test only cares about the close-account panel props.
+vi.mock('@/components/settings/avatar-uploader', () => ({
+  AvatarUploader: (props: Record<string, unknown>) => (
+    <div
+      data-testid="avatar-uploader"
+      data-user={String(props.userDbId)}
+      data-name={String(props.name)}
+      data-avatar={String(props.avatarUrl)}
+    />
+  ),
+}))
+
 import AccountSettingsPage from '@/app/(app)/settings/account/page'
 
 beforeEach(() => {
@@ -63,6 +76,10 @@ describe('AccountSettingsPage', () => {
     expect(panel).toHaveAttribute('data-email', 'me@example.com')
     expect(panel).toHaveAttribute('data-blocked', 'false')
     expect(panel.getAttribute('data-inventory')).toMatch(/2 batches/i)
+    // The profile-photo uploader is wired with the self user + current avatar.
+    const uploader = screen.getByTestId('avatar-uploader')
+    expect(uploader).toHaveAttribute('data-user', 'u_self')
+    expect(uploader).toHaveAttribute('data-avatar', 'null')
   })
 
   it('passes the block reason through when blocked', async () => {

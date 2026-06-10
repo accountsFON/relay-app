@@ -42,6 +42,7 @@ import {
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { initials } from '@/lib/initials'
 import { tokenizeBody } from '@/lib/mentions'
 import { relayStepLabel } from '@/lib/relay-step-labels'
 import { formatRelative } from '@/lib/format-relative'
@@ -471,11 +472,6 @@ function toneClasses(tone: Tone): string {
     default:
       return 'text-muted-foreground'
   }
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
 function truncate(s: string, max: number): string {

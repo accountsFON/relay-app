@@ -79,6 +79,7 @@ export async function getOrgContext(): Promise<OrgContext | null> {
       plan: 'smb',
       organizationDbId: '',
       userDbId: dbUser.id,
+      avatarUrl: dbUser.avatarUrl,
       platformOwner: true,
       linkedClientId: dbUser.linkedClientId,
       permissionOverrides: null,
@@ -98,6 +99,7 @@ export async function getOrgContext(): Promise<OrgContext | null> {
       plan: org.plan,
       organizationDbId: org.id,
       userDbId: dbUser.id,
+      avatarUrl: dbUser.avatarUrl,
       platformOwner: true,
       linkedClientId: dbUser.linkedClientId,
       permissionOverrides: null,
@@ -124,6 +126,7 @@ export async function getOrgContext(): Promise<OrgContext | null> {
     plan: org.plan,
     organizationDbId: org.id,
     userDbId: dbUser.id,
+    avatarUrl: dbUser.avatarUrl,
     platformOwner: dbUser.platformOwner,
     linkedClientId: dbUser.linkedClientId,
     permissionOverrides:

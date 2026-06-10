@@ -402,6 +402,7 @@ describe('submitPreviewReviewAction (tenant scoping)', () => {
       plan: 'agency',
       organizationDbId: orgB.id,
       userDbId: attacker.id,
+      avatarUrl: null,
       platformOwner: false,
       linkedClientId: null,
       permissionOverrides: null,

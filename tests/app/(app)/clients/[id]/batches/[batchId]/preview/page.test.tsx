@@ -117,6 +117,7 @@ const mockCtx = {
   plan: 'agency' as const,
   organizationDbId: 'org_db_1',
   userDbId: 'user_db_1',
+  avatarUrl: null,
   platformOwner: false,
   linkedClientId: null,
   permissionOverrides: null,
