@@ -33,25 +33,32 @@ export function renderSummary(row: MentionInboxRow): string {
       const wasOverride = payload.wasOverride === true
       const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
       const stepLabel = toStep ? relayStepLabel(toStep) : ''
-      const tail = stepLabel ? ` It is sitting at ${stepLabel}.` : ''
-      const verb = wasOverride ? 'overrode the holder and passed' : 'passed'
-      return `${prefix}${actor} ${verb} ${relay} to you.${tail}`
+      const tail = stepLabel ? ` Now at ${stepLabel}.` : ''
+      const verb = wasOverride
+        ? 'overrode the holder and passed'
+        : 'passed'
+      return `${prefix}${actor} ${verb} you the baton on ${relay}.${tail}`
     }
     case 'batch_sent_back': {
       const batchLabel = payload.batchLabel as string | undefined
+      const toStep = payload.toStep as string | undefined
       const wasOverride = payload.wasOverride === true
       const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
+      const stepLabel = toStep ? relayStepLabel(toStep) : ''
+      const tail = stepLabel ? ` Now at ${stepLabel}.` : ''
       const verb = wasOverride
         ? 'overrode the holder and sent'
         : 'sent'
-      return `${prefix}${actor} ${verb} ${relay} back to you for changes.`
+      return `${prefix}${actor} ${verb} ${relay} back to you for changes.${tail}`
     }
     case 'batch_completed': {
       const batchLabel = payload.batchLabel as string | undefined
       const wasOverride = payload.wasOverride === true
       const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
-      const verb = wasOverride ? 'overrode the holder and finished' : 'finished'
-      return `${prefix}${actor} ${verb} ${relay}.`
+      const verb = wasOverride
+        ? 'overrode the holder and brought'
+        : 'brought'
+      return `${prefix}${actor} ${verb} ${relay} across the finish line.`
     }
     case 'batch_revision_dispatched': {
       const itemType = (payload.itemType as string) ?? 'item'

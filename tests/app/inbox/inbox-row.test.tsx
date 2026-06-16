@@ -124,7 +124,7 @@ describe('InboxRow new copy', () => {
     render(<InboxRow row={row} />)
     expect(
       screen.getByText(
-        /Cedar Creek Dental · Mollie passed "May Round 1" to you\. It is sitting at AM review \(design\)\./,
+        /Cedar Creek Dental · Mollie passed you the baton on "May Round 1"\. Now at AM review \(design\)\./,
       ),
     ).toBeInTheDocument()
   })
@@ -142,7 +142,7 @@ describe('InboxRow new copy', () => {
     render(<InboxRow row={row} />)
     expect(
       screen.getByText(
-        /Cedar Creek Dental · Mollie sent "May Round 1" back to you for changes\./,
+        /Cedar Creek Dental · Mollie sent "May Round 1" back to you for changes\. Now at Design\./,
       ),
     ).toBeInTheDocument()
   })

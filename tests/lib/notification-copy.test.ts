@@ -47,16 +47,22 @@ describe('renderSummary, existing kinds', () => {
     expect(out.length).toBeLessThan(150)
   })
 
-  it('batch_passed includes step label when toStep present', () => {
+  it('batch_passed uses the baton voice and names the destination stage', () => {
     expect(
-      renderSummary(row({ kind: 'batch_passed', batchLabel: 'May batch', toStep: 'copy_step' })),
-    ).toMatch(/Mollie passed "May batch" to you/)
+      renderSummary(row({ kind: 'batch_passed', batchLabel: 'May batch', toStep: 'client_decision' })),
+    ).toBe('Cedar Creek · Mollie passed you the baton on "May batch". Now at Client review.')
   })
 
   it('batch_sent_back uses default relay label when batchLabel missing', () => {
     expect(renderSummary(row({ kind: 'batch_sent_back' }))).toBe(
       'Cedar Creek · Mollie sent a relay back to you for changes.',
     )
+  })
+
+  it('batch_sent_back names the destination stage when toStep present', () => {
+    expect(
+      renderSummary(row({ kind: 'batch_sent_back', batchLabel: 'May batch', toStep: 'design_revisions' })),
+    ).toBe('Cedar Creek · Mollie sent "May batch" back to you for changes. Now at Design revisions.')
   })
 
   it('batch_revision_dispatched names item type and trimmed description', () => {
@@ -229,22 +235,22 @@ describe('renderSummary, AM / admin holder override', () => {
         row({
           kind: 'batch_passed',
           batchLabel: 'May batch',
-          toStep: 'copy_step',
+          toStep: 'copy',
           wasOverride: true,
         }),
       ),
-    ).toMatch(/Mollie overrode the holder and passed "May batch" to you/)
+    ).toMatch(/Mollie overrode the holder and passed you the baton on "May batch"/)
   })
 
-  it('batch_passed keeps "passed" when wasOverride absent', () => {
+  it('batch_passed keeps the baton voice when wasOverride absent', () => {
     expect(
       renderSummary(
-        row({ kind: 'batch_passed', batchLabel: 'May batch', toStep: 'copy_step' }),
+        row({ kind: 'batch_passed', batchLabel: 'May batch', toStep: 'copy' }),
       ),
-    ).toMatch(/Mollie passed "May batch" to you/)
+    ).toMatch(/Mollie passed you the baton on "May batch"/)
     expect(
       renderSummary(
-        row({ kind: 'batch_passed', batchLabel: 'May batch', toStep: 'copy_step' }),
+        row({ kind: 'batch_passed', batchLabel: 'May batch', toStep: 'copy' }),
       ),
     ).not.toMatch(/overrode the holder/)
   })
@@ -265,23 +271,23 @@ describe('renderSummary, AM / admin holder override', () => {
     ).toBe('Cedar Creek · Mollie sent "May batch" back to you for changes.')
   })
 
-  it('batch_completed renders "finished" when wasOverride absent', () => {
+  it('batch_completed renders the finish-line voice when wasOverride absent', () => {
     expect(
       renderSummary(row({ kind: 'batch_completed', batchLabel: 'May batch' })),
-    ).toBe('Cedar Creek · Mollie finished "May batch".')
+    ).toBe('Cedar Creek · Mollie brought "May batch" across the finish line.')
   })
 
-  it('batch_completed prefixes "overrode the holder and finished" when wasOverride=true', () => {
+  it('batch_completed prefixes "overrode the holder and brought" when wasOverride=true', () => {
     expect(
       renderSummary(
         row({ kind: 'batch_completed', batchLabel: 'May batch', wasOverride: true }),
       ),
-    ).toBe('Cedar Creek · Mollie overrode the holder and finished "May batch".')
+    ).toBe('Cedar Creek · Mollie overrode the holder and brought "May batch" across the finish line.')
   })
 
   it('batch_completed falls back to default relay label when batchLabel missing', () => {
     expect(renderSummary(row({ kind: 'batch_completed' }))).toBe(
-      'Cedar Creek · Mollie finished a relay.',
+      'Cedar Creek · Mollie brought a relay across the finish line.',
     )
   })
 })
@@ -307,7 +313,7 @@ describe('renderSummary, production payload shape (no kind in payload)', () => {
         runId: null,
       } as MentionInboxRow['event'],
     } as MentionInboxRow
-    expect(renderSummary(r)).toBe('Cedar Creek · Mollie passed "May batch" to you.')
+    expect(renderSummary(r)).toBe('Cedar Creek · Mollie passed you the baton on "May batch".')
   })
 
   it('preview_review_submitted renders without kind in payload', () => {
