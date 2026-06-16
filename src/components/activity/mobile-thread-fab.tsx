@@ -59,7 +59,14 @@ export function MobileThreadFab({
         <DialogPrimitive.Popup
           data-slot="mobile-thread-fab-content"
           className={cn(
-            'fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col rounded-t-2xl border border-border bg-white text-popover-foreground shadow-lg outline-none',
+            // Definite height (not just max-h): the inner ActivityThread is
+            // h-full, and a max-height alone leaves the height chain
+            // unresolved, so the message list grows to its natural length and
+            // shoves the pinned composer below the sheet. A definite h-[85dvh]
+            // + overflow-hidden bounds the list so it scrolls internally and
+            // the composer stays visible. pb-[safe-area] clears the phone home
+            // indicator.
+            'fixed inset-x-0 bottom-0 z-50 flex h-[85dvh] flex-col overflow-hidden rounded-t-2xl border border-border bg-white pb-[env(safe-area-inset-bottom)] text-popover-foreground shadow-lg outline-none',
             'data-open:animate-in data-open:slide-in-from-bottom-full',
             'data-closed:animate-out data-closed:slide-out-to-bottom-full',
           )}

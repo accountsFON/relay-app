@@ -637,7 +637,7 @@ export default async function BatchDetailPage({
         <aside
           aria-label="Relay sidebar"
           data-testid="relay-sidebar-rail"
-          className="lg:sticky lg:top-4 lg:self-start lg:order-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-4"
+          className="lg:sticky lg:top-4 lg:self-start lg:order-2 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto space-y-4"
         >
           {isClientDecisionView ? (
             <ClientDecisionPanel batch={batchSummary} />
@@ -667,7 +667,7 @@ export default async function BatchDetailPage({
           <div
             aria-label="Client thread"
             data-testid="client-thread-rail"
-            className="hidden overflow-hidden rounded-2xl bg-card lg:flex lg:h-[36rem] lg:max-h-[calc(100vh-2rem)] lg:flex-col"
+            className="hidden overflow-hidden rounded-2xl bg-card lg:flex lg:h-[36rem] lg:max-h-[calc(100dvh-5rem)] lg:flex-col"
           >
             <h2 className="shrink-0 px-4 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               Client thread

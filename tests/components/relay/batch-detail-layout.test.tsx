@@ -91,7 +91,7 @@ describe('Batch detail: sticky right rail stacks every widget', () => {
       <aside
         aria-label="Relay sidebar"
         data-testid="relay-sidebar-rail"
-        className="lg:sticky lg:top-4 lg:self-start lg:order-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-4"
+        className="lg:sticky lg:top-4 lg:self-start lg:order-2 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto space-y-4"
       >
         <div data-testid="step-checklist-stub" className="rounded-2xl bg-card p-4">
           Step checklist
@@ -142,7 +142,10 @@ describe('Batch detail: sticky right rail stacks every widget', () => {
     const rail = screen.getByTestId('relay-sidebar-rail')
     expect(rail.className).toMatch(/lg:sticky/)
     expect(rail.className).toMatch(/lg:top-4/)
-    expect(rail.className).toMatch(/lg:max-h-/)
+    // max-height must subtract the top bar (3rem) + sticky offset (1rem) so the
+    // rail does not overshoot the scroll viewport and clip the composer at the
+    // bottom. Bare 100vh-2rem overshot by ~2rem (the bug).
+    expect(rail.className).toMatch(/lg:max-h-\[calc\(100dvh-5rem\)\]/)
     expect(rail.className).toMatch(/lg:overflow-y-auto/)
   })
 
