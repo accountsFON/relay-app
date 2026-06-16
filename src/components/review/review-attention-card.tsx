@@ -3,6 +3,7 @@
 import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Linkify } from '@/components/ui/linkify'
 import { Textarea } from '@/components/ui/textarea'
 import { MediaUpload } from '@/components/posts/media-upload'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
@@ -112,8 +113,8 @@ export function ReviewAttentionCard({
               </div>
             ) : (
               <div className="flex items-start justify-between gap-3">
-                <p className="whitespace-pre-wrap text-sm text-foreground">
-                  {caption}
+                <p className="whitespace-pre-wrap break-words text-sm text-foreground">
+                  <Linkify text={caption} />
                 </p>
                 <Button
                   type="button"

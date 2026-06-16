@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
+import { Linkify } from '@/components/ui/linkify'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -298,8 +299,8 @@ export function PostCard({
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-[15px] text-foreground whitespace-pre-line leading-relaxed">
-                  {post.caption}
+                <p className="text-[15px] text-foreground whitespace-pre-line leading-relaxed break-words">
+                  <Linkify text={post.caption} />
                 </p>
                 <QaEditedIndicator preQaCaption={post.preQaCaption} />
                 {post.hashtags.length > 0 && (
@@ -310,7 +311,7 @@ export function PostCard({
                     <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                       Graphic hook
                     </p>
-                    <p className="text-[14px] text-foreground mt-1">{post.graphicHook}</p>
+                    <p className="text-[14px] text-foreground mt-1 break-words"><Linkify text={post.graphicHook} /></p>
                   </div>
                 )}
                 {post.designerNotes && (
@@ -318,7 +319,7 @@ export function PostCard({
                     <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                       Designer notes
                     </p>
-                    <p className="text-[14px] text-foreground mt-1">{post.designerNotes}</p>
+                    <p className="text-[14px] text-foreground mt-1 break-words"><Linkify text={post.designerNotes} /></p>
                   </div>
                 )}
               </div>

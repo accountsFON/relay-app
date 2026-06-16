@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Linkify } from '@/components/ui/linkify'
 import { FixWithAIButton } from '@/components/preview/fix-with-ai-button'
 import type { PinLocation, ThreadAuthor } from '@/types/preview'
 
@@ -197,8 +198,8 @@ export function PinPopover({
             <span className="text-[11px] font-semibold text-[#262626]">
               {authorLabel(comment.author)}
             </span>
-            <p className="whitespace-pre-line text-[13px] leading-snug text-[#262626]">
-              {comment.body}
+            <p className="whitespace-pre-line break-words text-[13px] leading-snug text-[#262626]">
+              <Linkify text={comment.body} />
             </p>
           </li>
         ))}
