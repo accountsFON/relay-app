@@ -22,6 +22,16 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-16 — Notification copy: baton-pass voice + destination stage** (`509dffc`, PR #218)
+  Transition notifications + activity-thread rows now say what happened AND
+  where the work moved, in the app's own baton-pass voice: "X passed you the
+  baton on \"Label\". Now at Client review." / "X sent \"Label\" back to you for
+  changes. Now at Design revisions." / "X brought \"Label\" across the finish
+  line." The activity-thread rows previously read "passed Label to Person" with
+  no destination stage at all; they now name it too. No writer/schema change
+  (`toStep` was already in the payloads). Both surfaces stay in lockstep
+  (`src/lib/notification-copy.ts` + `src/components/activity/event-renderer.tsx`).
+
 - [x] **2026-06-16 — App icon / favicon get a solid background** (`d858dfa`, PR #217)
   All four icon assets (`icon-192`, `icon-512`, `apple-touch-icon`, `favicon.ico`)
   were a dark navy "R" on a fully transparent background, so the mark vanished
