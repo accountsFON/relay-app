@@ -35,7 +35,7 @@ describe('EventRenderer copy', () => {
       reason: 'fonts off',
     })
     render(<EventRenderer event={event} />)
-    const node = screen.getByText(/back to Julio\. Reason: "fonts off"/)
+    const node = screen.getByText(/back to Julio for changes, now at Design\. Reason: "fonts off"/)
     expect(node).toBeInTheDocument()
     expect(node.textContent ?? '').not.toMatch(/[\u2013\u2014]/)
   })
@@ -414,7 +414,7 @@ describe('EventRenderer copy', () => {
     })
     render(<EventRenderer event={event} />)
     expect(
-      screen.getByText(/passed May Round 1 to Julio/),
+      screen.getByText(/passed the baton on May Round 1 to Julio, now at Design/),
     ).toBeInTheDocument()
     expect(screen.queryByText(/overrode the holder/)).not.toBeInTheDocument()
   })
@@ -431,7 +431,7 @@ describe('EventRenderer copy', () => {
     })
     render(<EventRenderer event={event} />)
     expect(
-      screen.getByText(/overrode the holder and passed May Round 1 to Julio/),
+      screen.getByText(/overrode the holder and passed the baton on May Round 1 to Julio, now at Design/),
     ).toBeInTheDocument()
   })
 
@@ -449,7 +449,7 @@ describe('EventRenderer copy', () => {
     render(<EventRenderer event={event} />)
     expect(
       screen.getByText(
-        /overrode the holder and sent May Round 1 back to Julio\. Reason: "fonts off"/,
+        /overrode the holder and sent May Round 1 back to Julio for changes, now at Design\. Reason: "fonts off"/,
       ),
     ).toBeInTheDocument()
   })
@@ -462,7 +462,7 @@ describe('EventRenderer copy', () => {
     })
     render(<EventRenderer event={event} />)
     expect(
-      screen.getByText(/finished Cedar Creek May 2026/),
+      screen.getByText(/brought Cedar Creek May 2026 across the finish line/),
     ).toBeInTheDocument()
     expect(screen.queryByText(/overrode the holder/)).not.toBeInTheDocument()
   })
@@ -476,7 +476,7 @@ describe('EventRenderer copy', () => {
     })
     render(<EventRenderer event={event} />)
     expect(
-      screen.getByText(/overrode the holder and finished Cedar Creek May 2026/),
+      screen.getByText(/overrode the holder and brought Cedar Creek May 2026 across the finish line/),
     ).toBeInTheDocument()
   })
 })

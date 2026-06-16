@@ -202,24 +202,30 @@ interface RenderedEvent {
 function describeEvent(event: ActivityEventView): RenderedEvent {
   const p = event.payload
   switch (event.kind) {
-    case 'batch_passed':
+    case 'batch_passed': {
       if (p.kind !== 'batch_passed') break
+      const stepLabel = relayStepLabel(p.toStep)
+      const where = stepLabel ? `, now at ${stepLabel}` : ''
       return {
         icon: ArrowRight,
         tone: 'success',
         message: p.wasOverride
-          ? `overrode the holder and passed ${p.batchLabel} to ${p.toUserName}`
-          : `passed ${p.batchLabel} to ${p.toUserName}`,
+          ? `overrode the holder and passed the baton on ${p.batchLabel} to ${p.toUserName}${where}`
+          : `passed the baton on ${p.batchLabel} to ${p.toUserName}${where}`,
       }
-    case 'batch_sent_back':
+    }
+    case 'batch_sent_back': {
       if (p.kind !== 'batch_sent_back') break
+      const stepLabel = relayStepLabel(p.toStep)
+      const where = stepLabel ? `, now at ${stepLabel}` : ''
       return {
         icon: ArrowLeft,
         tone: 'warning',
         message: p.wasOverride
-          ? `overrode the holder and sent ${p.batchLabel} back to ${p.toUserName}. Reason: "${truncate(p.reason, 60)}"`
-          : `sent ${p.batchLabel} back to ${p.toUserName}. Reason: "${truncate(p.reason, 60)}"`,
+          ? `overrode the holder and sent ${p.batchLabel} back to ${p.toUserName} for changes${where}. Reason: "${truncate(p.reason, 60)}"`
+          : `sent ${p.batchLabel} back to ${p.toUserName} for changes${where}. Reason: "${truncate(p.reason, 60)}"`,
       }
+    }
     case 'batch_revision_dispatched':
       if (p.kind !== 'batch_revision_dispatched') break
       return {
@@ -240,8 +246,8 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         icon: Check,
         tone: 'success',
         message: p.wasOverride
-          ? `overrode the holder and finished ${p.batchLabel}`
-          : `finished ${p.batchLabel}`,
+          ? `overrode the holder and brought ${p.batchLabel} across the finish line`
+          : `brought ${p.batchLabel} across the finish line`,
       }
     case 'batch_force_stepped':
       if (p.kind !== 'batch_force_stepped') break
