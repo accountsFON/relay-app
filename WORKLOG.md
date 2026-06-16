@@ -22,6 +22,16 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-16 — App icon / favicon get a solid background** (`d858dfa`, PR #217)
+  All four icon assets (`icon-192`, `icon-512`, `apple-touch-icon`, `favicon.ico`)
+  were a dark navy "R" on a fully transparent background, so the mark vanished
+  on dark surfaces (Safari dark-mode tabs, dark home-screen wallpaper, Android
+  adaptive-icon background) — and the apple icon was flagged `maskable`, which
+  requires a solid fill. Regenerated from the brand source (`public/brand/icon-r-dark.svg`)
+  onto a solid brand off-white (`--neutral-50`, #F6F7F6, matching the manifest
+  PWA splash) with a ~13% safe-zone inset so the R survives rounded / maskable
+  cropping. Added a reproducible generator: `scripts/generate-icons.mjs`.
+
 - [x] **2026-06-15 — Client thread no longer clipped at the bottom** (`73f9470`)
   The client-thread chat box was cut off by the bottom of the screen. One root
   cause, two severities (verified live in-browser, before + after, on the prod
