@@ -11,22 +11,7 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-- [ ] **Client thread cut off at the bottom (relay detail page)** — _root-caused, fix pending_
-  The client thread's chat box gets clipped by the bottom of the screen. One
-  root cause, two severities, confirmed live in-browser:
-  - **Mobile (fully hidden):** the floating-chat bottom sheet sets only a
-    `max-h-[85dvh]`, never a definite height, so the message list grows to its
-    natural length (measured ~1267px inside a 567px sheet) and shoves the pinned
-    composer ~645px below the screen — you see only history, no chat box.
-  - **Desktop (Send button half-clipped):** the sticky right rail's
-    `max-h-[calc(100vh-2rem)]` doesn't subtract the 48px top bar + 16px sticky
-    offset, so its bottom lands ~32px below the fold — exactly where Send sits —
-    and the rail is maxed out so you can't scroll to it.
-  - **Fix (tested live):** give the mobile sheet a definite `h-[85dvh]` +
-    `overflow-hidden` + safe-area bottom inset; change the desktop rail +
-    thread card to `max-h-[calc(100dvh-5rem)]`. Files:
-    `src/components/activity/mobile-thread-fab.tsx`,
-    `src/app/(app)/clients/[id]/batches/[batchId]/page.tsx`.
+- _(nothing in progress right now)_
 
 ## Notes / standing rules
 
@@ -36,6 +21,19 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 ---
 
 ## Shipped
+
+- [x] **2026-06-15 — Client thread no longer clipped at the bottom** (`73f9470`)
+  The client-thread chat box was cut off by the bottom of the screen. One root
+  cause, two severities (verified live in-browser, before + after, on the prod
+  deploy). **Mobile:** the floating-chat sheet used a bare `max-h-[85dvh]` with
+  no definite height, so the `h-full` message list grew to its natural length
+  (~1267px in a 567px sheet) and shoved the pinned composer ~645px off-screen —
+  only history showed. **Desktop:** the sticky right rail's `max-h-[calc(100vh-2rem)]`
+  ignored the 48px top bar + 16px sticky offset, clipping the Send button ~32px
+  below the fold with no way to scroll to it. Fix: mobile sheet gets a definite
+  `h-[85dvh]` + `overflow-hidden` + safe-area bottom inset; desktop rail + thread
+  card move to `max-h-[calc(100dvh-5rem)]`. Adds a real mobile-thread-fab
+  regression test (its discriminating assertions fail on the old code).
 
 - [x] **2026-06-15 — Hyperlinks clickable app-wide** (`a0f9923`, `431a051`)
   URLs in thread comments, post captions / graphic hook / designer notes,
