@@ -11,7 +11,22 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-- _(nothing in progress right now)_
+- [ ] **Client thread cut off at the bottom (relay detail page)** — _root-caused, fix pending_
+  The client thread's chat box gets clipped by the bottom of the screen. One
+  root cause, two severities, confirmed live in-browser:
+  - **Mobile (fully hidden):** the floating-chat bottom sheet sets only a
+    `max-h-[85dvh]`, never a definite height, so the message list grows to its
+    natural length (measured ~1267px inside a 567px sheet) and shoves the pinned
+    composer ~645px below the screen — you see only history, no chat box.
+  - **Desktop (Send button half-clipped):** the sticky right rail's
+    `max-h-[calc(100vh-2rem)]` doesn't subtract the 48px top bar + 16px sticky
+    offset, so its bottom lands ~32px below the fold — exactly where Send sits —
+    and the rail is maxed out so you can't scroll to it.
+  - **Fix (tested live):** give the mobile sheet a definite `h-[85dvh]` +
+    `overflow-hidden` + safe-area bottom inset; change the desktop rail +
+    thread card to `max-h-[calc(100dvh-5rem)]`. Files:
+    `src/components/activity/mobile-thread-fab.tsx`,
+    `src/app/(app)/clients/[id]/batches/[batchId]/page.tsx`.
 
 ## Notes / standing rules
 
