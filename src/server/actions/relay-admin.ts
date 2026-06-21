@@ -196,7 +196,7 @@ export async function completeOnboardingAction(input: {
       },
       select: { id: true },
     })
-    await reseedChecklistForStep(tx, batch.id, RelayStep.copy)
+    await reseedChecklistForStep(tx, batch.id, RelayStep.copy, client.clientReviewEnabled)
 
     await recordActivity(
       {
@@ -265,7 +265,7 @@ export async function createBatchAction(input: {
       },
       select: { id: true },
     })
-    await reseedChecklistForStep(tx, batch.id, RelayStep.copy)
+    await reseedChecklistForStep(tx, batch.id, RelayStep.copy, client.clientReviewEnabled)
     await recordActivity(
       {
         clientId: client.id,

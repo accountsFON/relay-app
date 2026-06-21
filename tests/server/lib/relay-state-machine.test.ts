@@ -4,6 +4,7 @@ import {
   HOLDER_ROLE,
   LEGAL_TRANSITIONS,
   LEGAL_TRANSITIONS_NO_REVIEW,
+  checklistRowsForStep,
   holderRoleForStep,
   isChecklistComplete,
   legalNextSteps,
@@ -11,6 +12,7 @@ import {
   transitionsFor,
   validateTransition,
 } from '@/server/lib/relay-state-machine'
+import { SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
 
 describe('validateTransition', () => {
   it('allows every transition declared in LEGAL_TRANSITIONS', () => {
@@ -361,6 +363,31 @@ describe('implementing_revisions transitions (workspace redesign)', () => {
   })
   it('keeps the send-back safety edge to client_decision', () => {
     expect(validateTransition(RelayStep.implementing_revisions, RelayStep.client_decision, true).ok).toBe(true)
+  })
+})
+
+describe('checklistRowsForStep — send review link item', () => {
+  it('appends a required Send review link item on am_review_design when client review is on', () => {
+    const rows = checklistRowsForStep('batch-1', RelayStep.am_review_design, true)
+    const sendItem = rows.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
+    expect(sendItem).toEqual({
+      batchId: 'batch-1',
+      step: RelayStep.am_review_design,
+      label: SEND_REVIEW_LINK_LABEL,
+      required: true,
+    })
+    expect(rows.length).toBe(5)
+  })
+
+  it('omits the Send review link item when client review is off', () => {
+    const rows = checklistRowsForStep('batch-1', RelayStep.am_review_design, false)
+    expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
+    expect(rows.length).toBe(4)
+  })
+
+  it('never adds the item on other steps even when client review is on', () => {
+    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true)
+    expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
   })
 })
 

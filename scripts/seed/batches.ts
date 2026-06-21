@@ -236,7 +236,7 @@ export async function seedBatches(
     }
 
     await db.$transaction(async (tx) => {
-      await reseedChecklistForStep(tx, batchId, spec.step)
+      await reseedChecklistForStep(tx, batchId, spec.step, client.clientReviewEnabled)
       const checkedCount = spec.checkedCount ?? 0
       if (checkedCount > 0) {
         const items = await tx.checklistItem.findMany({

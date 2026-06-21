@@ -1,5 +1,13 @@
 import { RelayStep } from '@prisma/client'
 
+/**
+ * Label of the special "Send review link" checklist item. Conditionally
+ * appended to the AM review step when the client has client review enabled
+ * (see checklistRowsForStep). Recognized by label in ChecklistPanel to render
+ * it as an action row instead of a plain checkbox.
+ */
+export const SEND_REVIEW_LINK_LABEL = 'Send review link'
+
 export interface ChecklistSeedItem {
   label: string
   required?: boolean

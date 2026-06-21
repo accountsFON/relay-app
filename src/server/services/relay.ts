@@ -243,7 +243,7 @@ export async function passBaton(input: PassBatonInput) {
       },
     })
 
-    await reseedChecklistForStep(tx, batch.id, input.toStep)
+    await reseedChecklistForStep(tx, batch.id, input.toStep, batch.clientReviewEnabled)
 
     await recordActivity(
       {
@@ -375,7 +375,7 @@ export async function advanceFromClientReview(
       },
     })
 
-    await reseedChecklistForStep(tx, batch.id, toStep)
+    await reseedChecklistForStep(tx, batch.id, toStep, batch.clientReviewEnabled)
 
     await recordActivity(
       {
@@ -520,7 +520,7 @@ export async function finishBatch(input: FinishBatchInput) {
       },
     })
 
-    await reseedChecklistForStep(tx, batch.id, RelayStep.completed)
+    await reseedChecklistForStep(tx, batch.id, RelayStep.completed, batch.clientReviewEnabled)
 
     await recordActivity(
       {
@@ -568,6 +568,7 @@ export async function forceStep(input: ForceStepInput) {
         currentStep: true,
         currentHolder: true,
         label: true,
+        clientReviewEnabled: true,
         client: { select: { organizationId: true } },
       },
     })
@@ -625,7 +626,7 @@ export async function forceStep(input: ForceStepInput) {
       },
     })
 
-    await reseedChecklistForStep(tx, batch.id, input.toStep)
+    await reseedChecklistForStep(tx, batch.id, input.toStep, batch.clientReviewEnabled)
 
     await recordActivity(
       {
@@ -721,7 +722,7 @@ export async function sendBackBaton(input: SendBackBatonInput) {
       },
     })
 
-    await reseedChecklistForStep(tx, batch.id, input.toStep)
+    await reseedChecklistForStep(tx, batch.id, input.toStep, batch.clientReviewEnabled)
 
     await recordActivity(
       {
