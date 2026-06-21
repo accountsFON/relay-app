@@ -38,6 +38,7 @@ import { STEP_LABEL } from './labels'
 import type { BatchSummary, ChecklistItem } from './types'
 import { SimpleTooltip } from './relay-tooltips'
 import { AdminForceStepSection } from './admin-force-step-section'
+import { ClientReviewEmailModal } from '@/components/relay/client-review-email-modal'
 import {
   finishBatchAction,
   passBatonAction,
@@ -67,6 +68,14 @@ export interface ChecklistPanelProps {
    * every transition.
    */
   legalForwardTargets?: { step: RelayStep; label: string }[]
+  /**
+   * The client's review email on file (Client.clientReviewEmail). When passing
+   * INTO client review with no email here, the panel intercepts with a modal
+   * instead of passing directly.
+   */
+  clientReviewEmail?: string | null
+  /** Client display name, used as the magic-link recipient name in the modal. */
+  clientName?: string
 }
 
 export function ChecklistPanel({
@@ -77,11 +86,14 @@ export function ChecklistPanel({
   nextStep,
   canForceStep = false,
   legalForwardTargets,
+  clientReviewEmail,
+  clientName,
 }: ChecklistPanelProps) {
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(items.map((i) => [i.id, i.checked]))
   )
   const [sendBackTarget, setSendBackTarget] = useState<RelayStep | null>(null)
+  const [reviewEmailModalStep, setReviewEmailModalStep] = useState<RelayStep | null>(null)
   const [reasonText, setReasonText] = useState('')
   const [error, setError] = useState<string | null>(null)
   // `isActing` gates the destructive state-machine actions (pass / finish /
@@ -110,8 +122,22 @@ export function ChecklistPanel({
     })
   }
 
+  /**
+   * Passing INTO client review requires a client review email so the magic
+   * link has somewhere to go. If the client has none on file, intercept with
+   * the modal instead of passing; it captures the email, sends the link
+   * (which also persists the email), then passes.
+   */
+  function needsReviewEmail(toStep: RelayStep): boolean {
+    return toStep === RelayStep.sent_to_client && !clientReviewEmail
+  }
+
   function pass() {
     if (!nextStep) return
+    if (needsReviewEmail(nextStep)) {
+      setReviewEmailModalStep(nextStep)
+      return
+    }
     startActing(async () => {
       try {
         await passBatonAction({ batchId: batch.id, toStep: nextStep })
@@ -123,6 +149,10 @@ export function ChecklistPanel({
   }
 
   function passTo(toStep: RelayStep) {
+    if (needsReviewEmail(toStep)) {
+      setReviewEmailModalStep(toStep)
+      return
+    }
     startActing(async () => {
       try {
         await passBatonAction({ batchId: batch.id, toStep })
@@ -350,6 +380,22 @@ export function ChecklistPanel({
             canForceStep={canForceStep}
           />
         </div>
+      )}
+
+      {reviewEmailModalStep && (
+        <ClientReviewEmailModal
+          open
+          onOpenChange={(o) => {
+            if (!o) setReviewEmailModalStep(null)
+          }}
+          batchId={batch.id}
+          clientName={clientName ?? batch.label}
+          toStep={reviewEmailModalStep}
+          onComplete={() => {
+            setReviewEmailModalStep(null)
+            router.refresh()
+          }}
+        />
       )}
     </Card>
   )

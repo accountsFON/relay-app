@@ -660,6 +660,8 @@ export default async function BatchDetailPage({
                 nextStep={nextStep}
                 canForceStep={canForceStep}
                 legalForwardTargets={legalForwardTargets}
+                clientReviewEmail={batch.client.clientReviewEmail}
+                clientName={client.name}
               />
             </>
           )}
