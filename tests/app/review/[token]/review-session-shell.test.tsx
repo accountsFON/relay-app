@@ -193,3 +193,35 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
     expect(textarea.value).toBe('A prior suggestion')
   })
 })
+
+describe('ReviewSessionShell -- tutorial modal', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({ ok: true, status: 200 } as Response),
+      ),
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('renders the tutorial on the active review surface', () => {
+    render(<ReviewSessionShell {...BASE_PROPS} sessionStatus="in_progress" />)
+
+    expect(
+      screen.getByTestId('review-tutorial-modal'),
+    ).toBeInTheDocument()
+  })
+
+  it('does not render the tutorial on the submitted screen', () => {
+    render(<ReviewSessionShell {...BASE_PROPS} sessionStatus="submitted" />)
+
+    expect(
+      screen.queryByTestId('review-tutorial-modal'),
+    ).toBeNull()
+  })
+})
