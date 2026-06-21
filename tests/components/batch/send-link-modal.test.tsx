@@ -76,6 +76,27 @@ describe('SendLinkModal', () => {
     expect(screen.getByLabelText(/recipient name/i)).toHaveValue('Akkoo Coffee')
   })
 
+  it('fires onSent after a successful send', async () => {
+    const user = userEvent.setup()
+    const onSent = vi.fn()
+    vi.mocked(createAndSendMagicLinkAction).mockResolvedValue({
+      magicLinkId: 'l', reviewUrl: 'https://relay.test/review/tok',
+      expiresAt: new Date('2026-07-01'), emailSent: true, emailError: null,
+    })
+    render(
+      <SendLinkModal
+        batchId="b"
+        clientName="Akkoo Coffee"
+        clientReviewEmail="jane@client.com"
+        open
+        onOpenChange={vi.fn()}
+        onSent={onSent}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /generate and send/i }))
+    await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1))
+  })
+
   it('calls the action with the form payload and renders the URL on success', async () => {
     const user = userEvent.setup()
     vi.mocked(createAndSendMagicLinkAction).mockResolvedValue({
