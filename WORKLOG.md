@@ -22,6 +22,14 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-21 — Send review link is a checklist step** (PR #221)
+  "Send review link" is now a required checklist item on the AM review step
+  (when client review is on): it opens the send modal and checks itself once the
+  link is sent, or "Mark done without sending" to skip — the pass into client
+  review stays locked until one is chosen. Supersedes item 20's pass-time modal
+  (removed); keeps the clientReviewEmail field, send→store sync, profile field,
+  and prefill. Caleb/Julio item 21.
+
 - [x] **2026-06-21 — Client review email + pass-time modal** (PR #219)
   Passing a relay into client review with no review email on file now interrupts
   with a modal (set the client's email → sends the magic link → advances),

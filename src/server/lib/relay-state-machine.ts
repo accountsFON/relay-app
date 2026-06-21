@@ -1,5 +1,5 @@
 import { RelayStep, RelayRole } from '@prisma/client'
-import { CHECKLIST_SEED } from '@/lib/relay-checklists'
+import { CHECKLIST_SEED, SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
 import type { DbClient, DbTx } from '@/db/client'
 
 export { RelayStep, RelayRole }
@@ -170,6 +170,29 @@ export function holderRoleForStep(step: RelayStep): RelayRole {
 }
 
 /**
+ * The checklist rows a batch should have at `step`: static template rows plus
+ * the conditional "Send review link" item on the AM review step when the client
+ * has client review enabled (item 21).
+ */
+export function checklistRowsForStep(
+  batchId: string,
+  step: RelayStep,
+  clientReviewEnabled: boolean,
+): { batchId: string; step: RelayStep; label: string; required: boolean }[] {
+  const seed = CHECKLIST_SEED[step] ?? []
+  const rows = seed.map((item) => ({
+    batchId,
+    step,
+    label: item.label,
+    required: item.required ?? true,
+  }))
+  if (step === RelayStep.am_review_design && clientReviewEnabled) {
+    rows.push({ batchId, step, label: SEND_REVIEW_LINK_LABEL, required: true })
+  }
+  return rows
+}
+
+/**
  * Wipe + reseed a batch's checklist for the given step. Used on every
  * Pass and Send-Back so the destination starts fresh ("reset always",
  * locked decision #11). Caller must run inside a transaction.
@@ -178,35 +201,23 @@ export async function reseedChecklistForStep(
   tx: DbOrTx,
   batchId: string,
   step: RelayStep,
+  clientReviewEnabled: boolean,
 ): Promise<void> {
   await tx.checklistItem.deleteMany({ where: { batchId } })
-  const seed = CHECKLIST_SEED[step] ?? []
-  if (seed.length === 0) return
-  await tx.checklistItem.createMany({
-    data: seed.map((item) => ({
-      batchId,
-      step,
-      label: item.label,
-      required: item.required ?? true,
-    })),
-  })
+  const data = checklistRowsForStep(batchId, step, clientReviewEnabled)
+  if (data.length === 0) return
+  await tx.checklistItem.createMany({ data })
 }
 
 export async function seedChecklistForStep(
   tx: DbOrTx,
   batchId: string,
   step: RelayStep,
+  clientReviewEnabled: boolean,
 ): Promise<void> {
-  const seed = CHECKLIST_SEED[step] ?? []
-  if (seed.length === 0) return
-  await tx.checklistItem.createMany({
-    data: seed.map((item) => ({
-      batchId,
-      step,
-      label: item.label,
-      required: item.required ?? true,
-    })),
-  })
+  const data = checklistRowsForStep(batchId, step, clientReviewEnabled)
+  if (data.length === 0) return
+  await tx.checklistItem.createMany({ data })
 }
 
 export async function wipeChecklistForBatch(

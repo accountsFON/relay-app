@@ -22,6 +22,7 @@ interface Props {
   clientReviewEmail?: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSent?: () => void
 }
 
 interface SuccessState {
@@ -34,7 +35,7 @@ const MIN_DAYS = 1
 const MAX_DAYS = 90
 const DEFAULT_DAYS = 30
 
-export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, onOpenChange }: Props) {
+export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, onOpenChange, onSent }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [name, setName] = useState(clientName ?? '')
@@ -97,6 +98,7 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
           emailSent: result.emailSent,
           emailError: result.emailError,
         })
+        onSent?.()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create link')
       }
