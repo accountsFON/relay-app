@@ -3,10 +3,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { RelayStep, RelayRole } from '@prisma/client'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
 import type { BatchSummary, ChecklistItem } from '@/components/relay/types'
+import { SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
 import {
   passBatonAction,
   tickChecklistItemAction,
 } from '@/server/actions/relay'
+import { createAndSendMagicLinkAction } from '@/server/actions/magicLink'
 
 const refreshMock = vi.fn()
 
@@ -22,8 +24,8 @@ vi.mock('@/server/actions/relay', () => ({
   forceStepAction: vi.fn(),
 }))
 
-// The client-review-email modal calls magicLink; mock it so opening the modal
-// is inert in these tests.
+// The SendLinkModal calls magicLink; mock it so opening the modal is inert in
+// these tests.
 vi.mock('@/server/actions/magicLink', () => ({ createAndSendMagicLinkAction: vi.fn() }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -270,95 +272,69 @@ describe('ChecklistPanel multiple forward targets', () => {
   })
 })
 
-describe('ChecklistPanel — client review email gate (Task 7)', () => {
+function makeSendItem(overrides: Partial<ChecklistItem> = {}): ChecklistItem {
+  return {
+    id: 'item-send', batchId: 'batch-1', step: RelayStep.am_review_design,
+    label: SEND_REVIEW_LINK_LABEL, required: true, checked: false,
+    checkedBy: null, checkedAt: null, ...overrides,
+  }
+}
+
+describe('ChecklistPanel — send review link item', () => {
   beforeEach(() => {
     refreshMock.mockReset()
-    vi.mocked(passBatonAction).mockReset()
-    vi.mocked(passBatonAction).mockResolvedValue(undefined as never)
+    vi.mocked(tickChecklistItemAction).mockReset()
+    vi.mocked(tickChecklistItemAction).mockResolvedValue({ ok: true } as never)
+    vi.mocked(createAndSendMagicLinkAction).mockReset()
   })
 
-  it('opens the modal instead of passing when no review email is on file', async () => {
-    const { default: userEvent } = await import('@testing-library/user-event')
-    const user = userEvent.setup()
-    render(
-      <ChecklistPanel
-        batch={makeBatch({ clientReviewEnabled: true })}
-        items={[]}
-        canAct
-        nextStep={RelayStep.sent_to_client}
-        clientName="Akkoo Coffee"
-        clientReviewEmail={null}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: /send to client review/i }))
-    expect(passBatonAction).not.toHaveBeenCalled()
-    expect(screen.getByTestId('client-review-email-modal')).toBeInTheDocument()
+  it('renders the item as action buttons, not a plain checkbox', () => {
+    render(<ChecklistPanel batch={makeBatch()} items={[makeSendItem()]} canAct
+      nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
+    expect(screen.getByRole('button', { name: /^send review link$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /mark done without sending/i })).toBeInTheDocument()
   })
 
-  it('passes directly when a review email is already on file', async () => {
+  it('opens the SendLinkModal when "Send review link" is clicked', async () => {
     const { default: userEvent } = await import('@testing-library/user-event')
     const user = userEvent.setup()
-    render(
-      <ChecklistPanel
-        batch={makeBatch({ clientReviewEnabled: true })}
-        items={[]}
-        canAct
-        nextStep={RelayStep.sent_to_client}
-        clientName="Akkoo Coffee"
-        clientReviewEmail="jane@client.com"
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: /send to client review/i }))
-    expect(passBatonAction).toHaveBeenCalledWith({
-      batchId: 'batch-1',
-      toStep: RelayStep.sent_to_client,
+    render(<ChecklistPanel batch={makeBatch()} items={[makeSendItem()]} canAct
+      nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
+    await user.click(screen.getByRole('button', { name: /^send review link$/i }))
+    expect(screen.getByLabelText(/recipient name/i)).toBeInTheDocument()
+  })
+
+  it('"Mark done without sending" ticks the item without opening the modal', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    render(<ChecklistPanel batch={makeBatch()} items={[makeSendItem()]} canAct
+      nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail={null} />)
+    await user.click(screen.getByRole('button', { name: /mark done without sending/i }))
+    expect(tickChecklistItemAction).toHaveBeenCalledWith({ itemId: 'item-send', checked: true })
+    expect(screen.queryByLabelText(/recipient name/i)).not.toBeInTheDocument()
+  })
+
+  it('locks the pass until checked, unlocks once checked', () => {
+    const { rerender } = render(<ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: false })]} canAct
+      nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
+    expect(screen.getByRole('button', { name: /send to client review/i })).toBeDisabled()
+    rerender(<ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: true })]} canAct
+      nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
+    expect(screen.getByRole('button', { name: /send to client review/i })).toBeEnabled()
+  })
+
+  it('ticks the item after a successful send via the modal', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    vi.mocked(createAndSendMagicLinkAction).mockResolvedValue({
+      magicLinkId: 'l', reviewUrl: 'https://relay.test/review/tok',
+      expiresAt: new Date('2026-07-01'), emailSent: true, emailError: null,
     })
-    expect(screen.queryByTestId('client-review-email-modal')).not.toBeInTheDocument()
-  })
-
-  it('passTo: opens the modal instead of passing when entering client review with no email (multi-target path)', async () => {
-    const { default: userEvent } = await import('@testing-library/user-event')
-    const user = userEvent.setup()
-    render(
-      <ChecklistPanel
-        batch={makeBatch({ currentStep: RelayStep.implementing_revisions })}
-        items={[]}
-        canAct
-        clientName="Akkoo Coffee"
-        clientReviewEmail={null}
-        legalForwardTargets={[
-          { step: RelayStep.sent_to_client, label: 'Send back to client for re-review' },
-          { step: RelayStep.final_qa_schedule, label: 'Proceed to scheduling' },
-        ]}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: /send back to client for re-review/i }))
-    expect(passBatonAction).not.toHaveBeenCalled()
-    expect(screen.getByTestId('client-review-email-modal')).toBeInTheDocument()
-  })
-
-  it('passTo: passes directly to the chosen target when a review email is on file (multi-target path)', async () => {
-    const { default: userEvent } = await import('@testing-library/user-event')
-    const user = userEvent.setup()
-    render(
-      <ChecklistPanel
-        batch={makeBatch({ currentStep: RelayStep.implementing_revisions })}
-        items={[]}
-        canAct
-        clientName="Akkoo Coffee"
-        clientReviewEmail="jane@client.com"
-        legalForwardTargets={[
-          { step: RelayStep.sent_to_client, label: 'Send back to client for re-review' },
-          { step: RelayStep.final_qa_schedule, label: 'Proceed to scheduling' },
-        ]}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: /send back to client for re-review/i }))
-    expect(passBatonAction).toHaveBeenCalledWith({
-      batchId: 'batch-1',
-      toStep: RelayStep.sent_to_client,
-    })
-    expect(screen.queryByTestId('client-review-email-modal')).not.toBeInTheDocument()
+    render(<ChecklistPanel batch={makeBatch()} items={[makeSendItem()]} canAct
+      nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
+    await user.click(screen.getByRole('button', { name: /^send review link$/i }))
+    await user.click(screen.getByRole('button', { name: /generate and send/i }))
+    await waitFor(() => expect(tickChecklistItemAction).toHaveBeenCalledWith({ itemId: 'item-send', checked: true }))
   })
 })
 

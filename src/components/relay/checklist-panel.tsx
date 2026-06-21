@@ -38,7 +38,8 @@ import { STEP_LABEL } from './labels'
 import type { BatchSummary, ChecklistItem } from './types'
 import { SimpleTooltip } from './relay-tooltips'
 import { AdminForceStepSection } from './admin-force-step-section'
-import { ClientReviewEmailModal } from '@/components/relay/client-review-email-modal'
+import { SendLinkModal } from '@/components/batch/send-link-modal'
+import { SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
 import {
   finishBatchAction,
   passBatonAction,
@@ -69,12 +70,14 @@ export interface ChecklistPanelProps {
    */
   legalForwardTargets?: { step: RelayStep; label: string }[]
   /**
-   * The client's review email on file (Client.clientReviewEmail). When passing
-   * INTO client review with no email here, the panel intercepts with a modal
-   * instead of passing directly.
+   * The client's review email on file (Client.clientReviewEmail). Pre-fills the
+   * recipient email in the Send review link modal.
    */
   clientReviewEmail?: string | null
-  /** Client display name, used as the magic-link recipient name in the modal. */
+  /**
+   * Client display name, used as the magic-link recipient name in the Send
+   * review link modal.
+   */
   clientName?: string
 }
 
@@ -92,8 +95,21 @@ export function ChecklistPanel({
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(items.map((i) => [i.id, i.checked]))
   )
+  // Re-seed checked state when the server sends fresh items. A tick is
+  // optimistic local state and does NOT refresh (see tick()), but a
+  // router.refresh() elsewhere (e.g. after the Send review link modal mints a
+  // link) re-renders this panel with updated item.checked from the server,
+  // and that authoritative value must win. The signature change is the
+  // "adjust state during render when a prop changes" React pattern, so it
+  // costs nothing on ordinary re-renders.
+  const itemsSignature = items.map((i) => `${i.id}:${i.checked ? 1 : 0}`).join('|')
+  const [seededSignature, setSeededSignature] = useState(itemsSignature)
+  if (itemsSignature !== seededSignature) {
+    setChecked(Object.fromEntries(items.map((i) => [i.id, i.checked])))
+    setSeededSignature(itemsSignature)
+  }
   const [sendBackTarget, setSendBackTarget] = useState<RelayStep | null>(null)
-  const [reviewEmailModalStep, setReviewEmailModalStep] = useState<RelayStep | null>(null)
+  const [sendLinkItemId, setSendLinkItemId] = useState<string | null>(null)
   const [reasonText, setReasonText] = useState('')
   const [error, setError] = useState<string | null>(null)
   // `isActing` gates the destructive state-machine actions (pass / finish /
@@ -122,22 +138,8 @@ export function ChecklistPanel({
     })
   }
 
-  /**
-   * Passing INTO client review requires a client review email so the magic
-   * link has somewhere to go. If the client has none on file, intercept with
-   * the modal instead of passing; it captures the email, sends the link
-   * (which also persists the email), then passes.
-   */
-  function needsReviewEmail(toStep: RelayStep): boolean {
-    return toStep === RelayStep.sent_to_client && !clientReviewEmail
-  }
-
   function pass() {
     if (!nextStep) return
-    if (needsReviewEmail(nextStep)) {
-      setReviewEmailModalStep(nextStep)
-      return
-    }
     startActing(async () => {
       try {
         await passBatonAction({ batchId: batch.id, toStep: nextStep })
@@ -149,10 +151,6 @@ export function ChecklistPanel({
   }
 
   function passTo(toStep: RelayStep) {
-    if (needsReviewEmail(toStep)) {
-      setReviewEmailModalStep(toStep)
-      return
-    }
     startActing(async () => {
       try {
         await passBatonAction({ batchId: batch.id, toStep })
@@ -232,41 +230,104 @@ export function ChecklistPanel({
       </div>
 
       <ul className="space-y-2">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-start gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (!canAct) return
-                tick(item.id, !checked[item.id])
-              }}
-              disabled={!canAct || isActing}
-              className={cn(
-                'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
-                checked[item.id]
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-background',
-                !canAct && 'cursor-not-allowed opacity-60'
-              )}
-              aria-label={checked[item.id] ? 'Uncheck item' : 'Check item'}
-            >
-              {checked[item.id] && <Check className="size-3" />}
-            </button>
-            <span
-              className={cn(
-                'text-[13px] leading-tight',
-                checked[item.id] ? 'text-muted-foreground line-through' : 'text-foreground'
-              )}
-            >
-              {item.label}
-              {item.required && (
-                <span className="ml-1 text-[10px] uppercase text-muted-foreground">
-                  required
-                </span>
-              )}
-            </span>
-          </li>
-        ))}
+        {items.map((item) => {
+          if (item.label === SEND_REVIEW_LINK_LABEL) {
+            const isChecked = checked[item.id]
+            return (
+              <li key={item.id} className="flex flex-col gap-1.5">
+                <div className="flex items-start gap-2">
+                  <span
+                    className={cn(
+                      'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
+                      isChecked
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background'
+                    )}
+                    aria-hidden
+                  >
+                    {isChecked && <Check className="size-3" />}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-[13px] leading-tight',
+                      isChecked ? 'text-muted-foreground line-through' : 'text-foreground'
+                    )}
+                  >
+                    {item.label}
+                    {item.required && (
+                      <span className="ml-1 text-[10px] uppercase text-muted-foreground">
+                        required
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {canAct && !isChecked && (
+                  <div className="flex items-center gap-3 pl-6">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isActing}
+                      onClick={() => setSendLinkItemId(item.id)}
+                    >
+                      Send review link
+                    </Button>
+                    <button
+                      type="button"
+                      className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      onClick={() => tick(item.id, true)}
+                    >
+                      Mark done without sending
+                    </button>
+                  </div>
+                )}
+                {canAct && isChecked && (
+                  <button
+                    type="button"
+                    className="pl-6 text-left text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                    onClick={() => tick(item.id, false)}
+                  >
+                    Undo
+                  </button>
+                )}
+              </li>
+            )
+          }
+          return (
+            <li key={item.id} className="flex items-start gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canAct) return
+                  tick(item.id, !checked[item.id])
+                }}
+                disabled={!canAct || isActing}
+                className={cn(
+                  'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
+                  checked[item.id]
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-background',
+                  !canAct && 'cursor-not-allowed opacity-60'
+                )}
+                aria-label={checked[item.id] ? 'Uncheck item' : 'Check item'}
+              >
+                {checked[item.id] && <Check className="size-3" />}
+              </button>
+              <span
+                className={cn(
+                  'text-[13px] leading-tight',
+                  checked[item.id] ? 'text-muted-foreground line-through' : 'text-foreground'
+                )}
+              >
+                {item.label}
+                {item.required && (
+                  <span className="ml-1 text-[10px] uppercase text-muted-foreground">
+                    required
+                  </span>
+                )}
+              </span>
+            </li>
+          )
+        })}
       </ul>
 
       {canAct && (
@@ -382,19 +443,16 @@ export function ChecklistPanel({
         </div>
       )}
 
-      {reviewEmailModalStep && (
-        <ClientReviewEmailModal
-          open
-          onOpenChange={(o) => {
-            if (!o) setReviewEmailModalStep(null)
-          }}
+      {sendLinkItemId && (
+        <SendLinkModal
           batchId={batch.id}
           clientName={clientName ?? batch.label}
-          toStep={reviewEmailModalStep}
-          onComplete={() => {
-            setReviewEmailModalStep(null)
-            router.refresh()
+          clientReviewEmail={clientReviewEmail}
+          open
+          onOpenChange={(o) => {
+            if (!o) setSendLinkItemId(null)
           }}
+          onSent={() => tick(sendLinkItemId, true)}
         />
       )}
     </Card>
