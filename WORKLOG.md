@@ -22,6 +22,16 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-21 — Client review email + pass-time modal** (PR #219)
+  Passing a relay into client review with no review email on file now interrupts
+  with a modal (set the client's email → sends the magic link → advances),
+  instead of an easy-to-miss inline banner. Adds `Client.clientReviewEmail`
+  (editable on the profile with change-history, prefills the send-link modal,
+  kept in sync by every send). On email-send failure the modal stays open with
+  the error + a copyable review URL and does NOT advance. Retires
+  `MissingClientUserBanner` + the dead `linkedClientUsers` count. Caleb/Julio
+  item 20.
+
 - [x] **2026-06-16 — Notification copy: baton-pass voice + destination stage** (`509dffc`, PR #218)
   Transition notifications + activity-thread rows now say what happened AND
   where the work moved, in the app's own baton-pass voice: "X passed you the
