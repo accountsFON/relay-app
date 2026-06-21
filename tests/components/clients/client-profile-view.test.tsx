@@ -49,6 +49,7 @@ function makeClient(overrides: Partial<Client> = {}): Client {
     deletedBy: null,
     onboardingCompletedAt: null,
     clientReviewEnabled: false,
+    clientReviewEmail: null,
     ...overrides,
   } as Client
 }
@@ -92,7 +93,7 @@ describe('ClientProfileView, Workflow section', () => {
       />,
     )
     await userEvent.click(
-      screen.getByRole('button', { name: /Edit Client Review/i }),
+      screen.getByRole('button', { name: 'Edit Client Review' }),
     )
     const checkbox = screen.getByRole('checkbox') as HTMLInputElement
     expect(checkbox.checked).toBe(false)
@@ -107,7 +108,7 @@ describe('ClientProfileView, Workflow section', () => {
       />,
     )
     await userEvent.click(
-      screen.getByRole('button', { name: /Edit Client Review/i }),
+      screen.getByRole('button', { name: 'Edit Client Review' }),
     )
     const checkbox = screen.getByRole('checkbox') as HTMLInputElement
     await userEvent.click(checkbox)
@@ -129,7 +130,7 @@ describe('ClientProfileView, Workflow section', () => {
       />,
     )
     expect(
-      screen.queryByRole('button', { name: /Edit Client Review/i }),
+      screen.queryByRole('button', { name: 'Edit Client Review' }),
     ).not.toBeInTheDocument()
   })
 })
@@ -178,5 +179,55 @@ describe('ClientProfileView, inline editors focus the caret at the end', () => {
     expect(input).toHaveFocus()
     expect(input.selectionStart).toBe(text.length)
     expect(input.selectionEnd).toBe(text.length)
+  })
+})
+
+describe('ClientProfileView — client review email', () => {
+  beforeEach(() => {
+    updateClientAction.mockReset()
+  })
+
+  it('shows the stored client review email', () => {
+    render(
+      <ClientProfileView
+        client={makeClient({ clientReviewEmail: 'jane@client.com' })}
+        canEdit={true}
+      />,
+    )
+    expect(screen.getByText('Client review email')).toBeInTheDocument()
+    expect(screen.getByText('jane@client.com')).toBeInTheDocument()
+  })
+
+  it('shows the edit button for clientReviewEmail when canEdit is true', () => {
+    render(
+      <ClientProfileView
+        client={makeClient({ clientReviewEmail: null })}
+        canEdit={true}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: /Edit Client review email/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('saves an edited email via updateClientAction', async () => {
+    updateClientAction.mockResolvedValue(undefined)
+    render(
+      <ClientProfileView
+        client={makeClient({ clientReviewEmail: null })}
+        canEdit={true}
+      />,
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: /Edit Client review email/i }),
+    )
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    await userEvent.clear(input)
+    await userEvent.type(input, 'new@client.com')
+    await userEvent.keyboard('{Enter}')
+    expect(updateClientAction).toHaveBeenCalledTimes(1)
+    expect(updateClientAction).toHaveBeenCalledWith('client_test', {
+      clientReviewEmail: 'new@client.com',
+    })
   })
 })

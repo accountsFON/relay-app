@@ -18,7 +18,7 @@ export async function findBatch(id: string) {
           id: true,
           name: true,
           organizationId: true,
-          _count: { select: { linkedClientUsers: true } },
+          clientReviewEmail: true,
         },
       },
       holder: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } },

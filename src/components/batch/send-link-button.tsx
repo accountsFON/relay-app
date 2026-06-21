@@ -8,6 +8,7 @@ import { SendLinkModal } from './send-link-modal'
 interface Props {
   batchId: string
   clientName: string
+  clientReviewEmail?: string | null
 }
 
 /**
@@ -16,7 +17,7 @@ interface Props {
  * Internal AM use only. The host page should only render this for users
  * with client.edit permission.
  */
-export function SendLinkButton({ batchId, clientName }: Props) {
+export function SendLinkButton({ batchId, clientName, clientReviewEmail }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -34,6 +35,7 @@ export function SendLinkButton({ batchId, clientName }: Props) {
       <SendLinkModal
         batchId={batchId}
         clientName={clientName}
+        clientReviewEmail={clientReviewEmail}
         open={open}
         onOpenChange={setOpen}
       />

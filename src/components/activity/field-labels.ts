@@ -33,6 +33,7 @@ export const FIELD_NAME_LABELS: Record<string, string> = {
   assignedDesignerId: 'Designer',
   primaryAccountManagerId: 'Account Manager',
   status: 'Status',
+  clientReviewEmail: 'Client review email',
   // Post schema
   caption: 'Caption',
   hashtags: 'Hashtags',

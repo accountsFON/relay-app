@@ -51,6 +51,7 @@ export const clientInputSchema = z.object({
   assignedAmId: z.string().optional(),
   status: statusEnum.default('active'),
   clientReviewEnabled: z.coerce.boolean().default(false),
+  clientReviewEmail: z.string().email().optional().or(z.literal('')),
 })
 
 // Explicit partial schema without defaults, so updates only touch the fields
@@ -82,6 +83,7 @@ export const clientUpdateSchema = z.object({
   assignedAmId: z.string().optional(),
   status: statusEnum.optional(),
   clientReviewEnabled: z.coerce.boolean().optional(),
+  clientReviewEmail: z.string().email().optional().or(z.literal('')),
 })
 
 export type ClientInput = z.infer<typeof clientInputSchema>

@@ -126,6 +126,7 @@ type UpdateClientData = Partial<{
   assignedAmId: string
   status: ClientStatus
   clientReviewEnabled: boolean
+  clientReviewEmail: string
 }>
 
 export async function updateClient(

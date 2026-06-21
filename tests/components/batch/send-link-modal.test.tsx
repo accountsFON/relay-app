@@ -51,6 +51,19 @@ describe('SendLinkModal', () => {
     expect(await screen.findByTestId('send-link-error')).toHaveTextContent(/valid/i)
   })
 
+  it('prefills the recipient email from clientReviewEmail', () => {
+    render(
+      <SendLinkModal
+        batchId="cuid_batch_1"
+        clientName="Akkoo Coffee"
+        clientReviewEmail="jane@client.com"
+        open
+        onOpenChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByLabelText(/recipient email/i)).toHaveValue('jane@client.com')
+  })
+
   it('calls the action with the form payload and renders the URL on success', async () => {
     const user = userEvent.setup()
     vi.mocked(createAndSendMagicLinkAction).mockResolvedValue({

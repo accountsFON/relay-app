@@ -35,6 +35,7 @@ vi.mock('@/db/client', () => ({
   db: {
     user: { findUnique: vi.fn() },
     magicLink: { findUnique: vi.fn() },
+    client: { update: vi.fn() },
   },
 }))
 
@@ -442,5 +443,44 @@ describe('resendMagicLinkEmailAction', () => {
     expect(result.newUrl).toContain('/review/tok2')
     // The old link is still revoked so we do not leave both alive.
     expect(revokeLink).toHaveBeenCalled()
+  })
+})
+
+describe('createAndSendMagicLinkAction — stores client review email', () => {
+  beforeEach(() => {
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(createMagicLink).mockResolvedValue({
+      link: { id: 'cuid_link_1', batchId: mockBatch.id } as never,
+      token: 'tok',
+    })
+    vi.mocked(db.user.findUnique).mockResolvedValue({ name: 'Caleb', email: 'caleb@x.com' } as never)
+    vi.mocked(sendMagicLinkEmail).mockResolvedValue(undefined as never)
+  })
+
+  it('writes clientReviewEmail when the recipient differs from the stored value', async () => {
+    vi.mocked(findClientForUser).mockResolvedValue({
+      id: 'cuid_client_1', name: 'Akkoo Coffee', clientReviewEmail: null, organizationId: 'cuid_org_1',
+    } as never)
+
+    await createAndSendMagicLinkAction({
+      batchId: 'cuid_batch_1', recipientName: 'Akkoo Coffee', recipientEmail: 'jane@client.com',
+    })
+
+    expect(db.client.update).toHaveBeenCalledWith({
+      where: { id: 'cuid_client_1' },
+      data: { clientReviewEmail: 'jane@client.com' },
+    })
+  })
+
+  it('does not rewrite clientReviewEmail when it already matches', async () => {
+    vi.mocked(findClientForUser).mockResolvedValue({
+      id: 'cuid_client_1', name: 'Akkoo Coffee', clientReviewEmail: 'jane@client.com', organizationId: 'cuid_org_1',
+    } as never)
+
+    await createAndSendMagicLinkAction({
+      batchId: 'cuid_batch_1', recipientName: 'Akkoo Coffee', recipientEmail: 'jane@client.com',
+    })
+
+    expect(db.client.update).not.toHaveBeenCalled()
   })
 })

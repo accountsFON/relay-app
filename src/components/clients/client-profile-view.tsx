@@ -111,6 +111,14 @@ export function ClientProfileView({
               </>
             }
           />
+          <KeyValueField
+            clientId={client.id}
+            fieldKey="clientReviewEmail"
+            label="Client review email"
+            value={client.clientReviewEmail}
+            canEdit={canEdit}
+            placeholder="client@example.com"
+          />
         </FieldStack>
       </PageSection>
 

@@ -22,6 +22,10 @@ vi.mock('@/server/actions/relay', () => ({
   forceStepAction: vi.fn(),
 }))
 
+// The client-review-email modal calls magicLink; mock it so opening the modal
+// is inert in these tests.
+vi.mock('@/server/actions/magicLink', () => ({ createAndSendMagicLinkAction: vi.fn() }))
+
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 function makeBatch(overrides: Partial<BatchSummary> = {}): BatchSummary {
@@ -263,6 +267,53 @@ describe('ChecklistPanel multiple forward targets', () => {
       />,
     )
     expect(screen.getByRole('button', { name: /proceed to scheduling/i })).toBeDisabled()
+  })
+})
+
+describe('ChecklistPanel — client review email gate (Task 7)', () => {
+  beforeEach(() => {
+    refreshMock.mockReset()
+    vi.mocked(passBatonAction).mockReset()
+    vi.mocked(passBatonAction).mockResolvedValue(undefined as never)
+  })
+
+  it('opens the modal instead of passing when no review email is on file', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ clientReviewEnabled: true })}
+        items={[]}
+        canAct
+        nextStep={RelayStep.sent_to_client}
+        clientName="Akkoo Coffee"
+        clientReviewEmail={null}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /send to client review/i }))
+    expect(passBatonAction).not.toHaveBeenCalled()
+    expect(screen.getByTestId('client-review-email-modal')).toBeInTheDocument()
+  })
+
+  it('passes directly when a review email is already on file', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ clientReviewEnabled: true })}
+        items={[]}
+        canAct
+        nextStep={RelayStep.sent_to_client}
+        clientName="Akkoo Coffee"
+        clientReviewEmail="jane@client.com"
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /send to client review/i }))
+    expect(passBatonAction).toHaveBeenCalledWith({
+      batchId: 'batch-1',
+      toStep: RelayStep.sent_to_client,
+    })
+    expect(screen.queryByTestId('client-review-email-modal')).not.toBeInTheDocument()
   })
 })
 

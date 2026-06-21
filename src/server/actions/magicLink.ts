@@ -156,6 +156,15 @@ export async function createAndSendMagicLinkAction(
     })
   }
 
+  // Keep the client's stored review email in sync with the latest send so the
+  // profile field + pass-time modal share one source of truth.
+  if (client.clientReviewEmail !== email) {
+    await db.client.update({
+      where: { id: client.id },
+      data: { clientReviewEmail: email },
+    })
+  }
+
   revalidatePath(`/clients/${batch.clientId}/batches/${batch.id}`)
 
   return {

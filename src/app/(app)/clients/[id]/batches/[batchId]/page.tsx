@@ -57,7 +57,6 @@ import { Button } from '@/components/ui/button'
 import { MagicLinkRow } from '@/components/batch/magic-link-row'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
 import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
-import { MissingClientUserBanner } from '@/components/relay/missing-client-user-banner'
 import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
 import { Palette, ExternalLink, Eye } from 'lucide-react'
 import Link from 'next/link'
@@ -272,19 +271,6 @@ export default async function BatchDetailPage({
     batch.currentStep === RelayStep.copy &&
     (batch.currentSubState ?? 'generating') !== 'approved'
 
-  // sent_to_client (UI step 8) and client_decision (UI step 9) both expect a
-  // real client viewer to advance the batch (auto on 8 → 9, manual approve on
-  // 9 → 10). If no client user is linked, resolveHolderForStep silently falls
-  // the holder back to the AM/admin and the batch sits on whichever step it
-  // landed on. Surface a banner so the holder can advance manually on either.
-  const hasLinkedClientUser =
-    (batch.client._count?.linkedClientUsers ?? 0) > 0
-  const isClientHeldStep =
-    batch.currentStep === RelayStep.sent_to_client ||
-    batch.currentStep === RelayStep.client_decision
-  const showMissingClientUserBanner =
-    isLive && isClientHeldStep && !hasLinkedClientUser && canAct
-
   // Celebration participants: AM, Designer, current holder, and any linked
   // client users. Only loaded once the batch has reached the terminal
   // `completed` step (after the final step is finished), so the cost is paid
@@ -421,7 +407,7 @@ export default async function BatchDetailPage({
           assetsFolderUrl={client.assetsFolderUrl}
         />
         {isLive && canEdit && batch.clientReviewEnabled && (
-          <SendLinkButton batchId={batch.id} clientName={client.name} />
+          <SendLinkButton batchId={batch.id} clientName={client.name} clientReviewEmail={batch.client.clientReviewEmail} />
         )}
         {isLive && canAct && (
           <>
@@ -482,16 +468,6 @@ export default async function BatchDetailPage({
           audience={ctx.role === 'client' ? 'client' : 'internal'}
         />
       </div>
-
-      {showMissingClientUserBanner && (
-        <div className="mt-6">
-          <MissingClientUserBanner
-            batchId={batch.id}
-            clientName={client.name}
-            currentStep={batch.currentStep as typeof RelayStep.sent_to_client | typeof RelayStep.client_decision}
-          />
-        </div>
-      )}
 
       {run?.status === 'failed' && (
         <div className="mt-6">
@@ -660,6 +636,8 @@ export default async function BatchDetailPage({
                 nextStep={nextStep}
                 canForceStep={canForceStep}
                 legalForwardTargets={legalForwardTargets}
+                clientReviewEmail={batch.client.clientReviewEmail}
+                clientName={client.name}
               />
             </>
           )}

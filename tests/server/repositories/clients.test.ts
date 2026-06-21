@@ -50,6 +50,7 @@ const mockClient: Client = {
   crawledData: null,
   crawledDataAt: null,
   clientReviewEnabled: true,
+  clientReviewEmail: null,
   status: 'active',
   onboardingCompletedAt: null,
   createdAt: new Date(),

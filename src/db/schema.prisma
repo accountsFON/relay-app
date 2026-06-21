@@ -251,6 +251,7 @@ model Client {
   crawledData         String?      @db.Text
   crawledDataAt       DateTime?
   clientReviewEnabled Boolean      @default(false)
+  clientReviewEmail   String?
   status              ClientStatus @default(active)
   createdAt           DateTime     @default(now())
   deletedAt           DateTime?
