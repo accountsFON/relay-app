@@ -323,6 +323,54 @@ describe('ChecklistPanel — send review link item', () => {
     expect(screen.getByRole('button', { name: /send to client review/i })).toBeEnabled()
   })
 
+  it('re-seeds checked from the server when the items signature changes', () => {
+    // Start: server says checked:false → Send buttons visible
+    const { rerender } = render(
+      <ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: false })]} canAct
+        nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />,
+    )
+    expect(screen.getByRole('button', { name: /^send review link$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /undo/i })).not.toBeInTheDocument()
+
+    // Server refresh: items now say checked:true → signature changes → re-seed wins
+    rerender(
+      <ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: true })]} canAct
+        nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />,
+    )
+    expect(screen.getByRole('button', { name: /undo/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^send review link$/i })).not.toBeInTheDocument()
+
+    // Server refresh again: items revert to checked:false → signature changes → re-seed wins
+    rerender(
+      <ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: false })]} canAct
+        nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />,
+    )
+    expect(screen.getByRole('button', { name: /^send review link$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /undo/i })).not.toBeInTheDocument()
+  })
+
+  it('preserves an optimistic tick across a rerender that does not change the items signature', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: false })]} canAct
+        nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />,
+    )
+
+    // Optimistic tick: local checked becomes true; items prop is still checked:false
+    // so the signature (item-send:0) does NOT change on subsequent rerenders
+    await user.click(screen.getByRole('button', { name: /mark done without sending/i }))
+    expect(screen.getByRole('button', { name: /undo/i })).toBeInTheDocument()
+
+    // Rerender with identical items (same signature) → no re-seed → optimistic state preserved
+    rerender(
+      <ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: false })]} canAct
+        nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />,
+    )
+    expect(screen.getByRole('button', { name: /undo/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^send review link$/i })).not.toBeInTheDocument()
+  })
+
   it('ticks the item after a successful send via the modal', async () => {
     const { default: userEvent } = await import('@testing-library/user-event')
     const user = userEvent.setup()

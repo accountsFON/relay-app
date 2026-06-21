@@ -254,6 +254,7 @@ export function ChecklistPanel({
                     )}
                   >
                     {item.label}
+                    {isChecked && <span className="sr-only"> (done)</span>}
                     {item.required && (
                       <span className="ml-1 text-[10px] uppercase text-muted-foreground">
                         required
