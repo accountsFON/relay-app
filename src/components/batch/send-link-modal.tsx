@@ -19,6 +19,7 @@ import { createAndSendMagicLinkAction } from '@/server/actions/magicLink'
 interface Props {
   batchId: string
   clientName: string
+  clientReviewEmail?: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -33,11 +34,11 @@ const MIN_DAYS = 1
 const MAX_DAYS = 90
 const DEFAULT_DAYS = 30
 
-export function SendLinkModal({ batchId, clientName, open, onOpenChange }: Props) {
+export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, onOpenChange }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(clientReviewEmail ?? '')
   const [days, setDays] = useState(String(DEFAULT_DAYS))
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<SuccessState | null>(null)
@@ -45,7 +46,7 @@ export function SendLinkModal({ batchId, clientName, open, onOpenChange }: Props
 
   function reset() {
     setName('')
-    setEmail('')
+    setEmail(clientReviewEmail ?? '')
     setDays(String(DEFAULT_DAYS))
     setError(null)
     setSuccess(null)

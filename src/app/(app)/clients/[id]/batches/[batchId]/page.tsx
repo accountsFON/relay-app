@@ -421,7 +421,7 @@ export default async function BatchDetailPage({
           assetsFolderUrl={client.assetsFolderUrl}
         />
         {isLive && canEdit && batch.clientReviewEnabled && (
-          <SendLinkButton batchId={batch.id} clientName={client.name} />
+          <SendLinkButton batchId={batch.id} clientName={client.name} clientReviewEmail={batch.client.clientReviewEmail} />
         )}
         {isLive && canAct && (
           <>
