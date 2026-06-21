@@ -37,7 +37,7 @@ const DEFAULT_DAYS = 30
 export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, onOpenChange }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [name, setName] = useState('')
+  const [name, setName] = useState(clientName ?? '')
   const [email, setEmail] = useState(clientReviewEmail ?? '')
   const [days, setDays] = useState(String(DEFAULT_DAYS))
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +45,7 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
   const [copied, setCopied] = useState(false)
 
   function reset() {
-    setName('')
+    setName(clientName ?? '')
     setEmail(clientReviewEmail ?? '')
     setDays(String(DEFAULT_DAYS))
     setError(null)
