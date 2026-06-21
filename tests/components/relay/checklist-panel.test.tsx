@@ -315,6 +315,51 @@ describe('ChecklistPanel — client review email gate (Task 7)', () => {
     })
     expect(screen.queryByTestId('client-review-email-modal')).not.toBeInTheDocument()
   })
+
+  it('passTo: opens the modal instead of passing when entering client review with no email (multi-target path)', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.implementing_revisions })}
+        items={[]}
+        canAct
+        clientName="Akkoo Coffee"
+        clientReviewEmail={null}
+        legalForwardTargets={[
+          { step: RelayStep.sent_to_client, label: 'Send back to client for re-review' },
+          { step: RelayStep.final_qa_schedule, label: 'Proceed to scheduling' },
+        ]}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /send back to client for re-review/i }))
+    expect(passBatonAction).not.toHaveBeenCalled()
+    expect(screen.getByTestId('client-review-email-modal')).toBeInTheDocument()
+  })
+
+  it('passTo: passes directly to the chosen target when a review email is on file (multi-target path)', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const user = userEvent.setup()
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.implementing_revisions })}
+        items={[]}
+        canAct
+        clientName="Akkoo Coffee"
+        clientReviewEmail="jane@client.com"
+        legalForwardTargets={[
+          { step: RelayStep.sent_to_client, label: 'Send back to client for re-review' },
+          { step: RelayStep.final_qa_schedule, label: 'Proceed to scheduling' },
+        ]}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /send back to client for re-review/i }))
+    expect(passBatonAction).toHaveBeenCalledWith({
+      batchId: 'batch-1',
+      toStep: RelayStep.sent_to_client,
+    })
+    expect(screen.queryByTestId('client-review-email-modal')).not.toBeInTheDocument()
+  })
 })
 
 describe('ChecklistPanel admin force-step gating (Task 8)', () => {

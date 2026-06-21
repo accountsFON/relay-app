@@ -64,6 +64,18 @@ describe('SendLinkModal', () => {
     expect(screen.getByLabelText(/recipient email/i)).toHaveValue('jane@client.com')
   })
 
+  it('prefills the recipient name from clientName', () => {
+    render(
+      <SendLinkModal
+        batchId="cuid_batch_1"
+        clientName="Akkoo Coffee"
+        open
+        onOpenChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByLabelText(/recipient name/i)).toHaveValue('Akkoo Coffee')
+  })
+
   it('calls the action with the form payload and renders the URL on success', async () => {
     const user = userEvent.setup()
     vi.mocked(createAndSendMagicLinkAction).mockResolvedValue({
@@ -83,6 +95,8 @@ describe('SendLinkModal', () => {
       />,
     )
 
+    // Name prefills from clientName; clear before typing a custom recipient.
+    await user.clear(screen.getByLabelText(/recipient name/i))
     await user.type(screen.getByLabelText(/recipient name/i), 'Jane Doe')
     await user.type(screen.getByLabelText(/recipient email/i), 'jane@client.com')
 
