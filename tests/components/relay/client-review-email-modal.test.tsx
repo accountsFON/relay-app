@@ -54,6 +54,25 @@ describe('ClientReviewEmailModal', () => {
     expect(passBatonAction).not.toHaveBeenCalled()
   })
 
+  it('does not pass and keeps the modal open when the email fails to send', async () => {
+    const user = userEvent.setup()
+    vi.mocked(createAndSendMagicLinkAction).mockResolvedValue({
+      magicLinkId: 'l', reviewUrl: 'https://relay.test/review/tok',
+      expiresAt: new Date(), emailSent: false, emailError: 'SMTP refused',
+    })
+    render(<ClientReviewEmailModal {...baseProps} />)
+    await user.type(screen.getByLabelText(/client review email/i), 'jane@client.com')
+    await user.click(screen.getByRole('button', { name: /save & send review link/i }))
+
+    // send was attempted, but the relay must NOT advance and the modal stays open
+    await waitFor(() => expect(createAndSendMagicLinkAction).toHaveBeenCalled())
+    expect(passBatonAction).not.toHaveBeenCalled()
+    expect(baseProps.onComplete).not.toHaveBeenCalled()
+    // the AM is told why + can recover the link
+    expect(await screen.findByText(/SMTP refused/i)).toBeInTheDocument()
+    expect(screen.getByTestId('client-review-link-url')).toHaveValue('https://relay.test/review/tok')
+  })
+
   it('pass anyway: passes without sending', async () => {
     const user = userEvent.setup()
     vi.mocked(passBatonAction).mockResolvedValue({} as never)

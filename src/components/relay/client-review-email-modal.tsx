@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import type { RelayStep } from '@prisma/client'
+import { Check, Copy } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,8 @@ export function ClientReviewEmailModal({
 }: Props) {
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [failedSend, setFailedSend] = useState<{ reviewUrl: string; emailError: string | null } | null>(null)
+  const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   function saveAndSend() {
@@ -49,20 +52,39 @@ export function ClientReviewEmailModal({
       return
     }
     setError(null)
+    setFailedSend(null)
     startTransition(async () => {
       try {
-        await createAndSendMagicLinkAction({
+        const result = await createAndSendMagicLinkAction({
           batchId,
           recipientName: clientName,
           recipientEmail: trimmed,
           expiresInDays: 30,
         })
+        if (!result.emailSent) {
+          // The link + clientReviewEmail are persisted server side, but the
+          // email never reached the client. Do NOT advance the relay or close;
+          // surface the error and the link so the AM can recover.
+          setFailedSend({ reviewUrl: result.reviewUrl, emailError: result.emailError })
+          return
+        }
         await passBatonAction({ batchId, toStep })
         onComplete()
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Something went wrong.')
       }
     })
+  }
+
+  async function copyReviewUrl() {
+    if (!failedSend) return
+    try {
+      await navigator.clipboard.writeText(failedSend.reviewUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Could not copy to clipboard; select the URL manually.')
+    }
   }
 
   function passAnyway() {
@@ -98,9 +120,58 @@ export function ClientReviewEmailModal({
             onChange={(e) => setEmail(e.target.value)}
             placeholder="client@example.com"
             disabled={isPending}
+            autoFocus
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
         </div>
+
+        {failedSend && (
+          <div
+            className="rounded-xl bg-neutral-100 p-4 space-y-2"
+            data-testid="client-review-email-failed"
+          >
+            <p className="text-sm font-medium" role="alert">
+              Review link created, but the email did not send
+              {failedSend.emailError ? `: ${failedSend.emailError}` : '.'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              The link and review email are saved. Copy the link and send it to{' '}
+              {clientName} manually, or pass anyway to move this into client review.
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={failedSend.reviewUrl}
+                data-testid="client-review-link-url"
+                className="font-mono text-[12px]"
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={copyReviewUrl}
+                data-testid="copy-link-button"
+              >
+                {copied ? (
+                  <>
+                    <Check className="size-3.5" />
+                    <span>Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-3.5" />
+                    <span>Copy</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
 
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
