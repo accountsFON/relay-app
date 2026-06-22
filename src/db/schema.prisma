@@ -161,6 +161,7 @@ model Organization {
   stripeCustomerId     String?
   stripeSubscriptionId String?
   runCredits           Int      @default(0)
+  reviewWindowDays     Int      @default(7)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -458,11 +459,13 @@ model Batch {
   currentHolder       String
   currentRole         RelayRole
   scheduledAt         DateTime?
-  clientReviewEnabled Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  completedAt         DateTime?
-  deletedAt           DateTime?
-  deletedBy           String?
+  clientReviewEnabled   Boolean   @default(false)
+  autoAdvanceOnTimeout  Boolean   @default(true)
+  clientReviewStartedAt DateTime?
+  createdAt             DateTime  @default(now())
+  completedAt           DateTime?
+  deletedAt             DateTime?
+  deletedBy             String?
 
   client                Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   holder                User            @relation("BatchHolder", fields: [currentHolder], references: [id])
