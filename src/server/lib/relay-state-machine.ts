@@ -17,22 +17,31 @@ type DbOrTx = DbClient | DbTx
  * live batch should ever sit on this step after the PR1 backfill runs. PR2
  * (Wave F5) will tombstone the enum value once the prod audit confirms zero
  * batches at this step.
+ *
+ * Pipeline rework (2026-06-22): `sent_to_client`, `client_decision`,
+ * `ready_to_schedule`, and `final_qa_schedule` are retired steps kept for
+ * historical rows. The two new live steps are `client_review` (client-held,
+ * merges the old sent_to_client + client_decision) and `scheduling` (AM-held,
+ * merges the old ready_to_schedule + final_qa_schedule).
+ * `onboarding_gate` holder changed from admin to am.
  */
 export const HOLDER_ROLE: Record<RelayStep, RelayRole> = {
-  [RelayStep.onboarding_gate]: RelayRole.admin,
+  [RelayStep.onboarding_gate]: RelayRole.am, // CHANGED: was admin (pipeline rework)
   [RelayStep.copy]: RelayRole.am,
   [RelayStep.in_design]: RelayRole.designer,
   [RelayStep.designs_completed]: RelayRole.designer, // retired step, kept for historical rows
   [RelayStep.am_review_design]: RelayRole.am,
   [RelayStep.design_revisions]: RelayRole.designer,
   [RelayStep.am_qa_pre_client]: RelayRole.am,
-  [RelayStep.sent_to_client]: RelayRole.client,
-  [RelayStep.client_decision]: RelayRole.client,
-  [RelayStep.ready_to_schedule]: RelayRole.am,
-  [RelayStep.implementing_revisions]: RelayRole.am,
-  [RelayStep.revisions_complete]: RelayRole.am,
-  [RelayStep.final_qa_schedule]: RelayRole.am,
+  [RelayStep.sent_to_client]: RelayRole.client, // retired, kept for history
+  [RelayStep.client_decision]: RelayRole.client, // retired, kept for history
+  [RelayStep.ready_to_schedule]: RelayRole.am, // retired, kept for history
+  [RelayStep.implementing_revisions]: RelayRole.am, // Post Revision (designer has a lane)
+  [RelayStep.revisions_complete]: RelayRole.am, // retired, kept for history
+  [RelayStep.final_qa_schedule]: RelayRole.am, // retired, kept for history
   [RelayStep.completed]: RelayRole.am,
+  [RelayStep.client_review]: RelayRole.client, // NEW
+  [RelayStep.scheduling]: RelayRole.am, // NEW
 }
 
 export type TransitionDirection = 'forward' | 'send_back' | 'revision' | 'auto'
@@ -49,45 +58,37 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
   { from: RelayStep.copy, to: RelayStep.in_design, direction: 'forward' },
   { from: RelayStep.copy, to: RelayStep.onboarding_gate, direction: 'send_back' },
 
-  // Phase 3 item 15: designer hands directly to AM review. The retired
-  // `designs_completed` step is no longer reachable as a forward target.
-  // Designer self-correction stays as send_back to copy; the previous
-  // `designs_completed -> in_design` send_back is gone with the step.
   { from: RelayStep.in_design, to: RelayStep.am_review_design, direction: 'forward' },
   { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },
 
   { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
   { from: RelayStep.am_review_design, to: RelayStep.design_revisions, direction: 'send_back' },
 
+  // Re-check loop: a revision always returns to Design Review for re-approval.
   { from: RelayStep.design_revisions, to: RelayStep.am_review_design, direction: 'forward' },
-  { from: RelayStep.design_revisions, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
 
-  { from: RelayStep.am_qa_pre_client, to: RelayStep.sent_to_client, direction: 'forward' },
+  // QA -> Client Review (the merged client step).
+  { from: RelayStep.am_qa_pre_client, to: RelayStep.client_review, direction: 'forward' },
   { from: RelayStep.am_qa_pre_client, to: RelayStep.design_revisions, direction: 'send_back' },
 
-  { from: RelayStep.sent_to_client, to: RelayStep.client_decision, direction: 'auto' },
-  { from: RelayStep.sent_to_client, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
+  // Client Review exits are driven by advanceFromClientReview (client submit)
+  // or the auto-advance cron. Marked `auto` so passBaton accepts them when an
+  // AM manually pushes the relay forward; advanceFromClientReview bypasses the
+  // table entirely (see services/relay.ts).
+  { from: RelayStep.client_review, to: RelayStep.scheduling, direction: 'auto' },
+  { from: RelayStep.client_review, to: RelayStep.implementing_revisions, direction: 'auto' },
+  { from: RelayStep.client_review, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
 
-  { from: RelayStep.client_decision, to: RelayStep.ready_to_schedule, direction: 'forward' },
-  { from: RelayStep.client_decision, to: RelayStep.implementing_revisions, direction: 'forward' },
-  { from: RelayStep.client_decision, to: RelayStep.sent_to_client, direction: 'send_back' },
+  // Post Revision: re-review (back to client) or finish (to scheduling). Both
+  // are `forward` so passBaton (which accepts only forward/auto) can traverse
+  // them; the AM picks the destination from a two-way forward choice.
+  { from: RelayStep.implementing_revisions, to: RelayStep.client_review, direction: 'forward' },
+  { from: RelayStep.implementing_revisions, to: RelayStep.scheduling, direction: 'forward' },
 
-  { from: RelayStep.ready_to_schedule, to: RelayStep.final_qa_schedule, direction: 'forward' },
-  { from: RelayStep.ready_to_schedule, to: RelayStep.client_decision, direction: 'send_back' },
+  { from: RelayStep.scheduling, to: RelayStep.completed, direction: 'forward' },
+  { from: RelayStep.scheduling, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
 
-  // Revisions workspace redesign (2026-06-05): step 10 is a normal
-  // checklist-gated step. The AM ticks "Revisions complete", then chooses one
-  // of two forward paths. The old revision/auto router and the dead
-  // revisions_complete edges are removed; the revisions_complete enum member
-  // is RETAINED for historical rows but no longer routed through.
-  { from: RelayStep.implementing_revisions, to: RelayStep.sent_to_client, direction: 'forward' },
-  { from: RelayStep.implementing_revisions, to: RelayStep.final_qa_schedule, direction: 'forward' },
-  { from: RelayStep.implementing_revisions, to: RelayStep.client_decision, direction: 'send_back' },
-
-  { from: RelayStep.final_qa_schedule, to: RelayStep.completed, direction: 'forward' },
-  { from: RelayStep.final_qa_schedule, to: RelayStep.ready_to_schedule, direction: 'send_back' },
-
-  { from: RelayStep.completed, to: RelayStep.final_qa_schedule, direction: 'send_back' },
+  { from: RelayStep.completed, to: RelayStep.scheduling, direction: 'send_back' },
 ] as const
 
 export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
@@ -96,8 +97,6 @@ export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
   { from: RelayStep.copy, to: RelayStep.in_design, direction: 'forward' },
   { from: RelayStep.copy, to: RelayStep.onboarding_gate, direction: 'send_back' },
 
-  // Phase 3 item 15: designer hands directly to AM review. Mirrors the
-  // FULL_TRACK change above.
   { from: RelayStep.in_design, to: RelayStep.am_review_design, direction: 'forward' },
   { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },
 
@@ -105,20 +104,15 @@ export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
   { from: RelayStep.am_review_design, to: RelayStep.design_revisions, direction: 'send_back' },
 
   { from: RelayStep.design_revisions, to: RelayStep.am_review_design, direction: 'forward' },
-  { from: RelayStep.design_revisions, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
 
-  // CHANGED: skip the two client steps; land on ready_to_schedule
-  { from: RelayStep.am_qa_pre_client, to: RelayStep.ready_to_schedule, direction: 'forward' },
+  // Final QA -> Scheduling (no client steps).
+  { from: RelayStep.am_qa_pre_client, to: RelayStep.scheduling, direction: 'forward' },
   { from: RelayStep.am_qa_pre_client, to: RelayStep.design_revisions, direction: 'send_back' },
 
-  // CHANGED: send back falls to am_qa_pre_client (was client_decision in full flow)
-  { from: RelayStep.ready_to_schedule, to: RelayStep.final_qa_schedule, direction: 'forward' },
-  { from: RelayStep.ready_to_schedule, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
+  { from: RelayStep.scheduling, to: RelayStep.completed, direction: 'forward' },
+  { from: RelayStep.scheduling, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
 
-  { from: RelayStep.final_qa_schedule, to: RelayStep.completed, direction: 'forward' },
-  { from: RelayStep.final_qa_schedule, to: RelayStep.ready_to_schedule, direction: 'send_back' },
-
-  { from: RelayStep.completed, to: RelayStep.final_qa_schedule, direction: 'send_back' },
+  { from: RelayStep.completed, to: RelayStep.scheduling, direction: 'send_back' },
 ] as const
 
 export function transitionsFor(
