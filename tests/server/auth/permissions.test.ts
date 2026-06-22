@@ -48,6 +48,13 @@ describe('can() — system defaults', () => {
     expect(can({ role: 'client' }, 'relay.forceStep')).toBe(false)
   })
 
+  it('relay.completeOnboarding is allowed for admin and account_manager (AM-held step)', () => {
+    expect(can({ role: 'admin' }, 'relay.completeOnboarding')).toBe(true)
+    expect(can({ role: 'account_manager' }, 'relay.completeOnboarding')).toBe(true)
+    expect(can({ role: 'designer' }, 'relay.completeOnboarding')).toBe(false)
+    expect(can({ role: 'client' }, 'relay.completeOnboarding')).toBe(false)
+  })
+
   it('user.deactivate is admin + platform owner', () => {
     expect(can({ role: 'admin' }, 'user.deactivate')).toBe(true)
     expect(can({ role: 'account_manager' }, 'user.deactivate')).toBe(false)

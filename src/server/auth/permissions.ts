@@ -102,7 +102,7 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'relay.pass': true,
     'relay.sendBack': true,
     'relay.takeOver': false,
-    'relay.completeOnboarding': false,
+    'relay.completeOnboarding': true,
     'relay.forceStep': false,
     'user.deactivate': false,
     'user.hardDelete': false,
