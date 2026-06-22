@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
-import { COMMENT_IMAGE_PREFIX } from '@/lib/comment-image'
+import { COMMENT_IMAGE_PREFIX, COMMENT_IMAGE_UPLOAD_TOKEN_OPTIONS } from '@/lib/comment-image'
 
 /**
  * POST /api/comment-image/upload
@@ -28,11 +28,7 @@ export async function POST(req: NextRequest) {
       if (!pathname.startsWith(ownPrefix)) {
         throw new Error('Forbidden: pathname outside caller comment-image prefix')
       }
-      return {
-        allowedContentTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
-        maximumSizeInBytes: 5 * 1024 * 1024,
-        addRandomSuffix: true,
-      }
+      return COMMENT_IMAGE_UPLOAD_TOKEN_OPTIONS
     },
     onUploadCompleted: async () => {},
   })

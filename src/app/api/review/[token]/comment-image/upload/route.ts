@@ -19,7 +19,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { hashToken } from '@/lib/magic-link'
-import { COMMENT_IMAGE_PREFIX } from '@/lib/comment-image'
+import { COMMENT_IMAGE_PREFIX, COMMENT_IMAGE_UPLOAD_TOKEN_OPTIONS } from '@/lib/comment-image'
 
 export async function POST(
   req: NextRequest,
@@ -61,11 +61,7 @@ export async function POST(
       if (!pathname.startsWith(ownPrefix)) {
         throw new Error('Forbidden: pathname outside reviewer comment-image prefix')
       }
-      return {
-        allowedContentTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
-        maximumSizeInBytes: 5 * 1024 * 1024, // 5 MB
-        addRandomSuffix: true,
-      }
+      return COMMENT_IMAGE_UPLOAD_TOKEN_OPTIONS
     },
     onUploadCompleted: async () => {
       // No-op: we persist the blob URL on the comment create/update call,

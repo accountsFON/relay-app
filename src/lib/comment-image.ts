@@ -3,6 +3,17 @@
 
 export const COMMENT_IMAGE_PREFIX = 'comment-images'
 
+/**
+ * Shared onBeforeGenerateToken return value for both comment-image upload
+ * routes (AM + reviewer).  Centralised here so the content-type allow-list
+ * and size cap stay in sync automatically.
+ */
+export const COMMENT_IMAGE_UPLOAD_TOKEN_OPTIONS = {
+  allowedContentTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
+  maximumSizeInBytes: 5 * 1024 * 1024, // 5 MB
+  addRandomSuffix: true,
+}
+
 function safe(filename: string): string {
   return filename.replace(/[\\/]+/g, '_')
 }
