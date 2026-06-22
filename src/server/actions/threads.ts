@@ -1,9 +1,8 @@
 'use server'
 
-import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getOrgContext } from '@/server/middleware/auth'
-import { verifySession } from '@/lib/magic-link'
+import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { db } from '@/db/client'
 import {
   addComment,
@@ -18,48 +17,18 @@ import {
 } from '@/server/repositories/threads'
 import type { PinLocation } from '@/types/preview'
 
-const MAGIC_LINK_SESSION_COOKIE = 'magic-link-session'
-
 /**
  * Magic-link reviewer auth resolution.
  *
- * Reads the signed `magic-link-session` cookie set by the magic-link
- * landing page (src/app/review/[token]/_actions.ts → confirmReviewerIdentity).
- * Verifies the HMAC, then looks up the MagicLinkReviewer row whose id
- * is baked into the JWT payload. Returns null if any step fails,
- * callers fall back to Clerk auth or throw UnauthorizedError.
- *
- * The `token` field returned here is the hash of the URL token used as
- * the reviewerToken column value on thread + comment rows. We hash it
- * here from the MagicLink.tokenHash directly rather than re-deriving
- * from the raw URL token, the raw token is not available to a server
- * action invoked from anywhere other than the /review/[token] page,
- * and the hash is the canonical identifier for the link.
+ * Delegates to the shared getMagicLinkReviewerFromCookie helper so the
+ * upload route can reuse the same trust logic without duplicating it.
+ * Returns the `{ token, name }` shape expected by resolveActor.
  */
 async function tryGetMagicLinkReviewer(): Promise<
   null | { token: string; name: string }
 > {
-  const jar = await cookies()
-  const cookieValue = jar.get(MAGIC_LINK_SESSION_COOKIE)?.value
-  if (!cookieValue) return null
-
-  const session = verifySession(cookieValue)
-  if (!session) return null
-
-  const reviewer = await db.magicLinkReviewer.findUnique({
-    where: { id: session.reviewerId },
-    select: {
-      id: true,
-      name: true,
-      magicLinkId: true,
-      magicLink: { select: { id: true, tokenHash: true, revokedAt: true } },
-    },
-  })
-  if (!reviewer) return null
-  if (reviewer.magicLinkId !== session.magicLinkId) return null
-  if (reviewer.magicLink.revokedAt) return null
-
-  return { token: reviewer.magicLink.tokenHash, name: reviewer.name }
+  const r = await getMagicLinkReviewerFromCookie()
+  return r ? { token: r.tokenHash, name: r.name } : null
 }
 
 // Internal-only: not exported because a 'use server' module can only export
