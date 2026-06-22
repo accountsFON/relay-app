@@ -54,6 +54,7 @@ export function FacebookPost(props: FeedPostProps) {
     onOpenThread,
     onCreateThread,
     onComment,
+    onUploadImage,
     onResolveThread,
     editing = false,
     captionDraft,
@@ -165,15 +166,21 @@ export function FacebookPost(props: FeedPostProps) {
     })
   }
 
-  async function handleDraftSubmit(body: string) {
+  async function handleDraftSubmit(
+    body: string,
+    image?: { url: string; width: number; height: number },
+  ) {
     if (!draftPin || !onCreateThread) return
-    await onCreateThread(draftPin.pin, body)
+    await onCreateThread(draftPin.pin, body, image)
     setDraftPin(null)
   }
 
-  async function handleComment(body: string) {
+  async function handleComment(
+    body: string,
+    image?: { url: string; width: number; height: number },
+  ) {
     if (!openThreadId || !onComment) return
-    await onComment(openThreadId, body)
+    await onComment(openThreadId, body, image)
   }
 
   async function handleResolve() {
@@ -442,6 +449,7 @@ export function FacebookPost(props: FeedPostProps) {
           postId={post.id}
           postCaption={post.caption}
           onComment={handleComment}
+          onUploadImage={onUploadImage}
           onResolve={
             mode === 'internal' && onResolveThread ? handleResolve : undefined
           }
@@ -456,6 +464,7 @@ export function FacebookPost(props: FeedPostProps) {
         <PinDraftComposer
           anchor={draftPin.anchor}
           onSubmit={handleDraftSubmit}
+          onUploadImage={onUploadImage}
           onCancel={() => setDraftPin(null)}
         />
       ) : null}

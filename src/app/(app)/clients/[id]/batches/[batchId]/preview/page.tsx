@@ -137,6 +137,7 @@ export default async function BatchPreviewPage({
           posts={hydratedPosts}
           canEdit={canEdit}
           canUploadMedia={canUploadMedia}
+          userDbId={ctx.userDbId}
         />
       </div>
 

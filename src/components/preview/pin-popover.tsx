@@ -13,6 +13,10 @@ import { useUnsavedChanges } from '@/lib/unsaved-changes'
 import { Button } from '@/components/ui/button'
 import { Linkify } from '@/components/ui/linkify'
 import { FixWithAIButton } from '@/components/preview/fix-with-ai-button'
+import {
+  CommentImageAttachButton,
+  type AttachedImage,
+} from '@/components/preview/comment-image-attach-button'
 import type { PinLocation, ThreadAuthor } from '@/types/preview'
 
 /**
@@ -55,7 +59,7 @@ export type PinPopoverProps = {
   thread: PinPopoverThread
   anchor?: { x: number; y: number } | null
   mode: 'internal' | 'review'
-  onComment: (body: string) => Promise<void>
+  onComment: (body: string, image?: { url: string; width: number; height: number }) => Promise<void>
   onResolve?: () => Promise<void>
   onClose?: () => void
   className?: string
@@ -73,6 +77,12 @@ export type PinPopoverProps = {
   postCaption?: string
   /** Called after the AM accepts an AI fix so the host can refresh. */
   onFixAccepted?: () => void
+  /**
+   * When provided, renders an "Attach image" button in the reply composer.
+   * The host passes uploadCommentImage partially applied with the user's
+   * identity so the component stays identity-agnostic.
+   */
+  onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
 }
 
 const POPOVER_WIDTH = 320
@@ -92,9 +102,11 @@ export function PinPopover({
   postId,
   postCaption,
   onFixAccepted,
+  onUploadImage,
 }: PinPopoverProps) {
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const [body, setBody] = useState('')
+  const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [resolving, setResolving] = useState(false)
   const [position, setPosition] = useState<{ top: number; left: number }>(() =>
@@ -108,16 +120,19 @@ export function PinPopover({
   }, [anchor])
 
   // Warn before navigating away while an unsaved reply draft exists.
-  useUnsavedChanges(body.trim().length > 0)
+  useUnsavedChanges(body.trim().length > 0 || attachedImage !== null)
 
   // Single close guard: every close path (X, Escape, outside click) routes
   // through this so an unsaved draft prompts a discard confirmation first.
   const requestClose = useCallback(() => {
     if (!onClose) return
-    if (body.trim().length > 0 && !window.confirm('Discard unsaved changes?'))
+    if (
+      (body.trim().length > 0 || attachedImage !== null) &&
+      !window.confirm('Discard unsaved changes?')
+    )
       return
     onClose()
-  }, [onClose, body])
+  }, [onClose, body, attachedImage])
 
   useEffect(() => {
     if (!onClose) return
@@ -145,11 +160,13 @@ export function PinPopover({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const trimmed = body.trim()
-    if (!trimmed || submitting) return
+    // Allow submit when there's text OR an attached image (image-only reply).
+    if ((!trimmed && !attachedImage) || submitting) return
     setSubmitting(true)
     try {
-      await onComment(trimmed)
+      await onComment(trimmed, attachedImage ?? undefined)
       setBody('')
+      setAttachedImage(null)
     } finally {
       setSubmitting(false)
     }
@@ -260,6 +277,14 @@ export function PinPopover({
           }
           className="resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[13px] text-[#262626] outline-none focus:border-[#8e8e8e]"
         />
+        {onUploadImage && thread.status !== 'resolved' ? (
+          <CommentImageAttachButton
+            onUploadImage={onUploadImage}
+            value={attachedImage}
+            onChange={setAttachedImage}
+            disabled={submitting}
+          />
+        ) : null}
         <div className="flex flex-wrap items-center justify-end gap-2">
           {showFixWithAi && postId ? (
             <FixWithAIButton
@@ -288,7 +313,7 @@ export function PinPopover({
             variant="default"
             size="xs"
             data-testid="pin-popover-submit"
-            disabled={submitting || body.trim().length === 0}
+            disabled={submitting || (body.trim().length === 0 && attachedImage === null)}
           >
             {submitting ? 'Sending...' : 'Comment'}
           </Button>

@@ -40,13 +40,27 @@ export type ReviewPostCardProps = {
    * composer hide their drop-a-pin affordances. Wired to the
    * `leaveCommentAsReviewer` server action by the shell.
    */
-  onCreatePin?: (pin: PinLocation, body: string) => Promise<void>
+  onCreatePin?: (
+    pin: PinLocation,
+    body: string,
+    image?: { url: string; width?: number; height?: number },
+  ) => Promise<void>
   /**
    * Append a comment to an existing thread on this post. Wired to
    * `addCommentAsReviewer` by the shell. When omitted, the pin popover
    * hides the reply affordance.
    */
-  onAppendThreadComment?: (threadId: string, body: string) => Promise<void>
+  onAppendThreadComment?: (
+    threadId: string,
+    body: string,
+    image?: { url: string; width?: number; height?: number },
+  ) => Promise<void>
+  /**
+   * When provided, renders an "Attach image" button in both pin composers.
+   * The host passes uploadCommentImage partially applied with the reviewer's
+   * identity so the component stays identity-agnostic.
+   */
+  onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   disabled?: boolean
   className?: string
 }
@@ -93,6 +107,7 @@ export function ReviewPostCard({
   onCaptionEditSave,
   onCreatePin,
   onAppendThreadComment,
+  onUploadImage,
   disabled,
   className,
 }: ReviewPostCardProps) {
@@ -246,6 +261,7 @@ export function ReviewPostCard({
         mode={mode}
         onCreateThread={onCreatePin}
         onComment={onAppendThreadComment}
+        onUploadImage={onUploadImage}
         editing={isEditing}
         captionDraft={isEditing ? captionDraft : undefined}
         onCaptionDraftChange={isEditing ? setCaptionDraft : undefined}

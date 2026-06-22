@@ -7,6 +7,17 @@ import { hashToken, signSession, verifySession, verifyToken } from '@/lib/magic-
 import { findByTokenHash, recordReviewer } from '@/server/repositories/magicLinks'
 import { addComment, createThread } from '@/server/repositories/threads'
 import type { PinLocation } from '@/types/preview'
+import { isCommentImageBlobUrl } from '@/lib/comment-image'
+
+type CommentImage = { url: string; width?: number | null; height?: number | null }
+
+function validateImage(image: CommentImage | undefined): CommentImage | undefined {
+  if (!image) return undefined
+  if (!isCommentImageBlobUrl(image.url)) {
+    throw new MagicLinkActionError('Image URL is not a valid blob URL')
+  }
+  return image
+}
 
 /**
  * Cookie name format: scoped per-token via the path attribute, but the
@@ -129,7 +140,13 @@ export async function confirmReviewerIdentity(
  * Input is inline (not an exported interface) per 'use server' constraints.
  */
 export async function leaveCommentAsReviewer(
-  input: { token: string; postId: string; pin: PinLocation; body: string },
+  input: {
+    token: string
+    postId: string
+    pin: PinLocation
+    body: string
+    image?: CommentImage
+  },
 ): Promise<void> {
   const link = await resolveLinkOrThrow(input.token)
 
@@ -159,15 +176,19 @@ export async function leaveCommentAsReviewer(
     throw new MagicLinkActionError('Reviewer no longer recognized for this link')
   }
 
+  const image = validateImage(input.image)
   const body = (input.body ?? '').trim()
-  if (!body) {
-    throw new MagicLinkActionError('Comment body required')
+  if (!body && !image) {
+    throw new MagicLinkActionError('Comment requires text or an image')
   }
 
   await createThread({
     postId: input.postId,
     pin: input.pin,
     body,
+    imageUrl: image?.url ?? null,
+    imageWidth: image?.width ?? null,
+    imageHeight: image?.height ?? null,
     author: {
       kind: 'reviewer',
       // We persist the token *hash* as the reviewer token on the thread
@@ -191,7 +212,12 @@ export async function leaveCommentAsReviewer(
  * Input is inline (not an exported interface) per 'use server' constraints.
  */
 export async function addCommentAsReviewer(
-  input: { token: string; threadId: string; body: string },
+  input: {
+    token: string
+    threadId: string
+    body: string
+    image?: CommentImage
+  },
 ): Promise<void> {
   const link = await resolveLinkOrThrow(input.token)
 
@@ -217,14 +243,18 @@ export async function addCommentAsReviewer(
     throw new MagicLinkActionError('Reviewer no longer recognized for this link')
   }
 
+  const image = validateImage(input.image)
   const body = (input.body ?? '').trim()
-  if (!body) {
-    throw new MagicLinkActionError('Comment body required')
+  if (!body && !image) {
+    throw new MagicLinkActionError('Comment requires text or an image')
   }
 
   await addComment({
     threadId: input.threadId,
     body,
+    imageUrl: image?.url ?? null,
+    imageWidth: image?.width ?? null,
+    imageHeight: image?.height ?? null,
     author: {
       kind: 'reviewer',
       reviewerToken: hashToken(input.token),
