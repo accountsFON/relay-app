@@ -412,13 +412,13 @@ describe('checklistRowsForStep — send review link item', () => {
       label: SEND_REVIEW_LINK_LABEL,
       required: true,
     })
-    expect(rows.length).toBe(5)
+    expect(rows.length).toBe(6)
   })
 
   it('omits the Send review link item when client review is off', () => {
     const rows = checklistRowsForStep('batch-1', RelayStep.am_review_design, false)
     expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
-    expect(rows.length).toBe(4)
+    expect(rows.length).toBe(5)
   })
 
   it('never adds the item on other steps even when client review is on', () => {
