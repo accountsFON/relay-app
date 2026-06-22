@@ -18,11 +18,14 @@ import { recordActivity } from '@/server/services/activity'
  * Steps the client cares about. A pass_forward landing at one of these
  * (or auto-advancing through one) is `public`; everything else internal.
  * Spec § Future Features § Section 2 visibility rules.
+ *
+ * Pipeline rework: collapsed sent_to_client + client_decision → client_review,
+ * and ready_to_schedule → scheduling (scheduling is AM-held, not client-facing,
+ * but implementing_revisions is still surfaced to the client activity feed).
  */
 const CLIENT_FACING_STEPS = new Set<RelayStep>([
-  RelayStep.sent_to_client,
-  RelayStep.client_decision,
-  RelayStep.ready_to_schedule,
+  RelayStep.client_review,
+  RelayStep.scheduling,
   RelayStep.implementing_revisions,
 ])
 
@@ -302,10 +305,17 @@ export interface AdvanceFromClientReviewResult {
  * WITHOUT the actor-exclusion that passBaton applies. Best effort: callers
  * wrap this so a failure never rolls back the review submission.
  *
- * Guard: only acts when clientReviewEnabled and the batch is on a client-held
- * step (sent_to_client or client_decision); otherwise a no-op so a second
- * reviewer's submit, or a submit after the AM already moved the batch, is
- * harmless.
+ * Guard: only acts when clientReviewEnabled and the batch is on the merged
+ * client-held step (client_review); otherwise a no-op so a second reviewer's
+ * submit, or a submit after the AM already moved the batch, is harmless.
+ *
+ * Pipeline rework: the old sent_to_client + client_decision steps collapsed
+ * into the single client_review step; the old ready_to_schedule destination
+ * collapsed into scheduling. This function deliberately bypasses
+ * validateTransition by design — client_review -> scheduling is an `auto`
+ * edge, not a `forward` edge, so passBaton would reject it. Do not "fix"
+ * this to route through validateTransition (approved default confirmed by
+ * Julio, 2026-06-04 spec; scheduling destination confirmed 2026-06-22 rework).
  */
 export async function advanceFromClientReview(
   input: AdvanceFromClientReviewInput,
@@ -323,22 +333,14 @@ export async function advanceFromClientReview(
     })
     if (!batch) return { advanced: false, reason: 'not_found' }
 
-    const isClientHeld =
-      batch.currentStep === RelayStep.sent_to_client ||
-      batch.currentStep === RelayStep.client_decision
+    const isClientHeld = batch.currentStep === RelayStep.client_review
     if (!batch.clientReviewEnabled || !isClientHeld) {
       return { advanced: false, reason: 'not_at_client_step' }
     }
 
-    // Deliberate single hop: the client review collapses straight to the
-    // outcome, skipping the intermediate `client_decision` step (which exists
-    // only for the logged-in client persona). We therefore do NOT call
-    // validateTransition here; `sent_to_client -> ready_to_schedule` is not a
-    // legal edge in the table by design. Do not "fix" this to route through
-    // client_decision (approved default confirmed by Julio, 2026-06-04 spec).
     const toStep =
       input.decision === 'approved'
-        ? RelayStep.ready_to_schedule
+        ? RelayStep.scheduling
         : RelayStep.implementing_revisions
 
     const next = await resolveHolderForStep(
@@ -384,7 +386,7 @@ export async function advanceFromClientReview(
         kind: ActivityKind.client_review_decided,
         // Always internal: this event is shown to the AM/holder, not to the
         // client reviewer. Deliberately diverges from passBaton's
-        // CLIENT_FACING_STEPS visibility (ready_to_schedule is client-facing
+        // CLIENT_FACING_STEPS visibility (scheduling is client-facing
         // there); do not "fix" this to match passBaton.
         visibility: EventVisibility.internal,
         payload: {
@@ -448,7 +450,7 @@ export async function advanceFromClientReview(
 }
 
 /**
- * Terminal-state transition: advances a batch from final_qa_schedule to
+ * Terminal-state transition: advances a batch from scheduling to
  * completed. Emits batch_completed ActivityEvent with public visibility so
  * clients see "Cedar Creek May 2026 finished by Julio" in their activity
  * thread.
