@@ -9,20 +9,24 @@
 import { RelayStep, RelayRole } from '@prisma/client'
 
 export const STEP_LABEL: Record<RelayStep, string> = {
+  // Active pipeline steps (canonical rework names)
   [RelayStep.onboarding_gate]: 'Onboarding',
-  [RelayStep.copy]: 'Copy',
-  [RelayStep.in_design]: 'In design',
+  [RelayStep.copy]: 'Copy Review',
+  [RelayStep.in_design]: 'Initial Design',
+  [RelayStep.am_review_design]: 'Design Review',
+  [RelayStep.design_revisions]: 'Design Revision',
+  [RelayStep.am_qa_pre_client]: 'Pre-Client QA',
+  [RelayStep.implementing_revisions]: 'Post Revision',
+  [RelayStep.client_review]: 'Client Review',
+  [RelayStep.scheduling]: 'Scheduling',
+  [RelayStep.completed]: 'Completed',
+  // Retired steps (keep existing labels for historical rows)
   [RelayStep.designs_completed]: 'Designs done',
-  [RelayStep.am_review_design]: 'AM review',
-  [RelayStep.design_revisions]: 'Design revisions',
-  [RelayStep.am_qa_pre_client]: 'Pre-client QA',
   [RelayStep.sent_to_client]: 'With client',
   [RelayStep.client_decision]: 'Client decision',
   [RelayStep.ready_to_schedule]: 'Ready to schedule',
-  [RelayStep.implementing_revisions]: 'Implementing revisions',
   [RelayStep.revisions_complete]: 'Revisions complete',
   [RelayStep.final_qa_schedule]: 'Final QA',
-  [RelayStep.completed]: 'Completed',
 }
 
 /**
@@ -69,20 +73,24 @@ export const ROLE_COLOR: Record<RelayRole, { bg: string; text: string; ring: str
  * the authoritative source for permissions and transition validation).
  */
 export const STEP_ROLE: Record<RelayStep, RelayRole> = {
-  [RelayStep.onboarding_gate]: RelayRole.admin,
+  // Active pipeline steps (mirrors HOLDER_ROLE in relay-state-machine.ts)
+  [RelayStep.onboarding_gate]: RelayRole.am, // CHANGED: was admin (pipeline rework)
   [RelayStep.copy]: RelayRole.am,
   [RelayStep.in_design]: RelayRole.designer,
-  [RelayStep.designs_completed]: RelayRole.designer,
   [RelayStep.am_review_design]: RelayRole.am,
   [RelayStep.design_revisions]: RelayRole.designer,
   [RelayStep.am_qa_pre_client]: RelayRole.am,
+  [RelayStep.implementing_revisions]: RelayRole.am,
+  [RelayStep.client_review]: RelayRole.client, // NEW
+  [RelayStep.scheduling]: RelayRole.am, // NEW
+  [RelayStep.completed]: RelayRole.am,
+  // Retired steps
+  [RelayStep.designs_completed]: RelayRole.designer,
   [RelayStep.sent_to_client]: RelayRole.client,
   [RelayStep.client_decision]: RelayRole.client,
   [RelayStep.ready_to_schedule]: RelayRole.am,
-  [RelayStep.implementing_revisions]: RelayRole.am,
   [RelayStep.revisions_complete]: RelayRole.am,
   [RelayStep.final_qa_schedule]: RelayRole.am,
-  [RelayStep.completed]: RelayRole.am,
 }
 
 /** Sub-state labels for step `copy`. Phase 1 only step that has sub-states. */

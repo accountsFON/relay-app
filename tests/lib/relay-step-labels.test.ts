@@ -15,10 +15,10 @@ describe('RELAY_STEP_LABELS', () => {
     }
   })
 
-  it('uses the canonical step labels from the notifications audit', () => {
+  it('uses the canonical step labels from the pipeline rework', () => {
     expect(RELAY_STEP_LABELS[RelayStep.onboarding_gate]).toBe('Onboarding')
-    expect(RELAY_STEP_LABELS[RelayStep.in_design]).toBe('Design')
-    expect(RELAY_STEP_LABELS[RelayStep.am_review_design]).toBe('AM review (design)')
+    expect(RELAY_STEP_LABELS[RelayStep.in_design]).toBe('Initial Design')
+    expect(RELAY_STEP_LABELS[RelayStep.am_review_design]).toBe('Design Review')
     expect(RELAY_STEP_LABELS[RelayStep.client_decision]).toBe('Client review')
     expect(RELAY_STEP_LABELS[RelayStep.sent_to_client]).toBe('Sent to client')
   })
@@ -26,10 +26,8 @@ describe('RELAY_STEP_LABELS', () => {
 
 describe('relayStepLabel', () => {
   it('returns the canonical label for known steps', () => {
-    expect(relayStepLabel(RelayStep.copy)).toBe('Copy')
-    expect(relayStepLabel(RelayStep.implementing_revisions)).toBe(
-      'Client revisions in progress',
-    )
+    expect(relayStepLabel(RelayStep.copy)).toBe('Copy Review')
+    expect(relayStepLabel(RelayStep.implementing_revisions)).toBe('Post Revision')
   })
 
   it('returns an empty string for null or undefined', () => {
@@ -87,5 +85,25 @@ describe('relayStepDescription', () => {
 
   it('returns an empty string for unknown step strings', () => {
     expect(relayStepDescription('totally_unknown_step')).toBe('')
+  })
+})
+
+describe('pipeline rework: labels', () => {
+  it('renames the shared steps', () => {
+    expect(RELAY_STEP_LABELS[RelayStep.onboarding_gate]).toBe('Onboarding')
+    expect(RELAY_STEP_LABELS[RelayStep.copy]).toBe('Copy Review')
+    expect(RELAY_STEP_LABELS[RelayStep.in_design]).toBe('Initial Design')
+    expect(RELAY_STEP_LABELS[RelayStep.am_review_design]).toBe('Design Review')
+    expect(RELAY_STEP_LABELS[RelayStep.design_revisions]).toBe('Design Revision')
+    expect(RELAY_STEP_LABELS[RelayStep.implementing_revisions]).toBe('Post Revision')
+    expect(RELAY_STEP_LABELS[RelayStep.client_review]).toBe('Client Review')
+    expect(RELAY_STEP_LABELS[RelayStep.scheduling]).toBe('Scheduling')
+  })
+  it('QA label is dynamic by clientReviewEnabled', () => {
+    expect(relayStepLabel(RelayStep.am_qa_pre_client, true)).toBe('Pre-Client QA')
+    expect(relayStepLabel(RelayStep.am_qa_pre_client, false)).toBe('Final QA')
+  })
+  it('QA label defaults to Pre-Client QA when no flag given', () => {
+    expect(relayStepLabel(RelayStep.am_qa_pre_client)).toBe('Pre-Client QA')
   })
 })

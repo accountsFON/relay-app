@@ -55,6 +55,9 @@ export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
     case RelayStep.client_decision:
       return { label: 'Client deciding', tone: 'attention', daysHere }
 
+    case RelayStep.client_review:
+      return { label: 'Client reviewing', tone: 'attention', daysHere }
+
     case RelayStep.designs_completed:
       return { label: 'Designer marked done', tone: 'success', daysHere }
 
@@ -71,6 +74,9 @@ export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
       return { label: 'Revisions complete (router)', tone: 'attention', daysHere }
 
     case RelayStep.final_qa_schedule:
+      return { label: 'Scheduling', tone: 'progress', daysHere }
+
+    case RelayStep.scheduling:
       return { label: 'Scheduling', tone: 'progress', daysHere }
 
     case RelayStep.onboarding_gate:
@@ -106,12 +112,14 @@ export function amKanbanColumn(step: RelayStep): AmKanbanColumn | null {
       return 'Pre-Client QA'
     case RelayStep.sent_to_client:
     case RelayStep.client_decision:
+    case RelayStep.client_review:
       return 'With Client'
     case RelayStep.implementing_revisions:
     case RelayStep.revisions_complete:
       return 'Revisions'
     case RelayStep.ready_to_schedule:
     case RelayStep.final_qa_schedule:
+    case RelayStep.scheduling:
       return 'Schedule'
     case RelayStep.onboarding_gate:
       return null
@@ -142,6 +150,7 @@ export function clientKanbanColumn(step: RelayStep): ClientKanbanColumn | null {
   switch (step) {
     case RelayStep.sent_to_client:
     case RelayStep.client_decision:
+    case RelayStep.client_review:
       return 'Awaiting Your Approval'
     case RelayStep.copy:
     case RelayStep.in_design:
@@ -153,6 +162,7 @@ export function clientKanbanColumn(step: RelayStep): ClientKanbanColumn | null {
     case RelayStep.implementing_revisions:
     case RelayStep.revisions_complete:
     case RelayStep.final_qa_schedule:
+    case RelayStep.scheduling:
       return 'In Production'
     case RelayStep.onboarding_gate:
       return null

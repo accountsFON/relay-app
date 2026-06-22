@@ -118,7 +118,7 @@ describe('AdminForceStepSection', () => {
     const dialog = await screen.findByRole('dialog')
     await waitFor(() => {
       expect(dialog.textContent).toContain(
-        'Force this relay from AM review (design) to Copy',
+        'Force this relay from Design Review to Copy Review',
       )
     })
   })

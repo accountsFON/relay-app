@@ -11,29 +11,42 @@
 import { RelayStep } from '@prisma/client'
 
 export const RELAY_STEP_LABELS: Record<RelayStep, string> = {
+  // Active pipeline steps (canonical rework names)
   [RelayStep.onboarding_gate]: 'Onboarding',
-  [RelayStep.copy]: 'Copy',
-  [RelayStep.in_design]: 'Design',
+  [RelayStep.copy]: 'Copy Review',
+  [RelayStep.in_design]: 'Initial Design',
+  [RelayStep.am_review_design]: 'Design Review',
+  [RelayStep.design_revisions]: 'Design Revision',
+  [RelayStep.am_qa_pre_client]: 'Pre-Client QA',
+  [RelayStep.implementing_revisions]: 'Post Revision',
+  [RelayStep.client_review]: 'Client Review',
+  [RelayStep.scheduling]: 'Scheduling',
+  [RelayStep.completed]: 'Completed',
+  // Retired steps (keep existing labels for historical rows)
   [RelayStep.designs_completed]: 'Design complete',
-  [RelayStep.am_review_design]: 'AM review (design)',
-  [RelayStep.design_revisions]: 'Design revisions',
-  [RelayStep.am_qa_pre_client]: 'Final QA before client',
   [RelayStep.sent_to_client]: 'Sent to client',
   [RelayStep.client_decision]: 'Client review',
   [RelayStep.ready_to_schedule]: 'Ready to schedule',
-  [RelayStep.implementing_revisions]: 'Client revisions in progress',
   [RelayStep.revisions_complete]: 'Revisions complete',
   [RelayStep.final_qa_schedule]: 'Final QA and schedule',
-  [RelayStep.completed]: 'Completed',
 }
 
 /**
  * Resolve a label for a RelayStep value. Falls back to a humanized form of
  * the raw key when the value is not a known RelayStep (e.g. legacy payload
  * data, free-text sub-state strings).
+ *
+ * Pass `clientReviewEnabled` to get the dynamic Pre-Client QA / Final QA
+ * label for `am_qa_pre_client`. Defaults to 'Pre-Client QA' when omitted.
  */
-export function relayStepLabel(step: RelayStep | string | null | undefined): string {
+export function relayStepLabel(
+  step: RelayStep | string | null | undefined,
+  clientReviewEnabled?: boolean,
+): string {
   if (step == null) return ''
+  if (step === RelayStep.am_qa_pre_client && clientReviewEnabled === false) {
+    return 'Final QA'
+  }
   if (typeof step === 'string' && step in RELAY_STEP_LABELS) {
     return RELAY_STEP_LABELS[step as RelayStep]
   }
@@ -56,14 +69,16 @@ export const RELAY_STEP_DESCRIPTIONS: Record<RelayStep, string> = {
   [RelayStep.designs_completed]: 'Designs are finished and waiting for AM review',
   [RelayStep.am_review_design]: 'AM is reviewing the designs before client send',
   [RelayStep.design_revisions]: 'Designer is reworking visuals after AM feedback',
-  [RelayStep.am_qa_pre_client]: 'AM is running the final QA pass before client send',
+  [RelayStep.am_qa_pre_client]: 'AM runs the final QA pass before the client sees it',
   [RelayStep.sent_to_client]: 'Sent to the client for approval',
   [RelayStep.client_decision]: 'Waiting on the client to approve or request changes',
   [RelayStep.ready_to_schedule]: 'Approved by the client, ready to schedule',
-  [RelayStep.implementing_revisions]: 'Client revisions in progress',
+  [RelayStep.implementing_revisions]: 'AM is addressing the client feedback',
   [RelayStep.revisions_complete]: 'Revisions are done and headed back for final QA',
   [RelayStep.final_qa_schedule]: 'Final QA before posts ship',
   [RelayStep.completed]: 'Relay is finished and ready to archive',
+  [RelayStep.client_review]: 'With the client for approval or change requests',
+  [RelayStep.scheduling]: 'AM is scheduling the approved posts',
 }
 
 /**

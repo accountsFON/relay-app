@@ -119,7 +119,7 @@ describe('ChecklistPanel CTA label (Phase 3 item 16)', () => {
       />,
     )
     expect(
-      screen.getByRole('button', { name: /pass to in design/i }),
+      screen.getByRole('button', { name: /pass to initial design/i }),
     ).toBeInTheDocument()
   })
 })
@@ -164,7 +164,7 @@ describe('ChecklistPanel tick does not block the Pass button', () => {
     )
 
     expect(
-      screen.getByRole('button', { name: /pass to in design/i }),
+      screen.getByRole('button', { name: /pass to initial design/i }),
     ).toBeDisabled()
 
     fireEvent.click(screen.getByRole('button', { name: /check item/i }))
@@ -172,7 +172,7 @@ describe('ChecklistPanel tick does not block the Pass button', () => {
     // The last required item is checked optimistically; the save is still
     // in flight, but the Pass button must be clickable, not blocked by it.
     expect(
-      screen.getByRole('button', { name: /pass to in design/i }),
+      screen.getByRole('button', { name: /pass to initial design/i }),
     ).toBeEnabled()
 
     resolveTick()
@@ -210,7 +210,7 @@ describe('ChecklistPanel tick does not block the Pass button', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pass to in design/i }))
+    fireEvent.click(screen.getByRole('button', { name: /pass to initial design/i }))
 
     await waitFor(() => expect(refreshMock).toHaveBeenCalled())
     expect(passBatonAction).toHaveBeenCalledWith({
