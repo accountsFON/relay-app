@@ -218,8 +218,8 @@ describe('go back on every step', () => {
       // design_revisions only has one outgoing edge (forward to am_review_design);
       // it has no send_back edges in the new tables.
       RelayStep.design_revisions,
-      // implementing_revisions has revision + forward edges only; no send_back.
-      // The re-review path uses direction: 'revision' to client_review.
+      // implementing_revisions has two forward edges only (re-review + schedule); no send_back.
+      // The re-review path uses direction: 'forward' to client_review (not 'revision').
       RelayStep.implementing_revisions,
     ])
     for (const step of Object.values(RelayStep)) {
@@ -273,11 +273,11 @@ describe('go back on every step', () => {
     expect(legalSendBackTargets(RelayStep.ready_to_schedule, true)).toEqual([])
   })
 
-  it('implementing_revisions can go back to client_review via revision edge (pipeline rework)', () => {
-    // `revision` direction is not a send_back, so legalSendBackTargets returns [].
-    // The re-review path uses direction: 'revision' (client_review is the only target).
+  it('implementing_revisions has no send_back edges (pipeline rework: re-review uses forward to client_review)', () => {
+    // Both outgoing edges use direction: 'forward', not 'revision' or 'send_back'.
+    // legalSendBackTargets filters for send_back only, so it returns [].
     expect(legalSendBackTargets(RelayStep.implementing_revisions, true)).toEqual([])
-    // But client_review IS reachable via the revision-direction edge:
+    // client_review IS reachable via the forward-direction re-review edge:
     const next = legalNextSteps(RelayStep.implementing_revisions, true).map((t) => t.to)
     expect(next).toContain(RelayStep.client_review)
   })
