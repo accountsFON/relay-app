@@ -78,4 +78,24 @@ describe('RelayTrack', () => {
     // CLIENT_TRACK_VIEW has 3 nodes; one track on every viewport.
     expect(screen.getAllByTestId('relay-track-node')).toHaveLength(3)
   })
+
+  it('shows "Pre-Client QA" in the header when QA step and clientReviewEnabled = true', () => {
+    const batch = makeBatchSummary({
+      currentStep: RelayStep.am_qa_pre_client,
+      clientReviewEnabled: true,
+    })
+    render(<RelayTrack batch={batch} />)
+    // The header h2 should say "Pre-Client QA" (review batch).
+    expect(screen.getByRole('heading', { level: 2, name: /pre-client qa/i })).toBeInTheDocument()
+  })
+
+  it('shows "Final QA" in the header when QA step and clientReviewEnabled = false', () => {
+    const batch = makeBatchSummary({
+      currentStep: RelayStep.am_qa_pre_client,
+      clientReviewEnabled: false,
+    })
+    render(<RelayTrack batch={batch} />)
+    // The header h2 should say "Final QA" (no-review batch).
+    expect(screen.getByRole('heading', { level: 2, name: /final qa/i })).toBeInTheDocument()
+  })
 })

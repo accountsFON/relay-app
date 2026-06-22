@@ -26,6 +26,7 @@ import { CopySubStatePanel } from '@/components/relay/copy-substate-panel'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { STEP_LABEL } from '@/components/relay/labels'
+import { relayStepLabel } from '@/lib/relay-step-labels'
 import { passBaton } from '@/server/services/relay'
 import { parseDateScope } from '@/lib/date-scope'
 import { findRunForBatch } from '@/server/repositories/contentRuns'
@@ -364,7 +365,7 @@ export default async function BatchDetailPage({
 
       <HeroBand
         title={batch.label}
-        subtitle={`${client.name} · ${STEP_LABEL[batch.currentStep]} · held by ${batch.holder.name}`}
+        subtitle={`${client.name} · ${relayStepLabel(batch.currentStep, batch.clientReviewEnabled)} · held by ${batch.holder.name}`}
         breadcrumb={[
           { label: 'My Relay', href: '/dashboard' },
           { label: client.name, href: `/clients/${client.id}` },

@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { STEP_LABEL } from './labels'
+import { relayStepLabel } from '@/lib/relay-step-labels'
 import type { BatchSummary, ChecklistItem } from './types'
 import { SimpleTooltip } from './relay-tooltips'
 import { AdminForceStepSection } from './admin-force-step-section'
@@ -225,7 +226,7 @@ export function ChecklistPanel({
           Checklist
         </p>
         <p className="text-[13px] text-muted-foreground">
-          {STEP_LABEL[batch.currentStep]} · held by {batch.holder.name}
+          {relayStepLabel(batch.currentStep, batch.clientReviewEnabled)} · held by {batch.holder.name}
         </p>
       </div>
 

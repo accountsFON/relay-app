@@ -124,6 +124,38 @@ describe('ChecklistPanel CTA label (Phase 3 item 16)', () => {
   })
 })
 
+describe('ChecklistPanel step header label (Task 7 dynamic QA label)', () => {
+  it('shows "Pre-Client QA" as the step header when QA step and clientReviewEnabled = true', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({
+          currentStep: RelayStep.am_qa_pre_client,
+          clientReviewEnabled: true,
+        })}
+        items={[]}
+        canAct={false}
+      />,
+    )
+    // The subtitle line reads "Pre-Client QA · held by …"
+    expect(screen.getByText(/pre-client qa · held by/i)).toBeInTheDocument()
+  })
+
+  it('shows "Final QA" as the step header when QA step and clientReviewEnabled = false', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({
+          currentStep: RelayStep.am_qa_pre_client,
+          clientReviewEnabled: false,
+        })}
+        items={[]}
+        canAct={false}
+      />,
+    )
+    // The subtitle line reads "Final QA · held by …"
+    expect(screen.getByText(/final qa · held by/i)).toBeInTheDocument()
+  })
+})
+
 describe('ChecklistPanel tick does not block the Pass button', () => {
   beforeEach(() => {
     refreshMock.mockReset()
