@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getOrgContext } from '@/server/middleware/auth'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
+import { requireCan } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
 import {
   addComment,
@@ -17,6 +18,7 @@ import {
 } from '@/server/repositories/threads'
 import type { PinLocation } from '@/types/preview'
 import { isCommentImageBlobUrl } from '@/lib/comment-image'
+import { attachMediaToPost } from '@/lib/media'
 
 type CommentImage = { url: string; width?: number; height?: number }
 
@@ -216,4 +218,54 @@ export async function bulkResolveOnPostAction(input: {
   })
   await revalidatePathForPost(input.postId)
   return { count }
+}
+
+/**
+ * AM-only: promote a comment's attached reference image to the post's media
+ * (Post.mediaUrls[0], replace semantics).
+ *
+ * Deliberately does NOT auto-resolve the pin — the AM decides separately
+ * whether to mark the thread resolved after acting on the client's feedback.
+ *
+ * Permission: 'post.media.edit' (AMs and admins; clients cannot call this).
+ */
+export async function useCommentImageAsPostMediaAction(input: {
+  postId: string
+  commentId: string
+}) {
+  const ctx = await requireCan('post.media.edit')
+
+  const comment = await db.postComment.findUnique({
+    where: { id: input.commentId },
+    select: {
+      imageUrl: true,
+      thread: {
+        select: {
+          post: {
+            select: {
+              id: true,
+              clientId: true,
+              client: { select: { organizationId: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  const post = comment?.thread.post
+  if (!comment || !post || post.id !== input.postId) {
+    throw new Error('Not found')
+  }
+
+  if (post.client.organizationId !== ctx.organizationDbId && !ctx.platformOwner) {
+    throw new Error('Not found')
+  }
+
+  if (!comment.imageUrl || !isCommentImageBlobUrl(comment.imageUrl)) {
+    throw new Error('Comment has no usable image')
+  }
+
+  await attachMediaToPost({ postId: input.postId, url: comment.imageUrl })
+  await revalidatePathForPost(input.postId)
 }
