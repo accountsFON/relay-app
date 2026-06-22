@@ -254,6 +254,18 @@ export function PinPopover({
             <p className="whitespace-pre-line break-words text-[13px] leading-snug text-[#262626]">
               <Linkify text={comment.body} />
             </p>
+            {comment.imageUrl && (
+              <a href={comment.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block">
+                <img
+                  data-testid="comment-image"
+                  src={comment.imageUrl}
+                  width={comment.imageWidth ?? undefined}
+                  height={comment.imageHeight ?? undefined}
+                  alt="Reference attachment"
+                  className="max-h-40 w-auto max-w-[240px] rounded border border-[#dbdbdb] object-contain"
+                />
+              </a>
+            )}
           </li>
         ))}
       </ol>

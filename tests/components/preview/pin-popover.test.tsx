@@ -2,6 +2,81 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { PinPopover, type PinPopoverThread } from '@/components/preview/pin-popover'
 
+describe('PinPopover comment image rendering', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('renders a comment-image img when the comment has imageUrl set', () => {
+    const thread: PinPopoverThread = {
+      id: 't-img',
+      pin: { kind: 'image', x: 10, y: 20 },
+      status: 'open',
+      firstComment: {
+        author: { kind: 'client', reviewerName: 'Amy' },
+        body: 'see attachment',
+        createdAt: new Date('2026-06-01T10:00:00Z'),
+      },
+      comments: [
+        {
+          author: { kind: 'client', reviewerName: 'Amy' },
+          body: 'see attachment',
+          createdAt: new Date('2026-06-01T10:00:00Z'),
+          imageUrl: 'https://blob.example.com/ref.jpg',
+          imageWidth: 800,
+          imageHeight: 600,
+        },
+      ],
+      commentCount: 1,
+    }
+
+    render(
+      <PinPopover
+        thread={thread}
+        anchor={{ x: 100, y: 100 }}
+        mode="internal"
+        onComment={async () => {}}
+      />,
+    )
+
+    const img = screen.getByTestId('comment-image')
+    expect(img).toBeTruthy()
+    expect(img.getAttribute('src')).toBe('https://blob.example.com/ref.jpg')
+  })
+
+  it('does NOT render a comment-image img when the comment has no imageUrl', () => {
+    const thread: PinPopoverThread = {
+      id: 't-no-img',
+      pin: { kind: 'image', x: 10, y: 20 },
+      status: 'open',
+      firstComment: {
+        author: { kind: 'client', reviewerName: 'Amy' },
+        body: 'plain comment',
+        createdAt: new Date('2026-06-01T10:00:00Z'),
+      },
+      comments: [
+        {
+          author: { kind: 'client', reviewerName: 'Amy' },
+          body: 'plain comment',
+          createdAt: new Date('2026-06-01T10:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    render(
+      <PinPopover
+        thread={thread}
+        anchor={{ x: 100, y: 100 }}
+        mode="internal"
+        onComment={async () => {}}
+      />,
+    )
+
+    expect(screen.queryByTestId('comment-image')).toBeNull()
+  })
+})
+
 /**
  * Regression test for the pin-thread multi-comment bug: the popover must
  * render EVERY comment in thread.comments, not just the first. Previously the

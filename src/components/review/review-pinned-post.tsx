@@ -179,6 +179,18 @@ export function ReviewPinnedPost({
                 <em className="text-muted-foreground">No comment</em>
               )}
             </span>
+            {t.firstComment.imageUrl && (
+              <a href={t.firstComment.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block">
+                <img
+                  data-testid="comment-image"
+                  src={t.firstComment.imageUrl}
+                  width={t.firstComment.imageWidth ?? undefined}
+                  height={t.firstComment.imageHeight ?? undefined}
+                  alt="Reference attachment"
+                  className="max-h-40 w-auto max-w-[240px] rounded border border-[#dbdbdb] object-contain"
+                />
+              </a>
+            )}
           </li>
         ))}
       </ol>
