@@ -26,7 +26,17 @@ export type ReviewPinnedPostProps = {
   /** AM resolve action; omit to render the pins read-only. */
   onResolve?: (threadId: string) => Promise<void>
   /** AM comment append; omit to disable the composer's effect. */
-  onComment?: (threadId: string, body: string) => Promise<void>
+  onComment?: (
+    threadId: string,
+    body: string,
+    image?: { url: string; width?: number; height?: number },
+  ) => Promise<void>
+  /**
+   * When provided, renders an "Attach image" button in the popover composer.
+   * Typically passed via ReviewPinnedPostClient which builds this from the
+   * AM's userDbId on the client side.
+   */
+  onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
 }
 
 function pinKindLabel(pin: PinLocation): string {
@@ -51,6 +61,7 @@ export function ReviewPinnedPost({
   threads,
   onResolve,
   onComment,
+  onUploadImage,
 }: ReviewPinnedPostProps) {
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null)
@@ -168,6 +179,18 @@ export function ReviewPinnedPost({
                 <em className="text-muted-foreground">No comment</em>
               )}
             </span>
+            {t.firstComment.imageUrl && (
+              <a href={t.firstComment.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block">
+                <img
+                  data-testid="comment-image"
+                  src={t.firstComment.imageUrl}
+                  width={t.firstComment.imageWidth ?? undefined}
+                  height={t.firstComment.imageHeight ?? undefined}
+                  alt="Reference attachment"
+                  className="max-h-40 w-auto max-w-[240px] rounded border border-[#dbdbdb] object-contain"
+                />
+              </a>
+            )}
           </li>
         ))}
       </ol>
@@ -179,8 +202,9 @@ export function ReviewPinnedPost({
           mode="internal"
           postId={postId}
           postCaption={caption}
-          onComment={async (body) => {
-            if (onComment) await onComment(popoverThread.id, body)
+          onUploadImage={onUploadImage}
+          onComment={async (body, image) => {
+            if (onComment) await onComment(popoverThread.id, body, image)
           }}
           onResolve={
             onResolve

@@ -8,8 +8,26 @@ function imageThread(id: string, status: 'open' | 'resolved' = 'open'): Hydrated
     id,
     status,
     pin: { kind: 'image', x: 30, y: 40 },
-    firstComment: { author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date() },
+    firstComment: { author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date(), imageUrl: null, imageWidth: null, imageHeight: null },
     comments: [{ author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date() }],
+    commentCount: 1,
+  }
+}
+
+function imageThreadWithAttachment(id: string): HydratedThread {
+  return {
+    id,
+    status: 'open',
+    pin: { kind: 'image', x: 30, y: 40 },
+    firstComment: {
+      author: { kind: 'client', reviewerName: 'Sarah' },
+      body: 'see ref',
+      createdAt: new Date(),
+      imageUrl: 'https://blob.example.com/ref.png',
+      imageWidth: 1024,
+      imageHeight: 768,
+    },
+    comments: [{ author: { kind: 'client', reviewerName: 'Sarah' }, body: 'see ref', createdAt: new Date() }],
     commentCount: 1,
   }
 }
@@ -66,5 +84,35 @@ describe('ReviewPinnedPost', () => {
       <ReviewPinnedPost postId="postA" mediaUrl={null} caption="Hello" threads={[captionThread('t2')]} />,
     )
     expect(screen.getByTestId('review-pinned-post-no-media')).toBeTruthy()
+  })
+})
+
+describe('ReviewPinnedPost comment image rendering', () => {
+  it('renders a comment-image img in the comment list when firstComment has imageUrl', () => {
+    render(
+      <ReviewPinnedPost
+        postId="postA"
+        mediaUrl="https://example.com/a.jpg"
+        caption="Hello"
+        threads={[imageThreadWithAttachment('t1')]}
+      />,
+    )
+
+    const img = screen.getByTestId('comment-image')
+    expect(img).toBeTruthy()
+    expect(img.getAttribute('src')).toBe('https://blob.example.com/ref.png')
+  })
+
+  it('does NOT render a comment-image img when firstComment has no imageUrl', () => {
+    render(
+      <ReviewPinnedPost
+        postId="postA"
+        mediaUrl="https://example.com/a.jpg"
+        caption="Hello"
+        threads={[imageThread('t1')]}
+      />,
+    )
+
+    expect(screen.queryByTestId('comment-image')).toBeNull()
   })
 })

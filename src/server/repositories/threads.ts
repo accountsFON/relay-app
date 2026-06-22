@@ -125,6 +125,9 @@ export interface CreateThreadInput {
   pin: PinLocation
   body: string
   author: ThreadActor
+  imageUrl?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
 }
 
 export interface CreateThreadResult {
@@ -132,7 +135,15 @@ export interface CreateThreadResult {
   postId: string
   status: 'open' | 'resolved'
   pin: PinLocation
-  firstComment: { id: string; author: ThreadAuthor; body: string; createdAt: Date }
+  firstComment: {
+    id: string
+    author: ThreadAuthor
+    body: string
+    createdAt: Date
+    imageUrl: string | null
+    imageWidth: number | null
+    imageHeight: number | null
+  }
 }
 
 /**
@@ -163,6 +174,9 @@ export async function createThread(
         threadId: thread.id,
         body,
         ...commentAuthorCols,
+        imageUrl: input.imageUrl ?? null,
+        imageWidth: input.imageWidth ?? null,
+        imageHeight: input.imageHeight ?? null,
       },
       include: {
         author: { select: { id: true, name: true, avatarUrl: true } },
@@ -179,6 +193,9 @@ export async function createThread(
         author: hydrateAuthor(comment),
         body: comment.body,
         createdAt: comment.createdAt,
+        imageUrl: comment.imageUrl,
+        imageWidth: comment.imageWidth,
+        imageHeight: comment.imageHeight,
       },
     }
   })
@@ -226,6 +243,9 @@ export interface AddCommentInput {
   threadId: string
   body: string
   author: ThreadActor
+  imageUrl?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
 }
 
 export interface AddCommentResult {
@@ -234,6 +254,9 @@ export interface AddCommentResult {
   author: ThreadAuthor
   body: string
   createdAt: Date
+  imageUrl: string | null
+  imageWidth: number | null
+  imageHeight: number | null
 }
 
 /**
@@ -257,6 +280,9 @@ export async function addComment(input: AddCommentInput): Promise<AddCommentResu
         threadId,
         body,
         ...commentAuthorCols,
+        imageUrl: input.imageUrl ?? null,
+        imageWidth: input.imageWidth ?? null,
+        imageHeight: input.imageHeight ?? null,
       },
       include: {
         author: { select: { id: true, name: true, avatarUrl: true } },
@@ -269,6 +295,9 @@ export async function addComment(input: AddCommentInput): Promise<AddCommentResu
       author: hydrateAuthor(comment),
       body: comment.body,
       createdAt: comment.createdAt,
+      imageUrl: comment.imageUrl,
+      imageWidth: comment.imageWidth,
+      imageHeight: comment.imageHeight,
     }
   })
 }
@@ -384,16 +413,25 @@ function toHydratedThread(t: ThreadRowWithComments): HydratedThread {
         author: hydrateAuthor(first),
         body: first.body,
         createdAt: first.createdAt,
+        imageUrl: first.imageUrl,
+        imageWidth: first.imageWidth,
+        imageHeight: first.imageHeight,
       }
     : {
         author: { kind: 'client' as const, reviewerName: 'Unknown' },
         body: '',
         createdAt: t.createdAt,
+        imageUrl: null,
+        imageWidth: null,
+        imageHeight: null,
       }
   const comments = t.comments.map((c) => ({
     author: hydrateAuthor(c),
     body: c.body,
     createdAt: c.createdAt,
+    imageUrl: c.imageUrl,
+    imageWidth: c.imageWidth,
+    imageHeight: c.imageHeight,
   }))
   return {
     id: t.id,

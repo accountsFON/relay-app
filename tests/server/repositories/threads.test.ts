@@ -21,7 +21,7 @@ vi.mock('@/db/client', () => ({
   db: {
     $transaction: vi.fn(),
     post: { findUnique: vi.fn() },
-    postThread: { create: vi.fn() },
+    postThread: { create: vi.fn(), findUnique: vi.fn() },
     postComment: { create: vi.fn() },
   },
 }))
@@ -158,5 +158,179 @@ describe('createThread mention emit', () => {
     const activityInput = vi.mocked(recordActivity).mock.calls[0][0]
     const mentions = activityInput.mentionedUserIds ?? []
     expect(mentions).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Image-field persistence tests
+// ---------------------------------------------------------------------------
+
+import { addComment } from '@/server/repositories/threads'
+
+describe('createThread image field persistence', () => {
+  it('puts imageUrl + dims in postComment.create data and returns them on firstComment', async () => {
+    vi.mocked(db.post.findUnique).mockResolvedValue(null) // skip activity
+
+    vi.mocked(db.postComment.create).mockResolvedValue({
+      id: COMMENT_ID,
+      threadId: THREAD_ID,
+      body: 'Look at this',
+      authorId: AM_USER_ID,
+      reviewerToken: null,
+      reviewerName: null,
+      createdAt: new Date('2026-06-22T10:00:00Z'),
+      imageUrl: 'https://abc.vercel-storage.test/comment-images/am/user1/img.png',
+      imageWidth: 800,
+      imageHeight: 600,
+      author: { id: AM_USER_ID, name: 'AM User', avatarUrl: null },
+    } as never)
+
+    const result = await createThread({
+      postId: POST_ID,
+      pin: { kind: 'post' },
+      body: 'Look at this',
+      author: amActor(),
+      imageUrl: 'https://abc.vercel-storage.test/comment-images/am/user1/img.png',
+      imageWidth: 800,
+      imageHeight: 600,
+    })
+
+    // The data passed to postComment.create must include the image fields
+    const createCall = vi.mocked(db.postComment.create).mock.calls[0][0]
+    expect(createCall.data).toMatchObject({
+      imageUrl: 'https://abc.vercel-storage.test/comment-images/am/user1/img.png',
+      imageWidth: 800,
+      imageHeight: 600,
+    })
+
+    // The result's firstComment must carry the fields back
+    expect(result.firstComment).toMatchObject({
+      imageUrl: 'https://abc.vercel-storage.test/comment-images/am/user1/img.png',
+      imageWidth: 800,
+      imageHeight: 600,
+    })
+  })
+
+  it('persists null when no image fields are provided', async () => {
+    vi.mocked(db.post.findUnique).mockResolvedValue(null)
+
+    vi.mocked(db.postComment.create).mockResolvedValue({
+      id: COMMENT_ID,
+      threadId: THREAD_ID,
+      body: 'Plain text',
+      authorId: AM_USER_ID,
+      reviewerToken: null,
+      reviewerName: null,
+      createdAt: new Date('2026-06-22T10:00:00Z'),
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+      author: { id: AM_USER_ID, name: 'AM User', avatarUrl: null },
+    } as never)
+
+    const result = await createThread({
+      postId: POST_ID,
+      pin: { kind: 'post' },
+      body: 'Plain text',
+      author: amActor(),
+    })
+
+    const createCall = vi.mocked(db.postComment.create).mock.calls[0][0]
+    expect(createCall.data).toMatchObject({
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+    })
+
+    expect(result.firstComment).toMatchObject({
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+    })
+  })
+})
+
+describe('addComment image field persistence', () => {
+  beforeEach(() => {
+    // addComment's tx calls postThread.findUnique to guard against resolved threads.
+    // The top-level beforeEach wires $transaction to pass `db` back as `tx`,
+    // so mocking db.postThread.findUnique covers both paths.
+    vi.mocked(db.postThread.findUnique).mockResolvedValue({
+      id: THREAD_ID,
+      status: 'open',
+    } as never)
+  })
+
+  it('puts imageUrl + dims in postComment.create data and returns them', async () => {
+    vi.mocked(db.postComment.create).mockResolvedValue({
+      id: COMMENT_ID,
+      threadId: THREAD_ID,
+      body: 'See image',
+      authorId: AM_USER_ID,
+      reviewerToken: null,
+      reviewerName: null,
+      createdAt: new Date('2026-06-22T11:00:00Z'),
+      imageUrl: 'https://abc.vercel-storage.test/comment-images/am/user1/reply.png',
+      imageWidth: 1920,
+      imageHeight: 1080,
+      author: { id: AM_USER_ID, name: 'AM User', avatarUrl: null },
+    } as never)
+
+    const result = await addComment({
+      threadId: THREAD_ID,
+      body: 'See image',
+      author: amActor(),
+      imageUrl: 'https://abc.vercel-storage.test/comment-images/am/user1/reply.png',
+      imageWidth: 1920,
+      imageHeight: 1080,
+    })
+
+    const createCall = vi.mocked(db.postComment.create).mock.calls[0][0]
+    expect(createCall.data).toMatchObject({
+      imageUrl: 'https://abc.vercel-storage.test/comment-images/am/user1/reply.png',
+      imageWidth: 1920,
+      imageHeight: 1080,
+    })
+
+    expect(result).toMatchObject({
+      imageUrl: 'https://abc.vercel-storage.test/comment-images/am/user1/reply.png',
+      imageWidth: 1920,
+      imageHeight: 1080,
+    })
+  })
+
+  it('persists null when no image provided', async () => {
+    vi.mocked(db.postComment.create).mockResolvedValue({
+      id: COMMENT_ID,
+      threadId: THREAD_ID,
+      body: 'Just text',
+      authorId: AM_USER_ID,
+      reviewerToken: null,
+      reviewerName: null,
+      createdAt: new Date('2026-06-22T11:01:00Z'),
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+      author: { id: AM_USER_ID, name: 'AM User', avatarUrl: null },
+    } as never)
+
+    const result = await addComment({
+      threadId: THREAD_ID,
+      body: 'Just text',
+      author: amActor(),
+    })
+
+    const createCall = vi.mocked(db.postComment.create).mock.calls[0][0]
+    expect(createCall.data).toMatchObject({
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+    })
+
+    expect(result).toMatchObject({
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+    })
   })
 })

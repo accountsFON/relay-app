@@ -1,6 +1,6 @@
 import { cookies, headers } from 'next/headers'
 import { notFound } from 'next/navigation'
-import { verifySession } from '@/lib/magic-link'
+import { verifySession, hashToken } from '@/lib/magic-link'
 import { db } from '@/db/client'
 import { markMagicLinkVisited } from '@/server/services/magic-link-visited-emit'
 import {
@@ -223,6 +223,7 @@ export default async function ReviewPage({
   return (
     <ReviewSessionShell
       token={token}
+      tokenHash={hashToken(token)}
       clientName={link.batch.client.name}
       batchLabel={link.batch.label}
       reviewerName={recognizedReviewerName}

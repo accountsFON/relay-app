@@ -69,6 +69,7 @@ export function InstagramFeedPost({
   onOpenThread,
   onCreateThread,
   onComment,
+  onUploadImage,
   onResolveThread,
   editing = false,
   captionDraft,
@@ -188,15 +189,21 @@ export function InstagramFeedPost({
     })
   }
 
-  async function handleDraftSubmit(body: string) {
+  async function handleDraftSubmit(
+    body: string,
+    image?: { url: string; width: number; height: number },
+  ) {
     if (!draftPin || !onCreateThread) return
-    await onCreateThread(draftPin.pin, body)
+    await onCreateThread(draftPin.pin, body, image)
     setDraftPin(null)
   }
 
-  async function handleComment(body: string) {
+  async function handleComment(
+    body: string,
+    image?: { url: string; width: number; height: number },
+  ) {
     if (!openThreadId || !onComment) return
-    await onComment(openThreadId, body)
+    await onComment(openThreadId, body, image)
   }
 
   async function handleResolve() {
@@ -462,6 +469,7 @@ export function InstagramFeedPost({
           postId={post.id}
           postCaption={post.caption}
           onComment={handleComment}
+          onUploadImage={onUploadImage}
           onResolve={
             mode === 'internal' && onResolveThread ? handleResolve : undefined
           }
@@ -476,6 +484,7 @@ export function InstagramFeedPost({
         <PinDraftComposer
           anchor={draftPin.anchor}
           onSubmit={handleDraftSubmit}
+          onUploadImage={onUploadImage}
           onCancel={() => setDraftPin(null)}
         />
       ) : null}

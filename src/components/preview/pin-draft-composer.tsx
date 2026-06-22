@@ -11,6 +11,10 @@ import {
 } from 'react'
 import { cn } from '@/lib/utils'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
+import {
+  CommentImageAttachButton,
+  type AttachedImage,
+} from '@/components/preview/comment-image-attach-button'
 
 /**
  * Inline composer that pops up when a user drops a new pin (image click or
@@ -24,8 +28,14 @@ import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
 export type PinDraftComposerProps = {
   anchor: { x: number; y: number } | null
-  onSubmit: (body: string) => void | Promise<void>
+  onSubmit: (body: string, image?: { url: string; width: number; height: number }) => void | Promise<void>
   onCancel: () => void
+  /**
+   * When provided, renders an "Attach image" button in the composer. The
+   * host passes `uploadCommentImage` partially applied with the user's
+   * identity so the component stays identity-agnostic.
+   */
+  onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   className?: string
 }
 
@@ -37,11 +47,13 @@ export function PinDraftComposer({
   anchor,
   onSubmit,
   onCancel,
+  onUploadImage,
   className,
 }: PinDraftComposerProps) {
   const composerRef = useRef<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [body, setBody] = useState('')
+  const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [position, setPosition] = useState<{ top: number; left: number }>(() =>
     computePosition(anchor, COMPOSER_HEIGHT_ESTIMATE),
@@ -59,15 +71,18 @@ export function PinDraftComposer({
   }, [])
 
   // Warn before navigating away while an unsaved draft exists.
-  useUnsavedChanges(body.trim().length > 0)
+  useUnsavedChanges(body.trim().length > 0 || attachedImage !== null)
 
-  // Single cancel guard: a non-empty draft prompts a discard confirmation
-  // before the cancel is honored. Mirrors PinPopover's requestClose shape.
+  // Single cancel guard: a non-empty draft or attached image prompts a
+  // discard confirmation before the cancel is honored.
   const requestCancel = useCallback(() => {
-    if (body.trim().length > 0 && !window.confirm('Discard unsaved changes?'))
+    if (
+      (body.trim().length > 0 || attachedImage !== null) &&
+      !window.confirm('Discard unsaved changes?')
+    )
       return
     onCancel()
-  }, [body, onCancel])
+  }, [body, attachedImage, onCancel])
 
   // Escape closes; document click outside cancels.
   useEffect(() => {
@@ -95,10 +110,12 @@ export function PinDraftComposer({
   async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault()
     const trimmed = body.trim()
-    if (!trimmed || submitting) return
+    // Allow submit when there's text OR an attached image (image-only pin).
+    if ((!trimmed && !attachedImage) || submitting) return
     setSubmitting(true)
     try {
-      await onSubmit(trimmed)
+      await onSubmit(trimmed, attachedImage ?? undefined)
+      setAttachedImage(null)
     } finally {
       setSubmitting(false)
     }
@@ -112,7 +129,7 @@ export function PinDraftComposer({
     }
   }
 
-  const canSubmit = body.trim().length > 0 && !submitting
+  const canSubmit = (body.trim().length > 0 || attachedImage !== null) && !submitting
 
   return (
     <div
@@ -145,6 +162,14 @@ export function PinDraftComposer({
           placeholder="Leave a comment..."
           className="resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[13px] text-[#262626] outline-none focus:border-[#8e8e8e]"
         />
+        {onUploadImage ? (
+          <CommentImageAttachButton
+            onUploadImage={onUploadImage}
+            value={attachedImage}
+            onChange={setAttachedImage}
+            disabled={submitting}
+          />
+        ) : null}
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"

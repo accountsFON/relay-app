@@ -46,7 +46,7 @@ import {
   ReviewItemRow,
   type HydratedItemWithPost,
 } from '@/components/review/review-item-row'
-import { ReviewPinnedPost } from '@/components/review/review-pinned-post'
+import { ReviewPinnedPostClient } from '@/components/review/review-pinned-post-client'
 import { MarkAddressedButton } from '@/components/review/mark-addressed-button'
 import { StartNextRoundButton } from '@/components/review/start-next-round-button'
 import { ReviewAttentionCard } from '@/components/review/review-attention-card'
@@ -290,13 +290,20 @@ export default async function ReviewSessionDetailPage({
         `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
       )
     }
-    const onCommentPin = async (threadId: string, body: string) => {
+    const onCommentPin = async (
+      threadId: string,
+      body: string,
+      image?: { url: string; width?: number; height?: number },
+    ) => {
       'use server'
-      await addCommentAction({ threadId, body })
+      await addCommentAction({ threadId, body, image })
       revalidatePath(
         `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
       )
     }
+    // Capture userDbId for upload (server-rendered but serializable as a
+    // string prop to the client wrapper component).
+    const amUserDbId_ = ctx.userDbId
     const updateCaption = async (postId: string, caption: string) => {
       'use server'
       await updatePostAction(postId, { caption })
@@ -340,13 +347,14 @@ export default async function ReviewSessionDetailPage({
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {`Client pins (${ap.clientThreads.length})`}
             </p>
-            <ReviewPinnedPost
+            <ReviewPinnedPostClient
               postId={ap.postId}
               mediaUrl={ap.post.mediaUrls[0] ?? null}
               caption={ap.post.caption}
               threads={ap.clientThreads}
               onResolve={mode === 'pending' ? onResolvePin : undefined}
               onComment={mode === 'pending' ? onCommentPin : undefined}
+              userDbId={mode === 'pending' ? amUserDbId_ : undefined}
             />
           </div>
         )}

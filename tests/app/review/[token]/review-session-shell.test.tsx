@@ -36,6 +36,7 @@ const POSTS: ReviewSessionShellPost[] = [
 
 const BASE_PROPS = {
   token: 'tok',
+  tokenHash: 'abc123tokenhash',
   clientName: 'Test Client',
   clientAvatarUrl: null,
   batchLabel: 'Test Batch May 2026',

@@ -17,6 +17,7 @@ import {
   resolveThreadAction,
 } from '@/server/actions/threads'
 import type { PinLocation } from '@/types/preview'
+import { uploadCommentImage } from '@/lib/upload-comment-image'
 
 export type PreviewShellPost = {
   id: string
@@ -40,6 +41,12 @@ export type PreviewPageShellProps = {
    * action is internal-only.
    */
   mode?: 'internal' | 'review'
+  /**
+   * The AM's database user id. When provided, enables image-attach in the
+   * pin composers (uploads go to comment-images/am/<userDbId>/). When omitted
+   * the attach button is suppressed (graceful degradation).
+   */
+  userDbId?: string
 }
 
 /**
@@ -62,6 +69,7 @@ export function PreviewPageShell({
   canEdit,
   canUploadMedia,
   mode = 'internal',
+  userDbId,
 }: PreviewPageShellProps) {
   const router = useRouter()
   const [platform, setPlatform] = useState<Platform>('instagram')
@@ -69,6 +77,13 @@ export function PreviewPageShell({
   const handleRefresh = () => {
     router.refresh()
   }
+
+  // Build the upload helper once; undefined when no userDbId (graceful
+  // degradation: attach button simply won't render).
+  const handleUploadImage = userDbId
+    ? (file: File) =>
+        uploadCommentImage(file, { mode: 'internal', userDbId })
+    : undefined
 
   // Approval derivation runs per-render against the props (which the host
   // page hydrates from listThreadsForBatch). Open thread count drives both
@@ -153,12 +168,21 @@ export function PreviewPageShell({
                     client={{ name: client.name }}
                     threads={post.threads}
                     mode={mode}
-                    onCreateThread={async (pin: PinLocation, body: string) => {
-                      await createThreadAction({ postId: post.id, pin, body })
+                    onUploadImage={handleUploadImage}
+                    onCreateThread={async (
+                      pin: PinLocation,
+                      body: string,
+                      image?: { url: string; width?: number; height?: number },
+                    ) => {
+                      await createThreadAction({ postId: post.id, pin, body, image })
                       handleRefresh()
                     }}
-                    onComment={async (threadId: string, body: string) => {
-                      await addCommentAction({ threadId, body })
+                    onComment={async (
+                      threadId: string,
+                      body: string,
+                      image?: { url: string; width?: number; height?: number },
+                    ) => {
+                      await addCommentAction({ threadId, body, image })
                       handleRefresh()
                     }}
                     onResolveThread={
@@ -184,12 +208,21 @@ export function PreviewPageShell({
                     client={{ name: client.name }}
                     threads={post.threads}
                     mode={mode}
-                    onCreateThread={async (pin: PinLocation, body: string) => {
-                      await createThreadAction({ postId: post.id, pin, body })
+                    onUploadImage={handleUploadImage}
+                    onCreateThread={async (
+                      pin: PinLocation,
+                      body: string,
+                      image?: { url: string; width?: number; height?: number },
+                    ) => {
+                      await createThreadAction({ postId: post.id, pin, body, image })
                       handleRefresh()
                     }}
-                    onComment={async (threadId: string, body: string) => {
-                      await addCommentAction({ threadId, body })
+                    onComment={async (
+                      threadId: string,
+                      body: string,
+                      image?: { url: string; width?: number; height?: number },
+                    ) => {
+                      await addCommentAction({ threadId, body, image })
                       handleRefresh()
                     }}
                     onResolveThread={

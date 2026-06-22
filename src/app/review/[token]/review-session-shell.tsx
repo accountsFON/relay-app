@@ -18,6 +18,7 @@ import {
   addCommentAsReviewer,
   leaveCommentAsReviewer,
 } from '@/app/review/[token]/_actions'
+import { uploadCommentImage } from '@/lib/upload-comment-image'
 import type {
   ReviewDecisionType,
   ReviewItemHydrated,
@@ -38,6 +39,13 @@ export type ReviewSessionShellPost = {
 
 export type ReviewSessionShellProps = {
   token: string
+  /**
+   * sha256(token) — computed by the server page (which has the raw token)
+   * and passed down so the client shell can build reviewer upload pathnames
+   * without ever recomputing the hash on the client (and without exposing
+   * the hash as a secret — it is not secret).
+   */
+  tokenHash: string
   clientName: string
   clientAvatarUrl?: string | null
   batchLabel: string
@@ -71,6 +79,7 @@ export type ReviewSessionShellProps = {
  */
 export function ReviewSessionShell({
   token,
+  tokenHash,
   clientName,
   clientAvatarUrl,
   batchLabel,
@@ -219,9 +228,14 @@ export function ReviewSessionShell({
    * then refreshes the page so the new thread hydrates onto the card.
    */
   const handleCreatePin = useCallback(
-    async (postId: string, pin: PinLocation, body: string) => {
+    async (
+      postId: string,
+      pin: PinLocation,
+      body: string,
+      image?: { url: string; width?: number; height?: number },
+    ) => {
       try {
-        await leaveCommentAsReviewer({ token, postId, pin, body })
+        await leaveCommentAsReviewer({ token, postId, pin, body, image })
         startTransition(() => router.refresh())
       } catch (err) {
         console.error('[review-session-shell] leaveCommentAsReviewer failed', err)
@@ -235,15 +249,28 @@ export function ReviewSessionShell({
    * but routes to `addCommentAsReviewer` since the thread already exists.
    */
   const handleAppendThreadComment = useCallback(
-    async (threadId: string, body: string) => {
+    async (
+      threadId: string,
+      body: string,
+      image?: { url: string; width?: number; height?: number },
+    ) => {
       try {
-        await addCommentAsReviewer({ token, threadId, body })
+        await addCommentAsReviewer({ token, threadId, body, image })
         startTransition(() => router.refresh())
       } catch (err) {
         console.error('[review-session-shell] addCommentAsReviewer failed', err)
       }
     },
     [token, router, startTransition],
+  )
+
+  // Build the reviewer image upload helper using the token + its hash.
+  // The pathname is built client-side under the reviewer's tokenHash prefix;
+  // the route validates the prefix in onBeforeGenerateToken.
+  const handleUploadImage = useCallback(
+    (file: File) =>
+      uploadCommentImage(file, { mode: 'review', token, tokenHash }),
+    [token, tokenHash],
   )
 
   const handleSubmitClick = useCallback(() => {
@@ -348,10 +375,11 @@ export function ReviewSessionShell({
                 onCaptionEditSave={(draft) =>
                   handleCaptionEditSave(post.id, draft)
                 }
-                onCreatePin={(pin, body) =>
-                  handleCreatePin(post.id, pin, body)
+                onCreatePin={(pin, body, image) =>
+                  handleCreatePin(post.id, pin, body, image)
                 }
                 onAppendThreadComment={handleAppendThreadComment}
+                onUploadImage={handleUploadImage}
               />
             )
           })
