@@ -35,7 +35,7 @@ describe('EventRenderer copy', () => {
       reason: 'fonts off',
     })
     render(<EventRenderer event={event} />)
-    const node = screen.getByText(/back to Julio for changes, now at Design\. Reason: "fonts off"/)
+    const node = screen.getByText(/back to Julio for changes, now at Initial Design\. Reason: "fonts off"/)
     expect(node).toBeInTheDocument()
     expect(node.textContent ?? '').not.toMatch(/[\u2013\u2014]/)
   })
@@ -414,7 +414,7 @@ describe('EventRenderer copy', () => {
     })
     render(<EventRenderer event={event} />)
     expect(
-      screen.getByText(/passed the baton on May Round 1 to Julio, now at Design/),
+      screen.getByText(/passed the baton on May Round 1 to Julio, now at Initial Design/),
     ).toBeInTheDocument()
     expect(screen.queryByText(/overrode the holder/)).not.toBeInTheDocument()
   })
@@ -431,7 +431,7 @@ describe('EventRenderer copy', () => {
     })
     render(<EventRenderer event={event} />)
     expect(
-      screen.getByText(/overrode the holder and passed the baton on May Round 1 to Julio, now at Design/),
+      screen.getByText(/overrode the holder and passed the baton on May Round 1 to Julio, now at Initial Design/),
     ).toBeInTheDocument()
   })
 
@@ -449,7 +449,7 @@ describe('EventRenderer copy', () => {
     render(<EventRenderer event={event} />)
     expect(
       screen.getByText(
-        /overrode the holder and sent May Round 1 back to Julio for changes, now at Design\. Reason: "fonts off"/,
+        /overrode the holder and sent May Round 1 back to Julio for changes, now at Initial Design\. Reason: "fonts off"/,
       ),
     ).toBeInTheDocument()
   })
@@ -513,7 +513,7 @@ describe('batch_force_stepped', () => {
     })
     render(<EventRenderer event={event} />)
     expect(
-      screen.getByText(/force moved May 2026 from AM review \(design\) to Copy/),
+      screen.getByText(/force moved May 2026 from Design Review to Copy Review/),
     ).toBeInTheDocument()
   })
 
@@ -528,7 +528,7 @@ describe('batch_force_stepped', () => {
       reason: 'redo brief',
     })
     render(<EventRenderer event={event} />)
-    const node = screen.getByText(/force moved May 2026 from AM review \(design\) to Copy\. Reason: "redo brief"/)
+    const node = screen.getByText(/force moved May 2026 from Design Review to Copy Review\. Reason: "redo brief"/)
     expect(node).toBeInTheDocument()
     expect(node.textContent ?? '').not.toMatch(/[–—]/) // no em/en dashes
   })

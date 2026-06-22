@@ -62,7 +62,7 @@ describe('renderSummary, existing kinds', () => {
   it('batch_sent_back names the destination stage when toStep present', () => {
     expect(
       renderSummary(row({ kind: 'batch_sent_back', batchLabel: 'May batch', toStep: 'design_revisions' })),
-    ).toBe('Cedar Creek · Mollie sent "May batch" back to you for changes. Now at Design revisions.')
+    ).toBe('Cedar Creek · Mollie sent "May batch" back to you for changes. Now at Design Revision.')
   })
 
   it('batch_revision_dispatched names item type and trimmed description', () => {
@@ -445,13 +445,13 @@ describe('renderSummary, batch_force_stepped', () => {
   it('renders the force moved copy with batch label and step label', () => {
     expect(
       renderSummary(row({ kind: 'batch_force_stepped', batchLabel: 'May batch', toStep: 'copy' })),
-    ).toBe('Cedar Creek · Mollie force moved "May batch" to Copy.')
+    ).toBe('Cedar Creek · Mollie force moved "May batch" to Copy Review.')
   })
 
   it('falls back to "a relay" when batchLabel is missing', () => {
     expect(
       renderSummary(row({ kind: 'batch_force_stepped', toStep: 'copy' })),
-    ).toBe('Cedar Creek · Mollie force moved a relay to Copy.')
+    ).toBe('Cedar Creek · Mollie force moved a relay to Copy Review.')
   })
 
   it('omits the step tail when toStep is missing', () => {
