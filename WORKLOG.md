@@ -22,6 +22,29 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-22 — Comment image attachments Phase 2: use as post image** (PR #228)
+  AM-only consumption of a client's attached reference image. New
+  `useCommentImageAsPostMediaAction({postId,commentId})` (gated by
+  `post.media.edit`, cross-tenant guarded, validates the image is a
+  `comment-images/` blob URL) swaps the reference into `Post.mediaUrls[0]`
+  (replace semantics, via `attachMediaToPost`), and a "Use as post image" button
+  shows on attached images in `mode === 'internal'` only (clients never see it).
+  `comment.id` threaded through the view types + hydration. No auto-resolve of
+  the pin. Caleb/Julio item 25.
+
+- [x] **2026-06-22 — Comment image attachments Phase 1: attach + upload + render** (PR #227)
+  Reviewers (client, via magic link) and AMs can attach a single reference image
+  to a review pin comment ("change the image to this"), rendered inline in the
+  pin thread. New `PostComment.imageUrl` (+ dims). Two Vercel Blob upload routes,
+  each forcing a server-side per-actor prefix + png/jpeg/webp/gif + 5MB cap: AM
+  (`/api/comment-image/upload`, Clerk) and the reviewer route
+  (`/api/review/[token]/comment-image/upload`, authed by the signed magic-link
+  cookie + URL-token-hash match, NOT Clerk — the only upload path open to a
+  token-only client; full security review, no gaps). Shared attach control in
+  both pin composers, wired through the IG/FB feed posts to all three hosts with
+  the `userDbId`/`tokenHash` upload identity threaded; write path persists with
+  an `isCommentImageBlobUrl` guard. 1635 unit tests. Caleb/Julio item 25.
+
 - [x] **2026-06-22 — Pipeline rework Phase 2: auto-advance silent client reviews** (PR #226)
   A relay sitting in Client Review with no client response now auto-advances to
   Scheduling after a per-org window (`Organization.reviewWindowDays`, default 7),
