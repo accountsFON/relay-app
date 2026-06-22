@@ -268,6 +268,7 @@ export function ReviewPostCard({
         onCaptionEditSave={isEditing ? handleCaptionEditSave : undefined}
         onCaptionEditCancel={isEditing ? handleCaptionEditCancel : undefined}
         captionOverride={captionOverride}
+        onEditCaption={disabled ? undefined : enterEditMode}
       />
 
       <DecisionButtonRow
