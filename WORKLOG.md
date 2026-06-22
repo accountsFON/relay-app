@@ -22,6 +22,14 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-21 — Client review tutorial fires every load** (PR #222)
+  The magic-link review tutorial now shows on every load (was once-per-reviewer,
+  and had a first-load gate bug), with a Skip. Copy names all features (Approve /
+  Changes / Edit Copy, click an image, select caption text, Submit Review); demo
+  video kept; modal made mobile-friendly (`max-h-[90dvh]` scroll); Escape closes.
+  Dropped the dead seen-persistence (tutorial-seen route + service removed; DB
+  column left vestigial).
+
 - [x] **2026-06-21 — Send review link is a checklist step** (PR #221)
   "Send review link" is now a required checklist item on the AM review step
   (when client review is on): it opens the send modal and checks itself once the

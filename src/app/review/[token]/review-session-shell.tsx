@@ -50,13 +50,6 @@ export type ReviewSessionShellProps = {
   sessionStatus: ReviewSessionStatusType | null
   /** Summary snapshot from a submitted session (renders the thanks screen). */
   submittedSummary?: ReviewSessionSummary | null
-  /**
-   * Whether this reviewer has dismissed the first visit tutorial modal.
-   * Defaults to true so the modal does not render unless the parent
-   * explicitly opts in (server resolves the column on /review/[token]
-   * page render).
-   */
-  tutorialSeen?: boolean
 }
 
 /**
@@ -87,7 +80,6 @@ export function ReviewSessionShell({
   initialItems,
   sessionStatus,
   submittedSummary,
-  tutorialSeen = true,
 }: ReviewSessionShellProps) {
   const router = useRouter()
   const [platform, setPlatform] = useState<Platform>('instagram')
@@ -297,18 +289,13 @@ export function ReviewSessionShell({
     ? batchLabel
     : `${clientName} · ${batchLabel}`
 
-  // Phase 4 item 24: first visit tutorial modal. Renders only when the
-  // session is in_progress (no point teaching the surface after submit)
-  // and the reviewer's MagicLinkReviewer.tutorialSeenAt is still null.
-  // Dismissal POSTs to /api/review/[token]/tutorial-seen which sets the
-  // column; subsequent visits skip the modal entirely.
-  const showTutorialModal = localStatus === 'in_progress' && tutorialSeen === false
-
+  // Client tutorial fires on EVERY load of the active review surface (no
+  // persistence). It mounts unconditionally here; this JSX only renders when
+  // the session is not submitted (the submitted branch returns early above),
+  // so the modal never stacks on the thanks screen. The reviewer can Skip it.
   return (
     <div className="flex flex-col">
-      {showTutorialModal ? (
-        <ReviewTutorialModal token={token} seen={false} />
-      ) : null}
+      <ReviewTutorialModal />
       {showReturningBanner ? (
         <ReturningReviewerBanner
           itemsReviewed={itemsReviewed}
