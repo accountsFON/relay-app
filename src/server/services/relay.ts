@@ -29,6 +29,12 @@ const CLIENT_FACING_STEPS = new Set<RelayStep>([
   RelayStep.implementing_revisions,
 ])
 
+/** Window-start stamp for the auto-advance cron: set when entering
+ *  client_review, cleared when leaving it. */
+function clientReviewStamp(toStep: RelayStep): { clientReviewStartedAt: Date | null } {
+  return { clientReviewStartedAt: toStep === RelayStep.client_review ? new Date() : null }
+}
+
 export interface PassBatonInput {
   batchId: string
   toStep: RelayStep
@@ -232,6 +238,7 @@ export async function passBaton(input: PassBatonInput) {
         currentSubState: null,
         currentHolder: next.userId,
         currentRole: next.role,
+        ...clientReviewStamp(input.toStep),
       },
     })
 
@@ -358,6 +365,7 @@ export async function advanceFromClientReview(
         currentSubState: null,
         currentHolder: next.userId,
         currentRole: next.role,
+        ...clientReviewStamp(toStep),
       },
     })
 
@@ -508,6 +516,7 @@ export async function finishBatch(input: FinishBatchInput) {
         // Set once on the terminal transition; the auto-archive runner
         // reads this column and stamps deletedAt 30 days later.
         completedAt: new Date(),
+        clientReviewStartedAt: null,
       },
     })
 
@@ -613,6 +622,7 @@ export async function forceStep(input: ForceStepInput) {
           : leavingCompleted
             ? { completedAt: null }
             : {}),
+        ...clientReviewStamp(input.toStep),
       },
     })
 
@@ -709,6 +719,7 @@ export async function sendBackBaton(input: SendBackBatonInput) {
         currentSubState: null,
         currentHolder: next.userId,
         currentRole: next.role,
+        ...clientReviewStamp(input.toStep),
       },
     })
 
