@@ -47,6 +47,7 @@ import {
   sendBackBatonAction,
   tickChecklistItemAction,
 } from '@/server/actions/relay'
+import { AutoAdvanceToggle } from './auto-advance-toggle'
 
 export interface ChecklistPanelProps {
   batch: BatchSummary
@@ -442,6 +443,16 @@ export function ChecklistPanel({
             currentStep={batch.currentStep}
             canForceStep={canForceStep}
           />
+
+          {batch.currentStep === RelayStep.client_review && batch.clientReviewEnabled && (
+            <div className="border-t border-border pt-3">
+              <AutoAdvanceToggle
+                batchId={batch.id}
+                clientId={batch.clientId}
+                autoAdvanceOnTimeout={batch.autoAdvanceOnTimeout}
+              />
+            </div>
+          )}
         </div>
       )}
 

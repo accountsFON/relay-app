@@ -216,6 +216,7 @@ export default async function BatchDetailPage({
     scheduledAt: batch.scheduledAt,
     createdAt: batch.createdAt,
     clientReviewEnabled: batch.clientReviewEnabled,
+    autoAdvanceOnTimeout: batch.autoAdvanceOnTimeout,
     holder: {
       id: batch.holder.id,
       name: batch.holder.name,
