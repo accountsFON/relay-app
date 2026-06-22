@@ -80,4 +80,23 @@ describe('ReviewTutorialModal', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
     fetchSpy.mockRestore()
   })
+
+  it('keeps an accessible name on the video step', () => {
+    render(<ReviewTutorialModal />)
+    fireEvent.click(screen.getByTestId('review-tutorial-modal-show-video'))
+    const labelled = document.getElementById('review-tutorial-title')
+    expect(labelled).not.toBeNull()
+    expect(screen.getByTestId('review-tutorial-modal')).toHaveAttribute(
+      'aria-labelledby',
+      'review-tutorial-title',
+    )
+  })
+
+  it('closes on Escape', () => {
+    render(<ReviewTutorialModal />)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(
+      screen.queryByTestId('review-tutorial-modal'),
+    ).not.toBeInTheDocument()
+  })
 })

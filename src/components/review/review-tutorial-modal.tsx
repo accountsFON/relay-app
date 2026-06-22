@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +26,15 @@ export function ReviewTutorialModal({ className }: ReviewTutorialModalProps) {
 
   const handleDismiss = useCallback(() => setOpen(false), [])
   const handleShowVideo = useCallback(() => setStep('video'), [])
+
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') handleDismiss()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, handleDismiss])
 
   if (!open) return null
 
@@ -102,7 +111,10 @@ export function ReviewTutorialModal({ className }: ReviewTutorialModalProps) {
           </div>
         ) : (
           <div data-testid="review-tutorial-modal-video">
-            <h2 className="text-lg font-semibold text-foreground">
+            <h2
+              id="review-tutorial-title"
+              className="text-lg font-semibold text-foreground"
+            >
               Drop a pin on what needs work.
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
