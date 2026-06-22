@@ -48,6 +48,8 @@ enum RelayStep {
   revisions_complete
   final_qa_schedule
   completed
+  client_review
+  scheduling
 }
 
 enum RelayRole {
