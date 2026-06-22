@@ -83,4 +83,9 @@ export type FeedPostProps = {
   // `post.caption`. A `view original / back to your edit` toggle is rendered
   // beneath the caption when this is set.
   captionOverride?: string;
+  // onEditCaption: client review surface only. When provided, an inline
+  // "Edit copy" affordance renders beneath the caption; tapping it asks the
+  // host to enter caption edit mode. Only ReviewPostCard passes it, so the
+  // link does not appear on the AM / designer preview surfaces.
+  onEditCaption?: () => void;
 };

@@ -8,6 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type SyntheticEvent,
 } from 'react'
+import { Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { clampInstagramAspectRatio } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
@@ -78,6 +79,7 @@ export function InstagramFeedPost({
   onCaptionEditSave,
   onCaptionEditCancel,
   captionOverride,
+  onEditCaption,
 }: FeedPostProps) {
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
@@ -402,6 +404,18 @@ export function InstagramFeedPost({
               </>
             )}
           </p>
+        )}
+
+        {!editing && onEditCaption && (
+          <button
+            type="button"
+            data-testid="instagram-post-edit-copy"
+            onClick={onEditCaption}
+            className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[#00376b] hover:underline"
+          >
+            <Pencil aria-hidden className="h-3.5 w-3.5" />
+            Edit copy
+          </button>
         )}
 
         {!editing && captionOverride !== undefined && (
