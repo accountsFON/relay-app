@@ -410,6 +410,7 @@ function toHydratedThread(t: ThreadRowWithComments): HydratedThread {
   const first = t.comments[0]
   const firstComment = first
     ? {
+        id: first.id,
         author: hydrateAuthor(first),
         body: first.body,
         createdAt: first.createdAt,
@@ -418,6 +419,7 @@ function toHydratedThread(t: ThreadRowWithComments): HydratedThread {
         imageHeight: first.imageHeight,
       }
     : {
+        id: '',
         author: { kind: 'client' as const, reviewerName: 'Unknown' },
         body: '',
         createdAt: t.createdAt,
@@ -426,6 +428,7 @@ function toHydratedThread(t: ThreadRowWithComments): HydratedThread {
         imageHeight: null,
       }
   const comments = t.comments.map((c) => ({
+    id: c.id,
     author: hydrateAuthor(c),
     body: c.body,
     createdAt: c.createdAt,

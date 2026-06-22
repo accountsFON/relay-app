@@ -26,6 +26,7 @@ export type FeedPostProps = {
     status: 'open' | 'resolved';
     pin: PinLocation;
     firstComment: {
+      id: string;
       author: ThreadAuthor;
       body: string;
       createdAt: Date;
@@ -34,6 +35,7 @@ export type FeedPostProps = {
       imageHeight?: number | null;
     };
     comments: ReadonlyArray<{
+      id: string;
       author: ThreadAuthor;
       body: string;
       createdAt: Date;
@@ -56,6 +58,10 @@ export type FeedPostProps = {
   // The composer calls this before submitting a thread/comment so the server
   // action receives a URL rather than a raw File.
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>;
+  // onUseAsPostImage: AM-only. Called when the AM clicks "Use as post image"
+  // on a comment's attached image. Receives the comment id. The host wires
+  // this to useCommentImageAsPostMediaAction + handleRefresh.
+  onUseAsPostImage?: (commentId: string) => Promise<void>;
   // onResolveThread: AM-only resolve action. Reviewers omit this prop and the
   // resolve button is hidden in the popover.
   onResolveThread?: (threadId: string) => Promise<void>;

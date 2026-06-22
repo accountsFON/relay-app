@@ -37,6 +37,12 @@ export type ReviewPinnedPostProps = {
    * AM's userDbId on the client side.
    */
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
+  /**
+   * AM-only. When provided, the PinPopover shows a "Use as post image" button
+   * on any comment that has an attached image. The host wires this to
+   * useCommentImageAsPostMediaAction({ postId, commentId }) + handleRefresh.
+   */
+  onUseAsPostImage?: (commentId: string) => Promise<void>
 }
 
 function pinKindLabel(pin: PinLocation): string {
@@ -62,6 +68,7 @@ export function ReviewPinnedPost({
   onResolve,
   onComment,
   onUploadImage,
+  onUseAsPostImage,
 }: ReviewPinnedPostProps) {
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null)
@@ -203,6 +210,7 @@ export function ReviewPinnedPost({
           postId={postId}
           postCaption={caption}
           onUploadImage={onUploadImage}
+          onUseAsPostImage={onUseAsPostImage}
           onComment={async (body, image) => {
             if (onComment) await onComment(popoverThread.id, body, image)
           }}

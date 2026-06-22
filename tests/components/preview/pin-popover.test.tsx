@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { PinPopover, type PinPopoverThread } from '@/components/preview/pin-popover'
 
 describe('PinPopover comment image rendering', () => {
@@ -13,12 +13,14 @@ describe('PinPopover comment image rendering', () => {
       pin: { kind: 'image', x: 10, y: 20 },
       status: 'open',
       firstComment: {
+        id: 'c-img',
         author: { kind: 'client', reviewerName: 'Amy' },
         body: 'see attachment',
         createdAt: new Date('2026-06-01T10:00:00Z'),
       },
       comments: [
         {
+          id: 'c-img',
           author: { kind: 'client', reviewerName: 'Amy' },
           body: 'see attachment',
           createdAt: new Date('2026-06-01T10:00:00Z'),
@@ -50,12 +52,14 @@ describe('PinPopover comment image rendering', () => {
       pin: { kind: 'image', x: 10, y: 20 },
       status: 'open',
       firstComment: {
+        id: 'c-no-img',
         author: { kind: 'client', reviewerName: 'Amy' },
         body: 'plain comment',
         createdAt: new Date('2026-06-01T10:00:00Z'),
       },
       comments: [
         {
+          id: 'c-no-img',
           author: { kind: 'client', reviewerName: 'Amy' },
           body: 'plain comment',
           createdAt: new Date('2026-06-01T10:00:00Z'),
@@ -89,17 +93,20 @@ describe('PinPopover renders full comment thread', () => {
       pin: { kind: 'image', x: 30, y: 40 },
       status: 'open',
       firstComment: {
+        id: 'c1',
         author: { kind: 'client', reviewerName: 'Sarah' },
         body: 'first comment',
         createdAt: new Date('2026-05-15T10:00:00Z'),
       },
       comments: [
         {
+          id: 'c1',
           author: { kind: 'client', reviewerName: 'Sarah' },
           body: 'first comment',
           createdAt: new Date('2026-05-15T10:00:00Z'),
         },
         {
+          id: 'c2',
           author: { kind: 'am', userId: 'u1', name: 'Mollie' },
           body: 'second comment',
           createdAt: new Date('2026-05-15T10:05:00Z'),
@@ -129,12 +136,14 @@ function makeThread(): PinPopoverThread {
     pin: { kind: 'image', x: 30, y: 40 },
     status: 'open',
     firstComment: {
+      id: 'c1',
       author: { kind: 'client', reviewerName: 'Sarah' },
       body: 'first comment',
       createdAt: new Date('2026-05-15T10:00:00Z'),
     },
     comments: [
       {
+        id: 'c1',
         author: { kind: 'client', reviewerName: 'Sarah' },
         body: 'first comment',
         createdAt: new Date('2026-05-15T10:00:00Z'),
@@ -259,5 +268,139 @@ describe('PinPopover close behavior', () => {
 
     expect(confirmSpy).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ── Task 12: "Use as post image" button (AM-only) ──────────────────────────
+
+function makeThreadWithImage(commentId = 'c-img-1'): PinPopoverThread {
+  return {
+    id: 't-use-as-post',
+    pin: { kind: 'image', x: 20, y: 30 },
+    status: 'open',
+    firstComment: {
+      id: commentId,
+      author: { kind: 'client', reviewerName: 'Bob' },
+      body: 'here is my ref',
+      createdAt: new Date('2026-06-22T10:00:00Z'),
+      imageUrl: 'https://blob.example.com/ref.jpg',
+      imageWidth: 800,
+      imageHeight: 600,
+    },
+    comments: [
+      {
+        id: commentId,
+        author: { kind: 'client', reviewerName: 'Bob' },
+        body: 'here is my ref',
+        createdAt: new Date('2026-06-22T10:00:00Z'),
+        imageUrl: 'https://blob.example.com/ref.jpg',
+        imageWidth: 800,
+        imageHeight: 600,
+      },
+    ],
+    commentCount: 1,
+  }
+}
+
+describe('PinPopover "Use as post image" button', () => {
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('renders the button in internal mode when comment has imageUrl and onUseAsPostImage is provided', () => {
+    const onUseAsPostImage = vi.fn().mockResolvedValue(undefined)
+    render(
+      <PinPopover
+        thread={makeThreadWithImage()}
+        anchor={{ x: 100, y: 100 }}
+        mode="internal"
+        onComment={async () => {}}
+        onUseAsPostImage={onUseAsPostImage}
+      />,
+    )
+
+    expect(screen.getByTestId('use-as-post-image-btn')).toBeTruthy()
+  })
+
+  it('calls onUseAsPostImage with the comment id when the button is clicked', async () => {
+    const onUseAsPostImage = vi.fn().mockResolvedValue(undefined)
+    render(
+      <PinPopover
+        thread={makeThreadWithImage('comment-abc')}
+        anchor={{ x: 100, y: 100 }}
+        mode="internal"
+        onComment={async () => {}}
+        onUseAsPostImage={onUseAsPostImage}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('use-as-post-image-btn'))
+    await waitFor(() => {
+      expect(onUseAsPostImage).toHaveBeenCalledWith('comment-abc')
+    })
+  })
+
+  it('does NOT render the button in review mode even when onUseAsPostImage is provided', () => {
+    const onUseAsPostImage = vi.fn().mockResolvedValue(undefined)
+    render(
+      <PinPopover
+        thread={makeThreadWithImage()}
+        anchor={{ x: 100, y: 100 }}
+        mode="review"
+        onComment={async () => {}}
+        onUseAsPostImage={onUseAsPostImage}
+      />,
+    )
+
+    expect(screen.queryByTestId('use-as-post-image-btn')).toBeNull()
+  })
+
+  it('does NOT render the button in internal mode when comment has no imageUrl', () => {
+    const threadNoImg: PinPopoverThread = {
+      id: 't-no-img',
+      pin: { kind: 'post' },
+      status: 'open',
+      firstComment: {
+        id: 'c-plain',
+        author: { kind: 'am', userId: 'u1', name: 'Julio' },
+        body: 'plain note',
+        createdAt: new Date('2026-06-22T10:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c-plain',
+          author: { kind: 'am', userId: 'u1', name: 'Julio' },
+          body: 'plain note',
+          createdAt: new Date('2026-06-22T10:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+    const onUseAsPostImage = vi.fn().mockResolvedValue(undefined)
+    render(
+      <PinPopover
+        thread={threadNoImg}
+        anchor={{ x: 100, y: 100 }}
+        mode="internal"
+        onComment={async () => {}}
+        onUseAsPostImage={onUseAsPostImage}
+      />,
+    )
+
+    expect(screen.queryByTestId('use-as-post-image-btn')).toBeNull()
+  })
+
+  it('does NOT render the button when onUseAsPostImage is not provided (no prop)', () => {
+    render(
+      <PinPopover
+        thread={makeThreadWithImage()}
+        anchor={{ x: 100, y: 100 }}
+        mode="internal"
+        onComment={async () => {}}
+      />,
+    )
+
+    expect(screen.queryByTestId('use-as-post-image-btn')).toBeNull()
   })
 })

@@ -428,12 +428,14 @@ describe('ReviewSessionDetailPage', () => {
       status,
       pin: { kind: 'image' as const, x: 10, y: 20 },
       firstComment: {
+        id: `${id}-c1`,
         author: { kind: 'client' as const, reviewerName: 'Sarah' },
         body: 'fix it',
         createdAt: new Date('2026-05-15T10:00:00Z'),
       },
       comments: [
         {
+          id: `${id}-c1`,
           author: { kind: 'client' as const, reviewerName: 'Sarah' },
           body: 'fix it',
           createdAt: new Date('2026-05-15T10:00:00Z'),
@@ -514,12 +516,14 @@ describe('ReviewSessionDetailPage', () => {
         status: 'open' as const,
         pin: { kind: 'image' as const, x: 10, y: 20 },
         firstComment: {
+          id: `${id}-c1`,
           author: { kind: 'client' as const, reviewerName: 'Sarah' },
           body,
           createdAt: new Date('2026-05-15T10:00:00Z'),
         },
         comments: [
           {
+            id: `${id}-c1`,
             author: { kind: 'client' as const, reviewerName: 'Sarah' },
             body,
             createdAt: new Date('2026-05-15T10:00:00Z'),
@@ -534,12 +538,14 @@ describe('ReviewSessionDetailPage', () => {
         status: 'open' as const,
         pin: { kind: 'caption' as const, from: 0, to: 4 },
         firstComment: {
+          id: `${id}-c1`,
           author: { kind: 'client' as const, reviewerName: 'Sarah' },
           body,
           createdAt: new Date('2026-05-15T10:05:00Z'),
         },
         comments: [
           {
+            id: `${id}-c1`,
             author: { kind: 'client' as const, reviewerName: 'Sarah' },
             body,
             createdAt: new Date('2026-05-15T10:05:00Z'),

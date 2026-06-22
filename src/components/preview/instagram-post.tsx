@@ -70,6 +70,7 @@ export function InstagramFeedPost({
   onCreateThread,
   onComment,
   onUploadImage,
+  onUseAsPostImage,
   onResolveThread,
   editing = false,
   captionDraft,
@@ -470,6 +471,7 @@ export function InstagramFeedPost({
           postCaption={post.caption}
           onComment={handleComment}
           onUploadImage={onUploadImage}
+          onUseAsPostImage={mode === 'internal' ? onUseAsPostImage : undefined}
           onResolve={
             mode === 'internal' && onResolveThread ? handleResolve : undefined
           }

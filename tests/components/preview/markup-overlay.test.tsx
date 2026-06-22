@@ -115,12 +115,14 @@ describe('MarkupOverlay', () => {
           pin: { kind: 'image', x: 95, y: 95 },
           status: 'open',
           firstComment: {
+            id: 'c-markup-1',
             author: { kind: 'am', userId: 'u1', name: 'Mollie' },
             body: 'Tighten crop.',
             createdAt: new Date('2026-05-16T12:00:00Z'),
           },
           comments: [
             {
+              id: 'c-markup-1',
               author: { kind: 'am', userId: 'u1', name: 'Mollie' },
               body: 'Tighten crop.',
               createdAt: new Date('2026-05-16T12:00:00Z'),

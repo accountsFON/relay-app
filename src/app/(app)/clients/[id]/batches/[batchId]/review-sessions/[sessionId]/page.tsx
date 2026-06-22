@@ -61,6 +61,7 @@ import {
 import {
   resolveThreadAction,
   addCommentAction,
+  useCommentImageAsPostMediaAction,
 } from '@/server/actions/threads'
 import { revalidatePath } from 'next/cache'
 import { ActivityThread } from '@/components/activity/activity-thread'
@@ -301,6 +302,13 @@ export default async function ReviewSessionDetailPage({
         `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
       )
     }
+    const onUseAsPostImagePin = async (commentId: string) => {
+      'use server'
+      await useCommentImageAsPostMediaAction({ postId: ap.postId, commentId })
+      revalidatePath(
+        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+      )
+    }
     // Capture userDbId for upload (server-rendered but serializable as a
     // string prop to the client wrapper component).
     const amUserDbId_ = ctx.userDbId
@@ -354,6 +362,7 @@ export default async function ReviewSessionDetailPage({
               threads={ap.clientThreads}
               onResolve={mode === 'pending' ? onResolvePin : undefined}
               onComment={mode === 'pending' ? onCommentPin : undefined}
+              onUseAsPostImage={mode === 'pending' ? onUseAsPostImagePin : undefined}
               userDbId={mode === 'pending' ? amUserDbId_ : undefined}
             />
           </div>
