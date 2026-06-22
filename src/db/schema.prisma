@@ -629,6 +629,10 @@ model PostComment {
   reviewerToken String?
   reviewerName  String? // snapshot at comment time (in case the reviewer renames later)
 
+  imageUrl    String?
+  imageWidth  Int?
+  imageHeight Int?
+
   createdAt DateTime @default(now())
 
   thread PostThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
