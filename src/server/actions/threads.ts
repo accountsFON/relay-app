@@ -16,6 +16,17 @@ import {
   type ThreadActor,
 } from '@/server/repositories/threads'
 import type { PinLocation } from '@/types/preview'
+import { isCommentImageBlobUrl } from '@/lib/comment-image'
+
+type CommentImage = { url: string; width?: number; height?: number }
+
+function validateImage(image: CommentImage | undefined): CommentImage | undefined {
+  if (!image) return undefined
+  if (!isCommentImageBlobUrl(image.url)) {
+    throw new Error('Invalid attachment URL')
+  }
+  return image
+}
 
 /**
  * Magic-link reviewer auth resolution.
@@ -111,24 +122,39 @@ export async function createThreadAction(input: {
   postId: string
   pin: PinLocation
   body: string
+  image?: CommentImage
 }) {
+  const image = validateImage(input.image)
+  if (!input.body.trim() && !image) throw new Error('Comment requires text or an image')
   const author = await resolveActor()
   const result = await createThread({
     postId: input.postId,
     pin: input.pin,
     body: input.body,
     author,
+    imageUrl: image?.url ?? null,
+    imageWidth: image?.width ?? null,
+    imageHeight: image?.height ?? null,
   })
   await revalidatePathForPost(input.postId)
   return result
 }
 
-export async function addCommentAction(input: { threadId: string; body: string }) {
+export async function addCommentAction(input: {
+  threadId: string
+  body: string
+  image?: CommentImage
+}) {
+  const image = validateImage(input.image)
+  if (!input.body.trim() && !image) throw new Error('Comment requires text or an image')
   const author = await resolveActor()
   const result = await addComment({
     threadId: input.threadId,
     body: input.body,
     author,
+    imageUrl: image?.url ?? null,
+    imageWidth: image?.width ?? null,
+    imageHeight: image?.height ?? null,
   })
   await revalidatePathForThread(input.threadId)
   return result
