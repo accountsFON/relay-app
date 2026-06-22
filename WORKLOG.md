@@ -22,6 +22,14 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-21 — Comment popover: close on outside click + unsaved warning** (PR #224)
+  The client review comment popover only closed via the X; it now closes on an
+  outside click too (Escape already worked), and every close path warns
+  (`window.confirm`) before discarding an unsaved comment draft. Applied to both
+  the thread popover (`PinPopover`) and the new-pin draft composer; shared, so AM
+  pin surfaces get it too. Caleb/Julio item 24. (Follow-up: 2 optional regression
+  tests deferred due to a transient API outage.)
+
 - [x] **2026-06-21 — Full comment threads on review pins** (PR #223)
   Bug: pin/markup threads (client magic-link review + AM review/preview) only
   showed the first comment — replies saved to the DB but vanished on refresh
