@@ -25,6 +25,7 @@ const mockOrg: Organization = {
   stripeCustomerId: null,
   stripeSubscriptionId: null,
   runCredits: 0,
+  reviewWindowDays: 7,
   createdAt: new Date(),
   updatedAt: new Date(),
 }

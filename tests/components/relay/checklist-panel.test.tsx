@@ -41,6 +41,7 @@ function makeBatch(overrides: Partial<BatchSummary> = {}): BatchSummary {
     scheduledAt: null,
     createdAt: new Date('2026-05-01T00:00:00Z'),
     clientReviewEnabled: true,
+    autoAdvanceOnTimeout: true,
     holder: { id: 'user-am', name: 'Mollie' },
     daysOnCurrentStep: 0,
     ...overrides,

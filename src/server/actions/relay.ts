@@ -373,6 +373,37 @@ export async function markBatchReviewedAction(input: {
   }
 }
 
+/**
+ * AM / admin / platformOwner toggle for the per-relay auto-advance opt-out.
+ *
+ * When `enabled` is false the daily autoAdvanceStaleReviews cron skips this
+ * relay even after the org's review window has elapsed. Visible on the
+ * ChecklistPanel when the relay is at the client_review step.
+ *
+ * Permission: `relay.pass` (same gate as forwarding the baton: AM and above).
+ * No holder check is needed here because this is a settings toggle, not a
+ * state machine transition.
+ */
+export async function setBatchAutoAdvanceAction(input: {
+  batchId: string
+  clientId: string
+  enabled: boolean
+}) {
+  const ctx = await requireCan('relay.pass')
+  const batch = await db.batch.findUnique({
+    where: { id: input.batchId },
+    select: { id: true, clientId: true, client: { select: { organizationId: true } } },
+  })
+  if (!batch || (batch.client.organizationId !== ctx.organizationDbId && !ctx.platformOwner)) {
+    throw new Error('Relay not found')
+  }
+  await db.batch.update({
+    where: { id: batch.id },
+    data: { autoAdvanceOnTimeout: input.enabled },
+  })
+  revalidateBatchSurfaces(input.clientId, input.batchId)
+}
+
 export async function tickChecklistItemAction(input: {
   itemId: string
   checked: boolean

@@ -32,7 +32,7 @@ vi.mock('@/server/repositories/threads', () => ({
 
 vi.mock('@/db/client', () => ({
   db: {
-    batch: { findUnique: vi.fn() },
+    batch: { findUnique: vi.fn(), update: vi.fn() },
     checklistItem: { findUnique: vi.fn(), update: vi.fn() },
   },
 }))
@@ -55,6 +55,7 @@ import {
   finishBatchAction,
   forceStepAction,
   tickChecklistItemAction,
+  setBatchAutoAdvanceAction,
 } from '@/server/actions/relay'
 import { RelayStep } from '@prisma/client'
 
@@ -485,5 +486,73 @@ describe('tickChecklistItemAction holder-override gate', () => {
       tickChecklistItemAction({ itemId: 'item1', checked: true }),
     ).rejects.toThrow(/current holder, an AM, or an admin/i)
     expect(db.checklistItem.update).not.toHaveBeenCalled()
+  })
+})
+
+import { revalidatePath } from 'next/cache'
+
+describe('setBatchAutoAdvanceAction', () => {
+  function seedBatch(organizationId = 'org_1') {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'b1',
+      clientId: 'c1',
+      client: { organizationId },
+    } as never)
+    vi.mocked(db.batch.update).mockResolvedValue({} as never)
+  }
+
+  it('updates autoAdvanceOnTimeout to true for an AM in the same org', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    seedBatch()
+
+    await setBatchAutoAdvanceAction({ batchId: 'b1', clientId: 'c1', enabled: true })
+
+    expect(db.batch.update).toHaveBeenCalledWith({
+      where: { id: 'b1' },
+      data: { autoAdvanceOnTimeout: true },
+    })
+  })
+
+  it('updates autoAdvanceOnTimeout to false (opt-out)', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    seedBatch()
+
+    await setBatchAutoAdvanceAction({ batchId: 'b1', clientId: 'c1', enabled: false })
+
+    expect(db.batch.update).toHaveBeenCalledWith({
+      where: { id: 'b1' },
+      data: { autoAdvanceOnTimeout: false },
+    })
+  })
+
+  it('throws "Relay not found" when batch belongs to a different org (cross-tenant guard)', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    seedBatch('org_OTHER')
+
+    await expect(
+      setBatchAutoAdvanceAction({ batchId: 'b1', clientId: 'c1', enabled: false }),
+    ).rejects.toThrow(/relay not found/i)
+    expect(db.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('platformOwner bypasses the org check', async () => {
+    vi.mocked(requireCan).mockResolvedValue(
+      makeCtx('designer', { platformOwner: true }),
+    )
+    seedBatch('org_OTHER')
+
+    await expect(
+      setBatchAutoAdvanceAction({ batchId: 'b1', clientId: 'c1', enabled: false }),
+    ).resolves.toBeUndefined()
+    expect(db.batch.update).toHaveBeenCalled()
+  })
+
+  it('calls revalidateBatchSurfaces (revalidatePath) after updating', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    seedBatch()
+
+    await setBatchAutoAdvanceAction({ batchId: 'b1', clientId: 'c1', enabled: true })
+
+    expect(revalidatePath).toHaveBeenCalledWith('/clients/c1/batches/b1')
   })
 })

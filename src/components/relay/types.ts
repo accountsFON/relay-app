@@ -30,6 +30,7 @@ export interface BatchSummary
     | 'scheduledAt'
     | 'createdAt'
     | 'clientReviewEnabled'
+    | 'autoAdvanceOnTimeout'
   > {
   holder: BatchHolderView
   /** Days the batch has held at currentStep. Computed by the page. */

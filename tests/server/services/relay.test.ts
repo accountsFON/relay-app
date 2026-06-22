@@ -1157,3 +1157,69 @@ describe('forceStep', () => {
     expect(currentTx.tx.activityEvent.create.mock.calls[0][0].data.payload.kind).toBe('batch_force_stepped')
   })
 })
+
+// ---------------------------------------------------------------------------
+// Task 12: clientReviewStartedAt stamp/clear
+// Set when entering client_review, cleared (null) when leaving it or landing
+// elsewhere. Applies to every service mutation that writes currentStep.
+// ---------------------------------------------------------------------------
+
+describe('clientReviewStartedAt stamp', () => {
+  it('passBaton into client_review stamps clientReviewStartedAt as a Date', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_qa_pre_client,
+      currentHolder: 'u_am',
+      label: 'Foo May 2026',
+      clientReviewEnabled: true,
+      client: { organizationId: 'org_1' },
+    })
+    await passBaton({
+      batchId: 'b1',
+      toStep: RelayStep.client_review,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.clientReviewStartedAt).toBeInstanceOf(Date)
+  })
+
+  it('advanceFromClientReview approved (client_review -> scheduling) clears clientReviewStartedAt to null', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.client_review,
+      clientReviewEnabled: true,
+      label: 'Foo May 2026',
+    })
+    await advanceFromClientReview({
+      batchId: 'b1',
+      decision: 'approved',
+      reviewerName: 'Sarah',
+      fallbackUserId: 'user_creator',
+      reviewSessionId: 's1',
+    })
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.clientReviewStartedAt).toBeNull()
+  })
+
+  it('passBaton into a non-client_review step sets clientReviewStartedAt to null', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      currentHolder: 'u_am',
+      label: 'Foo May 2026',
+      client: { organizationId: 'org_1' },
+    })
+    await passBaton({
+      batchId: 'b1',
+      toStep: RelayStep.in_design,
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.clientReviewStartedAt).toBeNull()
+  })
+})
