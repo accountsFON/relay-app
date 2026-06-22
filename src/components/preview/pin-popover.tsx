@@ -25,7 +25,6 @@ import type { PinLocation, ThreadAuthor } from '@/types/preview'
  * Layer 2 / Task 2.3.
  */
 export type PinPopoverComment = {
-  id: string
   author: ThreadAuthor
   body: string
   createdAt: Date
@@ -37,7 +36,7 @@ export type PinPopoverThread = {
   status: 'open' | 'resolved'
   firstComment: { author: ThreadAuthor; body: string; createdAt: Date }
   commentCount: number
-  comments?: ReadonlyArray<PinPopoverComment>
+  comments: ReadonlyArray<PinPopoverComment>
 }
 
 export type PinPopoverProps = {
@@ -129,11 +128,10 @@ export function PinPopover({
   }
 
   const allComments: PinPopoverComment[] =
-    thread.comments && thread.comments.length > 0
+    thread.comments.length > 0
       ? [...thread.comments]
       : [
           {
-            id: `${thread.id}-first`,
             author: thread.firstComment.author,
             body: thread.firstComment.body,
             createdAt: thread.firstComment.createdAt,
@@ -193,8 +191,8 @@ export function PinPopover({
         data-testid="pin-popover-comments"
         className="flex max-h-48 flex-col gap-2 overflow-y-auto"
       >
-        {allComments.map((comment) => (
-          <li key={comment.id} className="flex flex-col gap-0.5">
+        {allComments.map((comment, index) => (
+          <li key={index} className="flex flex-col gap-0.5">
             <span className="text-[11px] font-semibold text-[#262626]">
               {authorLabel(comment.author)}
             </span>

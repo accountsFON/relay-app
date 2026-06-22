@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-21 — Full comment threads on review pins** (PR #223)
+  Bug: pin/markup threads (client magic-link review + AM review/preview) only
+  showed the first comment — replies saved to the DB but vanished on refresh
+  ("can't leave more than one comment per post"). Root cause: `toHydratedThread`
+  collapsed each thread to firstComment+count and the carrier types/adapters
+  never passed the rest to PinPopover. Fix: carry the full `comments[]` through
+  the pipeline, typed required so it can't regress. No schema change.
+  Caleb/Julio item 23.
+
 - [x] **2026-06-21 — Client review tutorial fires every load** (PR #222)
   The magic-link review tutorial now shows on every load (was once-per-reviewer,
   and had a first-load gate bug), with a Skip. Copy names all features (Approve /

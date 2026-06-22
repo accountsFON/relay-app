@@ -432,6 +432,13 @@ describe('ReviewSessionDetailPage', () => {
         body: 'fix it',
         createdAt: new Date('2026-05-15T10:00:00Z'),
       },
+      comments: [
+        {
+          author: { kind: 'client' as const, reviewerName: 'Sarah' },
+          body: 'fix it',
+          createdAt: new Date('2026-05-15T10:00:00Z'),
+        },
+      ],
       commentCount: 1,
     }
   }
@@ -511,6 +518,13 @@ describe('ReviewSessionDetailPage', () => {
           body,
           createdAt: new Date('2026-05-15T10:00:00Z'),
         },
+        comments: [
+          {
+            author: { kind: 'client' as const, reviewerName: 'Sarah' },
+            body,
+            createdAt: new Date('2026-05-15T10:00:00Z'),
+          },
+        ],
         commentCount: 1,
       }
     }
@@ -524,6 +538,13 @@ describe('ReviewSessionDetailPage', () => {
           body,
           createdAt: new Date('2026-05-15T10:05:00Z'),
         },
+        comments: [
+          {
+            author: { kind: 'client' as const, reviewerName: 'Sarah' },
+            body,
+            createdAt: new Date('2026-05-15T10:05:00Z'),
+          },
+        ],
         commentCount: 1,
       }
     }

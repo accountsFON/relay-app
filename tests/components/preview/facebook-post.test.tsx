@@ -145,6 +145,13 @@ describe('FacebookPost', () => {
               body: 'fix this',
               createdAt: new Date(),
             },
+            comments: [
+              {
+                author: { kind: 'am', userId: 'u', name: 'AM' },
+                body: 'fix this',
+                createdAt: new Date(),
+              },
+            ],
             commentCount: 1,
           },
         ],
@@ -258,6 +265,13 @@ describe('FacebookPost', () => {
               body: 'fix this',
               createdAt: new Date(),
             },
+            comments: [
+              {
+                author: { kind: 'am', userId: 'u', name: 'AM' },
+                body: 'fix this',
+                createdAt: new Date(),
+              },
+            ],
             commentCount: 1,
           },
         ],

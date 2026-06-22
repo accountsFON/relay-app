@@ -119,6 +119,13 @@ describe('MarkupOverlay', () => {
             body: 'Tighten crop.',
             createdAt: new Date('2026-05-16T12:00:00Z'),
           },
+          comments: [
+            {
+              author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+              body: 'Tighten crop.',
+              createdAt: new Date('2026-05-16T12:00:00Z'),
+            },
+          ],
           commentCount: 1,
         }}
         anchor={{ x: 1020, y: 760 }}
