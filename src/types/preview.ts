@@ -25,8 +25,22 @@ export type FeedPostProps = {
     id: string;
     status: 'open' | 'resolved';
     pin: PinLocation;
-    firstComment: { author: ThreadAuthor; body: string; createdAt: Date };
-    comments: ReadonlyArray<{ author: ThreadAuthor; body: string; createdAt: Date }>;
+    firstComment: {
+      author: ThreadAuthor;
+      body: string;
+      createdAt: Date;
+      imageUrl?: string | null;
+      imageWidth?: number | null;
+      imageHeight?: number | null;
+    };
+    comments: ReadonlyArray<{
+      author: ThreadAuthor;
+      body: string;
+      createdAt: Date;
+      imageUrl?: string | null;
+      imageWidth?: number | null;
+      imageHeight?: number | null;
+    }>;
     commentCount: number;
   }>;
   // 'internal' = AM Clerk-authenticated; 'review' = magic-link client view
@@ -35,9 +49,13 @@ export type FeedPostProps = {
   // onCreateThread: drop a new thread (image pin, caption-range, or post-level).
   // When omitted, the markup overlay + caption selection composer do not drop
   // new pins on click.
-  onCreateThread?: (pin: PinLocation, body: string) => Promise<void>;
+  onCreateThread?: (pin: PinLocation, body: string, image?: { url: string; width?: number; height?: number }) => Promise<void>;
   // onComment: append a comment to an existing thread (both modes can use).
-  onComment?: (threadId: string, body: string) => Promise<void>;
+  onComment?: (threadId: string, body: string, image?: { url: string; width?: number; height?: number }) => Promise<void>;
+  // onUploadImage: upload a file and return the stored URL + dimensions.
+  // The composer calls this before submitting a thread/comment so the server
+  // action receives a URL rather than a raw File.
+  onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>;
   // onResolveThread: AM-only resolve action. Reviewers omit this prop and the
   // resolve button is hidden in the popover.
   onResolveThread?: (threadId: string) => Promise<void>;

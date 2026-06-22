@@ -413,16 +413,25 @@ function toHydratedThread(t: ThreadRowWithComments): HydratedThread {
         author: hydrateAuthor(first),
         body: first.body,
         createdAt: first.createdAt,
+        imageUrl: first.imageUrl,
+        imageWidth: first.imageWidth,
+        imageHeight: first.imageHeight,
       }
     : {
         author: { kind: 'client' as const, reviewerName: 'Unknown' },
         body: '',
         createdAt: t.createdAt,
+        imageUrl: null,
+        imageWidth: null,
+        imageHeight: null,
       }
   const comments = t.comments.map((c) => ({
     author: hydrateAuthor(c),
     body: c.body,
     createdAt: c.createdAt,
+    imageUrl: c.imageUrl,
+    imageWidth: c.imageWidth,
+    imageHeight: c.imageHeight,
   }))
   return {
     id: t.id,

@@ -30,13 +30,23 @@ export type PinPopoverComment = {
   author: ThreadAuthor
   body: string
   createdAt: Date
+  imageUrl?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
 }
 
 export type PinPopoverThread = {
   id: string
   pin: PinLocation
   status: 'open' | 'resolved'
-  firstComment: { author: ThreadAuthor; body: string; createdAt: Date }
+  firstComment: {
+    author: ThreadAuthor
+    body: string
+    createdAt: Date
+    imageUrl?: string | null
+    imageWidth?: number | null
+    imageHeight?: number | null
+  }
   commentCount: number
   comments: ReadonlyArray<PinPopoverComment>
 }
