@@ -22,6 +22,29 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-22 — Pipeline rework Phase 2: auto-advance silent client reviews** (PR #226)
+  A relay sitting in Client Review with no client response now auto-advances to
+  Scheduling after a per-org window (`Organization.reviewWindowDays`, default 7),
+  treating silence as approval. New daily cron `auto-advance-stale-reviews`
+  (`0 15 * * *`) + a `findStaleClientReviews` selector; `Batch.clientReviewStartedAt`
+  stamps the window start on entering Client Review; per-relay opt-out
+  (`Batch.autoAdvanceOnTimeout`) via a toggle on the Client Review surface. The
+  per-org window editing UI was deferred (no editable org-settings page exists
+  yet) so it ships at the 7-day default. 1562 unit tests; migration + Trigger.dev
+  cron deploy verified in prod.
+
+- [x] **2026-06-22 — Pipeline rework Phase 1: merged Client Review + Scheduling, renamed steps** (PR #225)
+  Reworked the relay state machine for both tracks. Merged `sent_to_client` +
+  `client_decision` into a single `client_review` step, and `ready_to_schedule` +
+  `final_qa_schedule` into `scheduling` (two new RelayStep values; the old ones
+  retained for historical rows). Renamed every step to its canonical name, made
+  Onboarding AM-held (`relay.completeOnboarding` widened to account managers), the
+  QA step renders Pre-Client QA / Final QA by `clientReviewEnabled`, rewrote all
+  per-step checklists from the rework doc, and pointed `advanceFromClientReview`
+  at the merged steps. A one-off cutover script moved the 10 in-flight prod batches
+  off the retired steps (4 to client_review, 6 to scheduling, 0 stranded). 1545
+  unit tests. Spec + plan: vault `projects/relay-app/2026-06-22-pipeline-rework-*`.
+
 - [x] **2026-06-21 — Comment popover: close on outside click + unsaved warning** (PR #224)
   The client review comment popover only closed via the X; it now closes on an
   outside click too (Escape already worked), and every close path warns
