@@ -371,6 +371,49 @@ export async function restoreBatch({
 }
 
 /**
+ * Batches sitting in Client Review past their org's review window, eligible
+ * for auto-advance: auto-advance not disabled, window started, window elapsed,
+ * and no submitted review session for the current round. The per-org window
+ * length lives on the organization, so candidates are pulled cheaply and the
+ * window check is applied in JS.
+ */
+export async function findStaleClientReviews(now: Date) {
+  const candidates = await db.batch.findMany({
+    where: {
+      currentStep: RelayStepEnum.client_review,
+      autoAdvanceOnTimeout: true,
+      clientReviewStartedAt: { not: null },
+    },
+    select: {
+      id: true,
+      label: true,
+      clientReviewStartedAt: true,
+      client: {
+        select: {
+          id: true,
+          assignedAmId: true,
+          organization: { select: { reviewWindowDays: true } },
+        },
+      },
+      magicLinks: {
+        select: { reviewSessions: { select: { status: true } } },
+      },
+    },
+  })
+  return candidates.filter((b) => {
+    const days = b.client.organization.reviewWindowDays
+    const startedAt = b.clientReviewStartedAt
+    if (!startedAt) return false
+    const elapsedMs = now.getTime() - startedAt.getTime()
+    if (elapsedMs < days * 24 * 60 * 60 * 1000) return false
+    const hasSubmitted = b.magicLinks.some((m) =>
+      m.reviewSessions.some((s) => s.status === 'submitted'),
+    )
+    return !hasSubmitted
+  })
+}
+
+/**
  * Pipeline view for a Client-role user (their linked client only).
  * Returns the batches the client should see in their pipeline view.
  */
