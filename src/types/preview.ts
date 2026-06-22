@@ -26,6 +26,7 @@ export type FeedPostProps = {
     status: 'open' | 'resolved';
     pin: PinLocation;
     firstComment: { author: ThreadAuthor; body: string; createdAt: Date };
+    comments: ReadonlyArray<{ author: ThreadAuthor; body: string; createdAt: Date }>;
     commentCount: number;
   }>;
   // 'internal' = AM Clerk-authenticated; 'review' = magic-link client view

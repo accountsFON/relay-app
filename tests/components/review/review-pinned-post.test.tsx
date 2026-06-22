@@ -9,6 +9,7 @@ function imageThread(id: string, status: 'open' | 'resolved' = 'open'): Hydrated
     status,
     pin: { kind: 'image', x: 30, y: 40 },
     firstComment: { author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date() },
+    comments: [{ author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date() }],
     commentCount: 1,
   }
 }
@@ -18,6 +19,7 @@ function captionThread(id: string): HydratedThread {
     status: 'open',
     pin: { kind: 'caption', from: 0, to: 5 },
     firstComment: { author: { kind: 'client', reviewerName: 'Sarah' }, body: 'too long', createdAt: new Date() },
+    comments: [{ author: { kind: 'client', reviewerName: 'Sarah' }, body: 'too long', createdAt: new Date() }],
     commentCount: 1,
   }
 }

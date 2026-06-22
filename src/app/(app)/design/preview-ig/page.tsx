@@ -52,6 +52,13 @@ const SAMPLES: ReadonlyArray<FeedPostProps> = [
           body: 'Can we crop tighter on the food?',
           createdAt: new Date('2026-05-16T09:30:00Z'),
         },
+        comments: [
+          {
+            author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
+            body: 'Can we crop tighter on the food?',
+            createdAt: new Date('2026-05-16T09:30:00Z'),
+          },
+        ],
         commentCount: 1,
       },
       {
@@ -63,6 +70,18 @@ const SAMPLES: ReadonlyArray<FeedPostProps> = [
           body: "Can we say 'outdoor seating' instead?",
           createdAt: new Date('2026-05-16T10:05:00Z'),
         },
+        comments: [
+          {
+            author: { kind: 'client', reviewerName: 'Christian' },
+            body: "Can we say 'outdoor seating' instead?",
+            createdAt: new Date('2026-05-16T10:05:00Z'),
+          },
+          {
+            author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
+            body: 'Good call, updating now.',
+            createdAt: new Date('2026-05-16T10:20:00Z'),
+          },
+        ],
         commentCount: 2,
       },
     ],
@@ -90,6 +109,13 @@ const SAMPLES: ReadonlyArray<FeedPostProps> = [
           body: 'Approved at the post level.',
           createdAt: new Date('2026-05-16T11:00:00Z'),
         },
+        comments: [
+          {
+            author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
+            body: 'Approved at the post level.',
+            createdAt: new Date('2026-05-16T11:00:00Z'),
+          },
+        ],
         commentCount: 1,
       },
       {
@@ -101,6 +127,23 @@ const SAMPLES: ReadonlyArray<FeedPostProps> = [
           body: 'Looks good now.',
           createdAt: new Date('2026-05-16T11:30:00Z'),
         },
+        comments: [
+          {
+            author: { kind: 'client', reviewerName: 'Sam' },
+            body: 'Looks good now.',
+            createdAt: new Date('2026-05-16T11:30:00Z'),
+          },
+          {
+            author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
+            body: 'Thanks for the quick turnaround.',
+            createdAt: new Date('2026-05-16T11:45:00Z'),
+          },
+          {
+            author: { kind: 'client', reviewerName: 'Sam' },
+            body: 'Anytime!',
+            createdAt: new Date('2026-05-16T12:00:00Z'),
+          },
+        ],
         commentCount: 3,
       },
     ],

@@ -188,6 +188,7 @@ export function FacebookPost(props: FeedPostProps) {
         pin: openThread.pin,
         status: openThread.status,
         firstComment: openThread.firstComment,
+        comments: openThread.comments,
         commentCount: openThread.commentCount,
       }
     : null

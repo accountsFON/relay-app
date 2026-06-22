@@ -390,11 +390,17 @@ function toHydratedThread(t: ThreadRowWithComments): HydratedThread {
         body: '',
         createdAt: t.createdAt,
       }
+  const comments = t.comments.map((c) => ({
+    author: hydrateAuthor(c),
+    body: c.body,
+    createdAt: c.createdAt,
+  }))
   return {
     id: t.id,
     status: t.status,
     pin: rowToPin(t),
     firstComment,
+    comments,
     commentCount: t.comments.length,
   }
 }

@@ -39,6 +39,13 @@ const SAMPLE_POSTS: FeedPostProps[] = [
           body: 'Can we crop tighter on the left?',
           createdAt: new Date('2026-05-16T10:00:00Z'),
         },
+        comments: [
+          {
+            author: { kind: 'am', userId: 'u1', name: 'Mollie Huebner' },
+            body: 'Can we crop tighter on the left?',
+            createdAt: new Date('2026-05-16T10:00:00Z'),
+          },
+        ],
         commentCount: 1,
       },
       {
@@ -50,6 +57,18 @@ const SAMPLE_POSTS: FeedPostProps[] = [
           body: 'Lead with the date instead.',
           createdAt: new Date('2026-05-16T11:00:00Z'),
         },
+        comments: [
+          {
+            author: { kind: 'client', reviewerName: 'Pastor Dan' },
+            body: 'Lead with the date instead.',
+            createdAt: new Date('2026-05-16T11:00:00Z'),
+          },
+          {
+            author: { kind: 'am', userId: 'u1', name: 'Mollie Huebner' },
+            body: 'Done, take a look.',
+            createdAt: new Date('2026-05-16T11:20:00Z'),
+          },
+        ],
         commentCount: 2,
       },
     ],
