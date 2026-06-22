@@ -32,12 +32,14 @@ function makeThread(): PinPopoverThread {
     pin: { kind: 'image', x: 30, y: 40 },
     status: 'open',
     firstComment: {
+      id: 'c1',
       author: { kind: 'client', reviewerName: 'Sarah' },
       body: 'first comment',
       createdAt: new Date('2026-05-15T10:00:00Z'),
     },
     comments: [
       {
+        id: 'c1',
         author: { kind: 'client', reviewerName: 'Sarah' },
         body: 'first comment',
         createdAt: new Date('2026-05-15T10:00:00Z'),

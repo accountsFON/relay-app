@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useTransition,
   type FormEvent,
 } from 'react'
 import { cn } from '@/lib/utils'
@@ -31,6 +32,7 @@ import type { PinLocation, ThreadAuthor } from '@/types/preview'
  * Layer 2 / Task 2.3.
  */
 export type PinPopoverComment = {
+  id: string
   author: ThreadAuthor
   body: string
   createdAt: Date
@@ -44,6 +46,7 @@ export type PinPopoverThread = {
   pin: PinLocation
   status: 'open' | 'resolved'
   firstComment: {
+    id: string
     author: ThreadAuthor
     body: string
     createdAt: Date
@@ -83,6 +86,13 @@ export type PinPopoverProps = {
    * identity so the component stays identity-agnostic.
    */
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
+  /**
+   * AM-only. When provided and mode === 'internal', a "Use as post image"
+   * button appears below a comment's attached image. Clicking it calls this
+   * with the comment's id; the host wires it to useCommentImageAsPostMediaAction
+   * + handleRefresh. Never shown in review mode.
+   */
+  onUseAsPostImage?: (commentId: string) => Promise<void>
 }
 
 const POPOVER_WIDTH = 320
@@ -103,12 +113,14 @@ export function PinPopover({
   postCaption,
   onFixAccepted,
   onUploadImage,
+  onUseAsPostImage,
 }: PinPopoverProps) {
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const [body, setBody] = useState('')
   const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [resolving, setResolving] = useState(false)
+  const [usingAsPostImage, startUseAsPostImageTransition] = useTransition()
   const [position, setPosition] = useState<{ top: number; left: number }>(() =>
     computePosition(anchor ?? null, POPOVER_HEIGHT_ESTIMATE),
   )
@@ -187,6 +199,7 @@ export function PinPopover({
       ? [...thread.comments]
       : [
           {
+            id: thread.firstComment.id,
             author: thread.firstComment.author,
             body: thread.firstComment.body,
             createdAt: thread.firstComment.createdAt,
@@ -255,16 +268,33 @@ export function PinPopover({
               <Linkify text={comment.body} />
             </p>
             {comment.imageUrl && (
-              <a href={comment.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block">
-                <img
-                  data-testid="comment-image"
-                  src={comment.imageUrl}
-                  width={comment.imageWidth ?? undefined}
-                  height={comment.imageHeight ?? undefined}
-                  alt="Reference attachment"
-                  className="max-h-40 w-auto max-w-[240px] rounded border border-[#dbdbdb] object-contain"
-                />
-              </a>
+              <>
+                <a href={comment.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block">
+                  <img
+                    data-testid="comment-image"
+                    src={comment.imageUrl}
+                    width={comment.imageWidth ?? undefined}
+                    height={comment.imageHeight ?? undefined}
+                    alt="Reference attachment"
+                    className="max-h-40 w-auto max-w-[240px] rounded border border-[#dbdbdb] object-contain"
+                  />
+                </a>
+                {mode === 'internal' && onUseAsPostImage ? (
+                  <button
+                    type="button"
+                    data-testid="use-as-post-image-btn"
+                    disabled={usingAsPostImage}
+                    onClick={() => {
+                      startUseAsPostImageTransition(async () => {
+                        await onUseAsPostImage(comment.id)
+                      })
+                    }}
+                    className="mt-1 rounded px-2 py-0.5 text-[11px] font-medium text-[#0095f6] hover:bg-[#e8f4fd] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {usingAsPostImage ? 'Updating...' : 'Use as post image'}
+                  </button>
+                ) : null}
+              </>
             )}
           </li>
         ))}

@@ -24,10 +24,17 @@ export type ReviewPinnedPostClientProps = Omit<ReviewPinnedPostProps, 'onUploadI
    * addressed bucket) it is suppressed.
    */
   userDbId?: string
+  /**
+   * AM-only "Use as post image" action. Passed through to ReviewPinnedPost
+   * and then to PinPopover. The review session detail page wires this to
+   * useCommentImageAsPostMediaAction + router.refresh().
+   */
+  onUseAsPostImage?: (commentId: string) => Promise<void>
 }
 
 export function ReviewPinnedPostClient({
   userDbId,
+  onUseAsPostImage,
   ...rest
 }: ReviewPinnedPostClientProps) {
   const handleUploadImage = useCallback(
@@ -41,6 +48,7 @@ export function ReviewPinnedPostClient({
     <ReviewPinnedPost
       {...rest}
       onUploadImage={userDbId ? handleUploadImage : undefined}
+      onUseAsPostImage={onUseAsPostImage}
     />
   )
 }

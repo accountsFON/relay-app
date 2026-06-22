@@ -48,12 +48,14 @@ const SAMPLES: ReadonlyArray<FeedPostProps> = [
         status: 'open',
         pin: { kind: 'image', x: 32, y: 48 },
         firstComment: {
+          id: 'c-ig-img-1',
           author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
           body: 'Can we crop tighter on the food?',
           createdAt: new Date('2026-05-16T09:30:00Z'),
         },
         comments: [
           {
+            id: 'c-ig-img-1',
             author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
             body: 'Can we crop tighter on the food?',
             createdAt: new Date('2026-05-16T09:30:00Z'),
@@ -66,17 +68,20 @@ const SAMPLES: ReadonlyArray<FeedPostProps> = [
         status: 'open',
         pin: { kind: 'caption', from: 12, to: 30 },
         firstComment: {
+          id: 'c-ig-cap-1',
           author: { kind: 'client', reviewerName: 'Christian' },
           body: "Can we say 'outdoor seating' instead?",
           createdAt: new Date('2026-05-16T10:05:00Z'),
         },
         comments: [
           {
+            id: 'c-ig-cap-1',
             author: { kind: 'client', reviewerName: 'Christian' },
             body: "Can we say 'outdoor seating' instead?",
             createdAt: new Date('2026-05-16T10:05:00Z'),
           },
           {
+            id: 'c-ig-cap-2',
             author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
             body: 'Good call, updating now.',
             createdAt: new Date('2026-05-16T10:20:00Z'),
@@ -105,12 +110,14 @@ const SAMPLES: ReadonlyArray<FeedPostProps> = [
         status: 'open',
         pin: { kind: 'post' },
         firstComment: {
+          id: 'c-ig-post-1',
           author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
           body: 'Approved at the post level.',
           createdAt: new Date('2026-05-16T11:00:00Z'),
         },
         comments: [
           {
+            id: 'c-ig-post-1',
             author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
             body: 'Approved at the post level.',
             createdAt: new Date('2026-05-16T11:00:00Z'),
@@ -123,22 +130,26 @@ const SAMPLES: ReadonlyArray<FeedPostProps> = [
         status: 'resolved',
         pin: { kind: 'post' },
         firstComment: {
+          id: 'c-ig-post-2a',
           author: { kind: 'client', reviewerName: 'Sam' },
           body: 'Looks good now.',
           createdAt: new Date('2026-05-16T11:30:00Z'),
         },
         comments: [
           {
+            id: 'c-ig-post-2a',
             author: { kind: 'client', reviewerName: 'Sam' },
             body: 'Looks good now.',
             createdAt: new Date('2026-05-16T11:30:00Z'),
           },
           {
+            id: 'c-ig-post-2b',
             author: { kind: 'am', userId: 'user-1', name: 'Mollie' },
             body: 'Thanks for the quick turnaround.',
             createdAt: new Date('2026-05-16T11:45:00Z'),
           },
           {
+            id: 'c-ig-post-2c',
             author: { kind: 'client', reviewerName: 'Sam' },
             body: 'Anytime!',
             createdAt: new Date('2026-05-16T12:00:00Z'),

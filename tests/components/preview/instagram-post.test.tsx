@@ -127,12 +127,14 @@ describe('InstagramFeedPost', () => {
               status: 'open',
               pin: { kind: 'image', x: 25, y: 75 },
               firstComment: {
+                id: 'c-ig-test',
                 author: { kind: 'am', userId: 'u1', name: 'Mollie' },
                 body: 'Tighten the crop.',
                 createdAt: new Date('2026-05-16T12:00:00Z'),
               },
               comments: [
                 {
+                  id: 'c-ig-test',
                   author: { kind: 'am', userId: 'u1', name: 'Mollie' },
                   body: 'Tighten the crop.',
                   createdAt: new Date('2026-05-16T12:00:00Z'),
@@ -303,12 +305,14 @@ describe('InstagramFeedPost', () => {
               status: 'open',
               pin: { kind: 'image', x: 25, y: 75 },
               firstComment: {
+                id: 'c-ig-test',
                 author: { kind: 'am', userId: 'u1', name: 'Mollie' },
                 body: 'Tighten the crop.',
                 createdAt: new Date('2026-05-16T12:00:00Z'),
               },
               comments: [
                 {
+                  id: 'c-ig-test',
                   author: { kind: 'am', userId: 'u1', name: 'Mollie' },
                   body: 'Tighten the crop.',
                   createdAt: new Date('2026-05-16T12:00:00Z'),

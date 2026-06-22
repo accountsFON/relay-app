@@ -35,12 +35,14 @@ const SAMPLE_POSTS: FeedPostProps[] = [
         status: 'open',
         pin: { kind: 'image', x: 30, y: 45 },
         firstComment: {
+          id: 'c-fb-img-1',
           author: { kind: 'am', userId: 'u1', name: 'Mollie Huebner' },
           body: 'Can we crop tighter on the left?',
           createdAt: new Date('2026-05-16T10:00:00Z'),
         },
         comments: [
           {
+            id: 'c-fb-img-1',
             author: { kind: 'am', userId: 'u1', name: 'Mollie Huebner' },
             body: 'Can we crop tighter on the left?',
             createdAt: new Date('2026-05-16T10:00:00Z'),
@@ -53,17 +55,20 @@ const SAMPLE_POSTS: FeedPostProps[] = [
         status: 'open',
         pin: { kind: 'caption', from: 0, to: 19 },
         firstComment: {
+          id: 'c-fb-cap-1',
           author: { kind: 'client', reviewerName: 'Pastor Dan' },
           body: 'Lead with the date instead.',
           createdAt: new Date('2026-05-16T11:00:00Z'),
         },
         comments: [
           {
+            id: 'c-fb-cap-1',
             author: { kind: 'client', reviewerName: 'Pastor Dan' },
             body: 'Lead with the date instead.',
             createdAt: new Date('2026-05-16T11:00:00Z'),
           },
           {
+            id: 'c-fb-cap-2',
             author: { kind: 'am', userId: 'u1', name: 'Mollie Huebner' },
             body: 'Done, take a look.',
             createdAt: new Date('2026-05-16T11:20:00Z'),

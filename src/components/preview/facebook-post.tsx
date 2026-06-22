@@ -55,6 +55,7 @@ export function FacebookPost(props: FeedPostProps) {
     onCreateThread,
     onComment,
     onUploadImage,
+    onUseAsPostImage,
     onResolveThread,
     editing = false,
     captionDraft,
@@ -450,6 +451,7 @@ export function FacebookPost(props: FeedPostProps) {
           postCaption={post.caption}
           onComment={handleComment}
           onUploadImage={onUploadImage}
+          onUseAsPostImage={mode === 'internal' ? onUseAsPostImage : undefined}
           onResolve={
             mode === 'internal' && onResolveThread ? handleResolve : undefined
           }

@@ -8,8 +8,8 @@ function imageThread(id: string, status: 'open' | 'resolved' = 'open'): Hydrated
     id,
     status,
     pin: { kind: 'image', x: 30, y: 40 },
-    firstComment: { author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date(), imageUrl: null, imageWidth: null, imageHeight: null },
-    comments: [{ author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date() }],
+    firstComment: { id: `${id}-c1`, author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date(), imageUrl: null, imageWidth: null, imageHeight: null },
+    comments: [{ id: `${id}-c1`, author: { kind: 'client', reviewerName: 'Sarah' }, body: 'fix the logo', createdAt: new Date() }],
     commentCount: 1,
   }
 }
@@ -20,6 +20,7 @@ function imageThreadWithAttachment(id: string): HydratedThread {
     status: 'open',
     pin: { kind: 'image', x: 30, y: 40 },
     firstComment: {
+      id: `${id}-c1`,
       author: { kind: 'client', reviewerName: 'Sarah' },
       body: 'see ref',
       createdAt: new Date(),
@@ -27,7 +28,7 @@ function imageThreadWithAttachment(id: string): HydratedThread {
       imageWidth: 1024,
       imageHeight: 768,
     },
-    comments: [{ author: { kind: 'client', reviewerName: 'Sarah' }, body: 'see ref', createdAt: new Date() }],
+    comments: [{ id: `${id}-c1`, author: { kind: 'client', reviewerName: 'Sarah' }, body: 'see ref', createdAt: new Date() }],
     commentCount: 1,
   }
 }
@@ -36,8 +37,8 @@ function captionThread(id: string): HydratedThread {
     id,
     status: 'open',
     pin: { kind: 'caption', from: 0, to: 5 },
-    firstComment: { author: { kind: 'client', reviewerName: 'Sarah' }, body: 'too long', createdAt: new Date() },
-    comments: [{ author: { kind: 'client', reviewerName: 'Sarah' }, body: 'too long', createdAt: new Date() }],
+    firstComment: { id: `${id}-c1`, author: { kind: 'client', reviewerName: 'Sarah' }, body: 'too long', createdAt: new Date() },
+    comments: [{ id: `${id}-c1`, author: { kind: 'client', reviewerName: 'Sarah' }, body: 'too long', createdAt: new Date() }],
     commentCount: 1,
   }
 }

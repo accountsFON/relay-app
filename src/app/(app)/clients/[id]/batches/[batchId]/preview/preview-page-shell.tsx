@@ -15,6 +15,7 @@ import {
   createThreadAction,
   addCommentAction,
   resolveThreadAction,
+  useCommentImageAsPostMediaAction,
 } from '@/server/actions/threads'
 import type { PinLocation } from '@/types/preview'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
@@ -169,6 +170,14 @@ export function PreviewPageShell({
                     threads={post.threads}
                     mode={mode}
                     onUploadImage={handleUploadImage}
+                    onUseAsPostImage={
+                      mode === 'internal'
+                        ? async (commentId: string) => {
+                            await useCommentImageAsPostMediaAction({ postId: post.id, commentId })
+                            handleRefresh()
+                          }
+                        : undefined
+                    }
                     onCreateThread={async (
                       pin: PinLocation,
                       body: string,
@@ -209,6 +218,14 @@ export function PreviewPageShell({
                     threads={post.threads}
                     mode={mode}
                     onUploadImage={handleUploadImage}
+                    onUseAsPostImage={
+                      mode === 'internal'
+                        ? async (commentId: string) => {
+                            await useCommentImageAsPostMediaAction({ postId: post.id, commentId })
+                            handleRefresh()
+                          }
+                        : undefined
+                    }
                     onCreateThread={async (
                       pin: PinLocation,
                       body: string,

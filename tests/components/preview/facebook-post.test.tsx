@@ -141,12 +141,14 @@ describe('FacebookPost', () => {
             status: 'open',
             pin: { kind: 'image', x: 25, y: 75 },
             firstComment: {
+              id: 'c-fb-test',
               author: { kind: 'am', userId: 'u', name: 'AM' },
               body: 'fix this',
               createdAt: new Date(),
             },
             comments: [
               {
+                id: 'c-fb-test',
                 author: { kind: 'am', userId: 'u', name: 'AM' },
                 body: 'fix this',
                 createdAt: new Date(),
@@ -261,12 +263,14 @@ describe('FacebookPost', () => {
             status: 'open',
             pin: { kind: 'image', x: 25, y: 75 },
             firstComment: {
+              id: 'c-fb-test',
               author: { kind: 'am', userId: 'u', name: 'AM' },
               body: 'fix this',
               createdAt: new Date(),
             },
             comments: [
               {
+                id: 'c-fb-test',
                 author: { kind: 'am', userId: 'u', name: 'AM' },
                 body: 'fix this',
                 createdAt: new Date(),
