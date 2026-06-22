@@ -27,6 +27,7 @@ import type { BatchSummary, SendBackArc } from './types'
 import { ScrollCurrentIntoView } from './scroll-current-into-view'
 import { RoleTooltip, StepTooltip } from './relay-tooltips'
 import { relayTrackFor } from '@/lib/relay-track-shape'
+import { relayStepLabel } from '@/lib/relay-step-labels'
 import { STEP_COLOR_CLASSES, getStepColor } from '@/lib/relay-step-colors'
 
 const ROLE_LABEL: Record<RelayRole, string> = {
@@ -59,7 +60,7 @@ export function RelayTrack({
   const totalSteps = steps.length
 
   const currentRole = STEP_ROLE[batch.currentStep]
-  const currentLabel = STEP_LABEL[batch.currentStep]
+  const currentLabel = relayStepLabel(batch.currentStep, batch.clientReviewEnabled)
 
   return (
     <section

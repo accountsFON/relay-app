@@ -174,10 +174,13 @@ describe('getNotifyTargetsForStep', () => {
     ).toEqual([])
   })
 
-  it('admin-held steps return no notify targets', () => {
+  it('onboarding_gate notifies the AM (pipeline rework: was admin-held, now am-held)', () => {
+    // Pipeline rework changed onboarding_gate from RelayRole.admin -> RelayRole.am.
+    // Admin-held steps no longer exist in the active pipeline; this test documents
+    // the updated holder for onboarding_gate.
     expect(
       getNotifyTargetsForStep(RelayStep.onboarding_gate, client),
-    ).toEqual([])
+    ).toEqual(['user_am'])
   })
 })
 
@@ -272,7 +275,7 @@ describe('passBaton', () => {
     ])
   })
 
-  it('mentions every linked client user when passing to sent_to_client', async () => {
+  it('mentions every linked client user when passing to client_review', async () => {
     currentTx.tx.client.findUnique.mockResolvedValueOnce({
       assignedAmId: 'user_am',
       assignedDesignerId: 'user_designer',
@@ -289,7 +292,7 @@ describe('passBaton', () => {
     })
     await passBaton({
       batchId: 'b1',
-      toStep: RelayStep.sent_to_client,
+      toStep: RelayStep.client_review,
       actorId: 'u_am',
       actorOrganizationId: 'org_1',
     })
@@ -312,7 +315,7 @@ describe('passBaton', () => {
     })
     await passBaton({
       batchId: 'b1',
-      toStep: RelayStep.sent_to_client,
+      toStep: RelayStep.client_review,
       actorId: 'u_am',
       actorOrganizationId: 'org_1',
     })
@@ -574,7 +577,7 @@ describe('cross-tenant scope guards', () => {
 })
 
 describe('passBaton, no review flow', () => {
-  it('forwards am_qa_pre_client to ready_to_schedule on a no review batch', async () => {
+  it('forwards am_qa_pre_client to scheduling on a no review batch', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
@@ -586,21 +589,21 @@ describe('passBaton, no review flow', () => {
     })
     const result = await passBaton({
       batchId: 'b1',
-      toStep: RelayStep.ready_to_schedule,
+      toStep: RelayStep.scheduling,
       actorId: 'u_am',
       actorOrganizationId: 'org_1',
     })
-    expect(result.toStep).toBe(RelayStep.ready_to_schedule)
+    expect(result.toStep).toBe(RelayStep.scheduling)
     expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
     const batchUpdateCall = currentTx.tx.batch.update.mock.calls[0][0]
-    expect(batchUpdateCall.data.currentStep).toBe(RelayStep.ready_to_schedule)
+    expect(batchUpdateCall.data.currentStep).toBe(RelayStep.scheduling)
     expect(currentTx.tx.relayEvent.create).toHaveBeenCalledOnce()
     const relayEventCall = currentTx.tx.relayEvent.create.mock.calls[0][0]
     expect(relayEventCall.data.type).toBe('pass_forward')
-    expect(relayEventCall.data.toStep).toBe(RelayStep.ready_to_schedule)
+    expect(relayEventCall.data.toStep).toBe(RelayStep.scheduling)
   })
 
-  it('rejects am_qa_pre_client to sent_to_client on a no review batch', async () => {
+  it('rejects am_qa_pre_client to client_review on a no review batch', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
@@ -613,14 +616,14 @@ describe('passBaton, no review flow', () => {
     await expect(
       passBaton({
         batchId: 'b1',
-        toStep: RelayStep.sent_to_client,
+        toStep: RelayStep.client_review,
         actorId: 'u_am',
         actorOrganizationId: 'org_1',
       }),
     ).rejects.toThrow(/Illegal transition/)
   })
 
-  it('regression: am_qa_pre_client to sent_to_client still legal on a review enabled batch', async () => {
+  it('regression: am_qa_pre_client to client_review is legal on a review enabled batch', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
@@ -632,14 +635,14 @@ describe('passBaton, no review flow', () => {
     })
     const result = await passBaton({
       batchId: 'b1',
-      toStep: RelayStep.sent_to_client,
+      toStep: RelayStep.client_review,
       actorId: 'u_am',
       actorOrganizationId: 'org_1',
     })
-    expect(result.toStep).toBe(RelayStep.sent_to_client)
+    expect(result.toStep).toBe(RelayStep.client_review)
     expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
     const batchUpdateCall = currentTx.tx.batch.update.mock.calls[0][0]
-    expect(batchUpdateCall.data.currentStep).toBe(RelayStep.sent_to_client)
+    expect(batchUpdateCall.data.currentStep).toBe(RelayStep.client_review)
   })
 })
 
@@ -659,7 +662,7 @@ describe('finishBatch', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.final_qa_schedule,
+      currentStep: RelayStep.scheduling,
       currentHolder: 'u_am',
       label: '2026-05',
       client: { organizationId: 'org_OTHER' },
@@ -674,7 +677,7 @@ describe('finishBatch', () => {
     expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
   })
 
-  it('rejects if current step is not final_qa_schedule', async () => {
+  it('rejects if current step is not scheduling', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
@@ -697,7 +700,7 @@ describe('finishBatch', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.final_qa_schedule,
+      currentStep: RelayStep.scheduling,
       currentHolder: 'u_am_prior',
       label: 'Cedar Creek May 2026',
       client: { organizationId: 'org_1' },
@@ -721,7 +724,7 @@ describe('finishBatch', () => {
     expect(currentTx.tx.relayEvent.create).toHaveBeenCalledOnce()
     const relayEventCall = currentTx.tx.relayEvent.create.mock.calls[0][0]
     expect(relayEventCall.data.toStep).toBe(RelayStep.completed)
-    expect(relayEventCall.data.fromStep).toBe(RelayStep.final_qa_schedule)
+    expect(relayEventCall.data.fromStep).toBe(RelayStep.scheduling)
     expect(relayEventCall.data.fromUser).toBe('u_am_prior')
     expect(relayEventCall.data.toUser).toBe('u_am_now')
 
@@ -743,7 +746,7 @@ describe('finishBatch', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.final_qa_schedule,
+      currentStep: RelayStep.scheduling,
       currentHolder: 'u_someone_else',
       label: 'Cedar Creek May 2026',
       client: { organizationId: 'org_1' },
@@ -773,7 +776,7 @@ describe('advanceFromClientReview', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.sent_to_client,
+      currentStep: RelayStep.client_review,
       clientReviewEnabled: false,
       label: 'Foo May 2026',
     })
@@ -822,11 +825,11 @@ describe('advanceFromClientReview', () => {
     expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
   })
 
-  it('approved at sent_to_client → ready_to_schedule held by AM', async () => {
+  it('advanceFromClientReview approved advances client_review -> scheduling', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.sent_to_client,
+      currentStep: RelayStep.client_review,
       clientReviewEnabled: true,
       label: 'Foo May 2026',
     })
@@ -838,13 +841,13 @@ describe('advanceFromClientReview', () => {
       reviewSessionId: 's1',
     })
     expect(result.advanced).toBe(true)
-    expect(result.toStep).toBe(RelayStep.ready_to_schedule)
+    expect(result.toStep).toBe(RelayStep.scheduling)
     expect(result.newHolderId).toBe('user_am')
 
     // batch.update sets the right step + holder
     expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
     const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
-    expect(updateData.currentStep).toBe(RelayStep.ready_to_schedule)
+    expect(updateData.currentStep).toBe(RelayStep.scheduling)
     expect(updateData.currentHolder).toBe('user_am')
 
     // relayEvent is pass_forward from user_creator to user_am
@@ -863,11 +866,11 @@ describe('advanceFromClientReview', () => {
     expect(activityData.payload.decision).toBe('approved')
   })
 
-  it('changes at sent_to_client → implementing_revisions', async () => {
+  it('advanceFromClientReview changes advances client_review -> implementing_revisions', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.sent_to_client,
+      currentStep: RelayStep.client_review,
       clientReviewEnabled: true,
       label: 'Foo May 2026',
     })
@@ -888,7 +891,7 @@ describe('advanceFromClientReview', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.sent_to_client,
+      currentStep: RelayStep.client_review,
       clientReviewEnabled: true,
       label: 'Foo May 2026',
     })
@@ -906,11 +909,14 @@ describe('advanceFromClientReview', () => {
     ])
   })
 
-  it('also advances from client_decision: approved → ready_to_schedule', async () => {
+  it('no-ops when batch is at scheduling (not client_review), even with clientReviewEnabled', async () => {
+    // Pipeline rework: old client_decision step is retired; scheduling is AM-held,
+    // not client-held. A submit from a lingering client link while the AM has
+    // already moved the batch is a harmless no-op.
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.client_decision,
+      currentStep: RelayStep.scheduling,
       clientReviewEnabled: true,
       label: 'Foo May 2026',
     })
@@ -921,15 +927,15 @@ describe('advanceFromClientReview', () => {
       fallbackUserId: 'user_creator',
       reviewSessionId: 's1',
     })
-    expect(result.advanced).toBe(true)
-    expect(result.toStep).toBe(RelayStep.ready_to_schedule)
+    expect(result.advanced).toBe(false)
+    expect(result.reason).toBe('not_at_client_step')
   })
 
   it('notifies the assigned designer when a changes round has image pins', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.sent_to_client,
+      currentStep: RelayStep.client_review,
       clientReviewEnabled: true,
       label: 'Foo May 2026',
     })
@@ -965,7 +971,7 @@ describe('advanceFromClientReview', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.sent_to_client,
+      currentStep: RelayStep.client_review,
       clientReviewEnabled: true,
       label: 'Foo May 2026',
     })

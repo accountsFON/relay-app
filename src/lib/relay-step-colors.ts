@@ -33,6 +33,8 @@ export const STEP_COLOR: Record<RelayStep, StepCategoryColor> = {
   [RelayStep.implementing_revisions]: 'yellow', // Caleb extrapolated, could be coral
   [RelayStep.revisions_complete]: 'yellow', // Caleb extrapolated (AM = yellow)
   [RelayStep.final_qa_schedule]: 'yellow', // Caleb extrapolated (AM = yellow)
+  [RelayStep.client_review]: 'blue', // NEW (client-held)
+  [RelayStep.scheduling]: 'yellow', // NEW (AM-held)
   [RelayStep.completed]: 'ink', // done relays read as resolved
 }
 

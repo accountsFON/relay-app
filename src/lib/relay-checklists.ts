@@ -14,60 +14,54 @@ export interface ChecklistSeedItem {
 }
 
 export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
-  [RelayStep.onboarding_gate]: [
-    { label: 'Brand assets received and saved' },
-    { label: 'Brand voice captured in Client profile' },
-    { label: 'Posting cadence and excluded dates confirmed' },
-    { label: 'Main CTA and focus areas filled in' },
-  ],
+  // Onboarding: no checklist (decision 2026-06-22). It is the entry gate that
+  // creates the first batch; completion is via completeOnboardingAction.
+  [RelayStep.onboarding_gate]: [],
   [RelayStep.copy]: [
-    { label: 'Copy draft generated' },
-    { label: 'AM-reviewed all captions' },
-    { label: 'Hashtags pass brand-voice check' },
-    { label: 'Sub-state advanced to approved' },
+    { label: 'Content has been reviewed for clarity, brand alignment, and messaging consistency' },
+    { label: 'CTAs and hashtags have been verified' },
+    { label: 'Copy edits have been finalized' },
   ],
   [RelayStep.in_design]: [
-    { label: 'Visual concept aligned with brief' },
-    { label: 'All posts have draft graphics' },
+    { label: 'Graphics have been created and photos sourced for each post' },
+    { label: 'Graphics have been self checked for errors (misinformation, typos, missing elements)' },
+    { label: 'Visual content has been confirmed to align with its caption' },
+    { label: 'Visual content has been uploaded to the corresponding Dropbox' },
   ],
-  // Retired step (Phase 3 item 15 PR1). Kept as an empty entry so the
-  // CHECKLIST_SEED record stays total over RelayStep, and reseeding for a
-  // legacy batch sitting on this step before the backfill yields zero items
-  // instead of throwing. PR2 (Wave F5) tombstones the enum entirely.
+  // Retired step, kept empty so the record stays total.
   [RelayStep.designs_completed]: [],
   [RelayStep.am_review_design]: [
-    { label: 'Designs match brand guidelines' },
-    { label: 'Copy / image alignment verified' },
-    { label: 'No spelling or layout issues' },
-    // Merged from the retired `designs_completed` step (Phase 3 item 15 PR1).
-    { label: 'Designs match copy themes' },
+    { label: 'Every caption has corresponding visual content' },
+    { label: 'Designs align with brand guidelines' },
+    { label: 'Copy and image alignment have been verified' },
+    { label: 'Designs are free of spelling and layout issues' },
+    { label: 'Designs reflect the themes of the copy' },
   ],
   [RelayStep.design_revisions]: [
-    { label: 'All flagged revisions addressed' },
+    { label: 'All flagged revisions have been addressed' },
+    { label: 'Updated content has been uploaded where needed' },
   ],
   [RelayStep.am_qa_pre_client]: [
-    { label: 'Final captions reviewed' },
-    { label: 'Designs final-pass reviewed' },
-    { label: 'Posting dates correct' },
+    { label: 'Final captions have been reviewed' },
+    { label: 'Designs have received a final pass review' },
+    { label: 'Posting dates have been verified' },
   ],
-  [RelayStep.sent_to_client]: [
-    { label: 'Client opened the relay' },
-  ],
-  [RelayStep.client_decision]: [
-    { label: 'Client decision recorded (approve or revisions)' },
-  ],
-  [RelayStep.ready_to_schedule]: [
-    { label: 'AM confirmed relay ready to schedule' },
-  ],
+  // Client Review: no agency checklist; the client submitting (or the window
+  // expiring) is the gate.
+  [RelayStep.client_review]: [],
   [RelayStep.implementing_revisions]: [
-    { label: 'Revisions complete' },
+    { label: 'All client feedback has been addressed' },
   ],
-  [RelayStep.revisions_complete]: [
-    { label: 'Revision-vs-client decision made (loop or schedule)' },
+  [RelayStep.scheduling]: [
+    { label: 'All posts have been scheduled' },
+    { label: 'All posting dates have been double checked' },
+    { label: 'All caption and image pairings have been double checked' },
   ],
-  [RelayStep.final_qa_schedule]: [
-    { label: 'All posts scheduled in destination platform' },
-    { label: 'Posting dates double-checked' },
-  ],
+  // Retired steps, kept empty for totality + legacy batches before cutover.
+  [RelayStep.sent_to_client]: [],
+  [RelayStep.client_decision]: [],
+  [RelayStep.ready_to_schedule]: [],
+  [RelayStep.revisions_complete]: [],
+  [RelayStep.final_qa_schedule]: [],
   [RelayStep.completed]: [],
 }

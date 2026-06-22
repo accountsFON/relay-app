@@ -61,8 +61,8 @@ describe('DashboardRelayTrack', () => {
       />,
     )
     // Each step label appears twice (desktop + mobile layouts).
-    expect(screen.getAllByText('Copy').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Design').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Copy Review').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Initial Design').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Final QA and schedule').length).toBeGreaterThan(0)
   })
 
