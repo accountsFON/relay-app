@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -8,6 +9,7 @@ import {
   type FormEvent,
 } from 'react'
 import { cn } from '@/lib/utils'
+import { useUnsavedChanges } from '@/lib/unsaved-changes'
 import { Button } from '@/components/ui/button'
 import { Linkify } from '@/components/ui/linkify'
 import { FixWithAIButton } from '@/components/preview/fix-with-ai-button'
@@ -95,14 +97,40 @@ export function PinPopover({
     setPosition(computePosition(anchor ?? null, height))
   }, [anchor])
 
+  // Warn before navigating away while an unsaved reply draft exists.
+  useUnsavedChanges(body.trim().length > 0)
+
+  // Single close guard: every close path (X, Escape, outside click) routes
+  // through this so an unsaved draft prompts a discard confirmation first.
+  const requestClose = useCallback(() => {
+    if (!onClose) return
+    if (body.trim().length > 0 && !window.confirm('Discard unsaved changes?'))
+      return
+    onClose()
+  }, [onClose, body])
+
   useEffect(() => {
     if (!onClose) return
     function handle(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose?.()
+      if (event.key === 'Escape') requestClose()
     }
     window.addEventListener('keydown', handle)
     return () => window.removeEventListener('keydown', handle)
-  }, [onClose])
+  }, [onClose, requestClose])
+
+  // Close on a pointer-down anywhere outside the popover (mirrors the
+  // notification dropdown pattern). A click inside , including the textarea ,
+  // is ignored via closest() on the stable testid.
+  useEffect(() => {
+    if (!onClose) return
+    function onPointerDown(e: PointerEvent) {
+      const el = e.target instanceof Element ? e.target : null
+      if (el && el.closest('[data-testid="pin-popover"]')) return
+      requestClose()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [onClose, requestClose])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -179,7 +207,7 @@ export function PinPopover({
             type="button"
             data-testid="pin-popover-close"
             aria-label="Close thread"
-            onClick={onClose}
+            onClick={requestClose}
             className="text-[#8e8e8e] hover:text-[#262626]"
           >
             ×

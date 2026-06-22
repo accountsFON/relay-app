@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -9,6 +10,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { cn } from '@/lib/utils'
+import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
 /**
  * Inline composer that pops up when a user drops a new pin (image click or
@@ -56,19 +58,30 @@ export function PinDraftComposer({
     textareaRef.current?.focus()
   }, [])
 
+  // Warn before navigating away while an unsaved draft exists.
+  useUnsavedChanges(body.trim().length > 0)
+
+  // Single cancel guard: a non-empty draft prompts a discard confirmation
+  // before the cancel is honored. Mirrors PinPopover's requestClose shape.
+  const requestCancel = useCallback(() => {
+    if (body.trim().length > 0 && !window.confirm('Discard unsaved changes?'))
+      return
+    onCancel()
+  }, [body, onCancel])
+
   // Escape closes; document click outside cancels.
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         event.stopPropagation()
-        onCancel()
+        requestCancel()
       }
     }
     function handlePointer(event: MouseEvent) {
       const el = composerRef.current
       if (!el) return
       if (event.target instanceof Node && el.contains(event.target)) return
-      onCancel()
+      requestCancel()
     }
     window.addEventListener('keydown', handleKey)
     // Use mousedown so the cancel fires before the next click target activates.
@@ -77,7 +90,7 @@ export function PinDraftComposer({
       window.removeEventListener('keydown', handleKey)
       document.removeEventListener('mousedown', handlePointer)
     }
-  }, [onCancel])
+  }, [requestCancel])
 
   async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault()
@@ -136,7 +149,7 @@ export function PinDraftComposer({
           <button
             type="button"
             data-testid="pin-draft-composer-cancel"
-            onClick={onCancel}
+            onClick={requestCancel}
             className="rounded-md px-2 py-1 text-[12px] font-medium text-[#8e8e8e] hover:bg-[#f5f5f5] hover:text-[#262626]"
           >
             Cancel
