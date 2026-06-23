@@ -22,6 +22,20 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-22 — Client review: two verdicts + inline Edit copy** (PR #229)
+  The magic-link client review surface dropped from three confusing buttons
+  (Approve / Changes / Edit Copy) to two clear verdicts (Approve / Changes), with
+  copy editing moved to an inline "Edit copy" link on the post caption; Notes stay
+  optional under both. Approach: `caption_edited` is kept as an internal decision
+  value (never a button) — saving a copy edit still persists
+  `caption_edited` + `suggestedCaption`, and the Changes pill renders active for
+  both `changes_requested` and `caption_edited`, so the AM side, summaries, digest
+  email, `mapReviewDecision`, and the state machine are untouched. Editing reads as
+  Changes; Approve on an edited post discards the pending suggestion
+  (`suggestedCaption: null`). New `onEditCaption` prop on the IG/FB post
+  components (gated, AM/designer surfaces unaffected); `DecisionButtonRow` reduced
+  to two pills. 1644 unit tests; UI-only, no schema/migration. Caleb/Julio item 26.
+
 - [x] **2026-06-22 — Comment image attachments Phase 2: use as post image** (PR #228)
   AM-only consumption of a client's attached reference image. New
   `useCommentImageAsPostMediaAction({postId,commentId})` (gated by
