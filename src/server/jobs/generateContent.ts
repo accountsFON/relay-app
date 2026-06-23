@@ -14,6 +14,7 @@ import {
   finalizePostGeneration,
   findDefaultMatchingBatch,
 } from '@/server/services/finalize-post-generation'
+import { isRunCancelled } from '@/server/jobs/run-cancellation'
 
 type TokenUsageLog = Record<string, { input: number; output: number }>
 
@@ -210,6 +211,14 @@ export const generateContentTask = task({
         pipelineDurationSeconds,
       })
 
+      // Cancellation guard: if the run was cancelled while the pipeline was
+      // mid-flight, stop here. Do not mark complete, do not finalize/attach,
+      // do not notify. The cancel action is the source of truth; any posts
+      // created earlier stay unattached (no batch is touched).
+      if (await isRunCancelled(contentRunId)) {
+        return { cancelled: true as const }
+      }
+
       await db.contentRun.update({
         where: { id: contentRunId },
         data: {
@@ -306,6 +315,13 @@ export const generateContentTask = task({
 
       return { postCount, totalCostUsd: breakdown.total, breakdown }
     } catch (error) {
+      // If the run was cancelled mid-flight, the abort may surface here as a
+      // throw. Do not overwrite the user's cancellation with a failure, and
+      // do not emit a failed-run notification.
+      if (await isRunCancelled(contentRunId)) {
+        return { cancelled: true as const }
+      }
+
       const message = error instanceof Error ? error.message : String(error)
       const pipelineDurationSeconds = Math.round((Date.now() - pipelineStart) / 1000)
 
