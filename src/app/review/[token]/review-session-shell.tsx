@@ -200,7 +200,15 @@ export function ReviewSessionShell({
 
   const handleDecisionChange = useCallback(
     (postId: string, decision: ReviewDecisionType) => {
-      void persistDraft(postId, { decision })
+      // Approve discards any pending suggested caption — the reviewer is
+      // approving the original copy, so the edit no longer applies. Other
+      // verdicts leave the suggestion untouched (a Changes post may carry a
+      // copy edit, persisted as decision='caption_edited').
+      if (decision === 'approved') {
+        void persistDraft(postId, { decision, suggestedCaption: null })
+      } else {
+        void persistDraft(postId, { decision })
+      }
     },
     [persistDraft],
   )

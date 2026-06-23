@@ -8,7 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type SyntheticEvent,
 } from 'react'
-import { Globe, ThumbsUp, MessageCircle, Share2 } from 'lucide-react'
+import { Globe, Pencil, ThumbsUp, MessageCircle, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { facebookAspectRatio } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
@@ -63,6 +63,7 @@ export function FacebookPost(props: FeedPostProps) {
     onCaptionEditSave,
     onCaptionEditCancel,
     captionOverride,
+    onEditCaption,
   } = props
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
@@ -311,6 +312,18 @@ export function FacebookPost(props: FeedPostProps) {
               </>
             )}
           </div>
+        )}
+
+        {!editing && onEditCaption && (
+          <button
+            type="button"
+            data-testid="facebook-post-edit-copy"
+            onClick={onEditCaption}
+            className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[#1877f2] hover:underline"
+          >
+            <Pencil aria-hidden className="h-3.5 w-3.5" />
+            Edit copy
+          </button>
         )}
 
         {!editing && captionOverride !== undefined && (

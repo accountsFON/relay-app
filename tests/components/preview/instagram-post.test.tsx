@@ -563,3 +563,50 @@ describe('InstagramFeedPost', () => {
     })
   })
 })
+
+describe('InstagramFeedPost -- inline Edit copy', () => {
+  const POST = { id: 'post-1', caption: 'Original caption', hashtags: [], mediaUrl: null }
+  const CLIENT = { name: 'Test Client', avatarUrl: null }
+
+  it('renders an Edit copy link only when onEditCaption is provided, and fires it on click', () => {
+    const onEditCaption = vi.fn()
+    const { rerender } = render(
+      <InstagramFeedPost
+        post={POST}
+        client={CLIENT}
+        threads={[]}
+        mode="review"
+        onEditCaption={onEditCaption}
+      />,
+    )
+    const link = screen.getByTestId('instagram-post-edit-copy')
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAccessibleName(/edit copy/i)
+    fireEvent.click(link)
+    expect(onEditCaption).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <InstagramFeedPost post={POST} client={CLIENT} threads={[]} mode="review" />,
+    )
+    expect(
+      screen.queryByTestId('instagram-post-edit-copy'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides the Edit copy link while editing', () => {
+    render(
+      <InstagramFeedPost
+        post={POST}
+        client={CLIENT}
+        threads={[]}
+        mode="review"
+        onEditCaption={vi.fn()}
+        editing
+        captionDraft="draft"
+      />,
+    )
+    expect(
+      screen.queryByTestId('instagram-post-edit-copy'),
+    ).not.toBeInTheDocument()
+  })
+})

@@ -75,18 +75,22 @@ export type ReviewPostCardProps = {
  *   - Pin on the image or caption -> persists as a PostThread row with
  *     author.kind = 'reviewer' via `onCreatePin`. The AM digest renders
  *     these inline alongside per-item decisions.
- *   - Edit Copy on the caption -> inline textarea, persists as
- *     suggestedCaption via `onCaptionEditSave`.
- *   - Decision row (Approve / Request Changes / Edit Copy) -> the verdict.
+ *   - Inline "Edit copy" link on the caption -> opens an inline textarea
+ *     to suggest a revised caption; persists via `onCaptionEditSave`. An
+ *     edited post is stored as `decision: 'caption_edited'` and reads as
+ *     Changes in the decision row.
+ *   - Decision row (Approve / Changes) -> the verdict. Two buttons only;
+ *     the Changes pill is active for both `changes_requested` and
+ *     `caption_edited`.
  *   - Notes textarea -> catch-all for cross-cutting context that does not
  *     fit a pin or a decision.
  *
  * Caption-edit lives inline inside the platform chrome:
- *   - Tapping Edit Copy in the decision row enters edit mode. The card
- *     snapshots the prior decision so Cancel can revert.
+ *   - The inline "Edit copy" link on the caption enters edit mode. The
+ *     card does NOT snapshot or restore any prior decision.
  *   - Save calls `onCaptionEditSave(draft)` which the shell wires to the
  *     existing draft endpoint, then exits edit mode.
- *   - Cancel exits edit mode and restores the prior decision.
+ *   - Cancel just exits edit mode (no decision change).
  *   - When the reviewer has a saved suggestedCaption and is not editing,
  *     the chrome renders the suggestion (via `captionOverride`) with a
  *     `view original / back to your edit` peek toggle.
@@ -127,9 +131,6 @@ export function ReviewPostCard({
     savedSuggestion ?? post.caption,
   )
   useUnsavedChanges(isEditing && captionDraft !== (savedSuggestion ?? post.caption))
-  // Snapshot of the decision before the reviewer tapped Edit Copy, so Cancel
-  // can restore it. Captured at edit-mode entry.
-  const decisionBeforeEditRef = useRef<ReviewDecisionType | null>(null)
 
   const articleRef = useRef<HTMLElement | null>(null)
 
@@ -147,44 +148,26 @@ export function ReviewPostCard({
   }, [isEditing])
 
   const enterEditMode = useCallback(() => {
-    decisionBeforeEditRef.current = decision
     setCaptionDraft(savedSuggestion ?? post.caption)
     setIsEditing(true)
-  }, [decision, savedSuggestion, post.caption])
+  }, [savedSuggestion, post.caption])
 
   const exitEditMode = useCallback(() => {
     setIsEditing(false)
-    decisionBeforeEditRef.current = null
   }, [])
 
   const handleDecisionChange = useCallback(
     (next: ReviewDecisionType) => {
-      if (next === 'caption_edited') {
-        // Tapping Edit Copy is both the decision and the gesture that opens
-        // the editor. Capture the prior decision first so Cancel can revert.
-        if (!isEditing) {
-          decisionBeforeEditRef.current = decision
-        }
-        setCaptionDraft(savedSuggestion ?? post.caption)
-        setIsEditing(true)
-        onDecisionChange(next)
-        return
-      }
-      // Any other decision exits edit mode (no draft to preserve in this
-      // path) and forwards to the parent.
+      // A verdict click is explicit: discard any in-progress inline edit (the
+      // unsaved textarea draft) and forward the verdict. Clearing a SAVED
+      // suggested caption on Approve happens in the shell's onDecisionChange
+      // handler, not here.
       if (isEditing) {
         exitEditMode()
       }
       onDecisionChange(next)
     },
-    [
-      isEditing,
-      decision,
-      savedSuggestion,
-      post.caption,
-      onDecisionChange,
-      exitEditMode,
-    ],
+    [isEditing, exitEditMode, onDecisionChange],
   )
 
   const handleCaptionEditSave = useCallback(async () => {
@@ -197,14 +180,8 @@ export function ReviewPostCard({
   }, [captionDraft, onCaptionEditSave, exitEditMode])
 
   const handleCaptionEditCancel = useCallback(() => {
-    const prior = decisionBeforeEditRef.current
     exitEditMode()
-    // If the reviewer hadn't already had `caption_edited` selected before
-    // this round of editing, revert the decision to whatever they had.
-    if (prior !== null && prior !== 'caption_edited') {
-      onDecisionChange(prior)
-    }
-  }, [exitEditMode, onDecisionChange])
+  }, [exitEditMode])
 
   // Per Phase 4 item 22: unified placeholder regardless of decision.
   // The decision-specific "Tell the team what to change" placeholder is
@@ -220,11 +197,11 @@ export function ReviewPostCard({
   // which persists a PostThread with author.kind = 'reviewer'.
   const PostComponent = platform === 'instagram' ? InstagramFeedPost : FacebookPost
 
-  // captionOverride is set whenever a saved suggestion exists, even when
-  // the current decision was reverted away from `caption_edited` (the
-  // reviewer can re-enter Edit Copy and the textarea will pre-fill with
-  // the prior suggestion). Suppress override while editing so the textarea
-  // is the only caption surface visible.
+  // captionOverride renders the saved suggestion in place of the original
+  // caption while the post is in the `caption_edited` state and not being
+  // edited. The reviewer can re-enter via the inline "Edit copy" link, which
+  // pre-fills the textarea with the prior suggestion. Suppress the override
+  // while editing so the textarea is the only caption surface visible.
   const captionOverride =
     !isEditing && savedSuggestion !== null && decision === 'caption_edited'
       ? savedSuggestion
@@ -268,6 +245,7 @@ export function ReviewPostCard({
         onCaptionEditSave={isEditing ? handleCaptionEditSave : undefined}
         onCaptionEditCancel={isEditing ? handleCaptionEditCancel : undefined}
         captionOverride={captionOverride}
+        onEditCaption={disabled ? undefined : enterEditMode}
       />
 
       <DecisionButtonRow
@@ -276,7 +254,7 @@ export function ReviewPostCard({
         disabled={disabled}
       />
 
-      {decision === 'changes_requested' ? (
+      {decision === 'changes_requested' || decision === 'caption_edited' ? (
         <p
           data-testid="review-post-card-changes-hint"
           className="text-[12px] text-muted-foreground"
