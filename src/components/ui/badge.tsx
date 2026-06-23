@@ -55,7 +55,15 @@ function StatusDot({
   status,
   className,
 }: {
-  status?: 'active' | 'running' | 'queued' | 'complete' | 'failed' | 'inactive' | string
+  status?:
+    | 'active'
+    | 'running'
+    | 'queued'
+    | 'complete'
+    | 'failed'
+    | 'cancelled'
+    | 'inactive'
+    | string
   className?: string
 }) {
   const color = {
@@ -64,6 +72,9 @@ function StatusDot({
     queued: 'bg-neutral-500',
     complete: 'bg-foreground',
     failed: 'bg-destructive',
+    // User-cancelled: a muted dot, distinct from both inactive (neutral-300)
+    // and queued (neutral-500). Neutral, not an error.
+    cancelled: 'bg-neutral-400',
     inactive: 'bg-neutral-300',
   }[status ?? 'inactive'] ?? 'bg-neutral-300'
 
