@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { INTENT_PRIORITY } from '@/components/relay/in-flight-runs-utils'
 import { RunProgressLine } from '@/components/relay/run-progress-line'
+import { cancelGenerationAction } from '@/server/actions/in-flight-runs'
 
 export function InFlightRunsPill() {
-  const { runs } = useInFlightRuns()
+  const { runs, refresh } = useInFlightRuns()
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [clickedAcknowledged, setClickedAcknowledged] = useState<Set<string>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
@@ -49,6 +51,19 @@ export function InFlightRunsPill() {
 
   const label = sorted.length === 1 ? '1 run' : `${sorted.length} runs`
 
+  async function onCancelPill(runId: string, clientName: string) {
+    if (!window.confirm(`Cancel generation for ${clientName}? This stops the run and discards its progress.`)) {
+      return
+    }
+    setCancellingId(runId)
+    try {
+      await cancelGenerationAction(runId)
+      await refresh()
+    } finally {
+      setCancellingId(null)
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <Button
@@ -84,7 +99,7 @@ export function InFlightRunsPill() {
                 </>
               )
               return (
-                <li key={run.id} data-testid="inflight-row" className="text-[13px]">
+                <li key={run.id} data-testid="inflight-row" className="text-[13px] flex items-center">
                   <Link
                     href={`/clients/${run.clientId}`}
                     onClick={() => {
@@ -97,10 +112,23 @@ export function InFlightRunsPill() {
                       }
                       setOpen(false)
                     }}
-                    className="block px-4 py-2 hover:bg-neutral-100/60 transition-colors"
+                    className="flex-1 block px-4 py-2 hover:bg-neutral-100/60 transition-colors"
                   >
                     {rowBody}
                   </Link>
+                  {run.intent === 'active' && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 mr-2 text-muted-foreground hover:text-foreground"
+                      aria-label={`Cancel generation for ${run.clientName}`}
+                      disabled={cancellingId === run.id}
+                      onClick={() => onCancelPill(run.id, run.clientName)}
+                    >
+                      {cancellingId === run.id ? 'Cancelling…' : 'Cancel'}
+                    </Button>
+                  )}
                 </li>
               )
             })}

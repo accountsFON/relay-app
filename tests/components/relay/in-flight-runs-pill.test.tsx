@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InFlightRunsPill } from '@/components/relay/in-flight-runs-pill'
 import type { InFlightRun } from '@/server/actions/in-flight-runs'
@@ -8,6 +8,11 @@ vi.mock('@/components/relay/in-flight-runs-provider', () => ({
   useInFlightRuns: vi.fn(),
 }))
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
+
+vi.mock('@/server/actions/in-flight-runs', () => ({
+  cancelGenerationAction: (...args: unknown[]) => pillCancelMock(...args),
+}))
+const pillCancelMock = vi.fn()
 
 function mkRun(overrides: Partial<InFlightRun>): InFlightRun {
   return {
@@ -279,6 +284,57 @@ describe('InFlightRunsPill', () => {
     // Re-open the popover.
     await user.click(screen.getByRole('button', { name: /1 run/i }))
     expect(screen.getByText('Cedar Creek')).toBeInTheDocument()
+  })
+
+  it('shows a Cancel button for active runs in the popover', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', clientId: 'c1', clientName: 'Cedar Creek', intent: 'active' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    expect(screen.getByRole('button', { name: /cancel generation for cedar creek/i })).toBeInTheDocument()
+  })
+
+  it('cancels an active run from the pill after confirmation', async () => {
+    const refreshMock = vi.fn()
+    pillCancelMock.mockResolvedValue({ ok: true, status: 'cancelled' })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'run-pill-1', clientId: 'c1', clientName: 'Cedar Creek', intent: 'active' })],
+      isLoading: false,
+      error: null,
+      refresh: refreshMock,
+    })
+
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+
+    const cancelBtn = screen.getByRole('button', { name: /cancel generation for cedar creek/i })
+    await user.click(cancelBtn)
+
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(pillCancelMock).toHaveBeenCalledWith('run-pill-1')
+    await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+    confirmSpy.mockRestore()
+  })
+
+  it('does not show a Cancel button for awaiting_choice rows', async () => {
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({ id: 'r1', clientId: 'c1', clientName: 'Cedar Creek', intent: 'awaiting_choice' })],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    })
+    render(<InFlightRunsPill />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /1 run/i }))
+    expect(screen.queryByRole('button', { name: /cancel generation/i })).not.toBeInTheDocument()
   })
 
   it('the pill count drops by 1 when an awaiting_choice row is acknowledged', async () => {

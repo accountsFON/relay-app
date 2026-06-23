@@ -9,10 +9,12 @@ import {
   archiveContentRun,
   findMatchingBatchForClientMonth,
   findMatchingBatchForRun,
+  findContentRunForOrg,
 } from '@/server/repositories/contentRuns'
 import { triggerGeneration } from '@/app/(app)/clients/[id]/generate/actions'
+import { runs } from '@trigger.dev/sdk/v3'
 
-const TERMINAL_STATUSES = ['complete', 'failed'] as const
+const TERMINAL_STATUSES = ['complete', 'failed', 'cancelled'] as const
 
 export type InFlightRunIntent = 'active' | 'awaiting_choice' | 'failed'
 
@@ -170,6 +172,52 @@ export async function retryFailedRunAction(runId: string): Promise<{ newRunId: s
     { targetBatchId: matching?.id ?? null },
   )
   return { newRunId: contentRunId }
+}
+
+export type CancelGenerationResult =
+  | { ok: true; status: string }
+  | { ok: false; reason: 'not_found' }
+
+/**
+ * Cancel an in-flight content generation run. Marks the ContentRun
+ * `cancelled` (the source of truth the pipeline guards on) and best-effort
+ * aborts the Trigger.dev run. Scoped to the org + the caller's client
+ * assignment, gated on client.edit (same permission as starting a run).
+ */
+export async function cancelGenerationAction(
+  contentRunId: string,
+): Promise<CancelGenerationResult> {
+  const ctx = await requireClientEditor()
+
+  const run = await findContentRunForOrg(contentRunId, ctx.organizationDbId)
+  if (!run) return { ok: false, reason: 'not_found' }
+
+  // Assignment/role scope: a user may only cancel runs for clients they can
+  // edit (findClientForUser applies the same scope filter as the in-flight list).
+  const client = await findClientForUser(ctx, run.clientId)
+  if (!client) return { ok: false, reason: 'not_found' }
+
+  // No-op if already terminal; the 2s poll reconciles, no error surfaced.
+  if ((TERMINAL_STATUSES as readonly string[]).includes(run.status)) {
+    return { ok: true, status: run.status }
+  }
+
+  await db.contentRun.update({
+    where: { id: run.id },
+    data: { status: 'cancelled', completedAt: new Date() },
+  })
+
+  // Best-effort abort. Harmless if it throws or no-ops -- the DB status is the
+  // source of truth and the pipeline guards on it before finalizing.
+  if (run.triggerJobId) {
+    try {
+      await runs.cancel(run.triggerJobId)
+    } catch (err) {
+      console.error('[cancelGenerationAction] runs.cancel failed', err)
+    }
+  }
+
+  return { ok: true, status: 'cancelled' }
 }
 
 /**
