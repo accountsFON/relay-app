@@ -22,6 +22,21 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-22 — Cancel content generation mid-flight** (PR #230)
+  A user can cancel an in-progress generation run. Cancel discards everything
+  (target batch untouched); the run lands in a new neutral `cancelled` RunStatus
+  (additive enum migration), distinct from `failed`. `ContentRun.triggerJobId` is
+  now populated at trigger time so a run is reachable; `cancelGenerationAction`
+  (scoped to org + client assignment, gated on `client.edit`) marks the row
+  `cancelled` (source of truth) then best-effort `runs.cancel()`. The pipeline
+  guards on the DB status via `isRunCancelled` — before finalize (never attaches
+  posts / marks complete / notifies) and in its catch (never re-labels failed),
+  so it's race-proof. Cancel buttons on the in-flight banner + pill (confirm →
+  action → poll refresh). 1660 unit tests; UI + a Trigger.dev pipeline change
+  (the guard ships in the job). Known non-blocking follow-ups: a narrow TOCTOU
+  window between the finalize guard read and the complete write; a cosmetic
+  `StatusDot` color for cancelled.
+
 - [x] **2026-06-22 — Client review: two verdicts + inline Edit copy** (PR #229)
   The magic-link client review surface dropped from three confusing buttons
   (Approve / Changes / Edit Copy) to two clear verdicts (Approve / Changes), with
