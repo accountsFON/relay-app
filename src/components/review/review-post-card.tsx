@@ -197,11 +197,11 @@ export function ReviewPostCard({
   // which persists a PostThread with author.kind = 'reviewer'.
   const PostComponent = platform === 'instagram' ? InstagramFeedPost : FacebookPost
 
-  // captionOverride is set whenever a saved suggestion exists, even when
-  // the current decision was reverted away from `caption_edited` (the
-  // reviewer can re-enter Edit Copy and the textarea will pre-fill with
-  // the prior suggestion). Suppress override while editing so the textarea
-  // is the only caption surface visible.
+  // captionOverride renders the saved suggestion in place of the original
+  // caption while the post is in the `caption_edited` state and not being
+  // edited. The reviewer can re-enter via the inline "Edit copy" link, which
+  // pre-fills the textarea with the prior suggestion. Suppress the override
+  // while editing so the textarea is the only caption surface visible.
   const captionOverride =
     !isEditing && savedSuggestion !== null && decision === 'caption_edited'
       ? savedSuggestion
