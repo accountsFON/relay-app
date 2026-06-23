@@ -171,23 +171,25 @@ export function ReviewPinnedPost({
             data-testid="review-pin-comment"
             data-status={t.status}
             className={cn(
-              'text-[13px]',
+              'flex flex-col gap-1 text-[13px]',
               t.status === 'resolved'
                 ? 'text-muted-foreground line-through'
                 : 'text-foreground',
             )}
           >
-            <span className="font-semibold">
-              {idx + 1}. {authorName(t.firstComment.author)}
-            </span>
-            {' — '}
-            <span>
-              {t.firstComment.body || (
-                <em className="text-muted-foreground">No comment</em>
-              )}
-            </span>
+            <div>
+              <span className="font-semibold">
+                {idx + 1}. {authorName(t.firstComment.author)}
+              </span>
+              {' — '}
+              <span>
+                {t.firstComment.body || (
+                  <em className="text-muted-foreground">No comment</em>
+                )}
+              </span>
+            </div>
             {t.firstComment.imageUrl && (
-              <a href={t.firstComment.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block">
+              <a href={t.firstComment.imageUrl} target="_blank" rel="noopener noreferrer" className="block">
                 <img
                   data-testid="comment-image"
                   src={t.firstComment.imageUrl}
