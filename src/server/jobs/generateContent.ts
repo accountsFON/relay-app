@@ -19,6 +19,7 @@ import {
   markRunCompleteIfNotCancelled,
   markRunRunningIfNotCancelled,
 } from '@/server/jobs/run-cancellation'
+import { makeStepTimer } from '@/server/jobs/step-timer'
 
 type TokenUsageLog = Record<string, { input: number; output: number }>
 
@@ -35,6 +36,10 @@ export const generateContentTask = task({
   retry: { maxAttempts: 1 },
   run: async ({ contentRunId, reCrawl = true }: { contentRunId: string; reCrawl?: boolean }) => {
     const pipelineStart = Date.now()
+    // Per-step wall-clock timing. `lap` is called after each pipeline step so
+    // the run's tokenUsage carries a `stepDurationsMs` breakdown (and a log
+    // line below), making it obvious which step dominates a slow run.
+    const stepTimer = makeStepTimer()
 
     const contentRun = await db.contentRun.findUniqueOrThrow({
       where: { id: contentRunId },
@@ -84,6 +89,10 @@ export const generateContentTask = task({
         payload: { targetMonth: contentRun.targetMonth },
       })
 
+      // Pipeline steps begin: rebase the step timer so per-step laps exclude
+      // the run init (the running-status write + run_started activity above).
+      stepTimer.reset()
+
       // Step 1: Calculate posting dates
       currentStep = 'date_calculation'
       const { postingDates, holidaysInMonth, holidayTags } = calculatePostingDates(
@@ -97,6 +106,8 @@ export const generateContentTask = task({
         where: { id: contentRunId },
         data: { postingDates: postingDates.map((d) => d.date) },
       })
+
+      stepTimer.lap('date_calculation')
 
       // Step 2: Generate brief
       currentStep = 'brief_generation'
@@ -118,6 +129,8 @@ export const generateContentTask = task({
         where: { id: contentRunId },
         data: { brief: briefResult.brief, openaiCostUsd: openaiCost },
       })
+
+      stepTimer.lap('brief_generation')
 
       // Step 3: Crawl websites (or use cached data)
       currentStep = 'website_crawl'
@@ -164,6 +177,8 @@ export const generateContentTask = task({
         },
       })
 
+      stepTimer.lap('website_crawl')
+
       // Step 4: Extract facts
       currentStep = 'facts_extraction'
       const factsResult = await extractFacts(crawledContent)
@@ -179,6 +194,8 @@ export const generateContentTask = task({
         where: { id: contentRunId },
         data: { supportingFacts: factsResult.facts, openaiCostUsd: openaiCost },
       })
+
+      stepTimer.lap('facts_extraction')
 
       // Step 5: Generate captions, parse CTA candidates once, share between prompt + parser
       currentStep = 'caption_generation'
@@ -199,6 +216,8 @@ export const generateContentTask = task({
       }
       anthropicCost = captionResult.cost.usd
 
+      stepTimer.lap('caption_generation')
+
       // Step 6: Create Post records with batchId=null. The modal's
       // finalizePostGenerationAction handles batch attachment after the user
       // chooses how to handle the new posts.
@@ -211,7 +230,19 @@ export const generateContentTask = task({
         null
       )
 
+      stepTimer.lap('post_finalization')
+
       const pipelineDurationSeconds = Math.round((Date.now() - pipelineStart) / 1000)
+
+      // Per-step timing breakdown — surfaces in the Trigger.dev run log so a
+      // slow run can be diagnosed without re-running, and is also persisted on
+      // the ContentRun (tokenUsage.stepDurationsMs) below.
+      console.log('[generate-content] step durations (ms)', {
+        contentRunId,
+        totalMs: Date.now() - pipelineStart,
+        crawled: reCrawl || !client.crawledData,
+        steps: stepTimer.durationsMs,
+      })
 
       const breakdown = buildCostBreakdown({
         briefCost,
@@ -238,6 +269,7 @@ export const generateContentTask = task({
           ...tokenUsage,
           breakdown: JSON.parse(JSON.stringify(breakdown)),
           pipelineDurationSeconds,
+          stepDurationsMs: { ...stepTimer.durationsMs },
         },
         completedAt: new Date(),
       })
@@ -330,6 +362,10 @@ export const generateContentTask = task({
         return { cancelled: true as const }
       }
 
+      // Attribute the time spent in the step that was in flight when it threw,
+      // so a failed run's stepDurationsMs still shows where the time went.
+      stepTimer.lap(currentStep)
+
       const message = error instanceof Error ? error.message : String(error)
       const pipelineDurationSeconds = Math.round((Date.now() - pipelineStart) / 1000)
 
@@ -362,6 +398,7 @@ export const generateContentTask = task({
         ...tokenUsage,
         breakdown: JSON.parse(JSON.stringify(partialBreakdown)),
         pipelineDurationSeconds,
+        stepDurationsMs: { ...stepTimer.durationsMs },
         errorContext,
         failedStep: currentStep,
       }
