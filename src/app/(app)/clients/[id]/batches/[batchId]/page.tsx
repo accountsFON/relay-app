@@ -537,7 +537,25 @@ export default async function BatchDetailPage({
             </PageSection>
           )}
           {batch.clientReviewEnabled && reviewSessions.length > 0 && (
-            <PageSection title={`Review Sessions (${reviewSessions.length})`}>
+            <PageSection
+              title={`Review Sessions (${reviewSessions.length})`}
+              action={(() => {
+                const latestSubmitted = reviewSessions.find(
+                  (s) => s.status === 'submitted',
+                )
+                if (!latestSubmitted) return undefined
+                return (
+                  <Link
+                    href={`/clients/${client.id}/batches/${batch.id}/review-sessions/${latestSubmitted.id}`}
+                    className="text-[13px] text-foreground underline-offset-4 hover:underline"
+                    data-testid="view-client-feedback-header"
+                    aria-label="View client feedback"
+                  >
+                    View client feedback <span aria-hidden="true">→</span>
+                  </Link>
+                )
+              })()}
+            >
               <div className="space-y-2">
                 {reviewSessions.map((session) => (
                   <ReviewSessionListRow
@@ -724,9 +742,9 @@ function ReviewSessionListRow({
         href={`/clients/${clientId}/batches/${batchId}/review-sessions/${sessionId}`}
         className="text-[13px] text-foreground underline-offset-4 hover:underline"
         data-testid={`review-session-open-${sessionId}`}
-        aria-label="Open session detail"
+        aria-label="View client feedback"
       >
-        Open detail <span aria-hidden="true">→</span>
+        View client feedback <span aria-hidden="true">→</span>
       </Link>
     </div>
   )
