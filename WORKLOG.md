@@ -22,6 +22,16 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-22 — Client review: notes auto-save + visible save state** (PR #233)
+  The Notes field on the client review surface auto-saved only on blur with no
+  feedback (a note typed then abandoned without blurring was lost). Now it
+  debounce-saves ~1s after the last keystroke + flushes on blur, with a save-state
+  indicator (Saving… / Saved ✓ / Couldn't save · Retry, aria-live). `persistDraft`
+  returns `Promise<boolean>` and `onCommentChange` is `Promise<boolean>` so the card
+  drives the indicator; an out-of-order guard prevents a stale save flipping the
+  state. Notes only (verdict pills + caption editor already signal state). UI only,
+  no schema/endpoint change. 1671 unit tests. Caleb/Julio item 28.
+
 - [x] **2026-06-22 — Cancel follow-ups: queued-cancel start guard + StatusDot color** (PR #232)
   Closes the last two cancel follow-ups. (1) The pipeline job's opening write was
   an unconditional `status:'running'`, which could clobber a cancel set while the
