@@ -22,6 +22,23 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — AM "View client feedback" markup layout (item 31)** (PR #238)
+  Restructured the AM review session detail page into a markup-style layout: left
+  client-feedback rail (one row per post, plainly-approved collapsed), center posts
+  canvas with read-only clickable pins, right sticky internal AM/designer chat (+
+  mobile FAB; mobile stacks feedback first). Bidirectional sync (click a pin →
+  rail expands that thread; click a row → canvas highlights the post). New shared
+  `ThreadConversation` carries the running client↔AM dialogue with text + attached
+  images stacked (not side-by-side) + reply composer with image attach. AM actions
+  (accept/reject caption suggestion, resolve pin, use-as-post-image, mark addressed)
+  wired to existing server actions hoisted to a parameterized `FeedbackActions` — no
+  schema change, no new actions. "View client feedback" entry button on the batch
+  page (row CTA + header button when a review is submitted). Standalone flex fix so
+  comment text + image stack. Intentional scope cuts: AM inline caption editing +
+  AM pin-dropping are not on this page. 1737 unit tests. Follow-ups: startTransition
+  double-submit window; pre-existing comment-action auth looseness (composer now
+  surfaced more broadly).
+
 - [x] **2026-06-23 — Client review draft 404: exempt /api/review/** from Clerk** (PR #237)
   Critical: client review was broken for every real (non-Clerk) client. Magic-link
   reviewers have no Clerk session, but `/api/review/**` was not in the middleware
