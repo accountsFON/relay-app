@@ -17,6 +17,7 @@ import {
 import {
   isRunCancelled,
   markRunCompleteIfNotCancelled,
+  markRunRunningIfNotCancelled,
 } from '@/server/jobs/run-cancellation'
 
 type TokenUsageLog = Record<string, { input: number; output: number }>
@@ -65,10 +66,16 @@ export const generateContentTask = task({
       | 'post_finalization' = 'run_init'
 
     try {
-      await db.contentRun.update({
-        where: { id: contentRunId },
-        data: { status: 'running', startedAt: new Date() },
-      })
+      // Atomic start guard: mark running ONLY if not already cancelled. A user
+      // can cancel while the run sits queued (before this job picks it up); an
+      // unconditional "set running" here would clobber that cancel and run the
+      // whole pipeline. When this returns false the run was cancelled before it
+      // started: exit immediately (no run_started, no work). This also bounds the
+      // wasted compute for the pre-persist window where runs.cancel was skipped
+      // because triggerJobId was not yet written.
+      if (!(await markRunRunningIfNotCancelled(contentRunId))) {
+        return { cancelled: true as const }
+      }
 
       await recordActivity({
         clientId: client.id,
