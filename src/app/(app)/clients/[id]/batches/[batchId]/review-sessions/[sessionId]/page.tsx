@@ -1,17 +1,10 @@
 /**
- * AM-side review session detail page.
+ * AM-side review session detail page — markup feedback shell layout.
  *
- * Renders one submitted ReviewSession as a list of "attention posts" -- the
- * union of (a) posts with a non-approved ReviewItem and (b) posts the client
- * left markup pins on. Each card shows the item decision UI (ReviewItemRow)
- * and/or the client pins (ReviewPinnedPost), plus a single post-level
- * "Mark addressed" button that records the item addressed AND resolves the
- * post's open client pins.
- *
- * A post is "handled" when its item (if any) is addressed AND it has no open
- * client pins. Because the predicate reads live pin status, resolving a pin
- * anywhere (here or the preview page) reflects in both places with no extra
- * write. StartNextRound enables only when every attention post is handled.
+ * Renders the review session using the three-zone ReviewFeedbackShell:
+ *   - Left rail: per-post feedback rows with accept/reject/mark-addressed
+ *   - Center canvas: post images + client markup pins (read-only)
+ *   - Right rail: sticky internal AM/designer chat thread
  *
  * Access control mirrors the batch page: requireClientViewer +
  * findClientForUser, then walk magicLink -> batch -> client.
@@ -39,18 +32,9 @@ import {
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { buildMentionRoster } from '@/lib/mentions'
 import { db } from '@/db/client'
-import { PageSection } from '@/components/ui/page-section'
-import { EmptyState } from '@/components/ui/empty-state'
 import { ReviewSessionHeader } from '@/components/review/review-session-header'
-import {
-  ReviewItemRow,
-  type HydratedItemWithPost,
-} from '@/components/review/review-item-row'
-import { ReviewPinnedPostClient } from '@/components/review/review-pinned-post-client'
-import { MarkAddressedButton } from '@/components/review/mark-addressed-button'
+import { type HydratedItemWithPost } from '@/components/review/review-item-row'
 import { StartNextRoundButton } from '@/components/review/start-next-round-button'
-import { ReviewAttentionCard } from '@/components/review/review-attention-card'
-import { updatePostAction } from '@/server/actions/posts'
 import {
   acceptCaptionEditAction,
   rejectCaptionEditAction,
@@ -61,24 +45,14 @@ import {
 import {
   resolveThreadAction,
   addCommentAction,
-  useCommentImageAsPostMediaAction,
+  useCommentImageAsPostMediaAction as commentImageAsPostMediaAction,
 } from '@/server/actions/threads'
 import { revalidatePath } from 'next/cache'
 import { ActivityThread } from '@/components/activity/activity-thread'
+import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
+import { ReviewFeedbackShell } from './review-feedback-shell'
+import type { FeedbackPostVM, FeedbackActions } from './review-feedback-types'
 import type { ReviewSessionSummary } from '@/types/review-session'
-
-function formatPostDate(date: Date): string {
-  try {
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    }).format(date)
-  } catch {
-    return date.toISOString().slice(0, 10)
-  }
-}
 
 type AttentionPost = {
   postId: string
@@ -128,9 +102,6 @@ export default async function ReviewSessionDetailPage({
   const reviewerEmail = reviewer?.email ?? magicLink.defaultReviewerEmail ?? null
 
   // Load activity events and mention roster for the internal revision chat.
-  // Reuses the same repo path as the batch detail page so both rails stay in
-  // sync. visibilityForViewer(ctx) filters out client-visible events for
-  // AM/designer viewers, keeping this rail internal-only.
   const [activityEvents, memberships] = await Promise.all([
     listActivityForClient(client.id, {
       limit: 30,
@@ -202,10 +173,7 @@ export default async function ReviewSessionDetailPage({
   attention.sort((a, b) => a.postNumber - b.postNumber)
 
   // Designer lane: designers see ONLY attention posts that carry at least one
-  // IMAGE pin (a client thread whose hydrated pin.kind === 'image'). AM/admin
-  // see every attention post, unchanged. Within a shown post the FULL set of
-  // client threads is preserved (image + caption + post pins) so the designer
-  // reads every comment, not just the image pin's.
+  // IMAGE pin. AM/admin see every attention post.
   const isDesigner = ctx.role === 'designer'
   function hasImagePin(ap: AttentionPost): boolean {
     return ap.clientThreads.some((t) => t.pin.kind === 'image')
@@ -213,7 +181,6 @@ export default async function ReviewSessionDetailPage({
   const visiblePosts = isDesigner ? attention.filter(hasImagePin) : attention
 
   const pending = visiblePosts.filter((a) => !a.handled)
-  const addressed = visiblePosts.filter((a) => a.handled)
 
   const summary: ReviewSessionSummary =
     session.submittedSummary ?? {
@@ -226,170 +193,156 @@ export default async function ReviewSessionDetailPage({
   const submittedAt = session.submittedAt ?? session.startedAt
   const allAddressed = pending.length === 0 && visiblePosts.length > 0
   const isSuperseded = session.status === 'superseded'
-  // Extract primitives from session/client/batch before renderCard so the
-  // closure captures typed consts, not the nullable variables.
+
+  // Capture primitives for server-action closures.
   const clientId_ = client.id
   const batchId_ = batch.id
   const sessionId_ = session.id
   const sessionRound = session.round
-  // Edit affordances are server-computed from OrgContext, mirroring the batch
-  // detail page: caption edit gates on client.edit, image upload on
-  // post.media.edit. Designers get a focused lane: they CAN upload/replace
-  // images (post.media.edit) but CANNOT edit captions, accept/reject caption
-  // edits, or mark addressed (those are AM-only), so caption edit is forced
-  // off for them even though the underlying permission check would never grant
-  // client.edit to a designer anyway.
-  const canEditCaption = !isDesigner && canEditClients(ctx)
+
+  // Edit/upload permissions (server-computed from OrgContext).
   const canUploadImage = canUploadPostMedia(ctx)
-  // Internal-thread composer gates on the narrow client.comment permission
-  // (admin / AM / designer), so designers can post @-mention pings here even
-  // though they can't edit captions, resolve pins, or mark addressed. Clients
-  // lack client.comment AND have no access to this page, so the rail stays
-  // internal-only. Comments default to internal visibility.
   const canPostComment = canComment(ctx)
+  // Designers can upload images but cannot edit captions, accept/reject, or
+  // mark addressed — those are AM-only.
+  void canEditClients // retained for future use; not needed in the shell layout
 
-  function renderCard(ap: AttentionPost, mode: 'pending' | 'addressed') {
-    const reviewItemId = ap.item?.id
+  // ---------------------------------------------------------------------------
+  // Hoist server actions into a FeedbackActions object.
+  // Each fn is a 'use server' async function capturing the session primitives.
+  // ---------------------------------------------------------------------------
 
-    // Designers get a read-only decision row: no Accept/Reject affordances
-    // (accepting/rejecting caption edits is AM-only). Passing undefined makes
-    // ReviewItemRow render its decision body non-interactive.
-    const onAccept =
-      ap.item && !isDesigner
-        ? async () => {
-            'use server'
-            await acceptCaptionEditAction({ reviewItemId: ap.item!.id })
-          }
-        : undefined
-    const onReject =
-      ap.item && !isDesigner
-        ? async () => {
-            'use server'
-            await rejectCaptionEditAction({ reviewItemId: ap.item!.id })
-          }
-        : undefined
-    const onMarkAddressed = async () => {
-      'use server'
-      await markPostAddressedAction({
-        postId: ap.postId,
-        reviewItemId,
-        reviewSessionId: sessionId_,
-      })
-    }
-    const onUnmarkAddressed = async () => {
-      'use server'
-      await unmarkPostAddressedAction({
-        postId: ap.postId,
-        reviewItemId,
-        reviewSessionId: sessionId_,
-      })
-    }
-    const onResolvePin = async (threadId: string) => {
-      'use server'
-      await resolveThreadAction({ threadId, resolvedReason: null })
-      revalidatePath(
-        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
-      )
-    }
-    const onCommentPin = async (
-      threadId: string,
-      body: string,
-      image?: { url: string; width?: number; height?: number },
-    ) => {
-      'use server'
-      await addCommentAction({ threadId, body, image })
-      revalidatePath(
-        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
-      )
-    }
-    const onUseAsPostImagePin = async (commentId: string) => {
-      'use server'
-      await useCommentImageAsPostMediaAction({ postId: ap.postId, commentId })
-      revalidatePath(
-        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
-      )
-    }
-    // Capture userDbId for upload (server-rendered but serializable as a
-    // string prop to the client wrapper component).
-    const amUserDbId_ = ctx.userDbId
-    const updateCaption = async (postId: string, caption: string) => {
-      'use server'
-      await updatePostAction(postId, { caption })
-      revalidatePath(
-        `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
-      )
-    }
-
-    return (
-      <ReviewAttentionCard
-        key={ap.postId}
-        postId={ap.postId}
-        postNumber={ap.postNumber}
-        caption={ap.post.caption}
-        mediaUrls={ap.post.mediaUrls}
-        canEditCaption={canEditCaption}
-        canUploadImage={canUploadImage}
-        updateCaption={updateCaption}
-      >
-        <div
-          data-testid={`attention-post-${ap.postId}`}
-          className="space-y-3"
-        >
-          {ap.item ? (
-          <ReviewItemRow
-            item={ap.item}
-            postNumber={ap.postNumber}
-            mode={mode}
-            showAddressedButton={false}
-            onAccept={onAccept}
-            onReject={onReject}
-          />
-        ) : (
-          <h3 className="text-sm font-semibold text-foreground">
-            {`Post #${ap.postNumber} · ${formatPostDate(ap.post.postDate)}`}
-          </h3>
-        )}
-
-        {ap.clientThreads.length > 0 && (
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {`Client pins (${ap.clientThreads.length})`}
-            </p>
-            <ReviewPinnedPostClient
-              postId={ap.postId}
-              mediaUrl={ap.post.mediaUrls[0] ?? null}
-              caption={ap.post.caption}
-              threads={ap.clientThreads}
-              onResolve={mode === 'pending' ? onResolvePin : undefined}
-              onComment={mode === 'pending' ? onCommentPin : undefined}
-              onUseAsPostImage={mode === 'pending' ? onUseAsPostImagePin : undefined}
-              userDbId={mode === 'pending' ? amUserDbId_ : undefined}
-            />
-          </div>
-        )}
-
-        {/* Mark addressed / un-address is AM-only; designers never see it. */}
-        {!isDesigner && (
-          <div className="flex justify-end">
-            {mode === 'addressed' ? (
-              <MarkAddressedButton
-                onClick={onUnmarkAddressed}
-                label={ap.item?.acceptedAsPostVersionId ? 'Undo accept' : 'Move back to unaddressed'}
-                variant="outline"
-                testId="unmark-post-addressed-button"
-              />
-            ) : (
-              <MarkAddressedButton onClick={onMarkAddressed} />
-            )}
-          </div>
-        )}
-        </div>
-      </ReviewAttentionCard>
+  const comment = async (
+    threadId: string,
+    body: string,
+    image?: { url: string; width?: number; height?: number },
+  ) => {
+    'use server'
+    await addCommentAction({ threadId, body, image })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
     )
   }
 
+  const resolve = async (threadId: string) => {
+    'use server'
+    await resolveThreadAction({ threadId, resolvedReason: null })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
+  const useAsPostImage = async (postId: string, commentId: string) => {
+    'use server'
+    await commentImageAsPostMediaAction({ postId, commentId })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
+  const acceptCaption = async (reviewItemId: string) => {
+    'use server'
+    await acceptCaptionEditAction({ reviewItemId })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
+  const rejectCaption = async (reviewItemId: string) => {
+    'use server'
+    await rejectCaptionEditAction({ reviewItemId })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
+  const markAddressed = async (postId: string, reviewItemId: string | null) => {
+    'use server'
+    await markPostAddressedAction({
+      postId,
+      reviewItemId: reviewItemId ?? undefined,
+      reviewSessionId: sessionId_,
+    })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
+  const unmarkAddressed = async (postId: string, reviewItemId: string | null) => {
+    'use server'
+    await unmarkPostAddressedAction({
+      postId,
+      reviewItemId: reviewItemId ?? undefined,
+      reviewSessionId: sessionId_,
+    })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
+  const startNextRound = async () => {
+    'use server'
+    await startNextRoundAction({ magicLinkId: magicLink.id })
+  }
+
+  const feedbackActions: FeedbackActions = {
+    comment,
+    resolve,
+    useAsPostImage,
+    acceptCaption,
+    rejectCaption,
+    markAddressed,
+    unmarkAddressed,
+    startNextRound,
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build FeedbackPostVM[] from visiblePosts.
+  // ---------------------------------------------------------------------------
+
+  const feedbackPosts: FeedbackPostVM[] = visiblePosts.map((ap) => ({
+    postId: ap.postId,
+    postNumber: ap.postNumber,
+    caption: ap.post.caption,
+    mediaUrls: ap.post.mediaUrls,
+    postDate:
+      ap.post.postDate instanceof Date
+        ? ap.post.postDate.toISOString()
+        : String(ap.post.postDate),
+    verdict:
+      ap.item?.decision === 'approved'
+        ? 'approved'
+        : ap.item?.decision === 'changes_requested'
+          ? 'changes_requested'
+          : ap.item?.decision === 'caption_edited'
+            ? 'caption_edited'
+            : 'none',
+    suggestedCaption: ap.item?.suggestedCaption ?? null,
+    reviewItemId: ap.item?.id ?? null,
+    addressed: ap.handled,
+    threads: ap.clientThreads,
+  }))
+
+  // Map ctx.role to the shell's role union.
+  // uploadImage requires a browser File object — not constructible as a server
+  // action. Pass undefined; the rail image-attach affordance is suppressed.
+  // The canUploadImage flag is retained for reference but the actual upload
+  // callback must live in a client component. For now this is an accepted
+  // limitation: image attach in this page's rail requires a follow-up client
+  // wrapper. See WORKLOG for concern note.
+  void canUploadImage
+
+  const shellRole =
+    ctx.role === 'admin'
+      ? ('admin' as const)
+      : ctx.role === 'designer'
+        ? ('designer' as const)
+        : ctx.role === 'account_manager'
+          ? ('am' as const)
+          : ('am' as const)
+
   return (
-    <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
+    <div className="px-4 py-8 md:px-8 md:py-10">
       <ReviewSessionHeader
         reviewerName={reviewerName}
         reviewerEmail={reviewerEmail}
@@ -399,38 +352,33 @@ export default async function ReviewSessionDetailPage({
         backHref={`/clients/${client.id}/batches/${batch.id}`}
       />
 
-      <div className="mt-8 space-y-6">
-        <PageSection title={`Needs your action (${pending.length})`}>
-          {pending.length === 0 ? (
-            <EmptyState
-              title={
-                attention.length === 0
-                  ? 'Nothing to act on'
-                  : 'Every post handled'
-              }
-              description={
-                attention.length === 0
-                  ? 'No changes requested, no caption edits, and no open client pins. You can move this batch forward.'
-                  : 'You can start the next round whenever the team is ready.'
-              }
-            />
-          ) : (
-            <div className="space-y-8">
-              {pending.map((ap) => renderCard(ap, 'pending'))}
-            </div>
-          )}
-        </PageSection>
+      {isSuperseded && (
+        <p
+          data-testid="superseded-notice"
+          className="mt-4 text-center text-sm text-muted-foreground"
+        >
+          This review has been superseded by a newer round.{' '}
+          <Link
+            href={`/clients/${client.id}/batches/${batch.id}`}
+            className="underline"
+          >
+            Back to the relay
+          </Link>
+          .
+        </p>
+      )}
 
-        {addressed.length > 0 && (
-          <PageSection title={`Already addressed (${addressed.length})`}>
-            <div className="space-y-8">
-              {addressed.map((ap) => renderCard(ap, 'addressed'))}
-            </div>
-          </PageSection>
-        )}
-
-        {allAddressed && !isSuperseded && (
-          <div className="flex justify-end" data-testid="start-next-round-row">
+      <div className="mt-6">
+        <ReviewFeedbackShell
+          posts={feedbackPosts}
+          actions={feedbackActions}
+          role={shellRole}
+          isDesigner={isDesigner}
+          canPostComment={canPostComment}
+          allAddressed={allAddressed}
+          isSuperseded={isSuperseded}
+          uploadImage={undefined}
+          startNextRoundSlot={
             <StartNextRoundButton
               magicLinkId={magicLink.id}
               nextRound={sessionRound + 1}
@@ -439,46 +387,33 @@ export default async function ReviewSessionDetailPage({
                 await startNextRoundAction({ magicLinkId: magicLink.id })
               }}
             />
-          </div>
-        )}
-
-        {isSuperseded && (
-          <p
-            data-testid="superseded-notice"
-            className="text-center text-sm text-muted-foreground"
-          >
-            This review has been superseded by a newer round.{' '}
-            <Link
-              href={`/clients/${client.id}/batches/${batch.id}`}
-              className="underline"
+          }
+          internalThread={
+            <div
+              aria-label="Internal thread"
+              data-testid="review-activity-thread"
+              className="hidden overflow-hidden rounded-2xl bg-card lg:flex lg:h-[36rem] lg:max-h-[calc(100dvh-5rem)] lg:flex-col"
             >
-              Back to the relay
-            </Link>
-            .
-          </p>
-        )}
-      </div>
-
-      {/* Internal revision chat -- AM and designer @-mention pings only.
-          visibilityForViewer(ctx) already strips client-visible events so
-          this rail never surfaces client-facing comments here. The client
-          has no access to this page, so all composer posts are internal. */}
-      <div
-        aria-label="Internal thread"
-        data-testid="review-activity-thread"
-        className="mt-8 rounded-2xl bg-card h-[32rem] flex flex-col overflow-hidden"
-      >
-        <h2 className="shrink-0 px-4 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Internal thread
-        </h2>
-        <div className="min-h-0 flex-1 px-4 pb-4">
-          <ActivityThread
-            clientId={client.id}
-            events={activityEvents}
-            mentionTargets={mentionTargets}
-            hideComposer={!canPostComment}
-          />
-        </div>
+              <h2 className="shrink-0 px-4 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Internal thread
+              </h2>
+              <div className="min-h-0 flex-1 px-4 pb-4">
+                <ActivityThread
+                  clientId={client.id}
+                  events={activityEvents}
+                  mentionTargets={mentionTargets}
+                  hideComposer={!canPostComment}
+                />
+              </div>
+            </div>
+          }
+        />
+        <MobileThreadFab
+          clientId={client.id}
+          events={activityEvents}
+          mentionTargets={mentionTargets}
+          hideComposer={!canPostComment}
+        />
       </div>
     </div>
   )

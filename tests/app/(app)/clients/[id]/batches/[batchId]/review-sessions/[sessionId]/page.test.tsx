@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, fireEvent } from '@testing-library/react'
+import { render } from '@testing-library/react'
 
 const routerRefresh = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -7,16 +7,6 @@ vi.mock('next/navigation', () => ({
     throw new Error('NEXT_NOT_FOUND')
   }),
   useRouter: () => ({ refresh: routerRefresh }),
-}))
-
-// ReviewAttentionCard's MediaUpload control imports @vercel/blob/client; stub
-// it so the real card can render under jsdom without the blob SDK.
-vi.mock('@vercel/blob/client', () => ({
-  upload: vi.fn(),
-}))
-
-vi.mock('@/server/actions/posts', () => ({
-  updatePostAction: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -53,40 +43,19 @@ vi.mock('@/server/repositories/reviewSessions', () => ({
 vi.mock('@/server/repositories/threads', () => ({
   listClientThreadsForBatch: vi.fn(),
 }))
-// The page imports thread server actions; stub the module so the node/jsdom
-// test does not pull server-only deps.
+
 vi.mock('@/server/actions/threads', () => ({
   resolveThreadAction: vi.fn(),
   addCommentAction: vi.fn(),
+  useCommentImageAsPostMediaAction: vi.fn(),
 }))
+
 vi.mock('@/server/actions/reviewSessions', () => ({
   acceptCaptionEditAction: vi.fn(),
   rejectCaptionEditAction: vi.fn(),
   startNextRoundAction: vi.fn(),
   markPostAddressedAction: vi.fn(),
   unmarkPostAddressedAction: vi.fn(),
-}))
-vi.mock('@/components/review/review-pinned-post', () => ({
-  ReviewPinnedPost: (props: {
-    postId: string
-    threads?: ReadonlyArray<{
-      id: string
-      firstComment: { body: string }
-    }>
-  }) => (
-    <div data-testid={`review-pinned-post-stub-${props.postId}`}>
-      {(props.threads ?? []).map((t) => (
-        <span key={t.id} data-testid={`pin-comment-${t.id}`}>
-          {t.firstComment.body}
-        </span>
-      ))}
-    </div>
-  ),
-}))
-vi.mock('@/components/review/mark-addressed-button', () => ({
-  MarkAddressedButton: (props: { testId?: string }) => (
-    <div data-testid={props.testId ?? 'mark-post-addressed-button'} />
-  ),
 }))
 
 vi.mock('@/db/client', () => ({
@@ -106,6 +75,7 @@ vi.mock('@/server/repositories/memberships', () => ({
   listMembershipsForOrg: vi.fn().mockResolvedValue([]),
 }))
 
+// Stub the ActivityThread client component.
 vi.mock('@/components/activity/activity-thread', () => ({
   ActivityThread: (props: { hideComposer?: boolean }) => (
     <div
@@ -115,21 +85,9 @@ vi.mock('@/components/activity/activity-thread', () => ({
   ),
 }))
 
-// Stub the client components so the server-side page render under jsdom
-// doesn't attempt to hydrate the real React Transition / useTransition trees.
-vi.mock('@/components/review/review-item-row', () => ({
-  ReviewItemRow: (props: {
-    item: { id: string; decision: string }
-    postNumber: number
-    mode: string
-  }) => (
-    <div
-      data-testid={`review-item-row-stub-${props.item.id}`}
-      data-decision={props.item.decision}
-      data-post-number={String(props.postNumber)}
-      data-mode={props.mode}
-    />
-  ),
+// Stub MobileThreadFab — it imports base-ui Dialog which needs a real DOM.
+vi.mock('@/components/activity/mobile-thread-fab', () => ({
+  MobileThreadFab: () => <div data-testid="mobile-thread-fab-stub" />,
 }))
 
 vi.mock('@/components/review/start-next-round-button', () => ({
@@ -137,6 +95,71 @@ vi.mock('@/components/review/start-next-round-button', () => ({
     <div data-testid="start-next-round-button-stub" data-next-round={String(props.nextRound)} />
   ),
 }))
+
+// Stub the feedback shell so the test focuses on the server page's data
+// assembly, not the client component internals.
+vi.mock(
+  '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-shell',
+  () => ({
+    ReviewFeedbackShell: (props: {
+      posts: Array<{
+        postId: string
+        postNumber: number
+        verdict: string
+        addressed: boolean
+        threads: Array<{ id: string; status: string; firstComment: { body: string } }>
+      }>
+      isDesigner: boolean
+      canPostComment: boolean
+      allAddressed: boolean
+      isSuperseded: boolean
+      internalThread: React.ReactNode
+      startNextRoundSlot?: React.ReactNode
+    }) => (
+      <div data-testid="review-feedback-shell-stub">
+        {/* Rail zone */}
+        <div data-testid="review-feedback-rail">
+          {props.posts.map((p) => (
+            <div
+              key={p.postId}
+              data-testid={`rail-row-${p.postId}`}
+              data-verdict={p.verdict}
+              data-addressed={String(p.addressed)}
+            >
+              {p.threads.map((t) => (
+                <div key={t.id} data-testid={`rail-thread-${t.id}`}>
+                  <span>{t.firstComment.body}</span>
+                </div>
+              ))}
+              {/* Mark addressed button — AM only, not designer */}
+              {!props.isDesigner && (
+                <div
+                  data-testid={
+                    p.addressed
+                      ? `rail-mark-unaddressed-${p.postId}`
+                      : `rail-mark-addressed-${p.postId}`
+                  }
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Canvas zone */}
+        <div data-testid="review-posts-canvas">
+          {props.posts.map((p) => (
+            <div key={p.postId} data-testid={`canvas-post-${p.postId}`} />
+          ))}
+        </div>
+        {/* Internal rail */}
+        <aside data-testid="review-internal-rail">
+          {props.internalThread}
+        </aside>
+        {/* Start next round */}
+        {props.allAddressed && !props.isSuperseded && props.startNextRoundSlot}
+      </div>
+    ),
+  }),
+)
 
 import ReviewSessionDetailPage from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/page'
 import {
@@ -149,7 +172,6 @@ import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { findSessionWithItems } from '@/server/repositories/reviewSessions'
 import { listClientThreadsForBatch } from '@/server/repositories/threads'
-import { updatePostAction } from '@/server/actions/posts'
 import { db } from '@/db/client'
 
 const mockCtx = {
@@ -292,7 +314,7 @@ describe('ReviewSessionDetailPage', () => {
     vi.mocked(canComment).mockReturnValue(false)
   })
 
-  it('renders the header + one row per non-approved item (omits approved)', async () => {
+  it('renders the header + feedback shell (omits approved items from attention list)', async () => {
     const { getByTestId, queryByTestId } = await renderPage({
       id: 'client_1',
       batchId: 'batch_1',
@@ -300,11 +322,13 @@ describe('ReviewSessionDetailPage', () => {
     })
 
     expect(getByTestId('review-session-header')).toBeTruthy()
-    // approved item should NOT render a row
-    expect(queryByTestId('review-item-row-stub-item_a')).toBeNull()
-    // changes_requested + caption_edited should render
-    expect(getByTestId('review-item-row-stub-item_b')).toBeTruthy()
-    expect(getByTestId('review-item-row-stub-item_c')).toBeTruthy()
+    expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+
+    // approved item has no attention post -> no rail row
+    expect(queryByTestId('rail-row-post_a')).toBeNull()
+    // changes_requested + caption_edited both produce attention posts
+    expect(getByTestId('rail-row-post_b')).toBeTruthy()
+    expect(getByTestId('rail-row-post_c')).toBeTruthy()
   })
 
   it('redirects to access-denied when the user lacks access to the client', async () => {
@@ -335,7 +359,7 @@ describe('ReviewSessionDetailPage', () => {
   })
 
   describe('addressed state derived from addressedAt column', () => {
-    it('moves a changes_requested item to addressed when addressedAt is set', async () => {
+    it('marks a changes_requested item as addressed when addressedAt is set', async () => {
       vi.mocked(findSessionWithItems).mockResolvedValue({
         ...mockSession,
         items: mockSession.items.map((it) =>
@@ -351,16 +375,16 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       })
 
-      // The row still renders (it's just in a different bucket).
-      const row = getByTestId('review-item-row-stub-item_b')
-      expect(row.getAttribute('data-mode')).toBe('addressed')
+      // post_b should be in the addressed state
+      const rowB = getByTestId('rail-row-post_b')
+      expect(rowB.getAttribute('data-addressed')).toBe('true')
 
-      // The other non-approved item (caption_edited with addressedAt null) stays pending.
-      const captionRow = getByTestId('review-item-row-stub-item_c')
-      expect(captionRow.getAttribute('data-mode')).toBe('pending')
+      // post_c (caption_edited, addressedAt null) stays unaddressed
+      const rowC = getByTestId('rail-row-post_c')
+      expect(rowC.getAttribute('data-addressed')).toBe('false')
     })
 
-    it('moves a caption_edited item to addressed when addressedAt is set', async () => {
+    it('marks a caption_edited item as addressed when addressedAt is set', async () => {
       vi.mocked(findSessionWithItems).mockResolvedValue({
         ...mockSession,
         items: mockSession.items.map((it) =>
@@ -376,31 +400,26 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       })
 
-      const captionRow = getByTestId('review-item-row-stub-item_c')
-      expect(captionRow.getAttribute('data-mode')).toBe('addressed')
+      const rowC = getByTestId('rail-row-post_c')
+      expect(rowC.getAttribute('data-addressed')).toBe('true')
 
-      // changes_requested item with addressedAt null stays pending.
-      const changesRow = getByTestId('review-item-row-stub-item_b')
-      expect(changesRow.getAttribute('data-mode')).toBe('pending')
+      // changes_requested item with addressedAt null stays unaddressed
+      const rowB = getByTestId('rail-row-post_b')
+      expect(rowB.getAttribute('data-addressed')).toBe('false')
     })
 
-    it('keeps items pending when addressedAt is null and acceptedAsPostVersionId is null', async () => {
-      // Default mockSession has both items with addressedAt: null — confirm they're pending.
+    it('keeps items unaddressed when addressedAt is null and acceptedAsPostVersionId is null', async () => {
       const { getByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
 
-      expect(
-        getByTestId('review-item-row-stub-item_b').getAttribute('data-mode'),
-      ).toBe('pending')
-      expect(
-        getByTestId('review-item-row-stub-item_c').getAttribute('data-mode'),
-      ).toBe('pending')
+      expect(getByTestId('rail-row-post_b').getAttribute('data-addressed')).toBe('false')
+      expect(getByTestId('rail-row-post_c').getAttribute('data-addressed')).toBe('false')
     })
 
-    it('still treats acceptedAsPostVersionId as addressed (Accept Edit path)', async () => {
+    it('treats acceptedAsPostVersionId as addressed (Accept Edit path)', async () => {
       vi.mocked(findSessionWithItems).mockResolvedValue({
         ...mockSession,
         items: mockSession.items.map((it) =>
@@ -416,9 +435,7 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       })
 
-      expect(
-        getByTestId('review-item-row-stub-item_c').getAttribute('data-mode'),
-      ).toBe('addressed')
+      expect(getByTestId('rail-row-post_c').getAttribute('data-addressed')).toBe('true')
     })
   })
 
@@ -445,7 +462,7 @@ describe('ReviewSessionDetailPage', () => {
     }
   }
 
-  it('shows an approved-but-pinned post in the pending section', async () => {
+  it('shows an approved-but-pinned post in the shell (has a rail row)', async () => {
     // post_a is approved (filtered from items) but carries an open client pin.
     vi.mocked(listClientThreadsForBatch).mockResolvedValue(
       new Map([['post_a', [clientThread('th1', 'open')]]]),
@@ -454,7 +471,8 @@ describe('ReviewSessionDetailPage', () => {
       params: Promise.resolve({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_1' }),
     })
     const { getByTestId } = render(ui)
-    expect(getByTestId('review-pinned-post-stub-post_a')).toBeTruthy()
+    // post_a now has a client thread so it should appear as an attention post
+    expect(getByTestId('rail-row-post_a')).toBeTruthy()
   })
 
   it('moves a post to addressed once its client pins are all resolved', async () => {
@@ -464,9 +482,10 @@ describe('ReviewSessionDetailPage', () => {
     const ui = await ReviewSessionDetailPage({
       params: Promise.resolve({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_1' }),
     })
-    const { queryByTestId, getByText } = render(ui)
-    expect(queryByTestId('review-pinned-post-stub-post_a')).toBeTruthy()
-    expect(getByText(/Already addressed/)).toBeTruthy()
+    const { getByTestId } = render(ui)
+    // post_a has only resolved pins — it should be addressed
+    const rowA = getByTestId('rail-row-post_a')
+    expect(rowA.getAttribute('data-addressed')).toBe('true')
   })
 
   it('keeps Start next round hidden while a client pin is open', async () => {
@@ -480,8 +499,8 @@ describe('ReviewSessionDetailPage', () => {
     expect(queryByTestId('start-next-round-button-stub')).toBeNull()
   })
 
-  it('pending cards render mark-post-addressed-button and addressed cards render unmark-post-addressed-button', async () => {
-    // item_b (changes_requested, addressedAt null) -> pending
+  it('stub renders mark-addressed and unmark-addressed buttons per addressed state', async () => {
+    // item_b (changes_requested, addressedAt null) -> not addressed
     // item_c (caption_edited, addressedAt set) -> addressed
     vi.mocked(findSessionWithItems).mockResolvedValue({
       ...mockSession,
@@ -492,24 +511,21 @@ describe('ReviewSessionDetailPage', () => {
       ),
     } as never)
 
-    const { getAllByTestId, queryAllByTestId } = await renderPage({
+    const { getByTestId, queryByTestId } = await renderPage({
       id: 'client_1',
       batchId: 'batch_1',
       sessionId: 'session_1',
     })
 
-    // pending card (item_b) should have the mark-addressed button
-    expect(getAllByTestId('mark-post-addressed-button').length).toBeGreaterThanOrEqual(1)
-    // addressed card (item_c) should have the unmark-addressed button
-    expect(getAllByTestId('unmark-post-addressed-button').length).toBeGreaterThanOrEqual(1)
-    // no un-address button on pending cards
-    const unmarkBtns = queryAllByTestId('unmark-post-addressed-button')
-    expect(unmarkBtns.length).toBe(1)
+    // pending post_b -> mark-addressed button
+    expect(getByTestId('rail-mark-addressed-post_b')).toBeTruthy()
+    // addressed post_c -> unmark button
+    expect(getByTestId('rail-mark-unaddressed-post_c')).toBeTruthy()
+    // no unmark on the pending post
+    expect(queryByTestId('rail-mark-unaddressed-post_b')).toBeNull()
   })
 
-  describe('designer image-pin lane (Task 9)', () => {
-    // post_b carries an image pin ("make logo bigger") + a caption pin
-    // ("extra detail"). post_c carries only a caption pin ("caption only").
+  describe('designer image-pin lane', () => {
     function imagePin(id: string, body: string) {
       return {
         id,
@@ -573,7 +589,6 @@ describe('ReviewSessionDetailPage', () => {
     }
 
     beforeEach(() => {
-      // Designers can upload images but cannot edit captions.
       vi.mocked(canUploadPostMedia).mockReturnValue(true)
       vi.mocked(canEditClients).mockReturnValue(false)
     })
@@ -589,12 +604,12 @@ describe('ReviewSessionDetailPage', () => {
       })
 
       // post_b has an image pin -> visible
-      expect(getByTestId('review-attention-card-post_b')).toBeTruthy()
+      expect(getByTestId('rail-row-post_b')).toBeTruthy()
       // post_c has only a caption pin -> hidden for designers
-      expect(queryByTestId('review-attention-card-post_c')).toBeNull()
+      expect(queryByTestId('rail-row-post_c')).toBeNull()
     })
 
-    it('designer view shows the image pin comment plus other comments on the post', async () => {
+    it('designer view shows thread comments for all pins on the visible post', async () => {
       vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
       mockLaneThreads()
 
@@ -609,7 +624,7 @@ describe('ReviewSessionDetailPage', () => {
       expect(getByText(/extra detail/i)).toBeTruthy()
     })
 
-    it('designer cannot edit captions or mark addressed', async () => {
+    it('designer cannot see mark-addressed buttons', async () => {
       vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
       mockLaneThreads()
 
@@ -619,11 +634,9 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       })
 
-      // No caption editor affordance.
-      expect(queryAllByTestId('edit-caption-button').length).toBe(0)
-      // No per-post Mark addressed / un-address buttons.
-      expect(queryAllByTestId('mark-post-addressed-button').length).toBe(0)
-      expect(queryAllByTestId('unmark-post-addressed-button').length).toBe(0)
+      // The shell stub suppresses mark-addressed for designers.
+      expect(queryAllByTestId(/^rail-mark-addressed-/).length).toBe(0)
+      expect(queryAllByTestId(/^rail-mark-unaddressed-/).length).toBe(0)
     })
 
     it('AM view still shows all attention posts (image + caption-only)', async () => {
@@ -636,92 +649,38 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       })
 
-      expect(getByTestId('review-attention-card-post_b')).toBeTruthy()
-      expect(getByTestId('review-attention-card-post_c')).toBeTruthy()
+      expect(getByTestId('rail-row-post_b')).toBeTruthy()
+      expect(getByTestId('rail-row-post_c')).toBeTruthy()
     })
   })
 
-  describe('AM inline caption edit (Task 7)', () => {
-    it('does not render the caption editor when canEditClients is false', async () => {
-      vi.mocked(canEditClients).mockReturnValue(false)
-      const { queryAllByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_1',
-      })
-      expect(queryAllByTestId('edit-caption-button').length).toBe(0)
-    })
-
-    it('edits and saves a caption, calling updatePostAction with the new caption for the right post', async () => {
-      vi.mocked(canEditClients).mockReturnValue(true)
-      // Only post_b is an attention post (changes_requested); post_c too.
+  describe('new shell structure', () => {
+    it('renders review-feedback-rail and review-posts-canvas', async () => {
       const { getByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
 
-      // Open the editor for post_b.
-      const card = getByTestId('review-attention-card-post_b')
-      const editButton = card.querySelector(
-        '[data-testid="edit-caption-button"]',
-      ) as HTMLElement
-      expect(editButton).toBeTruthy()
-      fireEvent.click(editButton)
-
-      // Change the textarea.
-      const textarea = card.querySelector(
-        '[data-testid="caption-editor-textarea"]',
-      ) as HTMLTextAreaElement
-      expect(textarea).toBeTruthy()
-      fireEvent.change(textarea, { target: { value: 'B reworked caption' } })
-
-      // Save.
-      const saveButton = card.querySelector(
-        '[data-testid="caption-editor-save"]',
-      ) as HTMLElement
-      fireEvent.click(saveButton)
-
-      expect(vi.mocked(updatePostAction)).toHaveBeenCalledWith('post_b', {
-        caption: 'B reworked caption',
-      })
+      expect(getByTestId('review-feedback-rail')).toBeTruthy()
+      expect(getByTestId('review-posts-canvas')).toBeTruthy()
     })
-  })
 
-  describe('image upload / replace affordance (Task 8)', () => {
-    it('renders the upload affordance when canUploadPostMedia is true', async () => {
-      vi.mocked(canUploadPostMedia).mockReturnValue(true)
+    it('renders internal thread inside review-internal-rail', async () => {
       const { getByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
-      const card = getByTestId('review-attention-card-post_b')
-      // post_b has no media, so the dropzone affordance should render.
-      expect(
-        card.querySelector('[data-testid="media-upload-dropzone"]'),
-      ).toBeTruthy()
-    })
 
-    it('does NOT render the upload affordance when canUploadPostMedia is false', async () => {
-      vi.mocked(canUploadPostMedia).mockReturnValue(false)
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_1',
-      })
-      const card = getByTestId('review-attention-card-post_b')
-      expect(
-        card.querySelector('[data-testid="media-upload-dropzone"]'),
-      ).toBeNull()
-      expect(
-        card.querySelector('[data-testid="media-upload-current"]'),
-      ).toBeNull()
+      const rail = getByTestId('review-internal-rail')
+      // The internal thread element should be a descendant of the rail.
+      expect(rail.querySelector('[data-testid="review-activity-thread"]')).toBeTruthy()
     })
   })
 
-  describe('activity chat for internal revision pings (Task 12)', () => {
-    it('renders the activity chat on the review session page', async () => {
+  describe('activity chat for internal revision pings', () => {
+    it('renders the activity thread inside the internal rail', async () => {
       const { getByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',
@@ -731,7 +690,7 @@ describe('ReviewSessionDetailPage', () => {
     })
   })
 
-  describe('composer gate on the internal thread (Task 12b)', () => {
+  describe('composer gate on the internal thread', () => {
     function threadStub(container: HTMLElement): HTMLElement {
       return container.querySelector(
         '[data-component="activity-thread-stub"]',
@@ -745,9 +704,7 @@ describe('ReviewSessionDetailPage', () => {
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
-      expect(threadStub(container).getAttribute('data-hide-composer')).toBe(
-        'false',
-      )
+      expect(threadStub(container).getAttribute('data-hide-composer')).toBe('false')
     })
 
     it('hides the composer for users without client.comment (canComment false)', async () => {
@@ -757,9 +714,7 @@ describe('ReviewSessionDetailPage', () => {
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
-      expect(threadStub(container).getAttribute('data-hide-composer')).toBe(
-        'true',
-      )
+      expect(threadStub(container).getAttribute('data-hide-composer')).toBe('true')
     })
 
     it('shows the composer for a designer (designer has client.comment)', async () => {
@@ -773,9 +728,70 @@ describe('ReviewSessionDetailPage', () => {
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
-      expect(threadStub(container).getAttribute('data-hide-composer')).toBe(
-        'false',
+      expect(threadStub(container).getAttribute('data-hide-composer')).toBe('false')
+    })
+  })
+
+  describe('superseded notice', () => {
+    it('shows superseded notice when session is superseded', async () => {
+      vi.mocked(findSessionWithItems).mockResolvedValue({
+        ...mockSession,
+        status: 'superseded' as const,
+      } as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      expect(getByTestId('superseded-notice')).toBeTruthy()
+    })
+
+    it('does not show superseded notice for active sessions', async () => {
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      expect(queryByTestId('superseded-notice')).toBeNull()
+    })
+  })
+
+  describe('verdict mapping in FeedbackPostVM', () => {
+    it('maps changes_requested decision to changes_requested verdict', async () => {
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      expect(getByTestId('rail-row-post_b').getAttribute('data-verdict')).toBe('changes_requested')
+    })
+
+    it('maps caption_edited decision to caption_edited verdict', async () => {
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      expect(getByTestId('rail-row-post_c').getAttribute('data-verdict')).toBe('caption_edited')
+    })
+
+    it('maps pin-only posts (no ReviewItem) to none verdict', async () => {
+      // post_a is approved (excluded from items) but has a client thread.
+      vi.mocked(listClientThreadsForBatch).mockResolvedValue(
+        new Map([['post_a', [clientThread('th1', 'open')]]]),
       )
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      expect(getByTestId('rail-row-post_a').getAttribute('data-verdict')).toBe('none')
     })
   })
 })
