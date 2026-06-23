@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, AlertCircle, Pencil } from 'lucide-react'
+import { Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ReviewDecisionType } from '@/types/review-session'
 
@@ -41,20 +41,10 @@ const DECISIONS: ReadonlyArray<DecisionConfig> = [
     outlineClass:
       'bg-white text-amber-700 border-amber-300 hover:bg-amber-50',
   },
-  {
-    decision: 'caption_edited',
-    label: 'Edit Copy',
-    ariaLabel: 'Edit copy on this post',
-    icon: Pencil,
-    // Blue: sky-600 background
-    filledClass: 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700',
-    outlineClass:
-      'bg-white text-sky-700 border-sky-300 hover:bg-sky-50',
-  },
 ]
 
 /**
- * Three pill buttons rendered in a row: Approve / Request Changes / Edit Copy.
+ * Two pill buttons rendered in a row: Approve / Changes.
  *
  * WCAG compliance: color + icon + label per button (so color is never the only
  * channel conveying decision state). 44pt minimum touch target via min-w/min-h.
@@ -63,6 +53,11 @@ const DECISIONS: ReadonlyArray<DecisionConfig> = [
  * Active decision is rendered filled; the others render outlined. Tapping the
  * already-active decision is a no-op at the UI layer (parent still receives
  * onChange so it can decide whether to toggle off).
+ *
+ * The Changes pill is active for both `changes_requested` and `caption_edited`.
+ * `caption_edited` is an internal decision value persisted when the reviewer
+ * saves a copy edit via the inline "Edit copy" link; it is not a separate
+ * verdict button.
  */
 export function DecisionButtonRow({
   value,
@@ -79,7 +74,13 @@ export function DecisionButtonRow({
     >
       {DECISIONS.map((cfg) => {
         const Icon = cfg.icon
-        const isActive = value === cfg.decision
+        // The Changes pill represents both a plain change request and an
+        // internal caption edit (decision='caption_edited'), which is no
+        // longer a separate verdict button.
+        const isActive =
+          cfg.decision === 'changes_requested'
+            ? value === 'changes_requested' || value === 'caption_edited'
+            : value === cfg.decision
         return (
           <button
             key={cfg.decision}

@@ -3,38 +3,66 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { DecisionButtonRow } from '@/components/review/decision-button-row'
 
 describe('DecisionButtonRow', () => {
-  it('renders three buttons with the correct active state and aria-pressed', () => {
+  it('renders exactly two buttons (Approve + Changes) and no Edit Copy', () => {
     render(<DecisionButtonRow value="approved" onChange={() => {}} />)
 
-    const approve = screen.getByTestId('decision-button-approved')
-    const changes = screen.getByTestId('decision-button-changes_requested')
-    const edit = screen.getByTestId('decision-button-caption_edited')
-
-    expect(approve).toHaveAttribute('aria-pressed', 'true')
-    expect(approve).toHaveAttribute('aria-label', 'Approve this post')
-    expect(changes).toHaveAttribute('aria-pressed', 'false')
-    expect(edit).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByTestId('decision-button-approved')).toBeInTheDocument()
+    expect(
+      screen.getByTestId('decision-button-changes_requested'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByTestId('decision-button-caption_edited'),
+    ).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(2)
   })
 
-  it('fires onChange with the right decision when a button is tapped', () => {
+  it('marks Approve active only when the value is approved', () => {
+    render(<DecisionButtonRow value="approved" onChange={() => {}} />)
+    expect(screen.getByTestId('decision-button-approved')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(
+      screen.getByTestId('decision-button-changes_requested'),
+    ).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('marks Changes active for both changes_requested and caption_edited', () => {
+    const { rerender } = render(
+      <DecisionButtonRow value="changes_requested" onChange={() => {}} />,
+    )
+    expect(
+      screen.getByTestId('decision-button-changes_requested'),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    rerender(<DecisionButtonRow value="caption_edited" onChange={() => {}} />)
+    expect(
+      screen.getByTestId('decision-button-changes_requested'),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('decision-button-approved')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('fires onChange with approved / changes_requested when tapped', () => {
     const onChange = vi.fn()
     render(<DecisionButtonRow value="not_reviewed" onChange={onChange} />)
 
-    fireEvent.click(screen.getByTestId('decision-button-changes_requested'))
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange).toHaveBeenCalledWith('changes_requested')
+    fireEvent.click(screen.getByTestId('decision-button-approved'))
+    expect(onChange).toHaveBeenLastCalledWith('approved')
 
-    fireEvent.click(screen.getByTestId('decision-button-caption_edited'))
-    expect(onChange).toHaveBeenLastCalledWith('caption_edited')
+    fireEvent.click(screen.getByTestId('decision-button-changes_requested'))
+    expect(onChange).toHaveBeenLastCalledWith('changes_requested')
   })
 
-  it('disables all buttons when disabled prop is set', () => {
+  it('disables both buttons when disabled prop is set', () => {
     const onChange = vi.fn()
-    render(<DecisionButtonRow value="not_reviewed" onChange={onChange} disabled />)
-
+    render(
+      <DecisionButtonRow value="not_reviewed" onChange={onChange} disabled />,
+    )
     const approve = screen.getByTestId('decision-button-approved')
     expect(approve).toBeDisabled()
-
     fireEvent.click(approve)
     expect(onChange).not.toHaveBeenCalled()
   })

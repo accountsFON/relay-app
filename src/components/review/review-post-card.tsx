@@ -75,18 +75,22 @@ export type ReviewPostCardProps = {
  *   - Pin on the image or caption -> persists as a PostThread row with
  *     author.kind = 'reviewer' via `onCreatePin`. The AM digest renders
  *     these inline alongside per-item decisions.
- *   - Edit Copy on the caption -> inline textarea, persists as
- *     suggestedCaption via `onCaptionEditSave`.
- *   - Decision row (Approve / Request Changes / Edit Copy) -> the verdict.
+ *   - Inline "Edit copy" link on the caption -> opens an inline textarea
+ *     to suggest a revised caption; persists via `onCaptionEditSave`. An
+ *     edited post is stored as `decision: 'caption_edited'` and reads as
+ *     Changes in the decision row.
+ *   - Decision row (Approve / Changes) -> the verdict. Two buttons only;
+ *     the Changes pill is active for both `changes_requested` and
+ *     `caption_edited`.
  *   - Notes textarea -> catch-all for cross-cutting context that does not
  *     fit a pin or a decision.
  *
  * Caption-edit lives inline inside the platform chrome:
- *   - Tapping Edit Copy in the decision row enters edit mode. The card
- *     snapshots the prior decision so Cancel can revert.
+ *   - The inline "Edit copy" link on the caption enters edit mode. The
+ *     card does NOT snapshot or restore any prior decision.
  *   - Save calls `onCaptionEditSave(draft)` which the shell wires to the
  *     existing draft endpoint, then exits edit mode.
- *   - Cancel exits edit mode and restores the prior decision.
+ *   - Cancel just exits edit mode (no decision change).
  *   - When the reviewer has a saved suggestedCaption and is not editing,
  *     the chrome renders the suggestion (via `captionOverride`) with a
  *     `view original / back to your edit` peek toggle.
