@@ -187,6 +187,35 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
   })
 })
 
+describe('ReviewSessionShell -- notes save state', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: false, status: 500 } as Response)),
+    )
+  })
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('shows the note error state when the draft PATCH fails', async () => {
+    render(<ReviewSessionShell {...BASE_PROPS} />)
+    const [ta] = screen.getAllByTestId('review-post-card-comment')
+
+    fireEvent.change(ta, { target: { value: 'will fail' } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+
+    const [status] = screen.getAllByTestId('review-post-card-notes-status')
+    expect(status).toHaveTextContent(/couldn.t save/i)
+  })
+})
+
 describe('ReviewSessionShell -- tutorial modal', () => {
   beforeEach(() => {
     vi.stubGlobal(
