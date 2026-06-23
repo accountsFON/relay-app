@@ -274,6 +274,25 @@ describe('listInFlightRuns', () => {
       }),
     )
   })
+
+  it('excludes cancelled runs from the active list (cancelled is terminal)', async () => {
+    vi.mocked(requireOrgContext).mockResolvedValue(mockCtx as never)
+    vi.mocked(db.contentRun.findMany).mockResolvedValue([] as never)
+
+    await listInFlightRuns()
+
+    const call = vi.mocked(db.contentRun.findMany).mock.calls[0]?.[0] as
+      | { where: { OR: Array<Record<string, unknown>> } }
+      | undefined
+    expect(call).toBeDefined()
+    const orClauses = call!.where.OR
+    // The active branch is `status NOT IN TERMINAL_STATUSES`.
+    const activeClause = orClauses[0] as { status: { notIn: string[] } }
+    const notIn = activeClause.status.notIn
+    expect(notIn).toContain('cancelled')
+    expect(notIn).toContain('complete')
+    expect(notIn).toContain('failed')
+  })
 })
 
 // ---- acknowledgeFailedRunAction ------------------------------------------

@@ -12,7 +12,7 @@ import {
 } from '@/server/repositories/contentRuns'
 import { triggerGeneration } from '@/app/(app)/clients/[id]/generate/actions'
 
-const TERMINAL_STATUSES = ['complete', 'failed'] as const
+const TERMINAL_STATUSES = ['complete', 'failed', 'cancelled'] as const
 
 export type InFlightRunIntent = 'active' | 'awaiting_choice' | 'failed'
 
