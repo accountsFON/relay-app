@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — Client review: sticky condensed progress + Approve all bar** (PR #236)
+  The top card (Reviewing as / progress / Approve all) scrolled away; now a
+  condensed bar (compact `reviewed/total` + slim progress + the reused Approve all
+  button) pins to the top once the full card scrolls out of view, and hides on
+  scroll back up. New presentational `ReviewStickyBar`; the shell uses an
+  IntersectionObserver on a sentinel to toggle a `pinned` flag (conditional mount,
+  no layout shift). Reuses the existing summary + approve wiring, no logic dup.
+  UI only. 1686 unit tests.
+
 - [x] **2026-06-23 — Generation pipeline: per-step timing instrumentation** (PR #235)
   Adds per-step wall-clock timing to `generateContentTask` so a slow run reports
   WHERE the time goes (date calc / brief / crawl / facts / captions / finalize),

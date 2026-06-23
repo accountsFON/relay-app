@@ -340,6 +340,45 @@ describe('ReviewSessionShell -- approve all', () => {
   })
 })
 
+describe('ReviewSessionShell -- sticky condensed bar', () => {
+  let ioCallback: (entries: Array<{ isIntersecting: boolean }>) => void
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response)))
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: (entries: Array<{ isIntersecting: boolean }>) => void) {
+          ioCallback = cb
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('shows the sticky bar only after the top card scrolls out of view', async () => {
+    render(<ReviewSessionShell {...BASE_PROPS} />)
+
+    expect(screen.queryByTestId('review-sticky-bar')).not.toBeInTheDocument()
+
+    await act(async () => {
+      ioCallback([{ isIntersecting: false }])
+    })
+    expect(screen.getByTestId('review-sticky-bar')).toBeInTheDocument()
+
+    await act(async () => {
+      ioCallback([{ isIntersecting: true }])
+    })
+    expect(screen.queryByTestId('review-sticky-bar')).not.toBeInTheDocument()
+  })
+})
+
 describe('ReviewSessionShell -- tutorial modal', () => {
   beforeEach(() => {
     vi.stubGlobal(
