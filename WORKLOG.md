@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-22 — Cancel follow-ups: queued-cancel start guard + StatusDot color** (PR #232)
+  Closes the last two cancel follow-ups. (1) The pipeline job's opening write was
+  an unconditional `status:'running'`, which could clobber a cancel set while the
+  run sat queued (resurrecting it + running the whole pipeline). Now
+  `markRunRunningIfNotCancelled` does a guarded `updateMany`; on a concurrent cancel
+  the job exits early (no work, not resurrected). (2) StatusDot gained a
+  `cancelled → bg-neutral-400` color so cancelled runs in run-history get a distinct
+  muted dot instead of the inactive gray. 1666 unit tests.
+
 - [x] **2026-06-22 — Cancel: close TOCTOU window (atomic complete)** (PR #231)
   Follow-up hardening to #230. The pipeline's finalize point did a read-then-write
   (isRunCancelled guard, then an unconditional `status:'complete'` update), so a
