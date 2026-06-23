@@ -51,7 +51,12 @@ export async function triggerGeneration(
   try {
     const { generateContentTask } = await import('@/server/jobs/generateContent')
     const shouldCrawl = reCrawl ?? (client.autoCrawl === 'always' || (client.autoCrawl === 'when_empty' && !client.crawledData))
-    await generateContentTask.trigger({ contentRunId: contentRun.id, reCrawl: shouldCrawl })
+    const handle = await generateContentTask.trigger({ contentRunId: contentRun.id, reCrawl: shouldCrawl })
+    // Persist the Trigger.dev run id so the run can be cancelled mid-flight.
+    await db.contentRun.update({
+      where: { id: contentRun.id },
+      data: { triggerJobId: handle.id },
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     await db.contentRun.update({
