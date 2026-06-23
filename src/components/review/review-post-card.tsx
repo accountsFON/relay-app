@@ -127,9 +127,6 @@ export function ReviewPostCard({
     savedSuggestion ?? post.caption,
   )
   useUnsavedChanges(isEditing && captionDraft !== (savedSuggestion ?? post.caption))
-  // Snapshot of the decision before the reviewer tapped Edit Copy, so Cancel
-  // can restore it. Captured at edit-mode entry.
-  const decisionBeforeEditRef = useRef<ReviewDecisionType | null>(null)
 
   const articleRef = useRef<HTMLElement | null>(null)
 
@@ -147,44 +144,26 @@ export function ReviewPostCard({
   }, [isEditing])
 
   const enterEditMode = useCallback(() => {
-    decisionBeforeEditRef.current = decision
     setCaptionDraft(savedSuggestion ?? post.caption)
     setIsEditing(true)
-  }, [decision, savedSuggestion, post.caption])
+  }, [savedSuggestion, post.caption])
 
   const exitEditMode = useCallback(() => {
     setIsEditing(false)
-    decisionBeforeEditRef.current = null
   }, [])
 
   const handleDecisionChange = useCallback(
     (next: ReviewDecisionType) => {
-      if (next === 'caption_edited') {
-        // Tapping Edit Copy is both the decision and the gesture that opens
-        // the editor. Capture the prior decision first so Cancel can revert.
-        if (!isEditing) {
-          decisionBeforeEditRef.current = decision
-        }
-        setCaptionDraft(savedSuggestion ?? post.caption)
-        setIsEditing(true)
-        onDecisionChange(next)
-        return
-      }
-      // Any other decision exits edit mode (no draft to preserve in this
-      // path) and forwards to the parent.
+      // A verdict click is explicit: discard any in-progress inline edit (the
+      // unsaved textarea draft) and forward the verdict. Clearing a SAVED
+      // suggested caption on Approve happens in the shell's onDecisionChange
+      // handler, not here.
       if (isEditing) {
         exitEditMode()
       }
       onDecisionChange(next)
     },
-    [
-      isEditing,
-      decision,
-      savedSuggestion,
-      post.caption,
-      onDecisionChange,
-      exitEditMode,
-    ],
+    [isEditing, exitEditMode, onDecisionChange],
   )
 
   const handleCaptionEditSave = useCallback(async () => {
@@ -197,14 +176,8 @@ export function ReviewPostCard({
   }, [captionDraft, onCaptionEditSave, exitEditMode])
 
   const handleCaptionEditCancel = useCallback(() => {
-    const prior = decisionBeforeEditRef.current
     exitEditMode()
-    // If the reviewer hadn't already had `caption_edited` selected before
-    // this round of editing, revert the decision to whatever they had.
-    if (prior !== null && prior !== 'caption_edited') {
-      onDecisionChange(prior)
-    }
-  }, [exitEditMode, onDecisionChange])
+  }, [exitEditMode])
 
   // Per Phase 4 item 22: unified placeholder regardless of decision.
   // The decision-specific "Tell the team what to change" placeholder is
@@ -277,7 +250,7 @@ export function ReviewPostCard({
         disabled={disabled}
       />
 
-      {decision === 'changes_requested' ? (
+      {decision === 'changes_requested' || decision === 'caption_edited' ? (
         <p
           data-testid="review-post-card-changes-hint"
           className="text-[12px] text-muted-foreground"

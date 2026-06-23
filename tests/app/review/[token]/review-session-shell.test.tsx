@@ -49,12 +49,9 @@ const BASE_PROPS = {
 
 describe('ReviewSessionShell -- inline caption edit wiring', () => {
   beforeEach(() => {
-    // Resolve every PATCH to /api/review/[token]/draft as a no-op success.
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve({ ok: true, status: 200 } as Response),
-      ),
+      vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response)),
     )
   })
 
@@ -63,45 +60,29 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders the inline caption editor when Edit Copy is tapped', async () => {
+  it('opens the inline caption editor from the Edit copy link, with no PATCH on open', async () => {
     render(<ReviewSessionShell {...BASE_PROPS} />)
 
-    // Inline editor is not in the DOM before the user opens it.
     expect(
       screen.queryByTestId('caption-edit-inline-textarea'),
     ).not.toBeInTheDocument()
 
-    const [editCopy] = screen.getAllByRole('button', {
-      name: /edit copy on this post/i,
-    })
+    const [editCopy] = screen.getAllByRole('button', { name: /edit copy/i })
     fireEvent.click(editCopy)
 
-    // Inline textarea renders.
     expect(
       screen.getByTestId('caption-edit-inline-textarea'),
     ).toBeInTheDocument()
+    // Opening the editor is local-only; the draft PATCH fires on Save.
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 
-  it('Save persists suggestedCaption + decision via the draft PATCH', async () => {
+  it('Save persists caption_edited + suggestedCaption via a single draft PATCH', async () => {
     render(<ReviewSessionShell {...BASE_PROPS} />)
 
-    const [editCopy] = screen.getAllByRole('button', {
-      name: /edit copy on this post/i,
-    })
+    const [editCopy] = screen.getAllByRole('button', { name: /edit copy/i })
     fireEvent.click(editCopy)
 
-    // First PATCH is the optimistic decision='caption_edited' from Edit Copy.
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1)
-    })
-    const firstCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]
-    expect(firstCall[0]).toContain('/api/review/tok/draft')
-    expect(JSON.parse(firstCall[1].body)).toMatchObject({
-      postId: 'post-1',
-      decision: 'caption_edited',
-    })
-
-    // Type a new caption and click Save.
     const textarea = screen.getByTestId(
       'caption-edit-inline-textarea',
     ) as HTMLTextAreaElement
@@ -113,18 +94,17 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
       fireEvent.click(save)
     })
 
-    // Second PATCH carries suggestedCaption + decision together.
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2)
+      expect(global.fetch).toHaveBeenCalledTimes(1)
     })
-    const secondCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[1]
-    expect(JSON.parse(secondCall[1].body)).toMatchObject({
+    const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(call[0]).toContain('/api/review/tok/draft')
+    expect(JSON.parse(call[1].body)).toMatchObject({
       postId: 'post-1',
       decision: 'caption_edited',
       suggestedCaption: 'A better suggested caption.',
     })
 
-    // Inline editor closes on save.
     await waitFor(() => {
       expect(
         screen.queryByTestId('caption-edit-inline-textarea'),
@@ -132,17 +112,11 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
     })
   })
 
-  it('Cancel closes the inline editor and reverts the decision', async () => {
+  it('Cancel closes the inline editor without any draft PATCH', async () => {
     render(<ReviewSessionShell {...BASE_PROPS} />)
 
-    const [editCopy] = screen.getAllByRole('button', {
-      name: /edit copy on this post/i,
-    })
+    const [editCopy] = screen.getAllByRole('button', { name: /edit copy/i })
     fireEvent.click(editCopy)
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1) // optimistic decision PATCH
-    })
 
     const cancel = screen.getByTestId('caption-edit-inline-cancel')
     fireEvent.click(cancel)
@@ -150,20 +124,10 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
     expect(
       screen.queryByTestId('caption-edit-inline-textarea'),
     ).not.toBeInTheDocument()
-
-    // The Cancel path reverts the decision back to `not_reviewed` via a
-    // second PATCH (the prior decision before Edit Copy was tapped).
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2)
-    })
-    const secondCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[1]
-    expect(JSON.parse(secondCall[1].body)).toMatchObject({
-      postId: 'post-1',
-      decision: 'not_reviewed',
-    })
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 
-  it('re-entering Edit Copy with a saved suggestion pre-fills the textarea', async () => {
+  it('re-entering edit with a saved suggestion pre-fills the textarea', async () => {
     const initialItem: ReviewItemHydrated = {
       id: 'item-1',
       postId: 'post-1',
@@ -177,21 +141,49 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
       reviewedAt: new Date(),
     }
 
-    render(
-      <ReviewSessionShell {...BASE_PROPS} initialItems={[initialItem]} />,
-    )
+    render(<ReviewSessionShell {...BASE_PROPS} initialItems={[initialItem]} />)
 
-    // With an existing suggestion, the chrome surfaces the override + the
-    // `Edited · view original` toggle. To re-enter editing, tap Edit Copy.
-    const [editCopy] = screen.getAllByRole('button', {
-      name: /edit copy on this post/i,
-    })
+    const [editCopy] = screen.getAllByRole('button', { name: /edit copy/i })
     fireEvent.click(editCopy)
 
     const textarea = screen.getByTestId(
       'caption-edit-inline-textarea',
     ) as HTMLTextAreaElement
     expect(textarea.value).toBe('A prior suggestion')
+  })
+
+  it('clicking Approve clears a saved suggested caption (sends suggestedCaption: null)', async () => {
+    const initialItem: ReviewItemHydrated = {
+      id: 'item-1',
+      postId: 'post-1',
+      decision: 'caption_edited',
+      comment: null,
+      suggestedCaption: 'A prior suggestion',
+      acceptedAsPostVersionId: null,
+      addressedAt: null,
+      updatedSinceLastReview: false,
+      lastReviewedVersionId: null,
+      reviewedAt: new Date(),
+    }
+
+    render(<ReviewSessionShell {...BASE_PROPS} initialItems={[initialItem]} />)
+
+    const [approve] = screen.getAllByRole('button', {
+      name: /approve this post/i,
+    })
+    await act(async () => {
+      fireEvent.click(approve)
+    })
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+    })
+    const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(JSON.parse(call[1].body)).toMatchObject({
+      postId: 'post-1',
+      decision: 'approved',
+      suggestedCaption: null,
+    })
   })
 })
 
