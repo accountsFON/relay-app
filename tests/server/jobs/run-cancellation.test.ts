@@ -8,6 +8,7 @@ import { db } from '@/db/client'
 import {
   isRunCancelled,
   markRunCompleteIfNotCancelled,
+  markRunRunningIfNotCancelled,
 } from '@/server/jobs/run-cancellation'
 
 describe('isRunCancelled', () => {
@@ -57,6 +58,33 @@ describe('markRunCompleteIfNotCancelled', () => {
     const ok = await markRunCompleteIfNotCancelled('run-1', {
       completedAt: new Date(),
     } as never)
+
+    expect(ok).toBe(false)
+  })
+})
+
+describe('markRunRunningIfNotCancelled', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('marks running and returns true when the run was not cancelled (count > 0)', async () => {
+    vi.mocked(db.contentRun.updateMany).mockResolvedValue({ count: 1 } as never)
+
+    const ok = await markRunRunningIfNotCancelled('run-1')
+
+    expect(ok).toBe(true)
+    const call = vi.mocked(db.contentRun.updateMany).mock.calls[0][0]
+    // Guarded so a cancel that landed while the run was queued is not clobbered
+    // back to running.
+    expect(call.where).toEqual({ id: 'run-1', status: { not: 'cancelled' } })
+    const data = call.data as { status?: string; startedAt?: unknown }
+    expect(data.status).toBe('running')
+    expect(data.startedAt).toBeInstanceOf(Date)
+  })
+
+  it('returns false (does not start) when the run was already cancelled (count 0)', async () => {
+    vi.mocked(db.contentRun.updateMany).mockResolvedValue({ count: 0 } as never)
+
+    const ok = await markRunRunningIfNotCancelled('run-1')
 
     expect(ok).toBe(false)
   })

@@ -35,3 +35,21 @@ export async function markRunCompleteIfNotCancelled(
   })
   return res.count > 0
 }
+
+/**
+ * Atomically marks a run `running` (with `startedAt`) ONLY if it has not been
+ * cancelled. Returns `false` (and writes nothing) when the run was cancelled
+ * while it sat queued — so the pipeline's opening status write cannot clobber a
+ * queued-state cancel back to `running` (which would silently resurrect a
+ * cancelled run and run the whole pipeline). The caller MUST exit the pipeline
+ * early when this returns `false`.
+ */
+export async function markRunRunningIfNotCancelled(
+  contentRunId: string,
+): Promise<boolean> {
+  const res = await db.contentRun.updateMany({
+    where: { id: contentRunId, status: { not: 'cancelled' } },
+    data: { status: 'running', startedAt: new Date() },
+  })
+  return res.count > 0
+}
