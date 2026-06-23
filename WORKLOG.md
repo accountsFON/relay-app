@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-22 — Client review: Approve All button** (PR #234)
+  An "Approve all N posts" button on the client review surface flips every post to
+  Approved at once (via the existing per-post draft PATCH, `suggestedCaption: null`
+  to clear caption edits, keeping notes), skipping already-approved posts. Confirms
+  first only when it would override existing Changes/caption-edits
+  (`changesRequested + captionEdited > 0`). Submit stays separate. Hidden for a
+  single post; disabled when all approved or in flight. UI only, no schema/endpoint
+  change. 1680 unit tests. Caleb/Julio item 29.
+
 - [x] **2026-06-22 — Client review: notes auto-save + visible save state** (PR #233)
   The Notes field on the client review surface auto-saved only on blur with no
   feedback (a note typed then abandoned without blurring was lost). Now it
