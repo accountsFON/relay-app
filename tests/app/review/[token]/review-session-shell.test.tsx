@@ -216,6 +216,104 @@ describe('ReviewSessionShell -- notes save state', () => {
   })
 })
 
+describe('ReviewSessionShell -- approve all', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response)),
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  function item(
+    postId: string,
+    decision: ReviewItemHydrated['decision'],
+  ): ReviewItemHydrated {
+    return {
+      id: `item-${postId}`,
+      postId,
+      decision,
+      comment: null,
+      suggestedCaption: null,
+      acceptedAsPostVersionId: null,
+      addressedAt: null,
+      updatedSinceLastReview: false,
+      lastReviewedVersionId: null,
+      reviewedAt: new Date(),
+    }
+  }
+
+  it('approves every post when none have feedback, with no confirm', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm')
+    render(<ReviewSessionShell {...BASE_PROPS} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('approve-all-button'))
+    })
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2))
+    const bodies = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) =>
+      JSON.parse(c[1].body),
+    )
+    expect(bodies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ postId: 'post-1', decision: 'approved', suggestedCaption: null }),
+        expect.objectContaining({ postId: 'post-2', decision: 'approved', suggestedCaption: null }),
+      ]),
+    )
+    expect(confirmSpy).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it('confirms before overriding a Changes post and aborts on dismiss', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(
+      <ReviewSessionShell
+        {...BASE_PROPS}
+        initialItems={[item('post-1', 'changes_requested')]}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('approve-all-button'))
+
+    expect(confirmSpy).toHaveBeenCalledTimes(1)
+    expect(global.fetch).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
+
+  it('skips posts already approved (no redundant PATCH)', async () => {
+    render(
+      <ReviewSessionShell
+        {...BASE_PROPS}
+        initialItems={[item('post-1', 'approved')]}
+      />,
+    )
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('approve-all-button'))
+    })
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1))
+    const body = JSON.parse(
+      (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body,
+    )
+    expect(body.postId).toBe('post-2')
+  })
+
+  it('disables the button when all posts are already approved', () => {
+    render(
+      <ReviewSessionShell
+        {...BASE_PROPS}
+        initialItems={[item('post-1', 'approved'), item('post-2', 'approved')]}
+      />,
+    )
+    expect(screen.getByTestId('approve-all-button')).toBeDisabled()
+  })
+})
+
 describe('ReviewSessionShell -- tutorial modal', () => {
   beforeEach(() => {
     vi.stubGlobal(
