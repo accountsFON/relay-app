@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — Generation pipeline: per-step timing instrumentation** (PR #235)
+  Adds per-step wall-clock timing to `generateContentTask` so a slow run reports
+  WHERE the time goes (date calc / brief / crawl / facts / captions / finalize),
+  not just a lumped total. New `makeStepTimer` helper; durations logged to the
+  Trigger.dev run output + persisted on `ContentRun.tokenUsage.stepDurationsMs`
+  (complete + failed paths). Observability only, no behavior change. Diagnostic
+  for the "why is generation slow" investigation (suspect: caption step, Opus 4.7
+  @ 32K + multi-pass QA; crawl secondary). 1683 unit tests.
+
 - [x] **2026-06-22 — Client review: Approve All button** (PR #234)
   An "Approve all N posts" button on the client review surface flips every post to
   Approved at once (via the existing per-post draft PATCH, `suggestedCaption: null`
