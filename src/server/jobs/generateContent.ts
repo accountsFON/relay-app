@@ -14,7 +14,10 @@ import {
   finalizePostGeneration,
   findDefaultMatchingBatch,
 } from '@/server/services/finalize-post-generation'
-import { isRunCancelled } from '@/server/jobs/run-cancellation'
+import {
+  isRunCancelled,
+  markRunCompleteIfNotCancelled,
+} from '@/server/jobs/run-cancellation'
 
 type TokenUsageLog = Record<string, { input: number; output: number }>
 
@@ -211,31 +214,29 @@ export const generateContentTask = task({
         pipelineDurationSeconds,
       })
 
-      // Cancellation guard: if the run was cancelled while the pipeline was
-      // mid-flight, stop here. Do not mark complete, do not finalize/attach,
-      // do not notify. The cancel action is the source of truth; any posts
-      // created earlier stay unattached (no batch is touched).
-      if (await isRunCancelled(contentRunId)) {
+      // Cancellation guard, atomic: mark complete ONLY if the run was not
+      // cancelled. This is a single guarded write (not a separate read +
+      // update), so a cancel that commits mid-flight cannot be clobbered back
+      // to `complete` by a TOCTOU race. When it returns false the run was
+      // cancelled: stop here, do not finalize/attach, do not notify. The cancel
+      // action is the source of truth; any posts created earlier stay
+      // unattached (no batch is touched).
+      const didComplete = await markRunCompleteIfNotCancelled(contentRunId, {
+        openaiCostUsd: breakdown.openai.total,
+        anthropicCostUsd: breakdown.anthropic.total,
+        crawlerCostUsd: breakdown.crawl.usd,
+        totalCostUsd: breakdown.total,
+        creditsConsumed: breakdown.credits,
+        tokenUsage: {
+          ...tokenUsage,
+          breakdown: JSON.parse(JSON.stringify(breakdown)),
+          pipelineDurationSeconds,
+        },
+        completedAt: new Date(),
+      })
+      if (!didComplete) {
         return { cancelled: true as const }
       }
-
-      await db.contentRun.update({
-        where: { id: contentRunId },
-        data: {
-          status: 'complete',
-          openaiCostUsd: breakdown.openai.total,
-          anthropicCostUsd: breakdown.anthropic.total,
-          crawlerCostUsd: breakdown.crawl.usd,
-          totalCostUsd: breakdown.total,
-          creditsConsumed: breakdown.credits,
-          tokenUsage: {
-            ...tokenUsage,
-            breakdown: JSON.parse(JSON.stringify(breakdown)),
-            pipelineDurationSeconds,
-          },
-          completedAt: new Date(),
-        },
-      })
 
       // Background auto-finalize: if the user dismissed the dialog while
       // the pipeline was running, attach posts to the default target now so

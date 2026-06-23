@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-22 — Cancel: close TOCTOU window (atomic complete)** (PR #231)
+  Follow-up hardening to #230. The pipeline's finalize point did a read-then-write
+  (isRunCancelled guard, then an unconditional `status:'complete'` update), so a
+  cancel committing between the read and write could be clobbered back to complete.
+  Now a single atomic guarded write — `markRunCompleteIfNotCancelled` →
+  `updateMany({ where: { id, status: { not: 'cancelled' } }, data: {...,status:'complete'} })`,
+  returns `count>0`; on a concurrent cancel (count 0) the job returns early, skipping
+  finalize/attach/notify. All cost/usage fields preserved. 1662 unit tests.
+
 - [x] **2026-06-22 — Cancel content generation mid-flight** (PR #230)
   A user can cancel an in-progress generation run. Cancel discards everything
   (target batch untouched); the run lands in a new neutral `cancelled` RunStatus
