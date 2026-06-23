@@ -187,12 +187,15 @@ export function ReviewSessionShell({
           // appropriate not-found / revoked surface.
           if (res.status === 410 || res.status === 401) {
             startTransition(() => router.refresh())
-            return
+          } else {
+            console.error('[review-session-shell] draft save failed', res.status)
           }
-          console.error('[review-session-shell] draft save failed', res.status)
+          return false
         }
+        return true
       } catch (err) {
         console.error('[review-session-shell] draft save threw', err)
+        return false
       }
     },
     [token, router, startTransition],
@@ -214,9 +217,8 @@ export function ReviewSessionShell({
   )
 
   const handleCommentChange = useCallback(
-    (postId: string, comment: string) => {
-      void persistDraft(postId, { comment: comment.length > 0 ? comment : null })
-    },
+    (postId: string, comment: string): Promise<boolean> =>
+      persistDraft(postId, { comment: comment.length > 0 ? comment : null }),
     [persistDraft],
   )
 

@@ -27,7 +27,7 @@ export type ReviewPostCardProps = {
   /** Only 'review' is supported on the v2 client surface. */
   mode: 'review'
   onDecisionChange: (decision: ReviewDecisionType) => void
-  onCommentChange: (comment: string) => void
+  onCommentChange: (comment: string) => Promise<boolean>
   /**
    * Persist a saved suggested caption. Called when the reviewer hits Save in
    * the inline caption editor. Triggers a PATCH on `/api/review/[token]/draft`
@@ -119,11 +119,67 @@ export function ReviewPostCard({
   const isUpdated = reviewItem?.updatedSinceLastReview ?? false
   const savedSuggestion = reviewItem?.suggestedCaption ?? null
 
-  // Local controlled comment, mirrored to parent on blur to avoid a PATCH
-  // per keystroke. Initialized from the reviewItem so re-renders carry
-  // server-saved drafts.
+  // Local controlled comment. Auto-saves debounced while typing (and on blur),
+  // surfacing a save-state indicator. Initialized from the reviewItem so
+  // re-renders carry server-saved drafts.
   const [comment, setComment] = useState(reviewItem?.comment ?? '')
   const [focused, setFocused] = useState(false)
+  const [noteStatus, setNoteStatus] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle')
+
+  // The last value we have successfully persisted (seeded from the server
+  // value) — a save is skipped when the current value matches it.
+  const lastSavedNoteRef = useRef(reviewItem?.comment ?? '')
+  // The most recently dispatched save value, so a slow earlier save resolving
+  // out of order cannot flip the indicator for text that has since changed.
+  const pendingNoteRef = useRef<string | null>(null)
+  const noteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearNoteDebounce = useCallback(() => {
+    if (noteDebounceRef.current) {
+      clearTimeout(noteDebounceRef.current)
+      noteDebounceRef.current = null
+    }
+  }, [])
+
+  const saveNote = useCallback(
+    async (value: string) => {
+      if (value === lastSavedNoteRef.current) return
+      pendingNoteRef.current = value
+      setNoteStatus('saving')
+      const ok = await onCommentChange(value)
+      // Ignore a stale resolve: a newer save was dispatched after this one.
+      if (pendingNoteRef.current !== value) return
+      if (ok) {
+        lastSavedNoteRef.current = value
+        setNoteStatus('saved')
+      } else {
+        setNoteStatus('error')
+      }
+    },
+    [onCommentChange],
+  )
+
+  const handleNoteChange = useCallback(
+    (value: string) => {
+      setComment(value)
+      clearNoteDebounce()
+      noteDebounceRef.current = setTimeout(() => {
+        noteDebounceRef.current = null
+        void saveNote(value)
+      }, 1000)
+    },
+    [clearNoteDebounce, saveNote],
+  )
+
+  const flushNote = useCallback(() => {
+    clearNoteDebounce()
+    void saveNote(comment)
+  }, [clearNoteDebounce, saveNote, comment])
+
+  // Clear any pending debounce on unmount (no save / setState after unmount).
+  useEffect(() => clearNoteDebounce, [clearNoteDebounce])
 
   // Caption edit state.
   const [isEditing, setIsEditing] = useState(false)
@@ -264,24 +320,48 @@ export function ReviewPostCard({
         </p>
       ) : null}
 
-      <label
-        className="block text-[12px] font-medium text-muted-foreground"
-        htmlFor={`comment-${post.id}`}
-      >
-        <span data-testid="review-post-card-notes-label">Notes (optional)</span>
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <label
+            className="block text-[12px] font-medium text-muted-foreground"
+            htmlFor={`comment-${post.id}`}
+          >
+            <span data-testid="review-post-card-notes-label">Notes (optional)</span>
+          </label>
+          <span
+            data-testid="review-post-card-notes-status"
+            aria-live="polite"
+            className="text-[12px]"
+          >
+            {noteStatus === 'saving' && (
+              <span className="text-muted-foreground">Saving…</span>
+            )}
+            {noteStatus === 'saved' && (
+              <span className="text-muted-foreground">Saved ✓</span>
+            )}
+            {noteStatus === 'error' && (
+              <span className="text-destructive">
+                Couldn&apos;t save{' · '}
+                <button
+                  type="button"
+                  className="underline"
+                  onClick={() => void saveNote(comment)}
+                >
+                  Retry
+                </button>
+              </span>
+            )}
+          </span>
+        </div>
         <textarea
           id={`comment-${post.id}`}
           data-testid="review-post-card-comment"
           value={comment}
-          onChange={(e) => setComment(e.target.value)}
+          onChange={(e) => handleNoteChange(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setFocused(false)
-            // Only fire change if the value differs from what the parent
-            // already has, avoids a no-op PATCH on every blur.
-            if ((reviewItem?.comment ?? '') !== comment) {
-              onCommentChange(comment)
-            }
+            flushNote()
           }}
           placeholder={commentPlaceholder}
           rows={focused || comment.length > 0 ? 3 : 1}
@@ -290,7 +370,7 @@ export function ReviewPostCard({
             'mt-1 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-[height,border-color] focus:border-primary disabled:cursor-not-allowed disabled:opacity-60',
           )}
         />
-      </label>
+      </div>
     </article>
   )
 }
