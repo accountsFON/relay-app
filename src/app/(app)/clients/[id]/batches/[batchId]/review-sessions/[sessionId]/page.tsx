@@ -124,10 +124,10 @@ export default async function ReviewSessionDetailPage({
     postById.set(p.id, p)
   })
 
-  // Non-approved items, hydrated with their Post, keyed by postId.
+  // All items, hydrated with their Post, keyed by postId (any decision).
   const itemByPostId = new Map<string, HydratedItemWithPost>()
   for (const item of session.items) {
-    if (item.decision === 'approved' || item.decision === 'not_reviewed') continue
+    if (item.decision === 'not_reviewed') continue
     const post = postById.get(item.postId)
     if (!post) continue
     itemByPostId.set(item.postId, {
@@ -147,40 +147,37 @@ export default async function ReviewSessionDetailPage({
     includeResolved: true,
   })
 
-  // Build the attention-post list: union of non-approved items and posts
-  // with client pins.
-  const attention: AttentionPost[] = []
-  for (const p of batchPosts) {
+  // Build the full post list from every post in the batch in canonical order.
+  const allPosts: AttentionPost[] = batchPosts.map((p) => {
     const item = itemByPostId.get(p.id) ?? null
     const clientThreads = clientThreadsByPost.get(p.id) ?? []
-    if (!item && clientThreads.length === 0) continue
 
+    // Approved items are inherently handled; for others check addressed fields.
     const itemAddressed = item
-      ? Boolean(item.acceptedAsPostVersionId) || item.addressedAt != null
+      ? item.decision === 'approved' ||
+        Boolean(item.acceptedAsPostVersionId) ||
+        item.addressedAt != null
       : true
     const openPins = clientThreads.filter((t) => t.status === 'open').length
     const handled = itemAddressed && openPins === 0
 
-    attention.push({
+    return {
       postId: p.id,
       postNumber: postNumberById.get(p.id) ?? 0,
       post: p,
       item,
       clientThreads,
       handled,
-    })
-  }
-  attention.sort((a, b) => a.postNumber - b.postNumber)
+    }
+  })
 
-  // Designer lane: designers see ONLY attention posts that carry at least one
-  // IMAGE pin. AM/admin see every attention post.
+  // Designer lane: designers see ONLY posts that carry at least one IMAGE pin.
+  // AM/admin see every post in the batch.
   const isDesigner = ctx.role === 'designer'
   function hasImagePin(ap: AttentionPost): boolean {
     return ap.clientThreads.some((t) => t.pin.kind === 'image')
   }
-  const visiblePosts = isDesigner ? attention.filter(hasImagePin) : attention
-
-  const pending = visiblePosts.filter((a) => !a.handled)
+  const visiblePosts = isDesigner ? allPosts.filter(hasImagePin) : allPosts
 
   const summary: ReviewSessionSummary =
     session.submittedSummary ?? {
@@ -191,7 +188,7 @@ export default async function ReviewSessionDetailPage({
     }
 
   const submittedAt = session.submittedAt ?? session.startedAt
-  const allAddressed = pending.length === 0 && visiblePosts.length > 0
+  const allAddressed = visiblePosts.length > 0 && visiblePosts.every((p) => p.handled)
   const isSuperseded = session.status === 'superseded'
 
   // Capture primitives for server-action closures.

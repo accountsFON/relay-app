@@ -314,8 +314,8 @@ describe('ReviewSessionDetailPage', () => {
     vi.mocked(canComment).mockReturnValue(false)
   })
 
-  it('renders the header + feedback shell (omits approved items from attention list)', async () => {
-    const { getByTestId, queryByTestId } = await renderPage({
+  it('renders the header + feedback shell with all posts in the batch', async () => {
+    const { getByTestId } = await renderPage({
       id: 'client_1',
       batchId: 'batch_1',
       sessionId: 'session_1',
@@ -324,11 +324,31 @@ describe('ReviewSessionDetailPage', () => {
     expect(getByTestId('review-session-header')).toBeTruthy()
     expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
 
-    // approved item has no attention post -> no rail row
-    expect(queryByTestId('rail-row-post_a')).toBeNull()
-    // changes_requested + caption_edited both produce attention posts
+    // All three posts appear: approved (post_a), changes_requested (post_b), caption_edited (post_c)
+    expect(getByTestId('rail-row-post_a')).toBeTruthy()
     expect(getByTestId('rail-row-post_b')).toBeTruthy()
     expect(getByTestId('rail-row-post_c')).toBeTruthy()
+  })
+
+  it('approved post appears in the rail as a collapsed addressed row alongside actionable posts', async () => {
+    // The default session has post_a=approved, post_b=changes_requested, post_c=caption_edited.
+    // After the fix all three should appear in feedbackPosts; post_a must have
+    // verdict='approved' and addressed=true so the rail can collapse it.
+    const { getByTestId } = await renderPage({
+      id: 'client_1',
+      batchId: 'batch_1',
+      sessionId: 'session_1',
+    })
+
+    // post_a (approved) must now appear — this is the collapsed approved row
+    const rowA = getByTestId('rail-row-post_a')
+    expect(rowA.getAttribute('data-verdict')).toBe('approved')
+    expect(rowA.getAttribute('data-addressed')).toBe('true')
+
+    // post_b (changes_requested, no addressedAt) stays expanded/actionable
+    const rowB = getByTestId('rail-row-post_b')
+    expect(rowB.getAttribute('data-verdict')).toBe('changes_requested')
+    expect(rowB.getAttribute('data-addressed')).toBe('false')
   })
 
   it('redirects to access-denied when the user lacks access to the client', async () => {
@@ -781,9 +801,14 @@ describe('ReviewSessionDetailPage', () => {
     })
 
     it('maps pin-only posts (no ReviewItem) to none verdict', async () => {
-      // post_a is approved (excluded from items) but has a client thread.
+      // post_d has no ReviewItem at all (not_reviewed / absent from session.items)
+      // but carries a client thread — it should get verdict='none'.
+      vi.mocked(db.post.findMany).mockResolvedValue([
+        ...mockPosts,
+        { id: 'post_d', postDate: new Date('2026-05-07'), caption: 'D original', mediaUrls: [] },
+      ] as never)
       vi.mocked(listClientThreadsForBatch).mockResolvedValue(
-        new Map([['post_a', [clientThread('th1', 'open')]]]),
+        new Map([['post_d', [clientThread('th1', 'open')]]]),
       )
       const { getByTestId } = await renderPage({
         id: 'client_1',
@@ -791,7 +816,7 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       })
 
-      expect(getByTestId('rail-row-post_a').getAttribute('data-verdict')).toBe('none')
+      expect(getByTestId('rail-row-post_d').getAttribute('data-verdict')).toBe('none')
     })
   })
 })
