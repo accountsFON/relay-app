@@ -34,6 +34,11 @@ vi.mock('@/server/repositories/contentRuns', () => ({
   archiveContentRun: vi.fn(),
   findMatchingBatchForClientMonth: vi.fn(),
   findMatchingBatchForRun: vi.fn(),
+  findContentRunForOrg: vi.fn(),
+}))
+
+vi.mock('@trigger.dev/sdk/v3', () => ({
+  runs: { cancel: vi.fn() },
 }))
 
 import { db } from '@/db/client'
@@ -45,11 +50,14 @@ import {
   archiveContentRun,
   findMatchingBatchForClientMonth,
   findMatchingBatchForRun,
+  findContentRunForOrg,
 } from '@/server/repositories/contentRuns'
+import { runs } from '@trigger.dev/sdk/v3'
 import {
   listInFlightRuns,
   acknowledgeFailedRunAction,
   retryFailedRunAction,
+  cancelGenerationAction,
 } from '@/server/actions/in-flight-runs'
 
 const mockCtx = {
@@ -525,5 +533,66 @@ describe('listInFlightRuns matching-batch enrichment', () => {
     expect(result).toHaveLength(1)
     expect(result[0].intent).toBe('awaiting_choice')
     expect(result[0].matchingBatch).toBeUndefined()
+  })
+})
+
+// ---- cancelGenerationAction ----------------------------------------------
+
+describe('cancelGenerationAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(requireClientEditor).mockResolvedValue(mockCtx as never)
+    vi.mocked(findClientForUser).mockResolvedValue({ id: 'c1' } as never)
+  })
+
+  it('cancels a running run and aborts the trigger job', async () => {
+    vi.mocked(findContentRunForOrg).mockResolvedValue({
+      id: 'run-1', clientId: 'c1', status: 'running', triggerJobId: 'run_abc',
+    } as never)
+
+    const res = await cancelGenerationAction('run-1')
+
+    expect(res).toEqual({ ok: true, status: 'cancelled' })
+    expect(db.contentRun.update).toHaveBeenCalledWith({
+      where: { id: 'run-1' },
+      data: { status: 'cancelled', completedAt: expect.any(Date) },
+    })
+    expect(runs.cancel).toHaveBeenCalledWith('run_abc')
+  })
+
+  it('no-ops on an already-terminal run', async () => {
+    vi.mocked(findContentRunForOrg).mockResolvedValue({
+      id: 'run-1', clientId: 'c1', status: 'complete', triggerJobId: 'run_abc',
+    } as never)
+
+    const res = await cancelGenerationAction('run-1')
+
+    expect(res).toEqual({ ok: true, status: 'complete' })
+    expect(db.contentRun.update).not.toHaveBeenCalled()
+    expect(runs.cancel).not.toHaveBeenCalled()
+  })
+
+  it('returns not_found when the run is outside the actor scope', async () => {
+    vi.mocked(findContentRunForOrg).mockResolvedValue({
+      id: 'run-1', clientId: 'c1', status: 'running', triggerJobId: 'run_abc',
+    } as never)
+    vi.mocked(findClientForUser).mockResolvedValue(null as never)
+
+    const res = await cancelGenerationAction('run-1')
+
+    expect(res).toEqual({ ok: false, reason: 'not_found' })
+    expect(db.contentRun.update).not.toHaveBeenCalled()
+  })
+
+  it('still marks cancelled when runs.cancel throws', async () => {
+    vi.mocked(findContentRunForOrg).mockResolvedValue({
+      id: 'run-1', clientId: 'c1', status: 'running', triggerJobId: 'run_abc',
+    } as never)
+    vi.mocked(runs.cancel).mockRejectedValue(new Error('trigger down'))
+
+    const res = await cancelGenerationAction('run-1')
+
+    expect(res).toEqual({ ok: true, status: 'cancelled' })
+    expect(db.contentRun.update).toHaveBeenCalled()
   })
 })
