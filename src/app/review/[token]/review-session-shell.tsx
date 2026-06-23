@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
@@ -14,6 +14,7 @@ import { ReviewSubmittedScreen } from '@/components/review/review-submitted-scre
 import { ReturningReviewerBanner } from '@/components/review/returning-reviewer-banner'
 import { ReviewTutorialModal } from '@/components/review/review-tutorial-modal'
 import { ApproveAllButton } from '@/components/review/approve-all-button'
+import { ReviewStickyBar } from '@/components/review/review-sticky-bar'
 import { submitSessionAction } from '@/server/actions/reviewSessions'
 import {
   addCommentAsReviewer,
@@ -116,6 +117,20 @@ export function ReviewSessionShell({
   const [submitModalOpen, setSubmitModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [approvingAll, setApprovingAll] = useState(false)
+
+  const stickySentinelRef = useRef<HTMLDivElement | null>(null)
+  const [pinned, setPinned] = useState(false)
+
+  useEffect(() => {
+    const el = stickySentinelRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      ([entry]) => setPinned(!entry.isIntersecting),
+      { threshold: 0 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   const postIds = useMemo(() => posts.map((p) => p.post.id), [posts])
 
@@ -367,6 +382,17 @@ export function ReviewSessionShell({
   return (
     <div className="flex flex-col">
       <ReviewTutorialModal />
+      {pinned ? (
+        <ReviewStickyBar
+          reviewed={itemsReviewed}
+          total={summary.totalPosts}
+          allApproved={
+            summary.totalPosts > 0 && summary.approved === summary.totalPosts
+          }
+          pending={approvingAll || submitting || pending}
+          onApproveAll={handleApproveAll}
+        />
+      ) : null}
       {showReturningBanner ? (
         <ReturningReviewerBanner
           itemsReviewed={itemsReviewed}
@@ -397,6 +423,7 @@ export function ReviewSessionShell({
             onApproveAll={handleApproveAll}
           />
         </div>
+        <div ref={stickySentinelRef} aria-hidden className="h-0" />
       </div>
 
       <FeedShell platform={platform} onPlatformChange={setPlatform}>
