@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { ReviewFeedbackRail } from '@/components/review/review-feedback-rail'
 import { ReviewPostsCanvas } from '@/components/review/review-posts-canvas'
+import { uploadCommentImage } from '@/lib/upload-comment-image'
 import type { FeedbackPostVM, FeedbackActions } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 
 export type ReviewFeedbackShellProps = {
@@ -12,7 +13,13 @@ export type ReviewFeedbackShellProps = {
   isDesigner: boolean
   canPostComment: boolean
   internalThread: React.ReactNode
-  uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
+  /**
+   * The AM's database user id. A server component can't pass a
+   * `(file: File) => Promise<...>` callback, so the shell (a client
+   * component) builds the comment-image upload helper from this id. When
+   * absent, image attach in the dialogue is suppressed.
+   */
+  userDbId?: string
   allAddressed: boolean
   isSuperseded: boolean
   startNextRoundSlot?: React.ReactNode
@@ -22,12 +29,15 @@ export function ReviewFeedbackShell({
   posts,
   actions,
   isDesigner,
-  uploadImage,
+  userDbId,
   internalThread,
   allAddressed,
   isSuperseded,
   startNextRoundSlot,
 }: ReviewFeedbackShellProps) {
+  const uploadImage = userDbId
+    ? (file: File) => uploadCommentImage(file, { mode: 'internal', userDbId })
+    : undefined
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
 

@@ -323,14 +323,11 @@ export default async function ReviewSessionDetailPage({
     threads: ap.clientThreads,
   }))
 
-  // Map ctx.role to the shell's role union.
-  // uploadImage requires a browser File object — not constructible as a server
-  // action. Pass undefined; the rail image-attach affordance is suppressed.
-  // The canUploadImage flag is retained for reference but the actual upload
-  // callback must live in a client component. For now this is an accepted
-  // limitation: image attach in this page's rail requires a follow-up client
-  // wrapper. See WORKLOG for concern note.
-  void canUploadImage
+  // Map ctx.role to the shell's role union. Image attach in the rail dialogue
+  // is built inside the (client) shell from the AM's userDbId, since a server
+  // component can't pass a (file: File) => Promise callback. Gated on the same
+  // post.media.edit permission the old surface used.
+  const shellUserDbId = canUploadImage ? ctx.userDbId : undefined
 
   const shellRole =
     ctx.role === 'admin'
@@ -377,7 +374,7 @@ export default async function ReviewSessionDetailPage({
           canPostComment={canPostComment}
           allAddressed={allAddressed}
           isSuperseded={isSuperseded}
-          uploadImage={undefined}
+          userDbId={shellUserDbId}
           startNextRoundSlot={
             <StartNextRoundButton
               magicLinkId={magicLink.id}
