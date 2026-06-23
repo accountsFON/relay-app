@@ -121,6 +121,13 @@ export function ReviewSessionShell({
   const stickySentinelRef = useRef<HTMLDivElement | null>(null)
   const [pinned, setPinned] = useState(false)
 
+  // Visible failure surfaces (never swallow). `saveError` flags a failed
+  // decision / caption / Approve-all draft PATCH; the Notes field carries its
+  // own per-field indicator. `submitError` flags a failed submit and is shown
+  // inside the still-open modal so Submit is never a silent dead end.
+  const [saveError, setSaveError] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
   useEffect(() => {
     const el = stickySentinelRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
@@ -218,19 +225,25 @@ export function ReviewSessionShell({
     [token, router, startTransition],
   )
 
+  // Reflect a draft-save result onto the visible save-error flag: clear on
+  // success, raise on failure. Keeps the optimistic-but-unsaved state honest.
+  const reflectSave = useCallback((ok: boolean) => {
+    setSaveError(!ok)
+  }, [])
+
   const handleDecisionChange = useCallback(
     (postId: string, decision: ReviewDecisionType) => {
       // Approve discards any pending suggested caption — the reviewer is
       // approving the original copy, so the edit no longer applies. Other
       // verdicts leave the suggestion untouched (a Changes post may carry a
       // copy edit, persisted as decision='caption_edited').
-      if (decision === 'approved') {
-        void persistDraft(postId, { decision, suggestedCaption: null })
-      } else {
-        void persistDraft(postId, { decision })
-      }
+      const patch =
+        decision === 'approved'
+          ? { decision, suggestedCaption: null }
+          : { decision }
+      void persistDraft(postId, patch).then(reflectSave)
     },
-    [persistDraft],
+    [persistDraft, reflectSave],
   )
 
   const handleApproveAll = useCallback(async () => {
@@ -249,7 +262,7 @@ export function ReviewSessionShell({
     }
     setApprovingAll(true)
     try {
-      await Promise.all(
+      const results = await Promise.all(
         postIds
           .filter((id) => {
             const it = itemsByPostId[id]
@@ -260,10 +273,11 @@ export function ReviewSessionShell({
             persistDraft(id, { decision: 'approved', suggestedCaption: null }),
           ),
       )
+      reflectSave(results.every(Boolean))
     } finally {
       setApprovingAll(false)
     }
-  }, [summary, postIds, itemsByPostId, persistDraft])
+  }, [summary, postIds, itemsByPostId, persistDraft, reflectSave])
 
   const handleCommentChange = useCallback(
     (postId: string, comment: string): Promise<boolean> =>
@@ -273,12 +287,13 @@ export function ReviewSessionShell({
 
   const handleCaptionEditSave = useCallback(
     async (postId: string, newCaption: string) => {
-      await persistDraft(postId, {
+      const ok = await persistDraft(postId, {
         decision: 'caption_edited',
         suggestedCaption: newCaption,
       })
+      reflectSave(ok)
     },
-    [persistDraft],
+    [persistDraft, reflectSave],
   )
 
   /**
@@ -333,11 +348,13 @@ export function ReviewSessionShell({
   )
 
   const handleSubmitClick = useCallback(() => {
+    setSubmitError(null)
     setSubmitModalOpen(true)
   }, [])
 
   const handleSubmitConfirm = useCallback(async () => {
     setSubmitting(true)
+    setSubmitError(null)
     try {
       // Real server action from Task 2.5 (PR #118): flips session status,
       // persists summary, sends digest email via Resend, emits activity.
@@ -347,13 +364,19 @@ export function ReviewSessionShell({
       setSubmitModalOpen(false)
       startTransition(() => router.refresh())
     } catch (err) {
+      // Never swallow: surface a visible error in the (still-open) modal so
+      // the reviewer can retry instead of facing a dead "Confirm does nothing".
       console.error('[review-session-shell] submitSessionAction failed:', err)
+      setSubmitError(
+        "We couldn't submit your review. Please refresh the page and try again.",
+      )
     } finally {
       setSubmitting(false)
     }
   }, [token, summary, router, startTransition])
 
   const handleSubmitCancel = useCallback(() => {
+    setSubmitError(null)
     setSubmitModalOpen(false)
   }, [])
 
@@ -398,6 +421,29 @@ export function ReviewSessionShell({
           itemsReviewed={itemsReviewed}
           totalPosts={summary.totalPosts}
         />
+      ) : null}
+
+      {saveError ? (
+        <div className="mx-auto w-full max-w-[880px] px-4 pt-2 sm:px-6">
+          <div
+            data-testid="review-save-error"
+            role="alert"
+            className="flex items-start justify-between gap-3 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            <span>
+              We couldn&apos;t save your last change. Please refresh the page and
+              try again.
+            </span>
+            <button
+              type="button"
+              onClick={() => setSaveError(false)}
+              className="shrink-0 font-medium underline underline-offset-2"
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
       ) : null}
 
       <div className="mx-auto w-full max-w-[880px] px-4 pt-2 pb-4 sm:px-6 md:pt-4">
@@ -478,6 +524,7 @@ export function ReviewSessionShell({
         onConfirm={handleSubmitConfirm}
         onCancel={handleSubmitCancel}
         submitting={submitting}
+        error={submitError}
       />
     </div>
   )

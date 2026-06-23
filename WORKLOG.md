@@ -22,6 +22,22 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — Client review draft 404: exempt /api/review/** from Clerk** (PR #237)
+  Critical: client review was broken for every real (non-Clerk) client. Magic-link
+  reviewers have no Clerk session, but `/api/review/**` was not in the middleware
+  public-route list, so `auth.protect()` returned **404** on every draft save.
+  `saveItemDraft` (the only thing that creates the `ReviewSession`) never ran, so
+  Submit's `findActiveSession` returned null and threw "No active session to
+  submit", which the shell silently swallowed → stuck confirm modal. Latent since
+  the draft route landed (#112); only "worked" for testers signed into Clerk in the
+  same browser. Fix: extracted route patterns to `src/lib/route-matchers.ts`
+  (imported by middleware + the test, so the regression test guards the real
+  source) and added `/api/review/(.*)` to the public list (also unbreaks the
+  reviewer comment-image upload route). Plus: stop swallowing — submit errors show
+  in the still-open modal, draft-save failures raise a dismissible alert. NOT deploy
+  skew. 1699 unit tests (+13). Follow-ups: prod is on Clerk **dev** keys (should be
+  prod keys); review never worked for real clients before this.
+
 - [x] **2026-06-23 — Client review: sticky condensed progress + Approve all bar** (PR #236)
   The top card (Reviewing as / progress / Approve all) scrolled away; now a
   condensed bar (compact `reviewed/total` + slim progress + the reused Approve all
