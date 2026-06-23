@@ -117,3 +117,25 @@ describe('ReviewPinnedPost comment image rendering', () => {
     expect(screen.queryByTestId('comment-image')).toBeNull()
   })
 })
+
+function threadWithImage(): HydratedThread {
+  const comment = {
+    id: 'c1', body: 'Please swap this photo',
+    author: { kind: 'client' as const, reviewerName: 'Jane' },
+    imageUrl: 'https://blob.vercel-storage.com/comment-images/x.png',
+    imageWidth: 200, imageHeight: 100, createdAt: new Date(),
+  }
+  return { id: 't1', pin: { kind: 'post' }, status: 'open', firstComment: comment, comments: [comment], commentCount: 1 }
+}
+
+describe('ReviewPinnedPost — comment text+image stacking', () => {
+  it('stacks the attached image below the text (flex-col li)', () => {
+    render(<ReviewPinnedPost postId="p1" mediaUrl={null} caption="" threads={[threadWithImage()]} />)
+    const li = screen.getByTestId('review-pin-comment')
+    expect(li.className).toContain('flex')
+    expect(li.className).toContain('flex-col')
+    const img = screen.getByTestId('comment-image')
+    const anchor = img.closest('a')!
+    expect(anchor.className).not.toContain('inline-block')
+  })
+})
