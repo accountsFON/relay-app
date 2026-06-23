@@ -303,6 +303,32 @@ describe('ReviewSessionShell -- approve all', () => {
     expect(body.postId).toBe('post-2')
   })
 
+  it('re-approves an already-approved post that still has a pending suggested caption, to clear it', async () => {
+    render(
+      <ReviewSessionShell
+        {...BASE_PROPS}
+        initialItems={[{ ...item('post-1', 'approved'), suggestedCaption: 'pending edit' }]}
+      />,
+    )
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('approve-all-button'))
+    })
+
+    // post-1 is approved but still carries a suggestion, so it is NOT skipped:
+    // it is PATCHed with suggestedCaption: null to clear it (alongside post-2).
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2))
+    const bodies = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) =>
+      JSON.parse(c[1].body),
+    )
+    expect(bodies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ postId: 'post-1', decision: 'approved', suggestedCaption: null }),
+        expect.objectContaining({ postId: 'post-2', decision: 'approved', suggestedCaption: null }),
+      ]),
+    )
+  })
+
   it('disables the button when all posts are already approved', () => {
     render(
       <ReviewSessionShell
