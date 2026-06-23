@@ -13,6 +13,7 @@ import { SubmitReviewModal } from '@/components/review/submit-review-modal'
 import { ReviewSubmittedScreen } from '@/components/review/review-submitted-screen'
 import { ReturningReviewerBanner } from '@/components/review/returning-reviewer-banner'
 import { ReviewTutorialModal } from '@/components/review/review-tutorial-modal'
+import { ApproveAllButton } from '@/components/review/approve-all-button'
 import { submitSessionAction } from '@/server/actions/reviewSessions'
 import {
   addCommentAsReviewer,
@@ -114,6 +115,7 @@ export function ReviewSessionShell({
 
   const [submitModalOpen, setSubmitModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [approvingAll, setApprovingAll] = useState(false)
 
   const postIds = useMemo(() => posts.map((p) => p.post.id), [posts])
 
@@ -215,6 +217,38 @@ export function ReviewSessionShell({
     },
     [persistDraft],
   )
+
+  const handleApproveAll = useCallback(async () => {
+    // Posts whose existing feedback Approve would override: a Changes verdict
+    // or a caption edit (Approve discards the suggested caption). Notes are
+    // kept, so they are not counted here.
+    const overrideCount = summary.changesRequested + summary.captionEdited
+    if (
+      overrideCount > 0 &&
+      !window.confirm(
+        `Approve all ${summary.totalPosts} posts? This will discard your ` +
+          `changes on ${overrideCount} post${overrideCount === 1 ? '' : 's'}.`,
+      )
+    ) {
+      return
+    }
+    setApprovingAll(true)
+    try {
+      await Promise.all(
+        postIds
+          .filter((id) => {
+            const it = itemsByPostId[id]
+            // Skip posts already approved with no pending caption edit.
+            return !(it?.decision === 'approved' && !it?.suggestedCaption)
+          })
+          .map((id) =>
+            persistDraft(id, { decision: 'approved', suggestedCaption: null }),
+          ),
+      )
+    } finally {
+      setApprovingAll(false)
+    }
+  }, [summary, postIds, itemsByPostId, persistDraft])
 
   const handleCommentChange = useCallback(
     (postId: string, comment: string): Promise<boolean> =>
@@ -353,6 +387,14 @@ export function ReviewSessionShell({
           <ReviewProgressBar
             postIds={postIds}
             itemsByPostId={itemsByPostId}
+          />
+          <ApproveAllButton
+            totalPosts={summary.totalPosts}
+            allApproved={
+              summary.totalPosts > 0 && summary.approved === summary.totalPosts
+            }
+            pending={approvingAll || submitting || pending}
+            onApproveAll={handleApproveAll}
           />
         </div>
       </div>
