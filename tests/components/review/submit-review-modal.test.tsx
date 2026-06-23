@@ -68,4 +68,41 @@ describe('SubmitReviewModal', () => {
     fireEvent.click(screen.getByTestId('submit-review-modal-cancel'))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
+
+  it('renders an error and keeps the actions usable when error is set', () => {
+    const onConfirm = vi.fn()
+    render(
+      <SubmitReviewModal
+        open
+        summary={FULL_SUMMARY}
+        pendingCount={0}
+        onConfirm={onConfirm}
+        onCancel={() => {}}
+        error="We couldn't submit your review. Please refresh the page and try again."
+      />,
+    )
+
+    const alert = screen.getByTestId('submit-review-modal-error')
+    expect(alert).toHaveTextContent(/couldn.t submit/i)
+    // Confirm stays enabled so the reviewer can retry.
+    const confirm = screen.getByTestId('submit-review-modal-confirm')
+    expect(confirm).not.toBeDisabled()
+    fireEvent.click(confirm)
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows no error block when error is absent', () => {
+    render(
+      <SubmitReviewModal
+        open
+        summary={FULL_SUMMARY}
+        pendingCount={0}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+    expect(
+      screen.queryByTestId('submit-review-modal-error'),
+    ).not.toBeInTheDocument()
+  })
 })

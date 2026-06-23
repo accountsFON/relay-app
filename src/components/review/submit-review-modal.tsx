@@ -11,6 +11,9 @@ export type SubmitReviewModalProps = {
   onConfirm: () => void
   onCancel: () => void
   submitting?: boolean
+  /** When set, the submit attempt failed; shown inline so the modal is never
+   *  a silent dead end. The modal stays open so the reviewer can retry. */
+  error?: string | null
 }
 
 /**
@@ -31,6 +34,7 @@ export function SubmitReviewModal({
   onConfirm,
   onCancel,
   submitting,
+  error,
 }: SubmitReviewModalProps) {
   const confirmRef = useRef<HTMLButtonElement | null>(null)
 
@@ -90,6 +94,16 @@ export function SubmitReviewModal({
             to your team. Confirm?
           </p>
         )}
+
+        {error ? (
+          <p
+            data-testid="submit-review-modal-error"
+            role="alert"
+            className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {error}
+          </p>
+        ) : null}
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button

@@ -2,20 +2,16 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { hashToken, verifyToken } from '@/lib/magic-link'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
+import { PUBLIC_ROUTE_PATTERNS, REVIEW_ROUTE_PATTERNS } from '@/lib/route-matchers'
 
 // Node.js runtime so middleware can use node:crypto (magic-link HMAC) and
 // Prisma (revocation lookup). Paired with experimental.nodeMiddleware in
 // next.config.ts. Without this, Edge runtime rejects the node:crypto import.
 export const runtime = 'nodejs'
 
-const isPublicRoute = createRouteMatcher([
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/approve/(.*)',
-  '/api/health',
-])
+const isPublicRoute = createRouteMatcher([...PUBLIC_ROUTE_PATTERNS])
 
-const isReviewRoute = createRouteMatcher(['/review/(.*)'])
+const isReviewRoute = createRouteMatcher([...REVIEW_ROUTE_PATTERNS])
 
 /** Header bridge from middleware → /review/[token] route handler.
  *  Lets the page skip a duplicate verifyToken + DB lookup. */

@@ -4,6 +4,7 @@ import {
   ReviewSessionShell,
   type ReviewSessionShellPost,
 } from '@/app/review/[token]/review-session-shell'
+import { submitSessionAction } from '@/server/actions/reviewSessions'
 import type { ReviewItemHydrated } from '@/types/review-session'
 
 // Stub Next router. The shell only uses `router.refresh()` in failure paths;
@@ -12,8 +13,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }))
 
-// submitSessionAction is unused in the caption-edit flow but the shell
-// imports it at module scope, so stub to avoid pulling the server bundle.
+// submitSessionAction is stubbed so tests can drive its resolve/reject.
 vi.mock('@/server/actions/reviewSessions', () => ({
   submitSessionAction: vi.fn(),
 }))
@@ -376,6 +376,87 @@ describe('ReviewSessionShell -- sticky condensed bar', () => {
       ioCallback([{ isIntersecting: true }])
     })
     expect(screen.queryByTestId('review-sticky-bar')).not.toBeInTheDocument()
+  })
+})
+
+describe('ReviewSessionShell -- submit error surfacing', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response)),
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('shows an error and keeps the modal open when submit throws', async () => {
+    vi.mocked(submitSessionAction).mockRejectedValueOnce(
+      new Error('No active session to submit'),
+    )
+    render(<ReviewSessionShell {...BASE_PROPS} />)
+
+    fireEvent.click(screen.getByTestId('submit-review-bar-button'))
+    expect(screen.getByTestId('submit-review-modal')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-review-modal-confirm'))
+    })
+
+    // Error is visible to the reviewer and the modal stays open to retry.
+    expect(
+      await screen.findByTestId('submit-review-modal-error'),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('submit-review-modal')).toBeInTheDocument()
+  })
+
+  it('closes the modal to the thanks screen on a successful submit', async () => {
+    vi.mocked(submitSessionAction).mockResolvedValueOnce({
+      ok: true,
+      summary: {
+        approved: 2,
+        changesRequested: 0,
+        captionEdited: 0,
+        totalPosts: 2,
+      },
+    } as Awaited<ReturnType<typeof submitSessionAction>>)
+    render(<ReviewSessionShell {...BASE_PROPS} />)
+
+    fireEvent.click(screen.getByTestId('submit-review-bar-button'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-review-modal-confirm'))
+    })
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('submit-review-modal')).not.toBeInTheDocument(),
+    )
+  })
+})
+
+describe('ReviewSessionShell -- draft save error surfacing', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: false, status: 404 } as Response)),
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('shows a save-error alert when a decision PATCH fails (e.g. 404)', async () => {
+    render(<ReviewSessionShell {...BASE_PROPS} />)
+
+    const [approve] = screen.getAllByRole('button', {
+      name: /approve this post/i,
+    })
+    await act(async () => {
+      fireEvent.click(approve)
+    })
+
+    expect(await screen.findByTestId('review-save-error')).toBeInTheDocument()
   })
 })
 
