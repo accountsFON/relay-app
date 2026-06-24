@@ -24,8 +24,10 @@ import type { DiffSegment } from '@/lib/text-diff'
 
 export type FixWithAIButtonProps = {
   postId: string
-  threadId: string
-  pinKind: 'post' | 'image' | 'caption'
+  /** Omit for a per-post fix (aggregates all the post's feedback). */
+  threadId?: string
+  /** Pin kind when triggered from a pin; omit for per-post. */
+  pinKind?: 'post' | 'image' | 'caption'
   mode: 'internal' | 'review'
   onAccepted?: () => void
   /**
@@ -34,6 +36,8 @@ export type FixWithAIButtonProps = {
    * a header reference. When omitted, the modal renders the diff alone.
    */
   originalCaption?: string
+  /** Button label. Defaults to "Fix with AI". */
+  label?: string
 }
 
 type Proposal = {
@@ -49,6 +53,7 @@ export function FixWithAIButton({
   mode,
   onAccepted,
   originalCaption,
+  label = 'Fix with AI',
 }: FixWithAIButtonProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +71,7 @@ export function FixWithAIButton({
       const res = await fetch(`/api/posts/${postId}/fix-with-ai`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ threadId }),
+        body: JSON.stringify(threadId ? { threadId } : {}),
       })
       if (!res.ok) {
         const text = await res.text().catch(() => '')
@@ -101,7 +106,7 @@ export function FixWithAIButton({
         onClick={handleClick}
         disabled={loading}
       >
-        {loading ? 'Thinking...' : 'Fix with AI'}
+        {loading ? 'Thinking...' : label}
       </Button>
       {error ? (
         <p

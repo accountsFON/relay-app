@@ -24,7 +24,8 @@ import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
 export type DiffModalProps = {
   postId: string
-  threadId: string
+  /** Omit for a per-post accept. */
+  threadId?: string
   /** Original caption, only used to recompute the diff after AM edits. */
   originalCaption?: string
   proposedCaption: string
@@ -87,10 +88,11 @@ export function DiffModal({
       const res = await fetch(`/api/posts/${postId}/fix-with-ai/accept`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          threadId,
-          proposedCaption: editedCaption,
-        }),
+        body: JSON.stringify(
+          threadId
+            ? { threadId, proposedCaption: editedCaption }
+            : { proposedCaption: editedCaption },
+        ),
       })
       if (!res.ok) {
         const text = await res.text().catch(() => '')
