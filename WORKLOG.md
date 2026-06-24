@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Hide the cost breakdown from AMs and designers** (PR #249)
+  The run cost breakdown on the batch detail page rendered for everyone, with no permission
+  check — so account managers and designers saw per-run spend (token counts, API + infra dollar
+  cost). Gated the render on `can(ctx, 'cost.viewAll')` and flipped the `account_manager` system
+  default for `cost.viewAll` from true to false (designer + client were already false). Net:
+  cost breakdown shows for **admins and the platform owner only**; AMs, designers, and clients no
+  longer see it. `cost.viewAll` has no other consumer in the app, so the default flip only affects
+  this section. No schema change (Trigger.dev deploy skipped). 1810 unit tests.
+
 - [x] **2026-06-24 — Per-post "Fix with AI" in the AM client feedback view (item 32)** (PR #248, `4828a38`)
   Wired a working per-post "Fix copy with AI" into the AM "View client feedback" rail. The feature
   was already fully built (real Claude call, diff modal, accept→applies caption) but only mounted in

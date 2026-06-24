@@ -220,6 +220,8 @@ import {
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
+import { findRunForBatch } from '@/server/repositories/contentRuns'
+import { can } from '@/server/auth/permissions'
 import { db } from '@/db/client'
 
 // ---------- fixtures ----------
@@ -321,6 +323,68 @@ describe('BatchDetailPage', () => {
     vi.mocked(db.user.findUnique).mockResolvedValue(null as never)
     vi.mocked(db.user.findMany).mockResolvedValue([] as never)
     vi.mocked(db.client.findUnique).mockResolvedValue(null as never)
+  })
+
+  // ---- Cost breakdown role gating ----
+
+  describe('Cost breakdown visibility by role', () => {
+    const runWithBreakdown = {
+      id: 'run_1',
+      status: 'complete',
+      tokenUsage: {
+        breakdown: { total: 1.23, credits: 5 },
+        pipelineDurationSeconds: 12,
+      },
+    }
+
+    // The page gates the cost breakdown on can(ctx, 'cost.viewAll'). `can` is
+    // module-mocked to false in this file, so drive it from the ctx the way the
+    // real matrix does (admin or platform owner only). The real per-role matrix
+    // is covered in tests/server/auth/permissions.test.ts.
+    beforeEach(() => {
+      vi.mocked(findRunForBatch).mockResolvedValue(runWithBreakdown as never)
+      vi.mocked(can).mockImplementation(
+        (ctx: { role?: string; platformOwner?: boolean }, key: string) =>
+          key === 'cost.viewAll'
+            ? ctx.role === 'admin' || ctx.platformOwner === true
+            : false,
+      )
+    })
+
+    it('renders for admin', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'admin' })
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('cost-breakdown-stub')).not.toBeNull()
+    })
+
+    it('renders for platform owner regardless of role', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'account_manager',
+        platformOwner: true,
+      })
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('cost-breakdown-stub')).not.toBeNull()
+    })
+
+    it('is hidden for account managers', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'account_manager',
+      })
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('cost-breakdown-stub')).toBeNull()
+    })
+
+    it('is hidden for designers', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'designer' })
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('cost-breakdown-stub')).toBeNull()
+    })
   })
 
   // ---- ReviewSessionListRow CTA label ----

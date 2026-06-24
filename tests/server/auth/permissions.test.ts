@@ -48,6 +48,14 @@ describe('can() — system defaults', () => {
     expect(can({ role: 'client' }, 'relay.forceStep')).toBe(false)
   })
 
+  it('cost.viewAll is admin + platform owner only (AM, designer, client denied)', () => {
+    expect(can({ role: 'admin' }, 'cost.viewAll')).toBe(true)
+    expect(can({ role: 'account_manager' }, 'cost.viewAll')).toBe(false)
+    expect(can({ role: 'designer' }, 'cost.viewAll')).toBe(false)
+    expect(can({ role: 'client' }, 'cost.viewAll')).toBe(false)
+    expect(can({ role: 'account_manager', platformOwner: true }, 'cost.viewAll')).toBe(true)
+  })
+
   it('relay.completeOnboarding is allowed for admin and account_manager (AM-held step)', () => {
     expect(can({ role: 'admin' }, 'relay.completeOnboarding')).toBe(true)
     expect(can({ role: 'account_manager' }, 'relay.completeOnboarding')).toBe(true)

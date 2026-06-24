@@ -95,7 +95,7 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
     'run.rerun': true,
     'designerNotes.edit': true,
     'csv.export': true,
-    'cost.viewAll': true,
+    'cost.viewAll': false,
     'admin.portal': false,
     'team.manage': false,
     'team.editPermissions': false,
