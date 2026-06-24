@@ -304,6 +304,9 @@ export async function proposeFixForPost(
     select: { decision: true, suggestedCaption: true },
   })
 
+  // Skip commentless threads: an empty pin carries no feedback to rewrite
+  // against. The review UI requires at least one comment before a pin saves,
+  // so this filter is a defensive guard, not the common path.
   const pins = threads
     .filter((t) => t.comments.length > 0)
     .map((t) => ({
@@ -351,6 +354,12 @@ export async function acceptFixForPost(
 
   const oldCaption = post.caption
 
+  // snapshotPostVersion swallows its own errors and returns null on failure.
+  // We check the result INSIDE the transaction and throw when it's null so the
+  // tx.post.update rolls back — committing a caption change with no matching
+  // version row would silently corrupt the post's history (see postVersions.ts
+  // contract). Throwing here guarantees the two writes commit together or not
+  // at all, so the returned postVersionId is always a real id.
   const version = await db.$transaction(async (tx) => {
     const v = await snapshotPostVersion(
       {
@@ -365,10 +374,14 @@ export async function acceptFixForPost(
       },
       tx,
     )
+    if (!v) throw new Error(`Failed to snapshot PostVersion for post ${postId}`)
     await tx.post.update({ where: { id: postId }, data: { caption: proposedCaption } })
     return v
   })
 
+  // No threadId in the payload (unlike per-pin acceptFix): a per-post fix
+  // aggregates every thread on the post, so there is no single originating
+  // thread to attribute.
   await recordActivity({
     clientId: post.clientId,
     postId,
@@ -378,9 +391,9 @@ export async function acceptFixForPost(
       postId,
       oldCaption,
       newCaption: proposedCaption,
-      postVersionId: version?.id ?? null,
+      postVersionId: version.id,
     },
   })
 
-  return { postVersionId: version?.id ?? '' }
+  return { postVersionId: version.id }
 }

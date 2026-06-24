@@ -86,6 +86,10 @@ const { state, dbMock } = vi.hoisted(() => {
     id: string
     postId: string
     status: 'open' | 'resolved'
+    captionFrom?: number | null
+    captionTo?: number | null
+    imageX?: number | null
+    imageY?: number | null
     comments: Array<{
       body: string
       reviewerName: string | null
@@ -375,8 +379,8 @@ function seedThreadsForPerPost() {
       },
     ],
   }
-  state.threads.set(captionThread.id, captionThread as never)
-  state.threads.set(postThread.id, postThread as never)
+  state.threads.set(captionThread.id, captionThread)
+  state.threads.set(postThread.id, postThread)
   return [captionThread, postThread]
 }
 
