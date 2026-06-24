@@ -20,6 +20,10 @@ export type FeedbackPostVM = {
   reviewItemId: string | null
   /** True when the item is handled (accepted/addressed) and no open pins remain. */
   addressed: boolean
+  /** True when the AM accepted the client's caption suggestion
+   *  (ReviewItem.acceptedAsPostVersionId is set). Drives the greyed success
+   *  state on the caption-suggestion block. */
+  captionAccepted: boolean
   /** All client threads (pins/comments) on this post, open + resolved. */
   threads: ReadonlyArray<HydratedThread>
 }

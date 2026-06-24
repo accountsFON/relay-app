@@ -52,6 +52,7 @@ function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     suggestedCaption: null,
     reviewItemId: 'ri-1',
     addressed: false,
+    captionAccepted: false,
     threads: [makeThread('t1')],
     ...over,
   }
