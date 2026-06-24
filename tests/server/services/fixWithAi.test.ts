@@ -584,4 +584,23 @@ describe('acceptFixForPost', () => {
     expect(resolveThread).not.toHaveBeenCalled()
     expect(res.postVersionId).toBeTypeOf('string')
   })
+
+  it('rolls back (throws, no caption update) when the version snapshot fails', async () => {
+    seedPostForPerPost()
+    const originalCaption = state.posts.get('post-1')!.caption
+
+    const { acceptFixForPost } = await import('@/server/services/fixWithAi')
+
+    mockSnapshotPostVersion.mockResolvedValueOnce(null)
+
+    await expect(
+      acceptFixForPost({ postId: 'post-1', proposedCaption: 'Should not persist', acceptedBy: 'user-am' }),
+    ).rejects.toThrow()
+
+    // The $transaction mock passes localDb as tx, so tx.post.update IS dbMock.post.update.
+    // The throw from the null-snapshot guard fires before that call, so the spy must show
+    // zero calls, and the seeded post's caption must still be the original value.
+    expect(dbMock.post.update).not.toHaveBeenCalled()
+    expect(state.posts.get('post-1')!.caption).toBe(originalCaption)
+  })
 })

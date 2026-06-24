@@ -298,6 +298,9 @@ export async function proposeFixForPost(
     },
   })
 
+  // Latest session that recorded a verdict on this post. If a newer round left
+  // only pin comments (no decision), the verdict phrasing reflects the prior
+  // round; the live pins still carry the current feedback. Acceptable for v1.
   const reviewItem = await db.reviewItem.findFirst({
     where: { postId, decision: { in: [...REVIEW_VERDICTS] } },
     orderBy: { reviewSession: { startedAt: 'desc' } },
