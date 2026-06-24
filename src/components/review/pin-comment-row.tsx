@@ -70,6 +70,7 @@ export function PinCommentRow({
         type="button"
         data-testid={`pin-comment-row-${thread.id}`}
         data-expanded={String(expanded)}
+        aria-expanded={expanded}
         onClick={onToggle}
         className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left hover:bg-muted/50"
       >

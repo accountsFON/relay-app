@@ -102,11 +102,11 @@ function FeedbackRow({
         collapsed && 'opacity-60',
       )}
     >
-      {/* Post header — always visible */}
-      <button
-        type="button"
+      {/* Post header — non-interactive label (the pin rows below are the
+          clickable elements). */}
+      <div
         data-testid={`rail-row-${post.postId}`}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/30"
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
       >
         <span className="min-w-[1.5rem] text-[12px] font-semibold text-muted-foreground">
           #{post.postNumber}
@@ -122,7 +122,7 @@ function FeedbackRow({
         <span className="truncate text-[12px] text-muted-foreground">
           {rowSummary(post)}
         </span>
-      </button>
+      </div>
 
       {/* Expanded body — omitted for approved-clean rows */}
       {!collapsed && (
