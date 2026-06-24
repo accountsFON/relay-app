@@ -62,16 +62,23 @@ vi.mock('@/lib/media', () => ({
   attachMediaToPost: vi.fn(),
 }))
 
+// --- mock promotePostFeedbackToThread (Task 3) ---
+vi.mock('@/server/lib/promotePostFeedback', () => ({
+  promotePostFeedbackToThread: vi.fn(),
+}))
+
 import { getOrgContext } from '@/server/middleware/auth'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { requireCan } from '@/server/middleware/permissions'
 import { createThread, addComment } from '@/server/repositories/threads'
 import { db } from '@/db/client'
 import { attachMediaToPost } from '@/lib/media'
+import { promotePostFeedbackToThread } from '@/server/lib/promotePostFeedback'
 import {
   createThreadAction,
   addCommentAction,
   useCommentImageAsPostMediaAction,
+  replyToPostFeedbackAction,
 } from '@/server/actions/threads'
 
 // A valid comment-image blob URL (the stub hostname matches the guard)
@@ -455,5 +462,44 @@ describe('useCommentImageAsPostMediaAction', () => {
     await useCommentImageAsPostMediaAction({ postId: 'post_1', commentId: 'comment_1' })
 
     expect(resolveThread).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// replyToPostFeedbackAction
+// ---------------------------------------------------------------------------
+
+describe('replyToPostFeedbackAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(promotePostFeedbackToThread).mockResolvedValue({ threadId: 't1' })
+    vi.mocked(db.postThread.findUnique).mockResolvedValue(null as never)
+  })
+
+  it('forwards to the service with the authenticated AM user id', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    await replyToPostFeedbackAction({ reviewItemId: 'ri1', body: 'Hello' })
+    expect(promotePostFeedbackToThread).toHaveBeenCalledWith({
+      reviewItemId: 'ri1',
+      amUserId: 'u_am',
+      body: 'Hello',
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+    })
+  })
+
+  it('throws when there is no Clerk session (AM-only)', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue(null as never)
+    await expect(replyToPostFeedbackAction({ reviewItemId: 'ri1', body: 'Hi' })).rejects.toThrow()
+    expect(promotePostFeedbackToThread).not.toHaveBeenCalled()
+  })
+
+  it('throws on empty body with no image and does not call the service', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    await expect(replyToPostFeedbackAction({ reviewItemId: 'ri1', body: '   ' })).rejects.toThrow(
+      'Comment requires text or an image',
+    )
+    expect(promotePostFeedbackToThread).not.toHaveBeenCalled()
   })
 })
