@@ -182,7 +182,7 @@ function RelayTrackScroll({
       />
       <ol
         data-relay-track
-        className="flex items-start gap-0 overflow-x-auto px-2 py-6 scroll-smooth"
+        className="flex items-start gap-x-1.5 overflow-x-auto px-2 py-6 scroll-smooth"
       >
         {steps.map((step, i) => {
           const isCurrent = i === currentIndex
@@ -193,7 +193,7 @@ function RelayTrackScroll({
               key={step}
               data-testid="relay-track-node"
               data-current={isCurrent || undefined}
-              className="flex min-w-[84px] flex-col items-center first:pl-3 last:pr-3"
+              className="flex w-[96px] flex-col items-center first:pl-3 last:pr-3"
             >
               <div className="relative flex w-full items-center">
                 {/* line segment to the right of this circle (skipped on last) */}
@@ -201,7 +201,7 @@ function RelayTrackScroll({
                   <div
                     aria-hidden
                     className={cn(
-                      'absolute left-1/2 top-1/2 h-px w-full -translate-y-1/2',
+                      'absolute left-1/2 top-1/2 h-px w-[calc(100%+0.375rem)] -translate-y-1/2',
                       i < currentIndex
                         ? 'bg-neutral-900'
                         : 'bg-neutral-50'
@@ -294,12 +294,12 @@ function RelayNodeLabel({
 }) {
   return (
     <div className="mt-3 w-full text-center">
-      <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="truncate px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {ROLE_LABEL[STEP_ROLE[step]]}
       </p>
       <p
         className={cn(
-          'mt-0.5 truncate text-[12px] font-medium leading-tight',
+          'mt-0.5 truncate px-1 text-[12px] font-medium leading-tight',
           isCurrent
             ? 'text-foreground'
             : isPast
