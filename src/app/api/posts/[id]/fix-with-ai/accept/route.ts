@@ -4,6 +4,7 @@ import { findPostById } from '@/server/repositories/posts'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import {
   acceptFix,
+  acceptFixForPost,
   FixWithAiPostNotFoundError,
   FixWithAiThreadMismatchError,
 } from '@/server/services/fixWithAi'
@@ -11,13 +12,12 @@ import {
 /**
  * POST /api/posts/[id]/fix-with-ai/accept
  *
- * Body: { threadId: string, proposedCaption: string }
+ * Body: { threadId?: string, proposedCaption: string }
+ *   - with threadId  -> acceptFix (resolves that thread)
+ *   - without        -> acceptFixForPost (no thread resolution)
  *
- * Auth: AM only (Clerk + client.edit). Writes a new PostVersion, updates
- * Post.caption, auto-resolves the originating thread, and emits a
- * post_caption_ai_fixed ActivityEvent.
- *
- * Returns: { postVersionId: string }
+ * Auth: AM only. Writes a new PostVersion + updates Post.caption + emits
+ * post_caption_ai_fixed.
  */
 export async function POST(
   req: NextRequest,
@@ -35,9 +35,9 @@ export async function POST(
   const threadId = typeof body.threadId === 'string' ? body.threadId : null
   const proposedCaption =
     typeof body.proposedCaption === 'string' ? body.proposedCaption : null
-  if (!threadId || proposedCaption === null) {
+  if (proposedCaption === null) {
     return NextResponse.json(
-      { error: 'threadId and proposedCaption are required' },
+      { error: 'proposedCaption is required' },
       { status: 400 },
     )
   }
@@ -49,12 +49,9 @@ export async function POST(
   }
 
   try {
-    const result = await acceptFix({
-      postId,
-      threadId,
-      proposedCaption,
-      acceptedBy: ctx.userDbId,
-    })
+    const result = threadId
+      ? await acceptFix({ postId, threadId, proposedCaption, acceptedBy: ctx.userDbId })
+      : await acceptFixForPost({ postId, proposedCaption, acceptedBy: ctx.userDbId })
     revalidatePath('/', 'layout')
     return NextResponse.json(result)
   } catch (err) {
@@ -68,9 +65,6 @@ export async function POST(
       )
     }
     console.error('[fix-with-ai/accept] acceptFix failed', err)
-    return NextResponse.json(
-      { error: 'Accept fix failed' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'Accept fix failed' }, { status: 500 })
   }
 }
