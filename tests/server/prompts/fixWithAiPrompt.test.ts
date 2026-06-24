@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFixWithAiPrompt } from '@/server/prompts/fixWithAiPrompt'
+import { buildFixWithAiPrompt, buildFixWithAiPromptForPost } from '@/server/prompts/fixWithAiPrompt'
 
 describe('buildFixWithAiPrompt', () => {
   it('renders all three brand context fields when present', () => {
@@ -81,5 +81,48 @@ describe('buildFixWithAiPrompt', () => {
     expect(user).toContain('Things to always do: (none provided)')
     expect(user).toContain('Things to never do: (none provided)')
     expect(user).toContain('(no comments)')
+  })
+})
+
+describe('buildFixWithAiPromptForPost', () => {
+  const base = {
+    clientName: 'Acme',
+    brandVoice: 'Punchy',
+    dos: 'Be bold',
+    donts: 'No jargon',
+    currentCaption: 'Old caption here',
+  }
+
+  it('renders the verdict, the client suggested caption, and every pin comment', () => {
+    const { system, user } = buildFixWithAiPromptForPost({
+      ...base,
+      verdict: 'changes_requested',
+      suggestedCaption: 'A caption the client wrote',
+      pins: [
+        { location: 'caption', comments: [{ author: 'Jane', body: 'too long' }] },
+        { location: 'post', comments: [{ author: 'Jane', body: 'add a CTA' }, { author: 'AM', body: 'agreed' }] },
+      ],
+    })
+
+    expect(system).toContain('senior social media copy editor')
+    expect(user).toContain('Old caption here')
+    expect(user.toLowerCase()).toContain('changes')
+    expect(user).toContain('A caption the client wrote')
+    expect(user).toContain('too long')
+    expect(user).toContain('add a CTA')
+    expect(user).toContain('agreed')
+    expect(user.toLowerCase()).toContain('caption')
+    expect(user.toLowerCase()).toContain('post')
+  })
+
+  it('omits the suggested-caption block when none was provided and handles no pins', () => {
+    const { user } = buildFixWithAiPromptForPost({
+      ...base,
+      verdict: 'none',
+      suggestedCaption: null,
+      pins: [],
+    })
+    expect(user).not.toContain('suggested caption')
+    expect(user).toContain('(no pin comments)')
   })
 })
