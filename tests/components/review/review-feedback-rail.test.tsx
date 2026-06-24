@@ -74,6 +74,7 @@ describe('ReviewFeedbackRail — row rendering', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -95,6 +96,7 @@ describe('ReviewFeedbackRail — row rendering', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -115,6 +117,7 @@ describe('ReviewFeedbackRail — row rendering', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -137,6 +140,7 @@ describe('ReviewFeedbackRail — row rendering', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -156,6 +160,7 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -173,6 +178,7 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         selectedPostId={null}
         selectedThreadId="t1"
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -191,11 +197,40 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={onToggleThread}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
     fireEvent.click(screen.getByTestId('pin-comment-row-t1'))
     expect(onToggleThread).toHaveBeenCalledWith('t1')
+  })
+
+  it('clicking a post header calls onSelectPost (anchors the canvas, incl. copy-change posts with no pins)', () => {
+    const onSelectPost = vi.fn()
+    const posts = [
+      vm({
+        postId: 'post-ce',
+        verdict: 'caption_edited',
+        caption: 'old text',
+        suggestedCaption: 'new text',
+        reviewItemId: 'item-ce',
+        threads: [],
+      }),
+    ]
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={false}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        onSelectPost={onSelectPost}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByTestId('rail-row-post-ce'))
+    expect(onSelectPost).toHaveBeenCalledWith('post-ce')
   })
 
   it('a second pin row is collapsed while first is expanded', () => {
@@ -213,6 +248,7 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         selectedPostId={null}
         selectedThreadId="t1"
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -232,6 +268,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -248,6 +285,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -270,6 +308,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -293,6 +332,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -310,6 +350,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         selectedPostId={null}
         selectedThreadId="t1"
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -335,6 +376,7 @@ describe('ReviewFeedbackRail — caption_edited diff view', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -360,6 +402,7 @@ describe('ReviewFeedbackRail — caption_edited diff view', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -378,6 +421,7 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )
@@ -394,6 +438,7 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
       />,
     )

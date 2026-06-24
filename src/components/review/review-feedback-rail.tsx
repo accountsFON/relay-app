@@ -19,6 +19,9 @@ export type ReviewFeedbackRailProps = {
   selectedThreadId: string | null
   selectedPostId: string | null
   onToggleThread: (threadId: string) => void
+  /** Anchor the center canvas to a post (clicking the post header). Used so
+   *  copy-change posts (and any post) scroll the canvas the way pins do. */
+  onSelectPost: (postId: string) => void
   registerThreadRef: (threadId: string, el: HTMLElement | null) => void
 }
 
@@ -71,6 +74,7 @@ type FeedbackRowProps = {
   isSelected: boolean
   selectedThreadId: string | null
   onToggleThread: (threadId: string) => void
+  onSelectPost: (postId: string) => void
   registerThreadRef: (threadId: string, el: HTMLElement | null) => void
 }
 
@@ -82,6 +86,7 @@ function FeedbackRow({
   isSelected,
   selectedThreadId,
   onToggleThread,
+  onSelectPost,
   registerThreadRef,
 }: FeedbackRowProps) {
   const [pending, startTransition] = useTransition()
@@ -104,11 +109,14 @@ function FeedbackRow({
         collapsed && 'opacity-60',
       )}
     >
-      {/* Post header — non-interactive label (the pin rows below are the
-          clickable elements). */}
-      <div
+      {/* Post header — clicking it anchors the center canvas to this post
+          (so copy-change posts with no pins still scroll the canvas, like
+          pin rows do). */}
+      <button
+        type="button"
         data-testid={`rail-row-${post.postId}`}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+        onClick={() => onSelectPost(post.postId)}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/30"
       >
         <span className="min-w-[1.5rem] text-[12px] font-semibold text-muted-foreground">
           #{post.postNumber}
@@ -124,7 +132,7 @@ function FeedbackRow({
         <span className="truncate text-[12px] text-muted-foreground">
           {rowSummary(post)}
         </span>
-      </div>
+      </button>
 
       {/* Expanded body — omitted for approved-clean rows */}
       {!collapsed && (
@@ -233,6 +241,7 @@ export function ReviewFeedbackRail({
   selectedPostId,
   selectedThreadId,
   onToggleThread,
+  onSelectPost,
   registerThreadRef,
 }: ReviewFeedbackRailProps) {
   return (
@@ -250,6 +259,7 @@ export function ReviewFeedbackRail({
           isSelected={post.postId === selectedPostId}
           selectedThreadId={selectedThreadId}
           onToggleThread={onToggleThread}
+          onSelectPost={onSelectPost}
           registerThreadRef={registerThreadRef}
         />
       ))}
