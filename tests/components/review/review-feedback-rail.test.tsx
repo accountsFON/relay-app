@@ -4,6 +4,8 @@ import { ReviewFeedbackRail } from '@/components/review/review-feedback-rail'
 import type { FeedbackPostVM, FeedbackActions } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 import type { HydratedThread } from '@/server/repositories/threads'
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -526,5 +528,47 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toHaveTextContent('Move back')
+  })
+})
+
+describe('ReviewFeedbackRail — Fix with AI (per post)', () => {
+  function renderRail(post: FeedbackPostVM, isDesigner = false) {
+    render(
+      <ReviewFeedbackRail
+        posts={[post]}
+        actions={noopActions}
+        isDesigner={isDesigner}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+  }
+
+  it('shows the Fix with AI button for a changes_requested post', () => {
+    renderRail(vm({ postId: 'post-1', verdict: 'changes_requested', threads: [] }))
+    expect(screen.getByTestId('fix-with-ai-button')).toBeInTheDocument()
+  })
+
+  it('shows it for a caption_edited post', () => {
+    renderRail(vm({ postId: 'post-1', verdict: 'caption_edited', suggestedCaption: 'x', reviewItemId: 'ri', threads: [] }))
+    expect(screen.getByTestId('fix-with-ai-button')).toBeInTheDocument()
+  })
+
+  it('hides it for an approved-clean post with no threads', () => {
+    renderRail(vm({ postId: 'post-1', verdict: 'approved', threads: [] }))
+    expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
+  })
+
+  it('hides it in the designer lane', () => {
+    renderRail(vm({ postId: 'post-1', verdict: 'changes_requested', threads: [] }), true)
+    expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
+  })
+
+  it('shows it for a verdict=none post that has an open thread', () => {
+    renderRail(vm({ postId: 'post-1', verdict: 'none', threads: [makeThread('t1')] }))
+    expect(screen.getByTestId('fix-with-ai-button')).toBeInTheDocument()
   })
 })
