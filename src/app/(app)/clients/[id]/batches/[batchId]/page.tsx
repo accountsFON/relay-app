@@ -160,6 +160,9 @@ export default async function BatchDetailPage({
     listSessionsForBatch(batchId),
   ])
   const canManageTeam = can(ctx, 'admin.portal')
+  // Cost breakdown is spend-sensitive: admins + platform owner only. AMs,
+  // designers, and clients do not see it.
+  const canViewCost = can(ctx, 'cost.viewAll')
   const mentionTargets = buildMentionRoster(memberships)
 
   // Mirror /clients/[id]/page.tsx: role-filtered option lists plus enriched
@@ -484,7 +487,7 @@ export default async function BatchDetailPage({
         </div>
       )}
 
-      {run && breakdown && (
+      {run && breakdown && canViewCost && (
         <div className="mt-8">
           <CostBreakdown
             breakdown={breakdown}
