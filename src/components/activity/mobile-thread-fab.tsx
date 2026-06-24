@@ -45,7 +45,7 @@ export function MobileThreadFab({
         data-slot="mobile-thread-fab-trigger"
         aria-label="Open client thread"
         className={cn(
-          'fixed bottom-4 right-4 z-40',
+          'fixed bottom-[26px] right-[26px] z-40',
           !showOnDesktop && 'lg:hidden',
           'flex h-12 w-12 items-center justify-center rounded-full',
           'bg-foreground text-background shadow-lg',
@@ -77,8 +77,15 @@ export function MobileThreadFab({
             // the composer stays visible. pb-[safe-area] clears the phone home
             // indicator.
             'fixed inset-x-0 bottom-0 z-50 flex h-[85dvh] flex-col overflow-hidden rounded-t-2xl border border-border bg-white pb-[env(safe-area-inset-bottom)] text-popover-foreground shadow-lg outline-none',
+            // Desktop (lg+): a right-side drawer (full height, pinned to the
+            // right edge) instead of the mobile bottom sheet.
+            'lg:inset-x-auto lg:inset-y-0 lg:left-auto lg:right-0 lg:h-dvh lg:w-[420px] lg:max-w-[92vw] lg:rounded-none lg:rounded-l-2xl lg:border-r-0 lg:pb-0',
+            // Animations: slide up from the bottom on mobile, in from the right
+            // on desktop (reset the Y translate at lg so it's a clean X slide).
             'data-open:animate-in data-open:slide-in-from-bottom-full',
             'data-closed:animate-out data-closed:slide-out-to-bottom-full',
+            'lg:data-open:slide-in-from-right-full lg:data-closed:slide-out-to-right-full',
+            'lg:data-open:[--tw-enter-translate-y:0px] lg:data-closed:[--tw-exit-translate-y:0px]',
           )}
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
