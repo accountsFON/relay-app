@@ -22,6 +22,21 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Per-post "Fix with AI" in the AM client feedback view (item 32)** (PR #248, `4828a38`)
+  Wired a working per-post "Fix copy with AI" into the AM "View client feedback" rail. The feature
+  was already fully built (real Claude call, diff modal, accept→applies caption) but only mounted in
+  the inline pin popover, which the AM markup view suppresses — so the button never appeared there.
+  New `proposeFixForPost` / `acceptFixForPost` aggregate a post's FULL feedback (overall verdict +
+  the client's own suggested caption + every pin/comment) into one rewrite, instead of one thread.
+  The two API routes + the button + the diff modal now take an optional `threadId` (present → per-pin,
+  unchanged; absent → per-post). The rail shows the button AM-only, only when there's copy feedback
+  (changes_requested / caption_edited / any open thread), refreshing on accept. Accept snapshots via
+  the shared `snapshotPostVersion` helper inside a now-truly-atomic transaction (throws if the version
+  snapshot fails, so the caption can't commit without a version row — a real bug the review caught),
+  records `post_caption_ai_fixed`, and does NOT auto-resolve pins. Model unchanged (claude-opus-4-7).
+  No schema change. 1804 unit tests. Follow-up: multi-round verdict phrasing can lag the newest round
+  (documented in a code comment).
+
 - [x] **2026-06-24 — Relay timeline: space out step labels so titles don't crowd** (PR #247, `92918da`)
   The relay detail page step timeline (`relay-track.tsx`) packed its columns with `gap-0` and let
   each column hug its label, so after the pipeline rework lengthened the step names ("Design
