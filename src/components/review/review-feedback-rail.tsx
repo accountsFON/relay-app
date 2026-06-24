@@ -153,7 +153,7 @@ function FeedbackRow({
                     onSelectPost(post.postId)
                   }
                 }}
-                className="cursor-pointer rounded-lg border border-border bg-muted/40 p-2.5 text-[13px] opacity-75"
+                className="cursor-pointer rounded-lg border border-border bg-muted/40 p-2.5 text-[13px] opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
               >
                 <p className="mb-1 flex items-center gap-1 font-medium text-emerald-700">
                   <span aria-hidden>✓</span> Caption accepted
@@ -179,7 +179,7 @@ function FeedbackRow({
                       onSelectPost(post.postId)
                     }
                   }}
-                  className="cursor-pointer rounded-md"
+                  className="cursor-pointer rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
                 >
                   <p
                     data-testid={`rail-copy-edited-label-${post.postId}`}

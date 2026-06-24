@@ -479,6 +479,18 @@ describe('ReviewFeedbackRail — caption-edited block (anchor + accepted state)'
     fireEvent.click(screen.getByTestId('rail-caption-accepted-post-1'))
     expect(onSelectPost).toHaveBeenCalledWith('post-1')
   })
+
+  it('pressing Enter on the Copy edited block anchors the canvas', () => {
+    const { onSelectPost } = renderRail(editedVm())
+    fireEvent.keyDown(screen.getByTestId('rail-copy-edited-anchor-post-1'), { key: 'Enter' })
+    expect(onSelectPost).toHaveBeenCalledWith('post-1')
+  })
+
+  it('pressing Space on the accepted success block anchors the canvas', () => {
+    const { onSelectPost } = renderRail(editedVm({ captionAccepted: true, caption: 'New caption' }))
+    fireEvent.keyDown(screen.getByTestId('rail-caption-accepted-post-1'), { key: ' ' })
+    expect(onSelectPost).toHaveBeenCalledWith('post-1')
+  })
 })
 
 describe('ReviewFeedbackRail — mark addressed toggle', () => {
