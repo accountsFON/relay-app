@@ -103,8 +103,8 @@ describe('ReviewFeedbackShell — zone rendering', () => {
   })
 })
 
-describe('ReviewFeedbackShell — canvas pin → rail scroll', () => {
-  it('clicking canvas-pin-t1 propagates selection so rail-thread-t1 is visible', () => {
+describe('ReviewFeedbackShell — canvas pin → rail expand', () => {
+  it('clicking canvas-pin-t1 expands the matching pin row in the rail', () => {
     render(
       <ReviewFeedbackShell
         posts={[vm()]}
@@ -117,20 +117,48 @@ describe('ReviewFeedbackShell — canvas pin → rail scroll', () => {
         isSuperseded={false}
       />,
     )
+
+    // Before click, pin row is collapsed
+    expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('false')
 
     // Click the non-image pin chip on the canvas
     const pinChip = screen.getByTestId('canvas-pin-t1')
     fireEvent.click(pinChip)
 
-    // After selection, the rail should show the thread body
-    expect(screen.getByTestId('rail-thread-t1')).toBeTruthy()
-    // scrollIntoView should have been called (rail scroll to the selected row)
+    // After click, pin row should be expanded
+    expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
+
+    // scrollIntoView should have been called (scroll to the thread ref)
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+  })
+
+  it('clicking a second canvas-pin collapses the first and expands the second', () => {
+    const thread2 = makeThread('t2')
+    render(
+      <ReviewFeedbackShell
+        posts={[vm({ threads: [makeThread('t1'), thread2] })]}
+        actions={noopActions}
+        role="am"
+        isDesigner={false}
+        canPostComment={true}
+        internalThread={<div data-testid="internal-thread-stub" />}
+        allAddressed={false}
+        isSuperseded={false}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('canvas-pin-t1'))
+    expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
+    expect(screen.getByTestId('pin-comment-row-t2').getAttribute('data-expanded')).toBe('false')
+
+    fireEvent.click(screen.getByTestId('canvas-pin-t2'))
+    expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('false')
+    expect(screen.getByTestId('pin-comment-row-t2').getAttribute('data-expanded')).toBe('true')
   })
 })
 
-describe('ReviewFeedbackShell — rail row → canvas scroll', () => {
-  it('clicking rail-row-p1 sets canvas-post-p1 data-selected="true"', () => {
+describe('ReviewFeedbackShell — toggle collapses an expanded pin row', () => {
+  it('clicking an expanded pin row header collapses it', () => {
     render(
       <ReviewFeedbackShell
         posts={[vm()]}
@@ -144,17 +172,51 @@ describe('ReviewFeedbackShell — rail row → canvas scroll', () => {
       />,
     )
 
-    // Before click, canvas post is not selected
+    // Expand via canvas pin
+    fireEvent.click(screen.getByTestId('canvas-pin-t1'))
+    expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
+
+    // Toggle off by clicking the pin row header
+    fireEvent.click(screen.getByTestId('pin-comment-row-t1'))
+    expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('false')
+  })
+})
+
+describe('ReviewFeedbackShell — canvas post selection', () => {
+  it('canvas-post-p1 has data-selected="false" initially', () => {
+    render(
+      <ReviewFeedbackShell
+        posts={[vm()]}
+        actions={noopActions}
+        role="am"
+        isDesigner={false}
+        canPostComment={true}
+        internalThread={<div data-testid="internal-thread-stub" />}
+        allAddressed={false}
+        isSuperseded={false}
+      />,
+    )
+
     const canvasPost = screen.getByTestId('canvas-post-p1')
     expect(canvasPost.getAttribute('data-selected')).toBe('false')
+  })
 
-    // Click the rail row
-    fireEvent.click(screen.getByTestId('rail-row-p1'))
+  it('clicking canvas-pin-t1 sets canvas-post-p1 data-selected="true"', () => {
+    render(
+      <ReviewFeedbackShell
+        posts={[vm()]}
+        actions={noopActions}
+        role="am"
+        isDesigner={false}
+        canPostComment={true}
+        internalThread={<div data-testid="internal-thread-stub" />}
+        allAddressed={false}
+        isSuperseded={false}
+      />,
+    )
 
-    // After click, canvas post should be selected
-    expect(canvasPost.getAttribute('data-selected')).toBe('true')
-    // scrollIntoView should have been called (canvas scroll to the selected post)
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('canvas-pin-t1'))
+    expect(screen.getByTestId('canvas-post-p1').getAttribute('data-selected')).toBe('true')
   })
 })
 

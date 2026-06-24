@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { cn } from '@/lib/utils'
-import { ThreadConversation } from '@/components/review/thread-conversation'
+import { PinCommentRow } from '@/components/review/pin-comment-row'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
   FeedbackPostVM,
@@ -14,10 +14,10 @@ export type ReviewFeedbackRailProps = {
   actions: FeedbackActions
   isDesigner: boolean
   uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
-  selectedPostId: string | null
   selectedThreadId: string | null
-  onSelectRow: (postId: string) => void
-  registerRef: (postId: string, el: HTMLElement | null) => void
+  selectedPostId: string | null
+  onToggleThread: (threadId: string) => void
+  registerThreadRef: (threadId: string, el: HTMLElement | null) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +58,7 @@ function rowSummary(post: FeedbackPostVM): string {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component: per-post row (keeps its own transition state for actions)
+// Sub-component: per-post row
 // ---------------------------------------------------------------------------
 
 type FeedbackRowProps = {
@@ -67,8 +67,9 @@ type FeedbackRowProps = {
   isDesigner: boolean
   uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   isSelected: boolean
-  onSelectRow: (postId: string) => void
-  registerRef: (postId: string, el: HTMLElement | null) => void
+  selectedThreadId: string | null
+  onToggleThread: (threadId: string) => void
+  registerThreadRef: (threadId: string, el: HTMLElement | null) => void
 }
 
 function FeedbackRow({
@@ -77,8 +78,9 @@ function FeedbackRow({
   isDesigner,
   uploadImage,
   isSelected,
-  onSelectRow,
-  registerRef,
+  selectedThreadId,
+  onToggleThread,
+  registerThreadRef,
 }: FeedbackRowProps) {
   const [pending, startTransition] = useTransition()
 
@@ -93,7 +95,6 @@ function FeedbackRow({
 
   return (
     <div
-      ref={(el) => registerRef(post.postId, el)}
       data-collapsed={collapsed ? 'true' : 'false'}
       className={cn(
         'border-b border-border transition-colors',
@@ -101,11 +102,10 @@ function FeedbackRow({
         collapsed && 'opacity-60',
       )}
     >
-      {/* Row header — always visible, clickable */}
+      {/* Post header — always visible */}
       <button
         type="button"
         data-testid={`rail-row-${post.postId}`}
-        onClick={() => onSelectRow(post.postId)}
         className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/30"
       >
         <span className="min-w-[1.5rem] text-[12px] font-semibold text-muted-foreground">
@@ -126,7 +126,7 @@ function FeedbackRow({
 
       {/* Expanded body — omitted for approved-clean rows */}
       {!collapsed && (
-        <div className="space-y-3 px-3 pb-3">
+        <div className="space-y-2 px-3 pb-3">
           {/* Caption suggestion area (AM-only actions) */}
           {showCaptionActions && post.suggestedCaption && (
             <div className="rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-[13px]">
@@ -163,25 +163,22 @@ function FeedbackRow({
             </div>
           )}
 
-          {/* Per-thread dialogue */}
-          {post.threads.map((thread: HydratedThread) => (
+          {/* Per-pin collapsible rows */}
+          {post.threads.map((thread: HydratedThread, i: number) => (
             <div
               key={thread.id}
               data-testid={`rail-thread-${thread.id}`}
-              className="rounded-lg border border-border bg-background p-2.5"
+              ref={(el) => registerThreadRef(thread.id, el)}
             >
-              <ThreadConversation
+              <PinCommentRow
                 thread={thread}
-                onComment={(threadId, body, image) => actions.comment(threadId, body, image)}
-                onResolve={
-                  isDesigner
-                    ? undefined
-                    : (threadId) => actions.resolve(threadId)
-                }
+                pinLabel={String(i + 1)}
+                expanded={selectedThreadId === thread.id}
+                onToggle={() => onToggleThread(thread.id)}
+                onComment={(tid, body, image) => actions.comment(tid, body, image)}
+                onResolve={isDesigner ? undefined : (tid) => actions.resolve(tid)}
                 onUseAsPostImage={
-                  isDesigner
-                    ? undefined
-                    : (commentId) => actions.useAsPostImage(post.postId, commentId)
+                  isDesigner ? undefined : (cid) => actions.useAsPostImage(post.postId, cid)
                 }
                 onUploadImage={uploadImage}
               />
@@ -224,9 +221,9 @@ export function ReviewFeedbackRail({
   isDesigner,
   uploadImage,
   selectedPostId,
-  selectedThreadId: _selectedThreadId,
-  onSelectRow,
-  registerRef,
+  selectedThreadId,
+  onToggleThread,
+  registerThreadRef,
 }: ReviewFeedbackRailProps) {
   return (
     <div
@@ -241,8 +238,9 @@ export function ReviewFeedbackRail({
           isDesigner={isDesigner}
           uploadImage={uploadImage}
           isSelected={post.postId === selectedPostId}
-          onSelectRow={onSelectRow}
-          registerRef={registerRef}
+          selectedThreadId={selectedThreadId}
+          onToggleThread={onToggleThread}
+          registerThreadRef={registerThreadRef}
         />
       ))}
     </div>

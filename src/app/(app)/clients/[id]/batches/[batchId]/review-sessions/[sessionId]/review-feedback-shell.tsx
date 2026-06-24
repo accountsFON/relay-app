@@ -38,22 +38,21 @@ export function ReviewFeedbackShell({
   const uploadImage = userDbId
     ? (file: File) => uploadCommentImage(file, { mode: 'internal', userDbId })
     : undefined
+
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
 
-  const railRefs = useRef<Record<string, HTMLElement | null>>({})
+  const threadRefs = useRef<Record<string, HTMLElement | null>>({})
   const canvasRefs = useRef<Record<string, HTMLElement | null>>({})
 
   function selectFromCanvasPin(postId: string, threadId: string) {
     setSelectedPostId(postId)
     setSelectedThreadId(threadId)
-    railRefs.current[postId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    threadRefs.current[threadId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
-  function selectFromRailRow(postId: string) {
-    setSelectedPostId(postId)
-    setSelectedThreadId(null)
-    canvasRefs.current[postId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  function toggleThread(threadId: string) {
+    setSelectedThreadId((prev) => (prev === threadId ? null : threadId))
   }
 
   return (
@@ -68,9 +67,9 @@ export function ReviewFeedbackShell({
           uploadImage={uploadImage}
           selectedPostId={selectedPostId}
           selectedThreadId={selectedThreadId}
-          onSelectRow={selectFromRailRow}
-          registerRef={(id, el) => {
-            railRefs.current[id] = el
+          onToggleThread={toggleThread}
+          registerThreadRef={(id, el) => {
+            threadRefs.current[id] = el
           }}
         />
       </div>
