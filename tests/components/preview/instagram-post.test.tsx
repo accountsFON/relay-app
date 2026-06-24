@@ -337,6 +337,113 @@ describe('InstagramFeedPost', () => {
     expect(popover.getAttribute('data-thread-id')).toBe('thread-xyz')
   })
 
+  describe('suppressInlinePopover', () => {
+    const imageThread = {
+      id: 'thread-img',
+      status: 'open' as const,
+      pin: { kind: 'image' as const, x: 50, y: 50 },
+      firstComment: {
+        id: 'c1',
+        author: { kind: 'am' as const, userId: 'u1', name: 'AM' },
+        body: 'Image feedback',
+        createdAt: new Date('2026-06-01T00:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c1',
+          author: { kind: 'am' as const, userId: 'u1', name: 'AM' },
+          body: 'Image feedback',
+          createdAt: new Date('2026-06-01T00:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    const postThread = {
+      id: 'thread-post',
+      status: 'open' as const,
+      pin: { kind: 'post' as const },
+      firstComment: {
+        id: 'c2',
+        author: { kind: 'am' as const, userId: 'u1', name: 'AM' },
+        body: 'Post level feedback',
+        createdAt: new Date('2026-06-01T00:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c2',
+          author: { kind: 'am' as const, userId: 'u1', name: 'AM' },
+          body: 'Post level feedback',
+          createdAt: new Date('2026-06-01T00:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    it('with suppressInlinePopover: image pin click calls onOpenThread but does NOT open the internal popover', async () => {
+      const onOpenThread = vi.fn()
+      const user = userEvent.setup()
+
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: 'https://example.com/img.jpg' },
+            threads: [imageThread],
+            onOpenThread,
+            suppressInlinePopover: true,
+          })}
+        />,
+      )
+
+      expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
+      await user.click(screen.getByTestId('markup-overlay-pin'))
+      expect(onOpenThread).toHaveBeenCalledTimes(1)
+      expect(onOpenThread).toHaveBeenCalledWith('thread-img')
+      // Popover must NOT appear.
+      expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
+    })
+
+    it('with suppressInlinePopover: post-level pin click calls onOpenThread but does NOT open the internal popover', async () => {
+      const onOpenThread = vi.fn()
+      const user = userEvent.setup()
+
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: null },
+            threads: [postThread],
+            onOpenThread,
+            suppressInlinePopover: true,
+          })}
+        />,
+      )
+
+      expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
+      await user.click(screen.getByTestId('instagram-post-pin'))
+      expect(onOpenThread).toHaveBeenCalledTimes(1)
+      expect(onOpenThread).toHaveBeenCalledWith('thread-post')
+      expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
+    })
+
+    it('without suppressInlinePopover (default): image pin click still opens the popover', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: 'https://example.com/img.jpg' },
+            threads: [imageThread],
+            onComment: async () => {},
+          })}
+        />,
+      )
+
+      expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
+      await user.click(screen.getByTestId('markup-overlay-pin'))
+      expect(screen.getByTestId('pin-popover')).toBeInTheDocument()
+    })
+  })
+
   describe('image aspect ratio', () => {
     it('renders the media container at 1:1 (square) before the image loads', () => {
       render(

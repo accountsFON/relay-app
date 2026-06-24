@@ -88,4 +88,9 @@ export type FeedPostProps = {
   // host to enter caption edit mode. Only ReviewPostCard passes it, so the
   // link does not appear on the AM / designer preview surfaces.
   onEditCaption?: () => void;
+  // suppressInlinePopover: when true, clicking a pin calls onOpenThread but
+  // does NOT open the component's internal PinPopover. Intended for host
+  // surfaces (e.g. the sidebar-driven client review view) that render thread
+  // detail in their own panel rather than the floating popover.
+  suppressInlinePopover?: boolean;
 };
