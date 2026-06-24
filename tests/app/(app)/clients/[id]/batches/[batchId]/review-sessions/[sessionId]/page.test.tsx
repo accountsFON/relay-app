@@ -47,6 +47,7 @@ vi.mock('@/server/repositories/threads', () => ({
 vi.mock('@/server/actions/threads', () => ({
   resolveThreadAction: vi.fn(),
   addCommentAction: vi.fn(),
+  replyToPostFeedbackAction: vi.fn(),
   useCommentImageAsPostMediaAction: vi.fn(),
 }))
 
@@ -115,15 +116,20 @@ vi.mock(
         verdict: string
         addressed: boolean
         captionAccepted?: boolean
+        comment?: string | null
         threads: Array<{ id: string; status: string; firstComment: { body: string } }>
       }>
       isDesigner: boolean
       canPostComment: boolean
       allAddressed: boolean
       isSuperseded: boolean
+      actions: { replyToFeedback?: unknown }
       startNextRoundSlot?: React.ReactNode
     }) => (
-      <div data-testid="review-feedback-shell-stub">
+      <div
+        data-testid="review-feedback-shell-stub"
+        data-has-reply-action={String(typeof props.actions?.replyToFeedback === 'function')}
+      >
         {/* Rail zone */}
         <div data-testid="review-feedback-rail">
           {props.posts.map((p) => (
@@ -132,6 +138,7 @@ vi.mock(
               data-testid={`rail-row-${p.postId}`}
               data-verdict={p.verdict}
               data-addressed={String(p.addressed)}
+              data-comment={p.comment ?? ''}
             >
               {p.threads.map((t) => (
                 <div key={t.id} data-testid={`rail-thread-${t.id}`}>
@@ -815,6 +822,23 @@ describe('ReviewSessionDetailPage', () => {
       })
 
       expect(getByTestId('rail-row-post_c').getAttribute('data-verdict')).toBe('caption_edited')
+    })
+
+    it('passes the client Notes (comment) and replyToFeedback action into the shell', async () => {
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // item_b carries comment 'Please rework intro.' → surfaces on the VM.
+      expect(getByTestId('rail-row-post_b').getAttribute('data-comment')).toBe(
+        'Please rework intro.',
+      )
+      // The page wires a replyToFeedback action into feedbackActions.
+      expect(
+        getByTestId('review-feedback-shell-stub').getAttribute('data-has-reply-action'),
+      ).toBe('true')
     })
 
     it('maps pin-only posts (no ReviewItem) to none verdict', async () => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { PinCommentRow } from '@/components/review/pin-comment-row'
@@ -92,7 +92,15 @@ function FeedbackRow({
   registerThreadRef,
 }: FeedbackRowProps) {
   const [pending, startTransition] = useTransition()
+  const [generalDraft, setGeneralDraft] = useState('')
   const router = useRouter()
+
+  // Coordinate pins (image/caption) carry numbered badges and stay aligned with
+  // the center canvas, which numbers only those. Post-level threads have no
+  // coordinates, so they render in their own "General feedback" subsection.
+  const pinThreads = post.threads.filter((t) => t.pin.kind !== 'post')
+  const postThreads = post.threads.filter((t) => t.pin.kind === 'post')
+
   const hasCopyFeedback =
     post.verdict === 'changes_requested' ||
     post.verdict === 'caption_edited' ||
@@ -232,8 +240,10 @@ function FeedbackRow({
             )
           )}
 
-          {/* Per-pin collapsible rows */}
-          {post.threads.map((thread: HydratedThread, i: number) => (
+          {/* Per-pin collapsible rows. Numbered over coordinate pins only, so
+              the rail badges stay aligned with the center canvas pin numbers
+              (the canvas can't render a coordinate-less post-level thread). */}
+          {pinThreads.map((thread: HydratedThread, i: number) => (
             <div
               key={thread.id}
               data-testid={`rail-thread-${thread.id}`}
@@ -253,6 +263,78 @@ function FeedbackRow({
               />
             </div>
           ))}
+
+          {/* General feedback (post-level, non-pin). Once an AM replies to the
+              client's Notes, the server promotes it to a reviewer post-level
+              thread that renders here as a full back-and-forth. */}
+          {postThreads.map((thread: HydratedThread) => (
+            <div
+              key={thread.id}
+              data-testid={`rail-postthread-${thread.id}`}
+              ref={(el) => registerThreadRef(thread.id, el)}
+            >
+              <PinCommentRow
+                thread={thread}
+                pinLabel="·"
+                expanded={selectedThreadId === thread.id}
+                onToggle={() => onToggleThread(thread.id)}
+                onComment={(tid, body, image) => actions.comment(tid, body, image)}
+                onResolve={isDesigner ? undefined : (tid) => actions.resolve(tid)}
+                onUseAsPostImage={
+                  isDesigner ? undefined : (cid) => actions.useAsPostImage(post.postId, cid)
+                }
+                onUploadImage={uploadImage}
+              />
+            </div>
+          ))}
+
+          {/* Notes opener + reply composer (AM only). Shown only when the
+              client left general Notes and no post-level thread exists yet.
+              Sending promotes the Notes into a post-level thread (server side),
+              after which the postThreads row above replaces this block. */}
+          {!isDesigner &&
+            post.comment &&
+            post.comment.trim().length > 0 &&
+            postThreads.length === 0 &&
+            post.reviewItemId && (
+              <div
+                data-testid={`rail-general-feedback-${post.postId}`}
+                className="rounded-lg border border-border bg-muted/30 p-2.5 text-[13px]"
+              >
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  General feedback
+                </p>
+                <p className="mb-2 whitespace-pre-wrap break-words text-foreground">
+                  {post.comment}
+                </p>
+                <div className="flex items-end gap-2">
+                  <textarea
+                    data-testid={`rail-general-feedback-input-${post.postId}`}
+                    value={generalDraft}
+                    onChange={(e) => setGeneralDraft(e.target.value)}
+                    rows={2}
+                    placeholder="Reply…"
+                    className="min-h-[44px] flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    data-testid={`rail-general-feedback-send-${post.postId}`}
+                    disabled={pending}
+                    onClick={() => {
+                      const body = generalDraft.trim()
+                      if (!body) return
+                      startTransition(() => {
+                        void actions.replyToFeedback(post.reviewItemId!, body)
+                      })
+                      setGeneralDraft('')
+                    }}
+                    className="min-h-[44px] rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
 
           {showFixWithAi && (
             <div className="mt-1">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getOrgContext } from '@/server/middleware/auth'
+import { promotePostFeedbackToThread } from '@/server/lib/promotePostFeedback'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { requireCan } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
@@ -218,6 +219,31 @@ export async function bulkResolveOnPostAction(input: {
   })
   await revalidatePathForPost(input.postId)
   return { count }
+}
+
+/**
+ * AM-only: reply to a post's general (non-pin) client feedback. Promotes the
+ * client's Notes into a reviewer-attributed post-level thread (idempotent) and
+ * appends the AM reply. See src/server/lib/promotePostFeedback.ts.
+ */
+export async function replyToPostFeedbackAction(input: {
+  reviewItemId: string
+  body: string
+  image?: CommentImage
+}) {
+  const image = validateImage(input.image)
+  if (!input.body.trim() && !image) throw new Error('Comment requires text or an image')
+  const { userDbId } = await resolveAmActor()
+  const result = await promotePostFeedbackToThread({
+    reviewItemId: input.reviewItemId,
+    amUserId: userDbId,
+    body: input.body,
+    imageUrl: image?.url ?? null,
+    imageWidth: image?.width ?? null,
+    imageHeight: image?.height ?? null,
+  })
+  await revalidatePathForThread(result.threadId)
+  return result
 }
 
 /**

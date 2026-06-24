@@ -65,6 +65,7 @@ function vm(overrides: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     postDate: '2026-06-01T00:00:00.000Z',
     verdict: 'none',
     suggestedCaption: null,
+    comment: null,
     reviewItemId: null,
     addressed: false,
     captionAccepted: false,

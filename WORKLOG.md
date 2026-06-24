@@ -22,6 +22,29 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Living review conversation: magic link stays interactive after submit + post-level threads (item 33)** (PR #250)
+  The client review magic link no longer freezes at submit. Submitting used to swap the whole feed
+  for a static "thanks, email us" screen, so the AM (who reads feedback AFTER submit) and the client
+  could never actually have a back-and-forth. Now: after submit the feed stays live in a LOCKED
+  conversation mode — verdicts/Notes/Edit-copy are read-only, but pins, thread replies, and NEW pins
+  stay interactive, so the client can read AM replies and reply back; a banner explains they can keep
+  discussing. Also makes NON-PIN feedback repliable: a post whose feedback is just a verdict + Notes
+  had no thread to reply into. On the AM "View client feedback" rail, such a post now shows a
+  "General feedback" reply box; the AM's reply promotes the client's Notes into a reviewer-attributed
+  POST-LEVEL thread (idempotent, seeded from the Notes) and appends the AM reply — visible to the
+  client on their (now-live) link. New: `findOpenPostLevelReviewerThread` + `promotePostFeedbackToThread`
+  + `replyToPostFeedbackAction`, an inline `CommentThread` component + a client post-level Comments
+  section, and the rail split (post-level threads excluded from the numbered pins to stay aligned with
+  the canvas). No schema change (reuses PostThread/PostComment; `pin:{kind:'post'}` = post-level). The
+  client post-level path reuses `leaveCommentAsReviewer` (no session-status gate, verified). Built
+  brainstorm → spec → plan → subagent-driven TDD; final opus whole-branch review READY TO MERGE (zero
+  Critical/Important; verified reviewer attribution makes seeded threads visible in BOTH surfaces,
+  idempotent find-or-create, pins-stay-live-when-locked, no in-progress regression, AM-only gating).
+  1833 unit tests, tsc + eslint clean. `detect-pipeline-changes` skips (service lives in `src/server/lib/`,
+  not `services/`). Follow-ups (logged, NOT done): notify the AM in-app when a client replies post-submit;
+  remove the now-dead `submittedSummary` prop; caption-vs-image pin numbering parity (pre-existing,
+  reduced here); let the client reopen a resolved post-level thread if desired.
+
 - [x] **2026-06-24 — Hide the cost breakdown from AMs and designers** (PR #249)
   The run cost breakdown on the batch detail page rendered for everyone, with no permission
   check — so account managers and designers saw per-run spend (token counts, API + infra dollar

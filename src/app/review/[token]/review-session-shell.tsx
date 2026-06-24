@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { Check } from 'lucide-react'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
@@ -10,7 +11,6 @@ import { ReviewProgressBar } from '@/components/review/review-progress-bar'
 import { ReviewPostCard } from '@/components/review/review-post-card'
 import { SubmitReviewBar } from '@/components/review/submit-review-bar'
 import { SubmitReviewModal } from '@/components/review/submit-review-modal'
-import { ReviewSubmittedScreen } from '@/components/review/review-submitted-screen'
 import { ReturningReviewerBanner } from '@/components/review/returning-reviewer-banner'
 import { ReviewTutorialModal } from '@/components/review/review-tutorial-modal'
 import { ApproveAllButton } from '@/components/review/approve-all-button'
@@ -90,7 +90,6 @@ export function ReviewSessionShell({
   posts,
   initialItems,
   sessionStatus,
-  submittedSummary,
 }: ReviewSessionShellProps) {
   const router = useRouter()
   const [platform, setPlatform] = useState<Platform>('instagram')
@@ -109,9 +108,6 @@ export function ReviewSessionShell({
   // refresh) re-syncs from server truth.
   const [localStatus, setLocalStatus] = useState<ReviewSessionStatusType | null>(
     sessionStatus,
-  )
-  const [localSummary, setLocalSummary] = useState<ReviewSessionSummary | null>(
-    submittedSummary ?? null,
   )
 
   const [submitModalOpen, setSubmitModalOpen] = useState(false)
@@ -357,10 +353,11 @@ export function ReviewSessionShell({
     setSubmitError(null)
     try {
       // Real server action from Task 2.5 (PR #118): flips session status,
-      // persists summary, sends digest email via Resend, emits activity.
-      const result = await submitSessionAction({ token })
+      // persists summary, sends digest email via Resend, emits activity. We
+      // flip to the locked conversation surface; the live `summary` derived
+      // from local item state stays accurate, so no summary snapshot is needed.
+      await submitSessionAction({ token })
       setLocalStatus('submitted')
-      setLocalSummary(result.summary ?? summary)
       setSubmitModalOpen(false)
       startTransition(() => router.refresh())
     } catch (err) {
@@ -373,22 +370,18 @@ export function ReviewSessionShell({
     } finally {
       setSubmitting(false)
     }
-  }, [token, summary, router, startTransition])
+  }, [token, router, startTransition])
 
   const handleSubmitCancel = useCallback(() => {
     setSubmitError(null)
     setSubmitModalOpen(false)
   }, [])
 
-  // Submitted-state branch: replace the whole surface with the thanks screen.
-  if (localStatus === 'submitted') {
-    return (
-      <ReviewSubmittedScreen
-        summary={localSummary ?? summary}
-        amName={amName}
-      />
-    )
-  }
+  // Submitted = locked conversation. The magic link stays a live feed after
+  // submit: verdicts/Notes/Edit-copy lock per card, but pins and thread
+  // replies stay interactive so the client can keep talking to the AM. We no
+  // longer early-return a dead-end thanks screen.
+  const locked = localStatus === 'submitted'
 
   const postsCountLabel = `${posts.length} ${posts.length === 1 ? 'post' : 'posts'}`
   // Some batch labels already include the client name (e.g. "Old Mill
@@ -398,14 +391,30 @@ export function ReviewSessionShell({
     ? batchLabel
     : `${clientName} · ${batchLabel}`
 
-  // Client tutorial fires on EVERY load of the active review surface (no
-  // persistence). It mounts unconditionally here; this JSX only renders when
-  // the session is not submitted (the submitted branch returns early above),
-  // so the modal never stacks on the thanks screen. The reviewer can Skip it.
+  // Client tutorial fires on EVERY load of the ACTIVE review surface (no
+  // persistence). Once the session is locked (submitted) we suppress it along
+  // with the other "still reviewing" affordances, so it never stacks on the
+  // read-only conversation. The reviewer can Skip it while active.
   return (
     <div className="flex flex-col">
-      <ReviewTutorialModal />
-      {pinned ? (
+      {!locked ? <ReviewTutorialModal /> : null}
+      {locked ? (
+        <div className="mx-auto w-full max-w-[880px] px-4 pt-2 sm:px-6">
+          <div
+            data-testid="review-submitted-banner"
+            role="status"
+            className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+          >
+            <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+            <span>
+              Review submitted. You can still read replies and discuss changes
+              with{' '}
+              <span className="font-medium">{amName}</span> below.
+            </span>
+          </div>
+        </div>
+      ) : null}
+      {!locked && pinned ? (
         <ReviewStickyBar
           reviewed={itemsReviewed}
           total={summary.totalPosts}
@@ -416,7 +425,7 @@ export function ReviewSessionShell({
           onApproveAll={handleApproveAll}
         />
       ) : null}
-      {showReturningBanner ? (
+      {!locked && showReturningBanner ? (
         <ReturningReviewerBanner
           itemsReviewed={itemsReviewed}
           totalPosts={summary.totalPosts}
@@ -460,14 +469,16 @@ export function ReviewSessionShell({
             postIds={postIds}
             itemsByPostId={itemsByPostId}
           />
-          <ApproveAllButton
-            totalPosts={summary.totalPosts}
-            allApproved={
-              summary.totalPosts > 0 && summary.approved === summary.totalPosts
-            }
-            pending={approvingAll || submitting || pending}
-            onApproveAll={handleApproveAll}
-          />
+          {!locked ? (
+            <ApproveAllButton
+              totalPosts={summary.totalPosts}
+              allApproved={
+                summary.totalPosts > 0 && summary.approved === summary.totalPosts
+              }
+              pending={approvingAll || submitting || pending}
+              onApproveAll={handleApproveAll}
+            />
+          ) : null}
         </div>
         <div ref={stickySentinelRef} aria-hidden className="h-0" />
       </div>
@@ -491,6 +502,7 @@ export function ReviewSessionShell({
                 platform={platform}
                 mode="review"
                 disabled={pending || submitting}
+                locked={locked}
                 onDecisionChange={(decision) =>
                   handleDecisionChange(post.id, decision)
                 }
@@ -511,21 +523,25 @@ export function ReviewSessionShell({
         )}
       </FeedShell>
 
-      <SubmitReviewBar
-        summary={summary}
-        onSubmit={handleSubmitClick}
-        submitting={submitting}
-      />
+      {!locked ? (
+        <SubmitReviewBar
+          summary={summary}
+          onSubmit={handleSubmitClick}
+          submitting={submitting}
+        />
+      ) : null}
 
-      <SubmitReviewModal
-        open={submitModalOpen}
-        summary={summary}
-        pendingCount={pendingCount}
-        onConfirm={handleSubmitConfirm}
-        onCancel={handleSubmitCancel}
-        submitting={submitting}
-        error={submitError}
-      />
+      {!locked ? (
+        <SubmitReviewModal
+          open={submitModalOpen}
+          summary={summary}
+          pendingCount={pendingCount}
+          onConfirm={handleSubmitConfirm}
+          onCancel={handleSubmitCancel}
+          submitting={submitting}
+          error={submitError}
+        />
+      ) : null}
     </div>
   )
 }

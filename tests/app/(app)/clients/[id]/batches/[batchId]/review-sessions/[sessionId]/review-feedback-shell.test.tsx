@@ -50,6 +50,7 @@ function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     postDate: '2026-06-01',
     verdict: 'changes_requested',
     suggestedCaption: null,
+    comment: null,
     reviewItemId: 'ri-1',
     addressed: false,
     captionAccepted: false,
@@ -66,6 +67,7 @@ const noopActions: FeedbackActions = {
   rejectCaption: vi.fn(() => Promise.resolve()),
   markAddressed: vi.fn(() => Promise.resolve()),
   unmarkAddressed: vi.fn(() => Promise.resolve()),
+  replyToFeedback: vi.fn(() => Promise.resolve()),
   startNextRound: vi.fn(() => Promise.resolve()),
 }
 

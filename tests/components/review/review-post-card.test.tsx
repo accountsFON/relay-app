@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ReviewPostCard } from '@/components/review/review-post-card'
 import type { ReviewItemHydrated } from '@/types/review-session'
+import type { HydratedThread } from '@/server/repositories/threads'
 
 // jsdom lacks scrollIntoView; ReviewPostCard calls it when edit mode opens.
 beforeEach(() => {
@@ -76,6 +78,145 @@ describe('ReviewPostCard', () => {
       />,
     )
     expect(screen.getByTestId('review-post-card-notes-label')).toBeInTheDocument()
+  })
+
+  it('locked: verdict row is disabled, Notes is read-only, Edit copy is not offered', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem({
+          decision: 'approved',
+          comment: 'a saved note',
+        })}
+        platform="instagram"
+        mode="review"
+        locked
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={vi.fn()}
+      />,
+    )
+
+    // Verdict buttons are visible but not clickable when locked.
+    expect(screen.getByTestId('decision-button-approved')).toBeDisabled()
+    expect(screen.getByTestId('decision-button-changes_requested')).toBeDisabled()
+
+    // Notes is read-only (saved text stays readable) when locked.
+    const ta = screen.getByTestId('review-post-card-comment') as HTMLTextAreaElement
+    expect(ta.readOnly).toBe(true)
+    expect(ta.value).toBe('a saved note')
+
+    // The inline "Edit copy" affordance is gated off when locked.
+    expect(screen.queryByTestId('instagram-post-edit-copy')).not.toBeInTheDocument()
+  })
+})
+
+describe('ReviewPostCard -- post-level Comments section', () => {
+  function makePostThread(
+    overrides: Partial<HydratedThread> = {},
+  ): HydratedThread {
+    const firstComment = {
+      id: 'comment-1',
+      author: { kind: 'am' as const, userId: 'am-1', name: 'Mgr', avatarUrl: null },
+      body: 'Replying to your note',
+      createdAt: new Date(),
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+    }
+    return {
+      id: 'thread-post-1',
+      status: 'open',
+      pin: { kind: 'post' },
+      firstComment,
+      comments: [
+        firstComment,
+        {
+          id: 'comment-2',
+          author: { kind: 'client' as const, reviewerName: 'Dana' },
+          body: 'Thanks for the reply',
+          createdAt: new Date(),
+          imageUrl: null,
+          imageWidth: null,
+          imageHeight: null,
+        },
+      ],
+      commentCount: 2,
+      ...overrides,
+    } as HydratedThread
+  }
+
+  it('renders an existing post-level thread and sends replies via onAppendThreadComment', async () => {
+    const onAppendThreadComment = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        threads={[makePostThread()]}
+        platform="instagram"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onAppendThreadComment={onAppendThreadComment}
+      />,
+    )
+
+    const section = screen.getByTestId('post-comments-section')
+    expect(section).toBeInTheDocument()
+    expect(screen.getAllByTestId('comment-row')).toHaveLength(2)
+
+    await userEvent.type(
+      screen.getByTestId('comment-composer-input'),
+      'got it',
+    )
+    await userEvent.click(screen.getByTestId('comment-composer-send'))
+    expect(onAppendThreadComment).toHaveBeenCalledWith('thread-post-1', 'got it')
+  })
+
+  it('locked with no post-level thread: renders a start composer wired to onCreatePin', async () => {
+    const onCreatePin = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem({ decision: 'approved' })}
+        threads={[]}
+        platform="instagram"
+        mode="review"
+        locked
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCreatePin={onCreatePin}
+      />,
+    )
+
+    expect(screen.getByTestId('post-comments-section')).toBeInTheDocument()
+    await userEvent.type(
+      screen.getByTestId('comment-composer-input'),
+      'one more thing',
+    )
+    await userEvent.click(screen.getByTestId('comment-composer-send'))
+    expect(onCreatePin).toHaveBeenCalledWith({ kind: 'post' }, 'one more thing')
+  })
+
+  it('in-progress with no post-level thread: no start composer', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        threads={[]}
+        platform="instagram"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCreatePin={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByTestId('comment-composer')).toBeNull()
   })
 })
 

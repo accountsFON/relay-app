@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { InstagramFeedPost } from '@/components/preview/instagram-post'
 import { FacebookPost } from '@/components/preview/facebook-post'
+import { CommentThread } from '@/components/preview/comment-thread'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps } from '@/types/preview'
 import type { PinLocation } from '@/types/preview'
@@ -61,7 +62,19 @@ export type ReviewPostCardProps = {
    * identity so the component stays identity-agnostic.
    */
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
+  /**
+   * Transient disable (e.g. an in-flight save) — greys the verdict row and the
+   * Notes field. Pins/threads stay live.
+   */
   disabled?: boolean
+  /**
+   * Permanent verdict lock applied once the session is submitted. Composes
+   * with `disabled`: the verdict row and inline "Edit copy" become unavailable
+   * and the Notes field becomes read-only (but readable at full opacity). Pins
+   * and thread replies stay live so the client can keep the conversation going
+   * with the AM.
+   */
+  locked?: boolean
   className?: string
 }
 
@@ -113,8 +126,14 @@ export function ReviewPostCard({
   onAppendThreadComment,
   onUploadImage,
   disabled,
+  locked,
   className,
 }: ReviewPostCardProps) {
+  // The verdict, the inline copy editor, and the Notes field lock when the
+  // session is submitted (`locked`) OR while a transient save is in flight
+  // (`disabled`). Pins + thread replies are intentionally NOT gated on either,
+  // so the client can keep discussing changes with the AM after submit.
+  const verdictLocked = disabled || locked
   const decision = reviewItem?.decision ?? 'not_reviewed'
   const isUpdated = reviewItem?.updatedSinceLastReview ?? false
   const savedSuggestion = reviewItem?.suggestedCaption ?? null
@@ -253,6 +272,12 @@ export function ReviewPostCard({
   // which persists a PostThread with author.kind = 'reviewer'.
   const PostComponent = platform === 'instagram' ? InstagramFeedPost : FacebookPost
 
+  // Post-level thread (a thread with no anchor coordinates). It has no pin to
+  // render in the IG/FB markup overlay, so it would otherwise be invisible.
+  // Surface it as an inline Comments discussion below Notes so the client can
+  // read AM replies and keep the conversation going.
+  const postThread = threads?.find((t) => t.pin.kind === 'post') ?? null
+
   // captionOverride renders the saved suggestion in place of the original
   // caption while the post is in the `caption_edited` state and not being
   // edited. The reviewer can re-enter via the inline "Edit copy" link, which
@@ -301,13 +326,13 @@ export function ReviewPostCard({
         onCaptionEditSave={isEditing ? handleCaptionEditSave : undefined}
         onCaptionEditCancel={isEditing ? handleCaptionEditCancel : undefined}
         captionOverride={captionOverride}
-        onEditCaption={disabled ? undefined : enterEditMode}
+        onEditCaption={verdictLocked ? undefined : enterEditMode}
       />
 
       <DecisionButtonRow
         value={decision}
         onChange={handleDecisionChange}
-        disabled={disabled}
+        disabled={verdictLocked}
       />
 
       {decision === 'changes_requested' || decision === 'caption_edited' ? (
@@ -365,12 +390,44 @@ export function ReviewPostCard({
           }}
           placeholder={commentPlaceholder}
           rows={focused || comment.length > 0 ? 3 : 1}
+          readOnly={locked}
           disabled={disabled}
           className={cn(
             'mt-1 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-[height,border-color] focus:border-primary disabled:cursor-not-allowed disabled:opacity-60',
           )}
         />
       </div>
+
+      {/*
+        Post-level Comments. When a post-level thread exists it always renders
+        (in-progress and locked) so the client can read + answer an AM reply
+        anytime. When there's no thread yet, only show a "start a discussion"
+        composer once locked — never as a third box competing with the verdict
+        + Notes during an in-progress review.
+      */}
+      {postThread ? (
+        <div data-testid="post-comments-section">
+          <p className="mb-1 text-[12px] font-medium text-muted-foreground">
+            Comments
+          </p>
+          <CommentThread
+            comments={postThread.comments}
+            onSend={(body) => onAppendThreadComment?.(postThread.id, body)}
+            readOnly={postThread.status === 'resolved'}
+          />
+        </div>
+      ) : locked ? (
+        <div data-testid="post-comments-section">
+          <p className="mb-1 text-[12px] font-medium text-muted-foreground">
+            Comments
+          </p>
+          <CommentThread
+            comments={[]}
+            onSend={(body) => onCreatePin?.({ kind: 'post' }, body)}
+            placeholder="Start a discussion with the team..."
+          />
+        </div>
+      ) : null}
     </article>
   )
 }

@@ -46,6 +46,7 @@ import {
 import {
   resolveThreadAction,
   addCommentAction,
+  replyToPostFeedbackAction,
   useCommentImageAsPostMediaAction as commentImageAsPostMediaAction,
 } from '@/server/actions/threads'
 import { revalidatePath } from 'next/cache'
@@ -229,6 +230,18 @@ export default async function ReviewSessionDetailPage({
     )
   }
 
+  const replyToFeedback = async (
+    reviewItemId: string,
+    body: string,
+    image?: { url: string; width?: number; height?: number },
+  ) => {
+    'use server'
+    await replyToPostFeedbackAction({ reviewItemId, body, image })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
   const useAsPostImage = async (postId: string, commentId: string) => {
     'use server'
     await commentImageAsPostMediaAction({ postId, commentId })
@@ -290,6 +303,7 @@ export default async function ReviewSessionDetailPage({
     rejectCaption,
     markAddressed,
     unmarkAddressed,
+    replyToFeedback,
     startNextRound,
   }
 
@@ -315,6 +329,7 @@ export default async function ReviewSessionDetailPage({
             ? 'caption_edited'
             : 'none',
     suggestedCaption: ap.item?.suggestedCaption ?? null,
+    comment: ap.item?.comment ?? null,
     reviewItemId: ap.item?.id ?? null,
     addressed: ap.handled,
     captionAccepted: Boolean(ap.item?.acceptedAsPostVersionId),

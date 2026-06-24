@@ -30,6 +30,26 @@ function makeThread(id: string): HydratedThread {
   }
 }
 
+function makePostThread(id: string): HydratedThread {
+  const comment = {
+    id: `${id}-c1`,
+    body: 'please soften',
+    author: { kind: 'client' as const, reviewerName: 'Jane' },
+    imageUrl: null,
+    imageWidth: null,
+    imageHeight: null,
+    createdAt: new Date(),
+  }
+  return {
+    id,
+    status: 'open' as const,
+    pin: { kind: 'post' as const },
+    firstComment: comment,
+    comments: [comment],
+    commentCount: 1,
+  }
+}
+
 function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
   return {
     postId: 'post-1',
@@ -39,6 +59,7 @@ function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     postDate: '2026-06-01',
     verdict: 'changes_requested',
     suggestedCaption: null,
+    comment: null,
     reviewItemId: 'ri-1',
     addressed: false,
     captionAccepted: false,
@@ -55,6 +76,7 @@ const noopActions: FeedbackActions = {
   rejectCaption: vi.fn(() => Promise.resolve()),
   markAddressed: vi.fn(() => Promise.resolve()),
   unmarkAddressed: vi.fn(() => Promise.resolve()),
+  replyToFeedback: vi.fn(() => Promise.resolve()),
   startNextRound: vi.fn(() => Promise.resolve()),
 }
 
@@ -570,5 +592,108 @@ describe('ReviewFeedbackRail — Fix with AI (per post)', () => {
   it('shows it for a verdict=none post that has an open thread', () => {
     renderRail(vm({ postId: 'post-1', verdict: 'none', threads: [makeThread('t1')] }))
     expect(screen.getByTestId('fix-with-ai-button')).toBeInTheDocument()
+  })
+})
+
+describe('ReviewFeedbackRail — general feedback reply (post-level)', () => {
+  function renderRail(post: FeedbackPostVM, actions = noopActions, isDesigner = false) {
+    render(
+      <ReviewFeedbackRail
+        posts={[post]}
+        actions={actions}
+        isDesigner={isDesigner}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+  }
+
+  it('renders the general-feedback opener with the Notes text when a post has a comment and no post-level thread', () => {
+    renderRail(
+      vm({
+        postId: 'post-1',
+        verdict: 'changes_requested',
+        comment: 'please soften',
+        reviewItemId: 'ri1',
+        threads: [],
+      }),
+    )
+    const opener = screen.getByTestId('rail-general-feedback-post-1')
+    expect(opener).toBeInTheDocument()
+    expect(opener).toHaveTextContent('please soften')
+    expect(screen.getByTestId('rail-general-feedback-input-post-1')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-general-feedback-send-post-1')).toBeInTheDocument()
+  })
+
+  it('typing + Send calls replyToFeedback with (reviewItemId, body)', () => {
+    const replyToFeedback = vi.fn(() => Promise.resolve())
+    renderRail(
+      vm({
+        postId: 'post-1',
+        verdict: 'changes_requested',
+        comment: 'please soften',
+        reviewItemId: 'ri1',
+        threads: [],
+      }),
+      { ...noopActions, replyToFeedback },
+    )
+    fireEvent.change(screen.getByTestId('rail-general-feedback-input-post-1'), {
+      target: { value: 'On it' },
+    })
+    fireEvent.click(screen.getByTestId('rail-general-feedback-send-post-1'))
+    expect(replyToFeedback).toHaveBeenCalledWith('ri1', 'On it')
+  })
+
+  it('renders a post-level thread row (rail-postthread-<id>) and hides the opener once a post-level thread exists', () => {
+    renderRail(
+      vm({
+        postId: 'post-1',
+        verdict: 'changes_requested',
+        comment: 'please soften',
+        reviewItemId: 'ri1',
+        threads: [makePostThread('t1')],
+      }),
+    )
+    expect(screen.getByTestId('rail-postthread-t1')).toBeInTheDocument()
+    expect(screen.queryByTestId('rail-general-feedback-post-1')).toBeNull()
+  })
+
+  it('does not render the opener for a designer', () => {
+    renderRail(
+      vm({
+        postId: 'post-1',
+        verdict: 'changes_requested',
+        comment: 'please soften',
+        reviewItemId: 'ri1',
+        threads: [],
+      }),
+      noopActions,
+      true,
+    )
+    expect(screen.queryByTestId('rail-general-feedback-post-1')).toBeNull()
+  })
+
+  it('numbers image-pin threads 1..N while a post-level thread gets a non-numeric label', () => {
+    renderRail(
+      vm({
+        postId: 'post-1',
+        verdict: 'changes_requested',
+        comment: 'please soften',
+        reviewItemId: 'ri1',
+        threads: [makeThread('t1'), makeThread('t2'), makePostThread('pt1')],
+      }),
+    )
+    // Image pins keep their numeric rail-thread wrappers
+    expect(screen.getByTestId('rail-thread-t1')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-thread-t2')).toBeInTheDocument()
+    // Numeric pin labels reflect only the two image pins
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
+    expect(screen.queryByText('3')).toBeNull()
+    // Post-level thread renders in its own subsection, not numbered
+    expect(screen.getByTestId('rail-postthread-pt1')).toBeInTheDocument()
   })
 })
