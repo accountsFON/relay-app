@@ -22,6 +22,12 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — AM feedback: post header anchors the center canvas** (PR #242)
+  Clicking a post header in the left rail now scrolls/anchors the center canvas to that post
+  (sets selectedPostId + `scrollIntoView`), so copy-change posts (caption_edited with no pins)
+  anchor to the post the same way pin rows already do. The header is a button again (with this
+  purpose). New `onSelectPost` prop on the rail; shell `selectPost` handler. 1774 unit tests.
+
 - [x] **2026-06-23 — AM feedback rail is fixed/sticky with its own scroll** (PR #241)
   The left pin/feedback rail is now a sticky panel (like the right internal-chat rail) with its
   own internal scroll (`lg:sticky lg:top-4 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto`), so
