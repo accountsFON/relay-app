@@ -22,6 +22,22 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — AM feedback: Copy-edited block anchors canvas + greyed accepted state + emoji-safe diff** (PR #246, `211292e`)
+  Three changes to the AM client-feedback caption-suggestion block. (1) Clicking the "Copy edited"
+  block (label + diff) now anchors/scrolls the center canvas to that post, like the row header
+  already did — mouse + keyboard (Enter/Space) with a focus-visible ring; Accept/Reject sit outside
+  the clickable region so they never trigger an anchor. (2) Once the AM accepts the client's caption
+  suggestion, the block becomes a greyed "✓ Caption accepted" success state showing the applied
+  caption, with no Accept/Reject buttons (accept-only; rejected posts unchanged). Driven by a new
+  `captionAccepted` flag on the feedback post VM, derived from `ReviewItem.acceptedAsPostVersionId`.
+  (3) The caption diff (`src/lib/text-diff.ts`) is now emoji/grapheme-safe: it tokenizes with
+  `Intl.Segmenter` (granularity 'word') + `diffArrays` instead of jsdiff `diffWordsWithSpace`, so
+  surrogate-pair emoji, skin-tone modifiers, ZWJ families, and regional flags are single indivisible
+  tokens and never split mid-grapheme (previously a skin-tone change showed a bare modifier and a
+  ZWJ family emitted stray fragments). Same `DiffSegment[]` output + word-level granularity +
+  reconstruction contract; also fixes the shared server-side Fix-with-AI diff. No schema/server-action/
+  API change (Trigger.dev deploy skipped). 1790 unit tests; final opus whole-branch review READY TO MERGE.
+
 - [x] **2026-06-24 — Chat popup is a right-side drawer on desktop; FAB nudged ~10px up-left** (PR #245)
   Follow-up to #244: on desktop (lg+) the client thread now opens as a right-side slide-in drawer
   (full height, pinned to the right, `w-[420px]`) instead of the bottom sheet; mobile keeps the
