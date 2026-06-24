@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { InstagramFeedPost } from '@/components/preview/instagram-post'
 import { FacebookPost } from '@/components/preview/facebook-post'
+import { CommentThread } from '@/components/preview/comment-thread'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps } from '@/types/preview'
 import type { PinLocation } from '@/types/preview'
@@ -271,6 +272,12 @@ export function ReviewPostCard({
   // which persists a PostThread with author.kind = 'reviewer'.
   const PostComponent = platform === 'instagram' ? InstagramFeedPost : FacebookPost
 
+  // Post-level thread (a thread with no anchor coordinates). It has no pin to
+  // render in the IG/FB markup overlay, so it would otherwise be invisible.
+  // Surface it as an inline Comments discussion below Notes so the client can
+  // read AM replies and keep the conversation going.
+  const postThread = threads?.find((t) => t.pin.kind === 'post') ?? null
+
   // captionOverride renders the saved suggestion in place of the original
   // caption while the post is in the `caption_edited` state and not being
   // edited. The reviewer can re-enter via the inline "Edit copy" link, which
@@ -390,6 +397,37 @@ export function ReviewPostCard({
           )}
         />
       </div>
+
+      {/*
+        Post-level Comments. When a post-level thread exists it always renders
+        (in-progress and locked) so the client can read + answer an AM reply
+        anytime. When there's no thread yet, only show a "start a discussion"
+        composer once locked — never as a third box competing with the verdict
+        + Notes during an in-progress review.
+      */}
+      {postThread ? (
+        <div data-testid="post-comments-section">
+          <p className="mb-1 text-[12px] font-medium text-muted-foreground">
+            Comments
+          </p>
+          <CommentThread
+            comments={postThread.comments}
+            onSend={(body) => onAppendThreadComment?.(postThread.id, body)}
+            readOnly={postThread.status === 'resolved'}
+          />
+        </div>
+      ) : locked ? (
+        <div data-testid="post-comments-section">
+          <p className="mb-1 text-[12px] font-medium text-muted-foreground">
+            Comments
+          </p>
+          <CommentThread
+            comments={[]}
+            onSend={(body) => onCreatePin?.({ kind: 'post' }, body)}
+            placeholder="Start a discussion with the team..."
+          />
+        </div>
+      ) : null}
     </article>
   )
 }
