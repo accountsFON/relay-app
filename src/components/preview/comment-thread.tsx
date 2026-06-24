@@ -76,6 +76,7 @@ export function CommentThread({
                 rel="noopener noreferrer"
                 className="mt-1 inline-block"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   data-testid="comment-image"
                   src={comment.imageUrl}
