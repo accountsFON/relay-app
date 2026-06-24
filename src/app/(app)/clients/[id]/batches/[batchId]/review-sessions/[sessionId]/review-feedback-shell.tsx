@@ -73,8 +73,9 @@ export function ReviewFeedbackShell({
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)_360px]">
-      {/* Column 1: feedback rail */}
-      <div className="lg:order-1">
+      {/* Column 1: feedback rail (fixed/sticky with its own scroll, so the
+          per-pin accordion expands within the panel and the page doesn't jump). */}
+      <div className="lg:order-1 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto">
         {allAddressed && !isSuperseded && startNextRoundSlot}
         <ReviewFeedbackRail
           posts={posts}
