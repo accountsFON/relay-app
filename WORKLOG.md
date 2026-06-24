@@ -22,6 +22,12 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Chat popup is a right-side drawer on desktop; FAB nudged ~10px up-left** (PR #245)
+  Follow-up to #244: on desktop (lg+) the client thread now opens as a right-side slide-in drawer
+  (full height, pinned to the right, `w-[420px]`) instead of the bottom sheet; mobile keeps the
+  bottom sheet. The floating chat button moved from `bottom/right-4` to `bottom/right-[26px]`
+  (~10px up-left). CSS only on `MobileThreadFab`. 1776 unit tests.
+
 - [x] **2026-06-23 — AM review: internal chat is a toggle popup, not a fixed right rail** (PR #244)
   Dropped the desktop right column on the AM review session detail page so the feedback rail +
   posts canvas get the full width. The internal AM/designer chat is now the floating chat button
