@@ -238,7 +238,7 @@ export function ReviewFeedbackRail({
   return (
     <div
       data-testid="review-feedback-rail"
-      className="flex h-full flex-col overflow-y-auto"
+      className="flex flex-col"
     >
       {posts.map((post) => (
         <FeedbackRow
