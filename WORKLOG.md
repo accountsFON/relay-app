@@ -22,6 +22,16 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — Fix: anchor scroll never actually scrolled the center** (PR #243)
+  Live verification caught that clicking a rail row/header set the selected-post ring but did NOT
+  scroll the center canvas to the post. Root cause: the shell's anchor handlers used
+  `scrollIntoView({ behavior: 'smooth' })`, which is a no-op on this app's `<main>` scroll
+  container (`flex-1 overflow-y-auto`); instant `scrollIntoView({ block:'center' })` scrolls it
+  fine (verified in-browser). Dropped `behavior:'smooth'` on all three anchor scrolls (canvas-pin
+  → rail, rail-header → canvas, pin-row → canvas). Affected the pin-row anchor (#240/#241) and the
+  header anchor (#242) — both now actually scroll. Unit tests mock scrollIntoView so they didn't
+  catch it; confirmed live. 1774 unit tests.
+
 - [x] **2026-06-23 — AM feedback: post header anchors the center canvas** (PR #242)
   Clicking a post header in the left rail now scrolls/anchors the center canvas to that post
   (sets selectedPostId + `scrollIntoView`), so copy-change posts (caption_edited with no pins)
