@@ -31,7 +31,7 @@ export function SubmitReviewBar({
 
   return (
     <div
-      data-testid="submit-review-bar"
+      data-testid="review-submit-bar"
       className={cn(
         'sticky bottom-0 z-30 w-full border-t border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80',
         className,

@@ -491,3 +491,27 @@ describe('ReviewSessionShell -- tutorial modal', () => {
     ).toBeNull()
   })
 })
+
+describe('ReviewSessionShell -- locked conversation after submit', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response)),
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('submitted: renders the locked conversation feed (not a dead-end thanks screen)', () => {
+    render(<ReviewSessionShell {...BASE_PROPS} sessionStatus="submitted" />)
+
+    // The feed still renders both post cards.
+    expect(screen.getAllByTestId('review-post-card')).toHaveLength(2)
+    // The submitted/discussion banner shows.
+    expect(screen.getByTestId('review-submitted-banner')).toBeInTheDocument()
+    // The submit bar is gone.
+    expect(screen.queryByTestId('review-submit-bar')).toBeNull()
+  })
+})

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { ReviewPostCard } from '@/components/review/review-post-card'
 import type { ReviewItemHydrated } from '@/types/review-session'
 
@@ -76,6 +76,37 @@ describe('ReviewPostCard', () => {
       />,
     )
     expect(screen.getByTestId('review-post-card-notes-label')).toBeInTheDocument()
+  })
+
+  it('locked: verdict row is disabled, Notes is read-only, Edit copy is not offered', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem({
+          decision: 'approved',
+          comment: 'a saved note',
+        })}
+        platform="instagram"
+        mode="review"
+        locked
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={vi.fn()}
+      />,
+    )
+
+    // Verdict buttons are visible but not clickable when locked.
+    expect(screen.getByTestId('decision-button-approved')).toBeDisabled()
+    expect(screen.getByTestId('decision-button-changes_requested')).toBeDisabled()
+
+    // Notes is read-only (saved text stays readable) when locked.
+    const ta = screen.getByTestId('review-post-card-comment') as HTMLTextAreaElement
+    expect(ta.readOnly).toBe(true)
+    expect(ta.value).toBe('a saved note')
+
+    // The inline "Edit copy" affordance is gated off when locked.
+    expect(screen.queryByTestId('instagram-post-edit-copy')).not.toBeInTheDocument()
   })
 })
 

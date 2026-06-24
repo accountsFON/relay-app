@@ -61,7 +61,19 @@ export type ReviewPostCardProps = {
    * identity so the component stays identity-agnostic.
    */
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
+  /**
+   * Transient disable (e.g. an in-flight save) — greys the verdict row and the
+   * Notes field. Pins/threads stay live.
+   */
   disabled?: boolean
+  /**
+   * Permanent verdict lock applied once the session is submitted. Composes
+   * with `disabled`: the verdict row and inline "Edit copy" become unavailable
+   * and the Notes field becomes read-only (but readable at full opacity). Pins
+   * and thread replies stay live so the client can keep the conversation going
+   * with the AM.
+   */
+  locked?: boolean
   className?: string
 }
 
@@ -113,8 +125,14 @@ export function ReviewPostCard({
   onAppendThreadComment,
   onUploadImage,
   disabled,
+  locked,
   className,
 }: ReviewPostCardProps) {
+  // The verdict, the inline copy editor, and the Notes field lock when the
+  // session is submitted (`locked`) OR while a transient save is in flight
+  // (`disabled`). Pins + thread replies are intentionally NOT gated on either,
+  // so the client can keep discussing changes with the AM after submit.
+  const verdictLocked = disabled || locked
   const decision = reviewItem?.decision ?? 'not_reviewed'
   const isUpdated = reviewItem?.updatedSinceLastReview ?? false
   const savedSuggestion = reviewItem?.suggestedCaption ?? null
@@ -301,13 +319,13 @@ export function ReviewPostCard({
         onCaptionEditSave={isEditing ? handleCaptionEditSave : undefined}
         onCaptionEditCancel={isEditing ? handleCaptionEditCancel : undefined}
         captionOverride={captionOverride}
-        onEditCaption={disabled ? undefined : enterEditMode}
+        onEditCaption={verdictLocked ? undefined : enterEditMode}
       />
 
       <DecisionButtonRow
         value={decision}
         onChange={handleDecisionChange}
-        disabled={disabled}
+        disabled={verdictLocked}
       />
 
       {decision === 'changes_requested' || decision === 'caption_edited' ? (
@@ -365,6 +383,7 @@ export function ReviewPostCard({
           }}
           placeholder={commentPlaceholder}
           rows={focused || comment.length > 0 ? 3 : 1}
+          readOnly={locked}
           disabled={disabled}
           className={cn(
             'mt-1 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-[height,border-color] focus:border-primary disabled:cursor-not-allowed disabled:opacity-60',
