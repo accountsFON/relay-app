@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Relay timeline: space out step labels so titles don't crowd** (PR #247, `92918da`)
+  The relay detail page step timeline (`relay-track.tsx`) packed its columns with `gap-0` and let
+  each column hug its label, so after the pipeline rework lengthened the step names ("Design
+  Revision", "Initial Design", "Pre-Client QA", etc.) adjacent titles butted together on desktop
+  and read as overlapping. Switched to a uniform column width (`w-[96px]`) with a small
+  inter-column gap (`gap-x-1.5`), widened the connector line to `calc(100% + 0.375rem)` so it
+  bridges the gap and stays continuous, and inset the labels (`px-1`). Labels stay one line and
+  truncate (existing hover tooltip shows the full name) only when genuinely too long. CSS only.
+
 - [x] **2026-06-24 — AM feedback: Copy-edited block anchors canvas + greyed accepted state + emoji-safe diff** (PR #246, `211292e`)
   Three changes to the AM client-feedback caption-suggestion block. (1) Clicking the "Copy edited"
   block (label + diff) now anchors/scrolls the center canvas to that post, like the row header
