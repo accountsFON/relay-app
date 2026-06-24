@@ -26,8 +26,9 @@ import { AI_MODELS } from '@/server/config/aiModels'
 import { calculateCost } from '@/server/services/costTracker'
 import { recordActivity } from '@/server/services/activity'
 import { resolveThread } from '@/server/repositories/threads'
+import { snapshotPostVersion } from '@/server/services/postVersions'
 
-import { buildFixWithAiPrompt } from '@/server/prompts/fixWithAiPrompt'
+import { buildFixWithAiPrompt, buildFixWithAiPromptForPost, type FixWithAiPostVerdict } from '@/server/prompts/fixWithAiPrompt'
 import { diffText, type DiffSegment } from '@/lib/text-diff'
 
 export type { DiffSegment } from '@/lib/text-diff'
@@ -83,6 +84,35 @@ function commentAuthorLabel(comment: {
   return 'Reviewer'
 }
 
+/** Shared model call + cost + diff for both per-pin and per-post proposals. */
+async function runCaptionRewrite(
+  system: string,
+  user: string,
+  currentCaption: string,
+): Promise<ProposeFixResult> {
+  const config = AI_MODELS.captions
+  const anthropic = new Anthropic()
+  const response = await anthropic.messages.create({
+    model: config.model,
+    max_tokens: config.maxTokens,
+    system,
+    messages: [{ role: 'user', content: user }],
+  })
+  const textBlock = response.content.find((b) => b.type === 'text')
+  const rawText = textBlock && 'text' in textBlock ? textBlock.text : ''
+  const proposedCaption = rawText.trim()
+  const usage = response.usage
+  const cost = calculateCost(config.model, {
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+  })
+  return {
+    proposedCaption,
+    diff: diffText(currentCaption, proposedCaption),
+    tokenUsage: { in: cost.inputTokens, out: cost.outputTokens, costUsd: cost.usd },
+  }
+}
+
 /**
  * Propose an AI rewrite of the post's caption based on the feedback in
  * `threadId`. Pure read, no DB writes. The caller (API route) wires
@@ -133,34 +163,7 @@ export async function proposeFix(input: ProposeFixInput): Promise<ProposeFixResu
     })),
   })
 
-  const config = AI_MODELS.captions
-  const anthropic = new Anthropic()
-  const response = await anthropic.messages.create({
-    model: config.model,
-    max_tokens: config.maxTokens,
-    system,
-    messages: [{ role: 'user', content: user }],
-  })
-
-  const textBlock = response.content.find((b) => b.type === 'text')
-  const rawText = textBlock && 'text' in textBlock ? textBlock.text : ''
-  const proposedCaption = rawText.trim()
-
-  const usage = response.usage
-  const cost = calculateCost(config.model, {
-    inputTokens: usage.input_tokens,
-    outputTokens: usage.output_tokens,
-  })
-
-  return {
-    proposedCaption,
-    diff: diffText(post.caption, proposedCaption),
-    tokenUsage: {
-      in: cost.inputTokens,
-      out: cost.outputTokens,
-      costUsd: cost.usd,
-    },
-  }
+  return runCaptionRewrite(system, user, post.caption)
 }
 
 /**
@@ -244,4 +247,140 @@ export async function acceptFix(input: AcceptFixInput): Promise<AcceptFixResult>
   })
 
   return { postVersionId: versionResult.id }
+}
+
+// ---------------------------------------------------------------------------
+// Per-post variants: aggregate ALL of a post's feedback in one rewrite call
+// ---------------------------------------------------------------------------
+
+export type ProposeFixForPostInput = { postId: string }
+
+function threadLocation(t: {
+  imageX: number | null
+  captionFrom: number | null
+}): 'image' | 'caption' | 'post' {
+  if (t.imageX !== null) return 'image'
+  if (t.captionFrom !== null) return 'caption'
+  return 'post'
+}
+
+const REVIEW_VERDICTS = ['approved', 'changes_requested', 'caption_edited'] as const
+type KnownVerdict = (typeof REVIEW_VERDICTS)[number]
+
+function toPostVerdict(decision: string | null | undefined): FixWithAiPostVerdict {
+  if (!decision) return 'none'
+  return (REVIEW_VERDICTS as readonly string[]).includes(decision)
+    ? (decision as KnownVerdict)
+    : 'none'
+}
+
+export async function proposeFixForPost(
+  input: ProposeFixForPostInput,
+): Promise<ProposeFixResult> {
+  const { postId } = input
+
+  const post = await db.post.findUnique({
+    where: { id: postId },
+    include: {
+      client: { select: { name: true, brandVoice: true, dos: true, donts: true } },
+    },
+  })
+  if (!post || !post.client) throw new FixWithAiPostNotFoundError(postId)
+
+  const threads = await db.postThread.findMany({
+    where: { postId },
+    orderBy: { createdAt: 'asc' },
+    include: {
+      comments: {
+        orderBy: { createdAt: 'asc' },
+        include: { author: { select: { name: true } } },
+      },
+    },
+  })
+
+  const reviewItem = await db.reviewItem.findFirst({
+    where: { postId, decision: { in: [...REVIEW_VERDICTS] } },
+    orderBy: { reviewSession: { startedAt: 'desc' } },
+    select: { decision: true, suggestedCaption: true },
+  })
+
+  const pins = threads
+    .filter((t) => t.comments.length > 0)
+    .map((t) => ({
+      location: threadLocation(t),
+      comments: t.comments.map((c) => ({ author: commentAuthorLabel(c), body: c.body })),
+    }))
+
+  const { system, user } = buildFixWithAiPromptForPost({
+    clientName: post.client.name,
+    brandVoice: post.client.brandVoice,
+    dos: post.client.dos,
+    donts: post.client.donts,
+    currentCaption: post.caption,
+    verdict: toPostVerdict(reviewItem?.decision),
+    suggestedCaption: reviewItem?.suggestedCaption ?? null,
+    pins,
+  })
+
+  return runCaptionRewrite(system, user, post.caption)
+}
+
+export type AcceptFixForPostInput = {
+  postId: string
+  proposedCaption: string
+  acceptedBy: string
+}
+
+export async function acceptFixForPost(
+  input: AcceptFixForPostInput,
+): Promise<AcceptFixResult> {
+  const { postId, proposedCaption, acceptedBy } = input
+
+  const post = await db.post.findUnique({
+    where: { id: postId },
+    select: {
+      id: true,
+      clientId: true,
+      caption: true,
+      hashtags: true,
+      graphicHook: true,
+      designerNotes: true,
+    },
+  })
+  if (!post) throw new FixWithAiPostNotFoundError(postId)
+
+  const oldCaption = post.caption
+
+  const version = await db.$transaction(async (tx) => {
+    const v = await snapshotPostVersion(
+      {
+        postId,
+        authorId: acceptedBy,
+        body: {
+          caption: proposedCaption,
+          hashtags: post.hashtags,
+          graphicHook: post.graphicHook,
+          designerNotes: post.designerNotes,
+        },
+      },
+      tx,
+    )
+    await tx.post.update({ where: { id: postId }, data: { caption: proposedCaption } })
+    return v
+  })
+
+  await recordActivity({
+    clientId: post.clientId,
+    postId,
+    actorId: acceptedBy,
+    kind: ActivityKind.post_caption_ai_fixed,
+    payload: {
+      postId,
+      oldCaption,
+      newCaption: proposedCaption,
+      postVersionId: version?.id ?? null,
+    },
+  })
+
+  return { postVersionId: version?.id ?? '' }
 }
