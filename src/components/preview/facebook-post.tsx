@@ -64,6 +64,7 @@ export function FacebookPost(props: FeedPostProps) {
     onCaptionEditCancel,
     captionOverride,
     onEditCaption,
+    suppressInlinePopover = false,
   } = props
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
@@ -143,11 +144,13 @@ export function FacebookPost(props: FeedPostProps) {
     threadId: string,
     event: ReactMouseEvent<HTMLElement> | null,
   ) {
-    setOpenThreadId(threadId)
-    if (event && 'clientX' in event) {
-      setPopoverAnchor({ x: event.clientX, y: event.clientY })
-    } else {
-      setPopoverAnchor(null)
+    if (!suppressInlinePopover) {
+      setOpenThreadId(threadId)
+      if (event && 'clientX' in event) {
+        setPopoverAnchor({ x: event.clientX, y: event.clientY })
+      } else {
+        setPopoverAnchor(null)
+      }
     }
     onOpenThread?.(threadId)
   }
@@ -319,7 +322,7 @@ export function FacebookPost(props: FeedPostProps) {
             type="button"
             data-testid="facebook-post-edit-copy"
             onClick={onEditCaption}
-            className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[#1877f2] hover:underline"
+            className="mt-2 inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-[#1877f2] bg-white px-4 py-1.5 text-[13px] font-semibold text-[#1877f2] hover:bg-[#1877f2] hover:text-white transition-colors"
           >
             <Pencil aria-hidden className="h-3.5 w-3.5" />
             Edit copy
@@ -380,23 +383,26 @@ export function FacebookPost(props: FeedPostProps) {
         <MarkupOverlay
           existingPins={imagePins}
           onPinClick={(id) => {
-            const el =
-              typeof document !== 'undefined'
-                ? (document.querySelector(
-                    `[data-testid="markup-overlay-pin"][data-thread-id="${id}"]`,
-                  ) as HTMLElement | null)
-                : null
-            const rect = el?.getBoundingClientRect() ?? null
-            if (rect) {
-              setOpenThreadId(id)
-              setPopoverAnchor({
-                x: rect.left + rect.width / 2,
-                y: rect.top + rect.height / 2,
-              })
-              onOpenThread?.(id)
-            } else {
-              openThreadAt(id, null)
+            if (!suppressInlinePopover) {
+              const el =
+                typeof document !== 'undefined'
+                  ? (document.querySelector(
+                      `[data-testid="markup-overlay-pin"][data-thread-id="${id}"]`,
+                    ) as HTMLElement | null)
+                  : null
+              const rect = el?.getBoundingClientRect() ?? null
+              if (rect) {
+                setOpenThreadId(id)
+                setPopoverAnchor({
+                  x: rect.left + rect.width / 2,
+                  y: rect.top + rect.height / 2,
+                })
+              } else {
+                setOpenThreadId(id)
+                setPopoverAnchor(null)
+              }
             }
+            onOpenThread?.(id)
           }}
           onCreatePin={handleCreateImagePin}
           disabled={!onCreateThread}

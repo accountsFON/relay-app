@@ -3,6 +3,8 @@
 import { useTransition } from 'react'
 import { cn } from '@/lib/utils'
 import { PinCommentRow } from '@/components/review/pin-comment-row'
+import { CaptionDiffView } from '@/components/preview/caption-diff-view'
+import { diffText } from '@/lib/text-diff'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
   FeedbackPostVM,
@@ -130,8 +132,16 @@ function FeedbackRow({
           {/* Caption suggestion area (AM-only actions) */}
           {showCaptionActions && post.suggestedCaption && (
             <div className="rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-[13px]">
-              <p className="mb-1.5 font-medium text-sky-900">Suggested caption</p>
-              <p className="text-sky-800">{post.suggestedCaption}</p>
+              <p
+                data-testid={`rail-copy-edited-label-${post.postId}`}
+                className="mb-1.5 font-medium text-sky-900"
+              >
+                Copy edited
+              </p>
+              <CaptionDiffView
+                segments={diffText(post.caption, post.suggestedCaption)}
+                className="text-[13px]"
+              />
               <div className="mt-2 flex gap-2">
                 <button
                   type="button"

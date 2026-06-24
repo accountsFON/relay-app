@@ -22,6 +22,17 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — AM feedback: faithful post in canvas + edit-copy clarity** (PR #240)
+  Four changes. (1) The AM center canvas renders the real `InstagramFeedPost`/`FacebookPost`
+  (image + caption + pins) read-only instead of a bare image, with an IG/FB platform toggle —
+  so the AM sees the full post incl. the caption under the image. (2) Clicking a rail pin row
+  scrolls the center to that post (bidirectional with canvas-pin → rail-expand). (3) "Copy
+  edited" badge on the canvas post + a before→after diff in the rail (reuse `CaptionDiffView` +
+  `diffText`) next to Accept/Reject. (4) The client magic-link "Edit copy" affordance restyled
+  from a subtle link into a prominent labeled button. Added an additive `suppressInlinePopover`
+  prop to the feed posts (default false → client surface unchanged; only the AM canvas sets it,
+  so pin clicks drive the rail instead of the post's internal popover). 1772 unit tests.
+
 - [x] **2026-06-23 — AM feedback rail: collapsible per-pin rows** (PR #239)
   Refines the item 31 rail: each client pin/comment is now its own collapsible row,
   grouped under its post. Collapsed (default) shows the initial comment text fully

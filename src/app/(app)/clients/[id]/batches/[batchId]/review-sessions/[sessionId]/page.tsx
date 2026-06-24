@@ -372,6 +372,8 @@ export default async function ReviewSessionDetailPage({
           allAddressed={allAddressed}
           isSuperseded={isSuperseded}
           userDbId={shellUserDbId}
+          clientName={client.name}
+          clientAvatarUrl={null}
           startNextRoundSlot={
             <StartNextRoundButton
               magicLinkId={magicLink.id}

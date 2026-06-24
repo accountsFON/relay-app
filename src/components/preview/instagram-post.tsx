@@ -80,6 +80,7 @@ export function InstagramFeedPost({
   onCaptionEditCancel,
   captionOverride,
   onEditCaption,
+  suppressInlinePopover = false,
 }: FeedPostProps) {
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
@@ -167,11 +168,13 @@ export function InstagramFeedPost({
     threadId: string,
     event: ReactMouseEvent<HTMLElement> | null,
   ) {
-    setOpenThreadId(threadId)
-    if (event && 'clientX' in event) {
-      setPopoverAnchor({ x: event.clientX, y: event.clientY })
-    } else {
-      setPopoverAnchor(null)
+    if (!suppressInlinePopover) {
+      setOpenThreadId(threadId)
+      if (event && 'clientX' in event) {
+        setPopoverAnchor({ x: event.clientX, y: event.clientY })
+      } else {
+        setPopoverAnchor(null)
+      }
     }
     onOpenThread?.(threadId)
   }
@@ -296,23 +299,26 @@ export function InstagramFeedPost({
           existingPins={imagePins}
           onPinClick={(id) => {
             // Anchor the popover at the pin badge's screen position.
-            const el =
-              typeof document !== 'undefined'
-                ? (document.querySelector(
-                    `[data-testid="markup-overlay-pin"][data-thread-id="${id}"]`,
-                  ) as HTMLElement | null)
-                : null
-            const rect = el?.getBoundingClientRect() ?? null
-            if (rect) {
-              setOpenThreadId(id)
-              setPopoverAnchor({
-                x: rect.left + rect.width / 2,
-                y: rect.top + rect.height / 2,
-              })
-              onOpenThread?.(id)
-            } else {
-              openThreadAt(id, null)
+            if (!suppressInlinePopover) {
+              const el =
+                typeof document !== 'undefined'
+                  ? (document.querySelector(
+                      `[data-testid="markup-overlay-pin"][data-thread-id="${id}"]`,
+                    ) as HTMLElement | null)
+                  : null
+              const rect = el?.getBoundingClientRect() ?? null
+              if (rect) {
+                setOpenThreadId(id)
+                setPopoverAnchor({
+                  x: rect.left + rect.width / 2,
+                  y: rect.top + rect.height / 2,
+                })
+              } else {
+                setOpenThreadId(id)
+                setPopoverAnchor(null)
+              }
             }
+            onOpenThread?.(id)
           }}
           onCreatePin={handleCreateImagePin}
           disabled={!onCreateThread}
@@ -411,7 +417,7 @@ export function InstagramFeedPost({
             type="button"
             data-testid="instagram-post-edit-copy"
             onClick={onEditCaption}
-            className="mt-1 inline-flex items-center gap-1 text-[12px] font-medium text-[#00376b] hover:underline"
+            className="mt-2 inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-[#00376b] bg-white px-4 py-1.5 text-[13px] font-semibold text-[#00376b] hover:bg-[#00376b] hover:text-white transition-colors"
           >
             <Pencil aria-hidden className="h-3.5 w-3.5" />
             Edit copy

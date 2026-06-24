@@ -317,6 +317,56 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
   })
 })
 
+describe('ReviewFeedbackRail — caption_edited diff view', () => {
+  it('renders caption-diff-view and copy-edited label for caption_edited post (AM view)', () => {
+    const posts = [vm({
+      postId: 'post-ce',
+      verdict: 'caption_edited',
+      caption: 'old text',
+      suggestedCaption: 'new text',
+      reviewItemId: 'ri-ce',
+      threads: [],
+    })]
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={false}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('caption-diff-view')).toBeTruthy()
+    expect(screen.getByTestId('rail-copy-edited-label-post-ce')).toBeTruthy()
+    expect(screen.getByTestId('rail-accept-post-ce')).toBeTruthy()
+    expect(screen.getByTestId('rail-reject-post-ce')).toBeTruthy()
+  })
+
+  it('does not render caption-diff-view for a non-caption_edited post', () => {
+    const posts = [vm({
+      postId: 'post-cr',
+      verdict: 'changes_requested',
+      caption: 'original caption',
+      suggestedCaption: null,
+      threads: [makeThread('t1')],
+    })]
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={false}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    expect(screen.queryByTestId('caption-diff-view')).toBeNull()
+  })
+})
+
 describe('ReviewFeedbackRail — mark addressed toggle', () => {
   it('shows "Mark addressed" label when post.addressed is false', () => {
     const posts = [vm({ postId: 'post-1', verdict: 'changes_requested', threads: [makeThread('t1')], addressed: false })]
