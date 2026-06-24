@@ -101,3 +101,58 @@ describe('diffText , word-level diffs', () => {
     expect(inserts).toContain('15')
   })
 })
+
+describe('diffText , emoji (grapheme) safety', () => {
+  it('leaves an unchanged surrogate-pair emoji intact (not split)', () => {
+    const segments = diffText('I love pizza 🍕', 'I adore pizza 🍕')
+
+    expect(rebuildOld(segments)).toBe('I love pizza 🍕')
+    expect(rebuildNew(segments)).toBe('I adore pizza 🍕')
+
+    // The pizza emoji is never torn apart: it appears whole in an equal segment
+    // and never inside an insert/delete.
+    expect(segments.some((s) => s.type === 'equal' && s.text.includes('🍕'))).toBe(true)
+    expect(segments.some((s) => s.type !== 'equal' && s.text.includes('🍕'))).toBe(false)
+  })
+
+  it('marks a changed emoji as a whole delete + insert', () => {
+    const segments = diffText('Dinner 🍕 tonight', 'Dinner 🍔 tonight')
+
+    expect(rebuildOld(segments)).toBe('Dinner 🍕 tonight')
+    expect(rebuildNew(segments)).toBe('Dinner 🍔 tonight')
+
+    const deletes = segments.filter((s) => s.type === 'delete').map((s) => s.text).join('')
+    const inserts = segments.filter((s) => s.type === 'insert').map((s) => s.text).join('')
+    expect(deletes).toContain('🍕')
+    expect(inserts).toContain('🍔')
+  })
+
+  it('treats ZWJ family, skin-tone, and flag emoji as single indivisible tokens', () => {
+    const family = '👨‍👩‍👧‍👦'
+    const thumb = '👍🏽'
+    const flag = '🇺🇸'
+    const oldText = `Team ${family} win ${thumb} go ${flag}`
+    const newText = `Crew ${family} win ${thumb} go ${flag}`
+
+    const segments = diffText(oldText, newText)
+
+    // Reconstruction contract holds with multi-codepoint clusters present.
+    expect(rebuildOld(segments)).toBe(oldText)
+    expect(rebuildNew(segments)).toBe(newText)
+
+    // None of the three clusters is split across segment boundaries: each shows
+    // up whole, only inside equal segments (they were unchanged).
+    for (const cluster of [family, thumb, flag]) {
+      expect(segments.some((s) => s.type === 'equal' && s.text.includes(cluster))).toBe(true)
+      expect(segments.some((s) => s.type !== 'equal' && s.text.includes(cluster))).toBe(false)
+    }
+  })
+
+  it('handles adding an emoji to a plain caption', () => {
+    const segments = diffText('Open house Saturday', 'Open house Saturday 🎉')
+    expect(rebuildOld(segments)).toBe('Open house Saturday')
+    expect(rebuildNew(segments)).toBe('Open house Saturday 🎉')
+    const inserts = segments.filter((s) => s.type === 'insert').map((s) => s.text).join('')
+    expect(inserts).toContain('🎉')
+  })
+})
