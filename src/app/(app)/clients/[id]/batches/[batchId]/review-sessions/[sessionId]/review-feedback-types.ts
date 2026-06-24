@@ -16,6 +16,9 @@ export type FeedbackPostVM = {
   verdict: 'approved' | 'changes_requested' | 'caption_edited' | 'none'
   /** Set when the client edited the caption (verdict === 'caption_edited'). */
   suggestedCaption: string | null
+  /** The client's general Notes for this post (ReviewItem.comment), if any.
+   *  The opener the AM replies to when promoting Notes into a post-level thread. */
+  comment: string | null
   /** The ReviewItem id, when one exists (needed for accept/reject/mark). */
   reviewItemId: string | null
   /** True when the item is handled (accepted/addressed) and no open pins remain. */
@@ -45,5 +48,12 @@ export type FeedbackActions = {
   rejectCaption: (reviewItemId: string) => Promise<void>
   markAddressed: (postId: string, reviewItemId: string | null) => Promise<void>
   unmarkAddressed: (postId: string, reviewItemId: string | null) => Promise<void>
+  /** AM-only: reply to a post's general (non-pin) feedback. Promotes the
+   *  client's Notes into a reviewer post-level thread and appends the reply. */
+  replyToFeedback: (
+    reviewItemId: string,
+    body: string,
+    image?: { url: string; width?: number; height?: number },
+  ) => Promise<void>
   startNextRound: () => Promise<void>
 }
