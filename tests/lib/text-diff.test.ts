@@ -155,4 +155,34 @@ describe('diffText , emoji (grapheme) safety', () => {
     const inserts = segments.filter((s) => s.type === 'insert').map((s) => s.text).join('')
     expect(inserts).toContain('🎉')
   })
+
+  it('keeps a skin-tone-modified emoji whole when only the modifier changes', () => {
+    const segments = diffText('go 👍🏽 team', 'go 👍🏿 team')
+
+    expect(rebuildOld(segments)).toBe('go 👍🏽 team')
+    expect(rebuildNew(segments)).toBe('go 👍🏿 team')
+
+    // The change is the WHOLE thumb emoji, not a stray skin-tone modifier.
+    // (The old code-unit tokenizer left "👍" in an equal segment and only
+    // diffed the bare modifier "🏽"/"🏿", which renders as garbage.)
+    const del = segments.filter((s) => s.type === 'delete').map((s) => s.text).join('')
+    const ins = segments.filter((s) => s.type === 'insert').map((s) => s.text).join('')
+    expect(del).toBe('👍🏽')
+    expect(ins).toBe('👍🏿')
+    expect(segments.some((s) => s.type === 'equal' && s.text.includes('👍'))).toBe(false)
+  })
+
+  it('treats a ZWJ family glued to surrounding words as one token when it grows', () => {
+    const segments = diffText('great👨‍👩‍👧deal', 'great👨‍👩‍👧‍👦deal')
+
+    expect(rebuildOld(segments)).toBe('great👨‍👩‍👧deal')
+    expect(rebuildNew(segments)).toBe('great👨‍👩‍👧‍👦deal')
+
+    const del = segments.filter((s) => s.type === 'delete').map((s) => s.text).join('')
+    const ins = segments.filter((s) => s.type === 'insert').map((s) => s.text).join('')
+    expect(del).toBe('👨‍👩‍👧')
+    expect(ins).toBe('👨‍👩‍👧‍👦')
+    // No stray leading ZWJ fragment (the old code emitted a bare "‍👦").
+    expect(segments.some((s) => /^‍/.test(s.text))).toBe(false)
+  })
 })
