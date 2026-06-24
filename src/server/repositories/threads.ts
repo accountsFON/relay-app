@@ -593,6 +593,32 @@ export async function bulkResolveOnPost(
   return result.count
 }
 
+export interface FindOpenPostLevelReviewerThreadInput {
+  postId: string
+  reviewerToken: string
+}
+
+/**
+ * Returns the id of an existing OPEN, post-level (all coords null),
+ * reviewer-authored thread for a post, or null. Used to make the AM
+ * "promote Notes into a thread" path idempotent.
+ */
+export async function findOpenPostLevelReviewerThread(
+  input: FindOpenPostLevelReviewerThreadInput,
+): Promise<string | null> {
+  const row = await db.postThread.findFirst({
+    where: {
+      postId: input.postId,
+      reviewerToken: input.reviewerToken,
+      status: 'open',
+      imageX: null, imageY: null, captionFrom: null, captionTo: null,
+    },
+    select: { id: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  return row?.id ?? null
+}
+
 export interface BulkReopenOnPostInput {
   postId: string
   /** When true, only re-open CLIENT-left pins (reviewerToken != null). */
