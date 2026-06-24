@@ -22,6 +22,16 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — AM feedback rail: collapsible per-pin rows** (PR #239)
+  Refines the item 31 rail: each client pin/comment is now its own collapsible row,
+  grouped under its post. Collapsed (default) shows the initial comment text fully
+  wrapped + a "N replies" count, no image; clicking expands to replies + images +
+  reply box + Resolve. Expansion is controlled by the shell's `selectedThreadId`, so
+  clicking a pin on the canvas expands + scrolls to its row (accordion, one open at a
+  time). Per-post header keeps verdict + Accept/Reject caption + Mark addressed.
+  New `PinCommentRow`; retired `ThreadConversation`. Canvas / internal-chat rail /
+  entry button / VM + actions unchanged. 1756 unit tests.
+
 - [x] **2026-06-23 — AM "View client feedback" markup layout (item 31)** (PR #238)
   Restructured the AM review session detail page into a markup-style layout: left
   client-feedback rail (one row per post, plainly-approved collapsed), center posts

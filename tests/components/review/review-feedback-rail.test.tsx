@@ -60,7 +60,7 @@ const noopActions: FeedbackActions = {
 // ---------------------------------------------------------------------------
 
 describe('ReviewFeedbackRail — row rendering', () => {
-  it('renders one row per post in order', () => {
+  it('renders one post header per post in order', () => {
     const posts = [
       vm({ postId: 'post-1', postNumber: 1 }),
       vm({ postId: 'post-2', postNumber: 2, verdict: 'approved', threads: [] }),
@@ -73,8 +73,8 @@ describe('ReviewFeedbackRail — row rendering', () => {
         isDesigner={false}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-row-post-1')).toBeTruthy()
@@ -94,8 +94,8 @@ describe('ReviewFeedbackRail — row rendering', () => {
         isDesigner={false}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     const cleanRow = screen.getByTestId('rail-row-post-clean').closest('[data-collapsed]')
@@ -114,19 +114,21 @@ describe('ReviewFeedbackRail — row rendering', () => {
         isDesigner={false}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     const row = screen.getByTestId('rail-row-post-a').closest('[data-collapsed]')
     expect(row?.getAttribute('data-collapsed')).toBe('false')
   })
-})
 
-describe('ReviewFeedbackRail — row selection', () => {
-  it('clicking a changes row calls onSelectRow with that postId', () => {
-    const onSelectRow = vi.fn()
-    const posts = [vm({ postId: 'post-1', verdict: 'changes_requested', threads: [makeThread('t1')] })]
+  it('renders a rail-thread-<id> wrapper for each thread in a post', () => {
+    const posts = [
+      vm({
+        postId: 'post-1',
+        threads: [makeThread('t1'), makeThread('t2')],
+      }),
+    ]
     render(
       <ReviewFeedbackRail
         posts={posts}
@@ -134,28 +136,88 @@ describe('ReviewFeedbackRail — row selection', () => {
         isDesigner={false}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={onSelectRow}
-        registerRef={vi.fn()}
-      />,
-    )
-    fireEvent.click(screen.getByTestId('rail-row-post-1'))
-    expect(onSelectRow).toHaveBeenCalledWith('post-1')
-  })
-
-  it('the expanded body shows the thread wrapper', () => {
-    const posts = [vm({ postId: 'post-1', verdict: 'changes_requested', threads: [makeThread('t1')] })]
-    render(
-      <ReviewFeedbackRail
-        posts={posts}
-        actions={noopActions}
-        isDesigner={false}
-        selectedPostId={null}
-        selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-thread-t1')).toBeTruthy()
+    expect(screen.getByTestId('rail-thread-t2')).toBeTruthy()
+  })
+})
+
+describe('ReviewFeedbackRail — pin row expansion', () => {
+  it('pin row is collapsed by default (data-expanded="false")', () => {
+    const posts = [vm({ postId: 'post-1', threads: [makeThread('t1')] })]
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={false}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    const row = screen.getByTestId('pin-comment-row-t1')
+    expect(row.getAttribute('data-expanded')).toBe('false')
+  })
+
+  it('pin row is expanded when selectedThreadId matches', () => {
+    const posts = [vm({ postId: 'post-1', threads: [makeThread('t1')] })]
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={false}
+        selectedPostId={null}
+        selectedThreadId="t1"
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    const row = screen.getByTestId('pin-comment-row-t1')
+    expect(row.getAttribute('data-expanded')).toBe('true')
+  })
+
+  it('clicking a pin row header calls onToggleThread with that threadId', () => {
+    const onToggleThread = vi.fn()
+    const posts = [vm({ postId: 'post-1', threads: [makeThread('t1')] })]
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={false}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={onToggleThread}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByTestId('pin-comment-row-t1'))
+    expect(onToggleThread).toHaveBeenCalledWith('t1')
+  })
+
+  it('a second pin row is collapsed while first is expanded', () => {
+    const posts = [
+      vm({
+        postId: 'post-1',
+        threads: [makeThread('t1'), makeThread('t2')],
+      }),
+    ]
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={false}
+        selectedPostId={null}
+        selectedThreadId="t1"
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
+    expect(screen.getByTestId('pin-comment-row-t2').getAttribute('data-expanded')).toBe('false')
   })
 })
 
@@ -169,8 +231,8 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         isDesigner={true}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     expect(screen.queryByTestId('rail-mark-addressed-post-1')).toBeNull()
@@ -185,8 +247,8 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         isDesigner={false}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toBeTruthy()
@@ -207,8 +269,8 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         isDesigner={true}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     expect(screen.queryByTestId('rail-accept-post-1')).toBeNull()
@@ -230,12 +292,28 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         isDesigner={false}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-accept-post-1')).toBeTruthy()
     expect(screen.getByTestId('rail-reject-post-1')).toBeTruthy()
+  })
+
+  it('designer does not see resolve button inside expanded pin row', () => {
+    const posts = [vm({ postId: 'post-1', threads: [makeThread('t1')] })]
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={true}
+        selectedPostId={null}
+        selectedThreadId="t1"
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    expect(screen.queryByTestId('pin-comment-resolve-t1')).toBeNull()
   })
 })
 
@@ -249,8 +327,8 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
         isDesigner={false}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toHaveTextContent('Mark addressed')
@@ -265,8 +343,8 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
         isDesigner={false}
         selectedPostId={null}
         selectedThreadId={null}
-        onSelectRow={vi.fn()}
-        registerRef={vi.fn()}
+        onToggleThread={vi.fn()}
+        registerThreadRef={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toHaveTextContent('Move back')
