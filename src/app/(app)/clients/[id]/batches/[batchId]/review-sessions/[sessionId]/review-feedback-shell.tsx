@@ -54,14 +54,14 @@ export function ReviewFeedbackShell({
   function selectFromCanvasPin(postId: string, threadId: string) {
     setSelectedPostId(postId)
     setSelectedThreadId(threadId)
-    threadRefs.current[threadId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    threadRefs.current[threadId]?.scrollIntoView({ block: 'center' })
   }
 
   // Anchor the center canvas to a post (clicking a post header in the rail).
   // Lets copy-change posts with no pins scroll the canvas like pin rows do.
   function selectPost(postId: string) {
     setSelectedPostId(postId)
-    canvasRefs.current[postId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    canvasRefs.current[postId]?.scrollIntoView({ block: 'center' })
   }
 
   function toggleThread(threadId: string) {
@@ -71,10 +71,7 @@ export function ReviewFeedbackShell({
     const owningPost = posts.find((p) => p.threads.some((t) => t.id === threadId))
     if (owningPost) {
       setSelectedPostId(owningPost.postId)
-      canvasRefs.current[owningPost.postId]?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      })
+      canvasRefs.current[owningPost.postId]?.scrollIntoView({ block: 'center' })
     }
   }
 
