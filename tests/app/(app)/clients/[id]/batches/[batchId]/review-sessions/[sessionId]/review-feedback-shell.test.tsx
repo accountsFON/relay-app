@@ -201,6 +201,22 @@ describe('ReviewFeedbackShell — rail → canvas scroll', () => {
     expect(screen.getByTestId('canvas-post-p1').getAttribute('data-selected')).toBe('true')
   })
 
+  it('clicking a post header anchors the canvas to that post (selectPost)', () => {
+    render(
+      <ReviewFeedbackShell
+        {...baseProps}
+        posts={[vm()]}
+      />,
+    )
+
+    // The post header (rail-row-p1) anchors the canvas even for posts without
+    // an expanded pin interaction (e.g. copy-change posts with no pins).
+    fireEvent.click(screen.getByTestId('rail-row-p1'))
+
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+    expect(screen.getByTestId('canvas-post-p1').getAttribute('data-selected')).toBe('true')
+  })
+
   it('toggleThread sets selectedPostId so canvas-post-p1 becomes selected', () => {
     render(
       <ReviewFeedbackShell

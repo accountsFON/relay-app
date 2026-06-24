@@ -57,6 +57,13 @@ export function ReviewFeedbackShell({
     threadRefs.current[threadId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
+  // Anchor the center canvas to a post (clicking a post header in the rail).
+  // Lets copy-change posts with no pins scroll the canvas like pin rows do.
+  function selectPost(postId: string) {
+    setSelectedPostId(postId)
+    canvasRefs.current[postId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   function toggleThread(threadId: string) {
     setSelectedThreadId((prev) => (prev === threadId ? null : threadId))
 
@@ -85,6 +92,7 @@ export function ReviewFeedbackShell({
           selectedPostId={selectedPostId}
           selectedThreadId={selectedThreadId}
           onToggleThread={toggleThread}
+          onSelectPost={selectPost}
           registerThreadRef={(id, el) => {
             threadRefs.current[id] = el
           }}
