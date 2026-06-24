@@ -43,3 +43,17 @@ describe('MobileThreadFab bottom sheet sizing', () => {
     expect(cls).toContain('overflow-hidden')
   })
 })
+
+describe('MobileThreadFab showOnDesktop', () => {
+  it('hides the trigger at lg+ by default (mobile only)', () => {
+    render(<MobileThreadFab clientId="c1" events={[]} />)
+    const trigger = screen.getByRole('button', { name: /open client thread/i })
+    expect(trigger.className).toContain('lg:hidden')
+  })
+
+  it('keeps the trigger visible at lg+ when showOnDesktop is set', () => {
+    render(<MobileThreadFab clientId="c1" events={[]} showOnDesktop />)
+    const trigger = screen.getByRole('button', { name: /open client thread/i })
+    expect(trigger.className).not.toContain('lg:hidden')
+  })
+})

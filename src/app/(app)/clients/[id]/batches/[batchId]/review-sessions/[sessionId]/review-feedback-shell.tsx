@@ -13,7 +13,6 @@ export type ReviewFeedbackShellProps = {
   role: 'am' | 'admin' | 'platformOwner' | 'designer'
   isDesigner: boolean
   canPostComment: boolean
-  internalThread: React.ReactNode
   /**
    * The AM's database user id. A server component can't pass a
    * `(file: File) => Promise<...>` callback, so the shell (a client
@@ -33,7 +32,6 @@ export function ReviewFeedbackShell({
   actions,
   isDesigner,
   userDbId,
-  internalThread,
   allAddressed,
   isSuperseded,
   startNextRoundSlot,
@@ -76,7 +74,7 @@ export function ReviewFeedbackShell({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)_360px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
       {/* Column 1: feedback rail (fixed/sticky with its own scroll, so the
           per-pin accordion expands within the panel and the page doesn't jump). */}
       <div className="lg:order-1 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto">
@@ -114,15 +112,6 @@ export function ReviewFeedbackShell({
           clientAvatarUrl={clientAvatarUrl}
         />
       </div>
-
-      {/* Column 3: internal thread (sticky on desktop) */}
-      <aside
-        aria-label="Internal thread"
-        data-testid="review-internal-rail"
-        className="lg:sticky lg:top-4 lg:self-start lg:order-3 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto"
-      >
-        {internalThread}
-      </aside>
     </div>
   )
 }

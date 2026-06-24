@@ -14,12 +14,20 @@ interface MobileThreadFabProps {
   mentionTargets?: MentionTarget[]
   hideComposer?: boolean
   className?: string
+  /**
+   * Show the floating button at lg+ too. Default false: on pages with a
+   * desktop right rail (batch + client detail) the FAB stays mobile only.
+   * The review session detail page has no desktop rail, so it sets this true
+   * to make the chat a toggle popup on every screen size.
+   */
+  showOnDesktop?: boolean
 }
 
 /**
- * Mobile only floating chat button that toggles the client thread in a
- * bottom sheet. Trigger is fixed bottom right and hidden at lg+, where
- * the thread sits in the desktop right rail.
+ * Floating chat button that toggles the client thread in a bottom sheet.
+ * By default it's mobile only (hidden at lg+, where the thread sits in a
+ * desktop right rail). Set `showOnDesktop` on surfaces with no desktop rail
+ * so the chat is a toggle popup at every screen size.
  */
 export function MobileThreadFab({
   clientId,
@@ -27,6 +35,7 @@ export function MobileThreadFab({
   mentionTargets = [],
   hideComposer = false,
   className,
+  showOnDesktop = false,
 }: MobileThreadFabProps) {
   const [open, setOpen] = useState(false)
 
@@ -36,7 +45,8 @@ export function MobileThreadFab({
         data-slot="mobile-thread-fab-trigger"
         aria-label="Open client thread"
         className={cn(
-          'fixed bottom-4 right-4 z-40 lg:hidden',
+          'fixed bottom-4 right-4 z-40',
+          !showOnDesktop && 'lg:hidden',
           'flex h-12 w-12 items-center justify-center rounded-full',
           'bg-foreground text-background shadow-lg',
           'hover:bg-foreground/90 active:bg-foreground/80',

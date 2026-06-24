@@ -86,8 +86,15 @@ vi.mock('@/components/activity/activity-thread', () => ({
 }))
 
 // Stub MobileThreadFab — it imports base-ui Dialog which needs a real DOM.
+// The internal chat now lives here (toggle popup), so expose the composer gate.
 vi.mock('@/components/activity/mobile-thread-fab', () => ({
-  MobileThreadFab: () => <div data-testid="mobile-thread-fab-stub" />,
+  MobileThreadFab: (props: { hideComposer?: boolean; showOnDesktop?: boolean }) => (
+    <div
+      data-testid="mobile-thread-fab-stub"
+      data-hide-composer={String(Boolean(props.hideComposer))}
+      data-show-on-desktop={String(Boolean(props.showOnDesktop))}
+    />
+  ),
 }))
 
 vi.mock('@/components/review/start-next-round-button', () => ({
@@ -113,7 +120,6 @@ vi.mock(
       canPostComment: boolean
       allAddressed: boolean
       isSuperseded: boolean
-      internalThread: React.ReactNode
       startNextRoundSlot?: React.ReactNode
     }) => (
       <div data-testid="review-feedback-shell-stub">
@@ -150,10 +156,6 @@ vi.mock(
             <div key={p.postId} data-testid={`canvas-post-${p.postId}`} />
           ))}
         </div>
-        {/* Internal rail */}
-        <aside data-testid="review-internal-rail">
-          {props.internalThread}
-        </aside>
         {/* Start next round */}
         {props.allAddressed && !props.isSuperseded && props.startNextRoundSlot}
       </div>
@@ -686,34 +688,37 @@ describe('ReviewSessionDetailPage', () => {
       expect(getByTestId('review-posts-canvas')).toBeTruthy()
     })
 
-    it('renders internal thread inside review-internal-rail', async () => {
-      const { getByTestId } = await renderPage({
+    it('exposes the internal chat as a toggle popup (FAB), not a fixed rail', async () => {
+      const { getByTestId, queryByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
 
-      const rail = getByTestId('review-internal-rail')
-      // The internal thread element should be a descendant of the rail.
-      expect(rail.querySelector('[data-testid="review-activity-thread"]')).toBeTruthy()
+      // No fixed right rail; the chat is the floating toggle (MobileThreadFab
+      // with showOnDesktop), so the feedback rail + posts get the full width.
+      expect(queryByTestId('review-internal-rail')).toBeNull()
+      expect(getByTestId('mobile-thread-fab-stub')).toBeTruthy()
     })
   })
 
   describe('activity chat for internal revision pings', () => {
-    it('renders the activity thread inside the internal rail', async () => {
+    it('renders the chat toggle popup on the page', async () => {
       const { getByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
-      expect(getByTestId('review-activity-thread')).toBeTruthy()
+      expect(getByTestId('mobile-thread-fab-stub')).toBeTruthy()
     })
   })
 
   describe('composer gate on the internal thread', () => {
     function threadStub(container: HTMLElement): HTMLElement {
+      // The internal chat is now the MobileThreadFab toggle popup; the composer
+      // gate (hideComposer = !canPostComment) is passed to it.
       return container.querySelector(
-        '[data-component="activity-thread-stub"]',
+        '[data-testid="mobile-thread-fab-stub"]',
       ) as HTMLElement
     }
 

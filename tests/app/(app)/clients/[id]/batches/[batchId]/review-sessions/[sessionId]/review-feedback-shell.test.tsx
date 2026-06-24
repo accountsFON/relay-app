@@ -74,7 +74,6 @@ const baseProps = {
   role: 'am' as const,
   isDesigner: false,
   canPostComment: true,
-  internalThread: <div data-testid="internal-thread-stub" />,
   allAddressed: false,
   isSuperseded: false,
   clientName: 'Acme Corp',
@@ -107,7 +106,7 @@ function findPostPinBadge(threadId: string) {
 // ---------------------------------------------------------------------------
 
 describe('ReviewFeedbackShell — zone rendering', () => {
-  it('renders all three zones: rail, canvas, and internal thread', () => {
+  it('renders the two zones: feedback rail and posts canvas (no fixed chat rail)', () => {
     render(
       <ReviewFeedbackShell
         {...baseProps}
@@ -117,10 +116,9 @@ describe('ReviewFeedbackShell — zone rendering', () => {
 
     expect(screen.getByTestId('review-feedback-rail')).toBeTruthy()
     expect(screen.getByTestId('review-posts-canvas')).toBeTruthy()
-    // Internal thread is rendered inside the internal rail aside
-    const internalRail = screen.getByTestId('review-internal-rail')
-    expect(internalRail).toBeTruthy()
-    expect(internalRail.querySelector('[data-testid="internal-thread-stub"]')).toBeTruthy()
+    // The internal chat is no longer a fixed right rail; it's a toggle popup
+    // (MobileThreadFab with showOnDesktop), rendered by the page, not the shell.
+    expect(screen.queryByTestId('review-internal-rail')).toBeNull()
   })
 
   it('renders the PlatformToggle above the canvas', () => {

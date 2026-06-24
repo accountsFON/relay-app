@@ -22,6 +22,13 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — AM review: internal chat is a toggle popup, not a fixed right rail** (PR #244)
+  Dropped the desktop right column on the AM review session detail page so the feedback rail +
+  posts canvas get the full width. The internal AM/designer chat is now the floating chat button
+  (`MobileThreadFab`) on every screen size, opening the slide-up panel — via a new `showOnDesktop`
+  prop (default false, so the batch + client detail pages keep their desktop rail + mobile-only
+  FAB). Grid is now 2 columns. 1776 unit tests.
+
 - [x] **2026-06-23 — Fix: anchor scroll never actually scrolled the center** (PR #243)
   Live verification caught that clicking a rail row/header set the selected-post ring but did NOT
   scroll the center canvas to the post. Root cause: the shell's anchor handlers used

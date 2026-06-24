@@ -1,10 +1,11 @@
 /**
  * AM-side review session detail page — markup feedback shell layout.
  *
- * Renders the review session using the three-zone ReviewFeedbackShell:
+ * Renders the review session using the two-zone ReviewFeedbackShell:
  *   - Left rail: per-post feedback rows with accept/reject/mark-addressed
  *   - Center canvas: post images + client markup pins (read-only)
- *   - Right rail: sticky internal AM/designer chat thread
+ * The internal AM/designer chat is a toggle popup (MobileThreadFab with
+ * showOnDesktop) so the two zones get the full width instead of a fixed rail.
  *
  * Access control mirrors the batch page: requireClientViewer +
  * findClientForUser, then walk magicLink -> batch -> client.
@@ -48,7 +49,6 @@ import {
   useCommentImageAsPostMediaAction as commentImageAsPostMediaAction,
 } from '@/server/actions/threads'
 import { revalidatePath } from 'next/cache'
-import { ActivityThread } from '@/components/activity/activity-thread'
 import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { ReviewFeedbackShell } from './review-feedback-shell'
 import type { FeedbackPostVM, FeedbackActions } from './review-feedback-types'
@@ -384,31 +384,16 @@ export default async function ReviewSessionDetailPage({
               }}
             />
           }
-          internalThread={
-            <div
-              aria-label="Internal thread"
-              data-testid="review-activity-thread"
-              className="hidden overflow-hidden rounded-2xl bg-card lg:flex lg:h-[36rem] lg:max-h-[calc(100dvh-5rem)] lg:flex-col"
-            >
-              <h2 className="shrink-0 px-4 pt-4 pb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Internal thread
-              </h2>
-              <div className="min-h-0 flex-1 px-4 pb-4">
-                <ActivityThread
-                  clientId={client.id}
-                  events={activityEvents}
-                  mentionTargets={mentionTargets}
-                  hideComposer={!canPostComment}
-                />
-              </div>
-            </div>
-          }
         />
+        {/* Internal chat is a toggle popup (floating button → slide-up panel)
+            on every screen size, so the feedback rail + posts get the full
+            width instead of a fixed right rail. */}
         <MobileThreadFab
           clientId={client.id}
           events={activityEvents}
           mentionTargets={mentionTargets}
           hideComposer={!canPostComment}
+          showOnDesktop
         />
       </div>
     </div>
