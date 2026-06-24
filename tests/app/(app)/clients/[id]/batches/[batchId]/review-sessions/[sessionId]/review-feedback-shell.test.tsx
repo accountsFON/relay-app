@@ -32,7 +32,8 @@ function makeThread(id: string): HydratedThread {
   return {
     id,
     status: 'open' as const,
-    // Non-image pin so the canvas renders a clickable canvas-pin-<id> chip
+    // Post-level pin — renders as instagram-post-pin badge (or fb-pin-badge)
+    // in the faithful post component, accessible via data-thread-id attribute.
     pin: { kind: 'post' as const },
     firstComment: comment,
     comments: [comment],
@@ -67,6 +68,19 @@ const noopActions: FeedbackActions = {
   startNextRound: vi.fn(() => Promise.resolve()),
 }
 
+/** Required props for every shell render. clientName is now required. */
+const baseProps = {
+  actions: noopActions,
+  role: 'am' as const,
+  isDesigner: false,
+  canPostComment: true,
+  internalThread: <div data-testid="internal-thread-stub" />,
+  allAddressed: false,
+  isSuperseded: false,
+  clientName: 'Acme Corp',
+  clientAvatarUrl: null,
+}
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -76,6 +90,19 @@ beforeEach(() => {
 })
 
 // ---------------------------------------------------------------------------
+// Helper: find the post-level pin badge rendered by the faithful post
+// InstagramFeedPost renders post-level pins as [data-testid="instagram-post-pin"]
+// with [data-thread-id=<id>]. This locator searches within the full document
+// since the badge is nested inside the post component.
+// ---------------------------------------------------------------------------
+
+function findPostPinBadge(threadId: string) {
+  return document.querySelector(
+    `[data-testid="instagram-post-pin"][data-thread-id="${threadId}"]`,
+  ) as HTMLElement | null
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -83,14 +110,8 @@ describe('ReviewFeedbackShell — zone rendering', () => {
   it('renders all three zones: rail, canvas, and internal thread', () => {
     render(
       <ReviewFeedbackShell
+        {...baseProps}
         posts={[vm()]}
-        actions={noopActions}
-        role="am"
-        isDesigner={false}
-        canPostComment={true}
-        internalThread={<div data-testid="internal-thread-stub" />}
-        allAddressed={false}
-        isSuperseded={false}
       />,
     )
 
@@ -101,34 +122,40 @@ describe('ReviewFeedbackShell — zone rendering', () => {
     expect(internalRail).toBeTruthy()
     expect(internalRail.querySelector('[data-testid="internal-thread-stub"]')).toBeTruthy()
   })
+
+  it('renders the PlatformToggle above the canvas', () => {
+    render(
+      <ReviewFeedbackShell
+        {...baseProps}
+        posts={[vm()]}
+      />,
+    )
+    // PlatformToggle renders a radiogroup labelled "Preview platform"
+    expect(screen.getByRole('radiogroup', { name: 'Preview platform' })).toBeTruthy()
+  })
 })
 
 describe('ReviewFeedbackShell — canvas pin → rail expand', () => {
-  it('clicking canvas-pin-t1 expands the matching pin row in the rail', () => {
+  it('clicking canvas instagram-post-pin expands the matching pin row in the rail', () => {
     render(
       <ReviewFeedbackShell
+        {...baseProps}
         posts={[vm()]}
-        actions={noopActions}
-        role="am"
-        isDesigner={false}
-        canPostComment={true}
-        internalThread={<div data-testid="internal-thread-stub" />}
-        allAddressed={false}
-        isSuperseded={false}
       />,
     )
 
     // Before click, pin row is collapsed
     expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('false')
 
-    // Click the non-image pin chip on the canvas
-    const pinChip = screen.getByTestId('canvas-pin-t1')
-    fireEvent.click(pinChip)
+    // Click the post-level pin badge rendered by InstagramFeedPost
+    const pinBadge = findPostPinBadge('t1')
+    expect(pinBadge).toBeTruthy()
+    fireEvent.click(pinBadge!)
 
     // After click, pin row should be expanded
     expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
 
-    // scrollIntoView should have been called (scroll to the thread ref)
+    // scrollIntoView should have been called (scroll to the thread ref in rail)
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
   })
 
@@ -136,24 +163,57 @@ describe('ReviewFeedbackShell — canvas pin → rail expand', () => {
     const thread2 = makeThread('t2')
     render(
       <ReviewFeedbackShell
+        {...baseProps}
         posts={[vm({ threads: [makeThread('t1'), thread2] })]}
-        actions={noopActions}
-        role="am"
-        isDesigner={false}
-        canPostComment={true}
-        internalThread={<div data-testid="internal-thread-stub" />}
-        allAddressed={false}
-        isSuperseded={false}
       />,
     )
 
-    fireEvent.click(screen.getByTestId('canvas-pin-t1'))
+    const pin1 = findPostPinBadge('t1')
+    const pin2 = findPostPinBadge('t2')
+    expect(pin1).toBeTruthy()
+    expect(pin2).toBeTruthy()
+
+    fireEvent.click(pin1!)
     expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
     expect(screen.getByTestId('pin-comment-row-t2').getAttribute('data-expanded')).toBe('false')
 
-    fireEvent.click(screen.getByTestId('canvas-pin-t2'))
+    fireEvent.click(pin2!)
     expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('false')
     expect(screen.getByTestId('pin-comment-row-t2').getAttribute('data-expanded')).toBe('true')
+  })
+})
+
+describe('ReviewFeedbackShell — rail → canvas scroll', () => {
+  it('clicking a rail pin row calls scrollIntoView on the matching canvas post', () => {
+    render(
+      <ReviewFeedbackShell
+        {...baseProps}
+        posts={[vm()]}
+      />,
+    )
+
+    // pin-comment-row-t1 is the rail row header; clicking it calls toggleThread
+    // which should scroll the canvas to canvas-post-p1
+    fireEvent.click(screen.getByTestId('pin-comment-row-t1'))
+
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+    // After click, canvas-post-p1 should be marked selected
+    expect(screen.getByTestId('canvas-post-p1').getAttribute('data-selected')).toBe('true')
+  })
+
+  it('toggleThread sets selectedPostId so canvas-post-p1 becomes selected', () => {
+    render(
+      <ReviewFeedbackShell
+        {...baseProps}
+        posts={[vm()]}
+      />,
+    )
+
+    expect(screen.getByTestId('canvas-post-p1').getAttribute('data-selected')).toBe('false')
+
+    fireEvent.click(screen.getByTestId('pin-comment-row-t1'))
+
+    expect(screen.getByTestId('canvas-post-p1').getAttribute('data-selected')).toBe('true')
   })
 })
 
@@ -161,19 +221,14 @@ describe('ReviewFeedbackShell — toggle collapses an expanded pin row', () => {
   it('clicking an expanded pin row header collapses it', () => {
     render(
       <ReviewFeedbackShell
+        {...baseProps}
         posts={[vm()]}
-        actions={noopActions}
-        role="am"
-        isDesigner={false}
-        canPostComment={true}
-        internalThread={<div data-testid="internal-thread-stub" />}
-        allAddressed={false}
-        isSuperseded={false}
       />,
     )
 
-    // Expand via canvas pin
-    fireEvent.click(screen.getByTestId('canvas-pin-t1'))
+    // Expand via canvas pin badge
+    const pinBadge = findPostPinBadge('t1')
+    fireEvent.click(pinBadge!)
     expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
 
     // Toggle off by clicking the pin row header
@@ -186,14 +241,8 @@ describe('ReviewFeedbackShell — canvas post selection', () => {
   it('canvas-post-p1 has data-selected="false" initially', () => {
     render(
       <ReviewFeedbackShell
+        {...baseProps}
         posts={[vm()]}
-        actions={noopActions}
-        role="am"
-        isDesigner={false}
-        canPostComment={true}
-        internalThread={<div data-testid="internal-thread-stub" />}
-        allAddressed={false}
-        isSuperseded={false}
       />,
     )
 
@@ -201,21 +250,16 @@ describe('ReviewFeedbackShell — canvas post selection', () => {
     expect(canvasPost.getAttribute('data-selected')).toBe('false')
   })
 
-  it('clicking canvas-pin-t1 sets canvas-post-p1 data-selected="true"', () => {
+  it('clicking a canvas pin badge sets canvas-post-p1 data-selected="true"', () => {
     render(
       <ReviewFeedbackShell
+        {...baseProps}
         posts={[vm()]}
-        actions={noopActions}
-        role="am"
-        isDesigner={false}
-        canPostComment={true}
-        internalThread={<div data-testid="internal-thread-stub" />}
-        allAddressed={false}
-        isSuperseded={false}
       />,
     )
 
-    fireEvent.click(screen.getByTestId('canvas-pin-t1'))
+    const pinBadge = findPostPinBadge('t1')
+    fireEvent.click(pinBadge!)
     expect(screen.getByTestId('canvas-post-p1').getAttribute('data-selected')).toBe('true')
   })
 })
@@ -224,12 +268,8 @@ describe('ReviewFeedbackShell — startNextRoundSlot', () => {
   it('renders startNextRoundSlot above rail when allAddressed && !isSuperseded', () => {
     render(
       <ReviewFeedbackShell
+        {...baseProps}
         posts={[vm({ addressed: true })]}
-        actions={noopActions}
-        role="am"
-        isDesigner={false}
-        canPostComment={true}
-        internalThread={<div data-testid="internal-thread-stub" />}
         allAddressed={true}
         isSuperseded={false}
         startNextRoundSlot={<div data-testid="next-round-slot" />}
@@ -241,12 +281,8 @@ describe('ReviewFeedbackShell — startNextRoundSlot', () => {
   it('does NOT render startNextRoundSlot when isSuperseded', () => {
     render(
       <ReviewFeedbackShell
+        {...baseProps}
         posts={[vm({ addressed: true })]}
-        actions={noopActions}
-        role="am"
-        isDesigner={false}
-        canPostComment={true}
-        internalThread={<div data-testid="internal-thread-stub" />}
         allAddressed={true}
         isSuperseded={true}
         startNextRoundSlot={<div data-testid="next-round-slot" />}

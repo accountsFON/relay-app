@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { ReviewFeedbackRail } from '@/components/review/review-feedback-rail'
 import { ReviewPostsCanvas } from '@/components/review/review-posts-canvas'
+import { PlatformToggle, type Platform } from '@/components/preview/platform-toggle'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
 import type { FeedbackPostVM, FeedbackActions } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 
@@ -23,6 +24,8 @@ export type ReviewFeedbackShellProps = {
   allAddressed: boolean
   isSuperseded: boolean
   startNextRoundSlot?: React.ReactNode
+  clientName: string
+  clientAvatarUrl?: string | null
 }
 
 export function ReviewFeedbackShell({
@@ -34,6 +37,8 @@ export function ReviewFeedbackShell({
   allAddressed,
   isSuperseded,
   startNextRoundSlot,
+  clientName,
+  clientAvatarUrl,
 }: ReviewFeedbackShellProps) {
   const uploadImage = userDbId
     ? (file: File) => uploadCommentImage(file, { mode: 'internal', userDbId })
@@ -41,6 +46,7 @@ export function ReviewFeedbackShell({
 
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
+  const [platform, setPlatform] = useState<Platform>('instagram')
 
   const threadRefs = useRef<Record<string, HTMLElement | null>>({})
   const canvasRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -53,6 +59,16 @@ export function ReviewFeedbackShell({
 
   function toggleThread(threadId: string) {
     setSelectedThreadId((prev) => (prev === threadId ? null : threadId))
+
+    // Also scroll the center canvas to the post that owns this thread.
+    const owningPost = posts.find((p) => p.threads.some((t) => t.id === threadId))
+    if (owningPost) {
+      setSelectedPostId(owningPost.postId)
+      canvasRefs.current[owningPost.postId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }
   }
 
   return (
@@ -76,6 +92,9 @@ export function ReviewFeedbackShell({
 
       {/* Column 2: posts canvas */}
       <div className="lg:order-2">
+        <div className="mb-4 flex justify-center">
+          <PlatformToggle platform={platform} onChange={setPlatform} />
+        </div>
         <ReviewPostsCanvas
           posts={posts}
           selectedPostId={selectedPostId}
@@ -84,6 +103,9 @@ export function ReviewFeedbackShell({
           registerRef={(id, el) => {
             canvasRefs.current[id] = el
           }}
+          platform={platform}
+          clientName={clientName}
+          clientAvatarUrl={clientAvatarUrl}
         />
       </div>
 
