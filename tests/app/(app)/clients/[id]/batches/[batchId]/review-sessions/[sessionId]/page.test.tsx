@@ -114,6 +114,7 @@ vi.mock(
         postNumber: number
         verdict: string
         addressed: boolean
+        captionAccepted?: boolean
         threads: Array<{ id: string; status: string; firstComment: { body: string } }>
       }>
       isDesigner: boolean
@@ -137,6 +138,17 @@ vi.mock(
                   <span>{t.firstComment.body}</span>
                 </div>
               ))}
+              {/* Caption-edit block: greyed success when accepted, action buttons when pending */}
+              {p.verdict === 'caption_edited' && (
+                p.captionAccepted ? (
+                  <div data-testid={`rail-caption-accepted-${p.postId}`} />
+                ) : (
+                  <>
+                    <div data-testid={`rail-accept-${p.postId}`} />
+                    <div data-testid={`rail-reject-${p.postId}`} />
+                  </>
+                )
+              )}
               {/* Mark addressed button — AM only, not designer */}
               {!props.isDesigner && (
                 <div
@@ -822,6 +834,34 @@ describe('ReviewSessionDetailPage', () => {
       })
 
       expect(getByTestId('rail-row-post_d').getAttribute('data-verdict')).toBe('none')
+    })
+  })
+
+  describe('caption accepted state (acceptedAsPostVersionId → captionAccepted)', () => {
+    it('renders greyed success block and hides accept/reject buttons when caption edit is accepted', async () => {
+      // item_c is caption_edited; setting acceptedAsPostVersionId signals the AM
+      // accepted the edit, which the page maps to captionAccepted=true in the VM.
+      vi.mocked(findSessionWithItems).mockResolvedValue({
+        ...mockSession,
+        items: mockSession.items.map((it) =>
+          it.id === 'item_c'
+            ? { ...it, acceptedAsPostVersionId: 'pv_accepted_1' }
+            : it,
+        ),
+      } as never)
+
+      const { getByTestId, queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // Success block must be present — the page passed captionAccepted=true
+      expect(getByTestId('rail-caption-accepted-post_c')).toBeTruthy()
+
+      // Accept and Reject buttons must be absent — they belong to the pending state
+      expect(queryByTestId('rail-accept-post_c')).toBeNull()
+      expect(queryByTestId('rail-reject-post_c')).toBeNull()
     })
   })
 })

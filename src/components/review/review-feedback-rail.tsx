@@ -139,46 +139,89 @@ function FeedbackRow({
         <div className="space-y-2 px-3 pb-3">
           {/* Caption suggestion area (AM-only actions) */}
           {showCaptionActions && post.suggestedCaption && (
-            <div className="rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-[13px]">
-              <p
-                data-testid={`rail-copy-edited-label-${post.postId}`}
-                className="mb-1.5 font-medium text-sky-900"
+            post.captionAccepted ? (
+              // Accepted: greyed, done success state. Still clickable to anchor
+              // the canvas. No Accept/Reject (the edit is applied to the post).
+              <div
+                data-testid={`rail-caption-accepted-${post.postId}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectPost(post.postId)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onSelectPost(post.postId)
+                  }
+                }}
+                className="cursor-pointer rounded-lg border border-border bg-muted/40 p-2.5 text-[13px] opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
               >
-                Copy edited
-              </p>
-              <CaptionDiffView
-                segments={diffText(post.caption, post.suggestedCaption)}
-                className="text-[13px]"
-              />
-              <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  data-testid={`rail-accept-${post.postId}`}
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(() => {
-                      void actions.acceptCaption(post.reviewItemId!)
-                    })
-                  }
-                  className="rounded-md bg-emerald-600 px-3 py-1 text-[12px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-                >
-                  Accept
-                </button>
-                <button
-                  type="button"
-                  data-testid={`rail-reject-${post.postId}`}
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(() => {
-                      void actions.rejectCaption(post.reviewItemId!)
-                    })
-                  }
-                  className="rounded-md border border-border px-3 py-1 text-[12px] font-semibold text-foreground hover:bg-muted disabled:opacity-60"
-                >
-                  Reject
-                </button>
+                <p className="mb-1 flex items-center gap-1 font-medium text-emerald-700">
+                  <span aria-hidden>✓</span> Caption accepted
+                </p>
+                <p className="whitespace-pre-wrap break-words text-muted-foreground">
+                  {post.caption}
+                </p>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-[13px]">
+                {/* Clicking the label/diff anchors the canvas to this post (the
+                    Accept/Reject buttons sit outside this region, so they never
+                    trigger an anchor). A role=button div is used because the diff
+                    renders a block element that can't be nested in a <button>. */}
+                <div
+                  data-testid={`rail-copy-edited-anchor-${post.postId}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onSelectPost(post.postId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onSelectPost(post.postId)
+                    }
+                  }}
+                  className="cursor-pointer rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+                >
+                  <p
+                    data-testid={`rail-copy-edited-label-${post.postId}`}
+                    className="mb-1.5 font-medium text-sky-900"
+                  >
+                    Copy edited
+                  </p>
+                  <CaptionDiffView
+                    segments={diffText(post.caption, post.suggestedCaption)}
+                    className="text-[13px]"
+                  />
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    data-testid={`rail-accept-${post.postId}`}
+                    disabled={pending}
+                    onClick={() =>
+                      startTransition(() => {
+                        void actions.acceptCaption(post.reviewItemId!)
+                      })
+                    }
+                    className="rounded-md bg-emerald-600 px-3 py-1 text-[12px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    data-testid={`rail-reject-${post.postId}`}
+                    disabled={pending}
+                    onClick={() =>
+                      startTransition(() => {
+                        void actions.rejectCaption(post.reviewItemId!)
+                      })
+                    }
+                    className="rounded-md border border-border px-3 py-1 text-[12px] font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            )
           )}
 
           {/* Per-pin collapsible rows */}

@@ -317,6 +317,7 @@ export default async function ReviewSessionDetailPage({
     suggestedCaption: ap.item?.suggestedCaption ?? null,
     reviewItemId: ap.item?.id ?? null,
     addressed: ap.handled,
+    captionAccepted: Boolean(ap.item?.acceptedAsPostVersionId),
     threads: ap.clientThreads,
   }))
 

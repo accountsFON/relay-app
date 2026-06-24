@@ -39,6 +39,7 @@ function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     suggestedCaption: null,
     reviewItemId: 'ri-1',
     addressed: false,
+    captionAccepted: false,
     threads: [makeThread('t1')],
     ...over,
   }
@@ -407,6 +408,88 @@ describe('ReviewFeedbackRail — caption_edited diff view', () => {
       />,
     )
     expect(screen.queryByTestId('caption-diff-view')).toBeNull()
+  })
+})
+
+describe('ReviewFeedbackRail — caption-edited block (anchor + accepted state)', () => {
+  function renderRail(post: FeedbackPostVM, onSelectPost = vi.fn(), actions = noopActions) {
+    render(
+      <ReviewFeedbackRail
+        posts={[post]}
+        actions={actions}
+        isDesigner={false}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        onSelectPost={onSelectPost}
+        registerThreadRef={vi.fn()}
+      />,
+    )
+    return { onSelectPost }
+  }
+
+  const editedVm = (over: Partial<FeedbackPostVM> = {}) =>
+    vm({
+      postId: 'post-1',
+      verdict: 'caption_edited',
+      caption: 'Old caption',
+      suggestedCaption: 'New caption',
+      reviewItemId: 'ri-1',
+      threads: [],
+      captionAccepted: false,
+      ...over,
+    })
+
+  it('clicking the Copy edited block anchors the canvas to the post', () => {
+    const { onSelectPost } = renderRail(editedVm())
+    fireEvent.click(screen.getByTestId('rail-copy-edited-anchor-post-1'))
+    expect(onSelectPost).toHaveBeenCalledWith('post-1')
+  })
+
+  it('clicking Accept does NOT anchor the canvas (separate from the block)', () => {
+    const onSelectPost = vi.fn()
+    const actions = { ...noopActions, acceptCaption: vi.fn(() => Promise.resolve()) }
+    renderRail(editedVm(), onSelectPost, actions)
+    fireEvent.click(screen.getByTestId('rail-accept-post-1'))
+    expect(actions.acceptCaption).toHaveBeenCalledWith('ri-1')
+    expect(onSelectPost).not.toHaveBeenCalled()
+  })
+
+  it('pending caption edit shows the diff plus Accept/Reject buttons', () => {
+    renderRail(editedVm())
+    expect(screen.getByTestId('caption-diff-view')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-accept-post-1')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-reject-post-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('rail-caption-accepted-post-1')).toBeNull()
+  })
+
+  it('accepted caption edit shows a greyed success state with no Accept/Reject buttons', () => {
+    renderRail(editedVm({ captionAccepted: true, caption: 'New caption' }))
+    const accepted = screen.getByTestId('rail-caption-accepted-post-1')
+    expect(accepted).toBeInTheDocument()
+    expect(accepted).toHaveTextContent('Caption accepted')
+    expect(accepted).toHaveTextContent('New caption')
+    expect(screen.queryByTestId('rail-accept-post-1')).toBeNull()
+    expect(screen.queryByTestId('rail-reject-post-1')).toBeNull()
+    expect(screen.queryByTestId('caption-diff-view')).toBeNull()
+  })
+
+  it('clicking the accepted success block still anchors the canvas', () => {
+    const { onSelectPost } = renderRail(editedVm({ captionAccepted: true, caption: 'New caption' }))
+    fireEvent.click(screen.getByTestId('rail-caption-accepted-post-1'))
+    expect(onSelectPost).toHaveBeenCalledWith('post-1')
+  })
+
+  it('pressing Enter on the Copy edited block anchors the canvas', () => {
+    const { onSelectPost } = renderRail(editedVm())
+    fireEvent.keyDown(screen.getByTestId('rail-copy-edited-anchor-post-1'), { key: 'Enter' })
+    expect(onSelectPost).toHaveBeenCalledWith('post-1')
+  })
+
+  it('pressing Space on the accepted success block anchors the canvas', () => {
+    const { onSelectPost } = renderRail(editedVm({ captionAccepted: true, caption: 'New caption' }))
+    fireEvent.keyDown(screen.getByTestId('rail-caption-accepted-post-1'), { key: ' ' })
+    expect(onSelectPost).toHaveBeenCalledWith('post-1')
   })
 })
 
