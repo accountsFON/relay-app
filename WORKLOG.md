@@ -22,6 +22,12 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-23 — AM feedback rail is fixed/sticky with its own scroll** (PR #241)
+  The left pin/feedback rail is now a sticky panel (like the right internal-chat rail) with its
+  own internal scroll (`lg:sticky lg:top-4 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto`), so
+  the per-pin accordion expands within the panel and the page no longer jumps. The rail root no
+  longer owns the scroll (the column does). CSS only. 1772 unit tests.
+
 - [x] **2026-06-23 — AM feedback: faithful post in canvas + edit-copy clarity** (PR #240)
   Four changes. (1) The AM center canvas renders the real `InstagramFeedPost`/`FacebookPost`
   (image + caption + pins) read-only instead of a bare image, with an IG/FB platform toggle —
