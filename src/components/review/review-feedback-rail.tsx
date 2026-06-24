@@ -1,9 +1,11 @@
 'use client'
 
 import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { PinCommentRow } from '@/components/review/pin-comment-row'
 import { CaptionDiffView } from '@/components/preview/caption-diff-view'
+import { FixWithAIButton } from '@/components/preview/fix-with-ai-button'
 import { diffText } from '@/lib/text-diff'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
@@ -90,6 +92,12 @@ function FeedbackRow({
   registerThreadRef,
 }: FeedbackRowProps) {
   const [pending, startTransition] = useTransition()
+  const router = useRouter()
+  const hasCopyFeedback =
+    post.verdict === 'changes_requested' ||
+    post.verdict === 'caption_edited' ||
+    post.threads.some((t) => t.status === 'open')
+  const showFixWithAi = !isDesigner && hasCopyFeedback
 
   // "Approved-clean" = approved verdict with no threads at all — collapsed.
   const isApprovedClean = post.verdict === 'approved' && post.threads.length === 0
@@ -245,6 +253,18 @@ function FeedbackRow({
               />
             </div>
           ))}
+
+          {showFixWithAi && (
+            <div className="mt-1">
+              <FixWithAIButton
+                postId={post.postId}
+                mode="internal"
+                label="Fix copy with AI"
+                originalCaption={post.caption}
+                onAccepted={() => router.refresh()}
+              />
+            </div>
+          )}
 
           {/* Mark addressed / Move back (AM only) */}
           {!isDesigner && (

@@ -86,6 +86,10 @@ const { state, dbMock } = vi.hoisted(() => {
     id: string
     postId: string
     status: 'open' | 'resolved'
+    captionFrom?: number | null
+    captionTo?: number | null
+    imageX?: number | null
+    imageY?: number | null
     comments: Array<{
       body: string
       reviewerName: string | null
@@ -105,11 +109,16 @@ const { state, dbMock } = vi.hoisted(() => {
     graphicHook: string | null
     designerNotes: string | null
   }
+  type LocalReviewItemRow = {
+    decision: string
+    suggestedCaption: string | null
+  }
   const localState = {
     posts: new Map<string, LocalPostRow>(),
     threads: new Map<string, LocalThreadRow>(),
     versions: [] as LocalVersionRow[],
     versionCounter: 0,
+    reviewItem: null as LocalReviewItemRow | null,
   }
   const localDb = {
     post: {
@@ -134,6 +143,11 @@ const { state, dbMock } = vi.hoisted(() => {
     postThread: {
       findUnique: vi.fn(async ({ where }: { where: { id: string } }) => {
         return localState.threads.get(where.id) ?? null
+      }),
+      findMany: vi.fn(async ({ where }: { where: { postId: string } }) => {
+        return Array.from(localState.threads.values()).filter(
+          (t) => t.postId === where.postId,
+        )
       }),
       update: vi.fn(
         async ({
@@ -160,6 +174,11 @@ const { state, dbMock } = vi.hoisted(() => {
         localState.versions.push(row)
         return { id: row.id }
       }),
+      count: vi.fn(async () => 1),
+      findMany: vi.fn(async () => []),
+    },
+    reviewItem: {
+      findFirst: vi.fn(async () => localState.reviewItem),
     },
     $transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => {
       return cb(localDb)
@@ -200,6 +219,17 @@ vi.mock('@/server/repositories/threads', () => ({
   resolveThread: mockResolveThread,
 }))
 
+// snapshotPostVersion: per-post accept flow uses the shared helper rather than
+// writing postVersion.create directly. Mock it so we can assert call shape and
+// return a deterministic version id.
+const { mockSnapshotPostVersion } = vi.hoisted(() => ({
+  mockSnapshotPostVersion: vi.fn<() => Promise<{ id: string } | null>>(async () => ({ id: 'pv-new' })),
+}))
+
+vi.mock('@/server/services/postVersions', () => ({
+  snapshotPostVersion: mockSnapshotPostVersion,
+}))
+
 import { ActivityKind } from '@prisma/client'
 import { proposeFix, acceptFix } from '@/server/services/fixWithAi'
 
@@ -208,9 +238,12 @@ function resetState() {
   state.threads.clear()
   state.versions.length = 0
   state.versionCounter = 0
+  state.reviewItem = null
   mockMessagesCreate.mockReset()
   mockRecordActivity.mockReset()
   mockRecordActivity.mockResolvedValue({ id: 'ae_1' })
+  mockSnapshotPostVersion.mockReset()
+  mockSnapshotPostVersion.mockResolvedValue({ id: 'pv-new' })
   mockResolveThread.mockReset()
   mockResolveThread.mockImplementation(async (input: {
     threadId: string
@@ -285,6 +318,77 @@ function mockProposalResponse(text: string) {
 beforeEach(() => {
   resetState()
 })
+
+// ---------------------------------------------------------------------------
+// Seed helpers for per-post tests
+// ---------------------------------------------------------------------------
+
+function seedPostForPerPost() {
+  const post = {
+    id: 'post-1',
+    clientId: 'client-1',
+    caption: 'Original caption',
+    hashtags: [] as string[],
+    graphicHook: null,
+    designerNotes: null,
+    client: {
+      name: 'Test Client',
+      brandVoice: 'friendly',
+      dos: 'be clear',
+      donts: 'no jargon',
+    },
+  }
+  state.posts.set(post.id, post)
+  return post
+}
+
+function seedThreadsForPerPost() {
+  // Caption pin thread (captionFrom set, imageX null)
+  const captionThread = {
+    id: 'thread-caption',
+    postId: 'post-1',
+    status: 'open' as const,
+    captionFrom: 5,
+    captionTo: 10,
+    imageX: null,
+    imageY: null,
+    comments: [
+      {
+        body: 'shorten',
+        reviewerName: 'Client',
+        author: null,
+        createdAt: new Date('2026-06-01T10:00:00Z'),
+      },
+    ],
+  }
+  // Post-level thread (all coords null)
+  const postThread = {
+    id: 'thread-post',
+    postId: 'post-1',
+    status: 'open' as const,
+    captionFrom: null,
+    captionTo: null,
+    imageX: null,
+    imageY: null,
+    comments: [
+      {
+        body: 'add CTA',
+        reviewerName: 'Client',
+        author: null,
+        createdAt: new Date('2026-06-01T11:00:00Z'),
+      },
+    ],
+  }
+  state.threads.set(captionThread.id, captionThread)
+  state.threads.set(postThread.id, postThread)
+  return [captionThread, postThread]
+}
+
+function seedReviewItem() {
+  state.reviewItem = { decision: 'changes_requested', suggestedCaption: 'Client draft' }
+}
+
+// ---------------------------------------------------------------------------
 
 describe('proposeFix', () => {
   it('includes client brandVoice, dos, and donts in the prompt sent to the model', async () => {
@@ -420,5 +524,83 @@ describe('acceptFix', () => {
       newCaption: 'new caption text',
       postVersionId: 'v_1',
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Per-post variants
+// ---------------------------------------------------------------------------
+
+describe('proposeFixForPost', () => {
+  beforeEach(() => {
+    mockMessagesCreate.mockReset()
+    mockMessagesCreate.mockResolvedValue({
+      content: [{ type: 'text', text: 'Rewritten from all feedback' }],
+      usage: { input_tokens: 100, output_tokens: 20 },
+    })
+  })
+
+  it('feeds verdict + suggested caption + every pin comment to the model', async () => {
+    seedPostForPerPost()
+    seedThreadsForPerPost()
+    seedReviewItem()
+
+    const { proposeFixForPost } = await import('@/server/services/fixWithAi')
+    const result = await proposeFixForPost({ postId: 'post-1' })
+
+    expect(mockMessagesCreate).toHaveBeenCalledTimes(1)
+    const userPrompt = mockMessagesCreate.mock.calls[0][0].messages[0].content as string
+    expect(userPrompt).toContain('Original caption')
+    expect(userPrompt.toLowerCase()).toContain('changes')
+    expect(userPrompt).toContain('Client draft')
+    expect(userPrompt).toContain('shorten')
+    expect(userPrompt).toContain('add CTA')
+
+    expect(result.proposedCaption).toBe('Rewritten from all feedback')
+    expect(
+      result.diff.filter((s) => s.type === 'equal' || s.type === 'delete').map((s) => s.text).join(''),
+    ).toBe('Original caption')
+    expect(result.tokenUsage.in).toBeGreaterThan(0)
+  })
+})
+
+describe('acceptFixForPost', () => {
+  it('snapshots via the shared helper, updates the caption, records activity, and does NOT resolve threads', async () => {
+    seedPostForPerPost()
+    seedThreadsForPerPost()
+
+    const { acceptFixForPost } = await import('@/server/services/fixWithAi')
+    const { snapshotPostVersion } = await import('@/server/services/postVersions')
+    const { recordActivity } = await import('@/server/services/activity')
+    const { resolveThread } = await import('@/server/repositories/threads')
+
+    const res = await acceptFixForPost({ postId: 'post-1', proposedCaption: 'Accepted caption', acceptedBy: 'user-am' })
+
+    expect(snapshotPostVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ postId: 'post-1', authorId: 'user-am', body: expect.objectContaining({ caption: 'Accepted caption' }) }),
+      expect.anything(),
+    )
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ kind: 'post_caption_ai_fixed', postId: 'post-1' }))
+    expect(resolveThread).not.toHaveBeenCalled()
+    expect(res.postVersionId).toBeTypeOf('string')
+  })
+
+  it('rolls back (throws, no caption update) when the version snapshot fails', async () => {
+    seedPostForPerPost()
+    const originalCaption = state.posts.get('post-1')!.caption
+
+    const { acceptFixForPost } = await import('@/server/services/fixWithAi')
+
+    mockSnapshotPostVersion.mockResolvedValueOnce(null)
+
+    await expect(
+      acceptFixForPost({ postId: 'post-1', proposedCaption: 'Should not persist', acceptedBy: 'user-am' }),
+    ).rejects.toThrow()
+
+    // The $transaction mock passes localDb as tx, so tx.post.update IS dbMock.post.update.
+    // The throw from the null-snapshot guard fires before that call, so the spy must show
+    // zero calls, and the seeded post's caption must still be the original value.
+    expect(dbMock.post.update).not.toHaveBeenCalled()
+    expect(state.posts.get('post-1')!.caption).toBe(originalCaption)
   })
 })
