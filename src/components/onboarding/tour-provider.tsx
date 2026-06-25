@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import { usePathname } from 'next/navigation'
@@ -147,8 +146,6 @@ export function TourProvider({
   }, [activeTour, role, finish])
 
   // Tell AppShell whether the tour needs the mobile nav drawer open.
-  const activeRef = useRef(false)
-  activeRef.current = !!activeTourId
   useEffect(() => {
     onTourNavChange?.(!!activeTourId && isMobile)
   }, [activeTourId, isMobile, onTourNavChange])
