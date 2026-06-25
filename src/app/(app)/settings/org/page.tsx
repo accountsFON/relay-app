@@ -3,10 +3,10 @@ import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { Badge } from '@/components/ui/badge'
 import { CreditCard, Bell, Building2, Plug, Lock, Compass } from 'lucide-react'
-import { RestartTourButton } from '@/components/onboarding/restart-tour-button'
+import { ToursPanel } from '@/components/onboarding/tours-panel'
 
 export default async function OrgSettingsPage() {
-  await requireClientViewer()
+  const ctx = await requireClientViewer()
 
   const sections = [
     {
@@ -83,7 +83,7 @@ export default async function OrgSettingsPage() {
                 </p>
               </div>
             </div>
-            <RestartTourButton />
+            <ToursPanel role={ctx.role} />
           </div>
         </PageSection>
       </div>
