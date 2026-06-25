@@ -4,13 +4,17 @@ import {
   WelcomeLaunchPad,
   type LaunchPadCard,
 } from '@/components/onboarding/welcome-launch-pad'
-import { TourProvider } from '@/components/onboarding/tour-provider'
 
 const routerMock = { push: vi.fn(), refresh: vi.fn() }
 const pathnameMock = vi.fn(() => '/welcome')
 vi.mock('next/navigation', () => ({
   useRouter: () => routerMock,
   usePathname: () => pathnameMock(),
+}))
+
+const start = vi.fn()
+vi.mock('@/components/onboarding/tour-provider', () => ({
+  useTourController: () => ({ start, active: false, activeTourId: null, currentIndex: 0, dismiss: vi.fn() }),
 }))
 
 const cards: LaunchPadCard[] = [
@@ -29,6 +33,7 @@ beforeEach(() => {
   routerMock.push.mockReset()
   routerMock.refresh.mockReset()
   pathnameMock.mockReturnValue('/welcome')
+  start.mockClear()
 })
 
 describe('WelcomeLaunchPad', () => {
@@ -85,15 +90,12 @@ describe('WelcomeLaunchPad', () => {
     await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1))
   })
 
-  it('Take the tour fires onDismiss, starts the tour, and pushes /dashboard', async () => {
+  it('Take the tour fires onDismiss, starts overview-v1, and pushes /dashboard', async () => {
     const onDismiss = vi.fn().mockResolvedValue(undefined)
-    render(
-      <TourProvider tourSeen={true} onMarkSeen={vi.fn()}>
-        <WelcomeLaunchPad cards={cards} onDismiss={onDismiss} />
-      </TourProvider>,
-    )
+    render(<WelcomeLaunchPad cards={cards} onDismiss={onDismiss} />)
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-take-tour'))
+    expect(start).toHaveBeenCalledWith('overview-v1')
     expect(routerMock.push).toHaveBeenCalledWith('/dashboard')
     await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1))
   })

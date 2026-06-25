@@ -94,7 +94,7 @@ export function WelcomeLaunchPad({
 
   const handleTakeTour = useCallback(() => {
     void persistDismiss()
-    tour.start()
+    tour.start('overview-v1')
     router.push('/dashboard')
   }, [persistDismiss, tour, router])
 
