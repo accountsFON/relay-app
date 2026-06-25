@@ -177,6 +177,7 @@ function ViewToggle({ view }: { view: InboxView }) {
     <div
       role="tablist"
       aria-label="Inbox view"
+      data-tour-anchor="inbox-views"
       className="inline-flex items-center gap-0.5 rounded-full border border-border bg-card p-0.5"
     >
       <Link

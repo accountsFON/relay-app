@@ -163,6 +163,7 @@ export function GenerateContentDialog({
           <Button
             variant="accent"
             title="Generate next period's content for this client"
+            data-tour-anchor="generate-content"
           />
         }
       >

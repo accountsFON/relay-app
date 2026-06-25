@@ -109,6 +109,55 @@ const BATCH_DETAIL_STOPS: TourStop[] = [
 // Exact relay detail route only (not its /preview or /review-sessions children).
 const BATCH_DETAIL_ROUTE = /^\/clients\/[^/]+\/batches\/[^/]+$/
 
+// Page coachmark: the client detail page — where a relay is generated.
+const CLIENT_DETAIL_STOPS: TourStop[] = [
+  {
+    id: 'client-generate',
+    anchorSelector: '[data-tour-anchor="generate-content"]',
+    title: 'Start a relay here',
+    body: 'Hit Generate content, pick a month, and Relay drafts that month of posts for this client.',
+  },
+  {
+    id: 'client-pipeline',
+    anchorSelector: '[data-tour-anchor="__concept__"]',
+    title: 'Then it moves through the pipeline',
+    body: 'Each post flows from copy to design to your review, then the client review, then scheduling.',
+  },
+]
+// Exact client detail route only: /clients/:id, but not /clients (list),
+// /clients/new, /clients/import, or deeper /clients/:id/* sub-pages.
+const CLIENT_DETAIL_ROUTE = /^\/clients\/[^/]+$/
+
+const INBOX_STOPS: TourStop[] = [
+  {
+    id: 'inbox-views',
+    anchorSelector: '[data-tour-anchor="inbox-views"]',
+    title: 'Your inbox',
+    body: 'Anything that needs you shows up here. Switch between Timeline (newest first) and grouped By client.',
+  },
+  {
+    id: 'inbox-how',
+    anchorSelector: '[data-tour-anchor="__concept__"]',
+    title: 'We ping you when it is your turn',
+    body: 'A relay that reaches your step, a mention, or a finished client review lands here. Clear items as you handle them.',
+  },
+]
+
+const CLIENTS_STOPS: TourStop[] = [
+  {
+    id: 'clients-list',
+    anchorSelector: '[data-tour-anchor="clients-list"]',
+    title: 'Your clients',
+    body: 'Every brand you manage lives here. Open one to see their relays and start new content.',
+  },
+  {
+    id: 'clients-add',
+    anchorSelector: '[data-tour-anchor="__concept__"]',
+    title: 'Adding a brand',
+    body: 'Admins and account managers can add a brand with New client; Relay can then start drafting its content.',
+  },
+]
+
 const TOURS: TourDef[] = [
   {
     id: 'overview-v1',
@@ -133,6 +182,37 @@ const TOURS: TourDef[] = [
     matchPath: (p) => BATCH_DETAIL_ROUTE.test(p),
     trigger: 'auto',
     stopsForRole: () => BATCH_DETAIL_STOPS,
+  },
+  {
+    id: 'client-detail-v1',
+    labelForRole: () => 'Client page walkthrough',
+    // Generation is admin/AM only (designers can't trigger it), so the
+    // Generate anchor only exists for them.
+    roles: ['admin', 'account_manager'],
+    // No homePath: dynamic route, auto-fire-on-first-visit only. Exclude the
+    // /clients/new + /clients/import sibling routes that match the regex.
+    matchPath: (p) =>
+      CLIENT_DETAIL_ROUTE.test(p) && p !== '/clients/new' && p !== '/clients/import',
+    trigger: 'auto',
+    stopsForRole: () => CLIENT_DETAIL_STOPS,
+  },
+  {
+    id: 'inbox-v1',
+    labelForRole: () => 'Inbox walkthrough',
+    roles: ['admin', 'account_manager', 'designer'],
+    homePath: '/inbox',
+    matchPath: (p) => p === '/inbox',
+    trigger: 'auto',
+    stopsForRole: () => INBOX_STOPS,
+  },
+  {
+    id: 'clients-v1',
+    labelForRole: () => 'Clients walkthrough',
+    roles: ['admin', 'account_manager', 'designer'],
+    homePath: '/clients',
+    matchPath: (p) => p === '/clients',
+    trigger: 'auto',
+    stopsForRole: () => CLIENTS_STOPS,
   },
 ]
 

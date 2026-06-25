@@ -50,8 +50,8 @@ describe('TourProvider', () => {
     expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
   })
 
-  it('does not auto-fire off the dashboard', () => {
-    pathname = '/clients/abc'
+  it('does not auto-fire on a route with no tour', () => {
+    pathname = '/settings/org'
     render(
       <TourProvider role="account_manager" seenTours={[]} onMarkSeen={vi.fn()}>
         <div />
