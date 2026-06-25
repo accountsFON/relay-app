@@ -515,3 +515,25 @@ describe('ReviewSessionShell -- locked conversation after submit', () => {
     expect(screen.queryByTestId('review-submit-bar')).toBeNull()
   })
 })
+
+describe('ReviewSessionShell -- new reply badge', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response)),
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('renders the new-reply badge only on posts flagged hasNewReply', () => {
+    const posts: ReviewSessionShellPost[] = [
+      { ...makePost('post-1', 'Caption 1'), hasNewReply: true },
+      makePost('post-2', 'Caption 2'),
+    ]
+    render(<ReviewSessionShell {...BASE_PROPS} posts={posts} />)
+    expect(screen.getAllByTestId('new-reply-badge')).toHaveLength(1)
+  })
+})

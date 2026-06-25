@@ -8,6 +8,7 @@ import {
   listSessionsForBatch,
 } from '@/server/repositories/reviewSessions'
 import { listThreadsForBatch } from '@/server/repositories/threads'
+import { postHasNewAmReply } from './new-reply'
 import type {
   ReviewItemHydrated,
   ReviewSessionStatusType,
@@ -97,6 +98,10 @@ export default async function ReviewPage({
   const cookieValue = jar.get(SESSION_COOKIE_NAME)?.value
   let recognizedReviewerId: string | null = null
   let recognizedReviewerName: string | null = null
+  // The reviewer's last-seen-replies timestamp captured BEFORE we mark it to
+  // now below. Badges are computed against this pre-update value so they show
+  // this visit and clear on the next. Null = never seen (badge any AM reply).
+  let repliesSeenAt: Date | null = null
 
   if (cookieValue) {
     const session = verifySession(cookieValue)
@@ -107,11 +112,13 @@ export default async function ReviewPage({
           id: true,
           name: true,
           magicLinkId: true,
+          repliesSeenAt: true,
         },
       })
       if (reviewer && reviewer.magicLinkId === link.id) {
         recognizedReviewerId = reviewer.id
         recognizedReviewerName = reviewer.name
+        repliesSeenAt = reviewer.repliesSeenAt ?? null
       }
     }
   }
@@ -205,15 +212,29 @@ export default async function ReviewPage({
   // round-trip onto the page. Resolved threads are excluded by default.
   const threadsByPostId = await listThreadsForBatch({ batchId: link.batch.id })
 
-  const feedPosts = posts.map((p) => ({
-    post: {
-      id: p.id,
-      caption: p.caption,
-      hashtags: p.hashtags,
-      mediaUrl: p.mediaUrls[0] ?? null,
-    },
-    threads: threadsByPostId.get(p.id) ?? [],
-  }))
+  const feedPosts = posts.map((p) => {
+    const postThreads = threadsByPostId.get(p.id) ?? []
+    return {
+      post: {
+        id: p.id,
+        caption: p.caption,
+        hashtags: p.hashtags,
+        mediaUrl: p.mediaUrls[0] ?? null,
+      },
+      threads: postThreads,
+      hasNewReply: postHasNewAmReply(postThreads, repliesSeenAt),
+    }
+  })
+
+  // Badges were computed from the pre-update `repliesSeenAt` above, so marking
+  // it to now is safe: this visit still shows the badges, the next visit clears
+  // them. Fire-and-forget — a write failure must never block the page render.
+  void db.magicLinkReviewer
+    .update({
+      where: { id: recognizedReviewerId },
+      data: { repliesSeenAt: new Date() },
+    })
+    .catch(() => null)
 
   // AM name for the thanks screen + reply-by-email hint. Prefer the
   // assigned AM on the client; fall back to whoever created the link.

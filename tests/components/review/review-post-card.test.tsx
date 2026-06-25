@@ -305,3 +305,52 @@ describe('ReviewPostCard -- notes auto-save', () => {
     expect(screen.getByTestId('review-post-card-notes-status')).toHaveTextContent(/saved/i)
   })
 })
+
+describe('ReviewPostCard -- new reply badge', () => {
+  it('renders the new-reply badge when hasNewReply is true', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="review"
+        hasNewReply
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    expect(screen.getByTestId('new-reply-badge')).toBeInTheDocument()
+  })
+
+  it('omits the badge when hasNewReply is false', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="review"
+        hasNewReply={false}
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    expect(screen.queryByTestId('new-reply-badge')).not.toBeInTheDocument()
+  })
+
+  it('omits the badge when hasNewReply is undefined', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    expect(screen.queryByTestId('new-reply-badge')).not.toBeInTheDocument()
+  })
+})
