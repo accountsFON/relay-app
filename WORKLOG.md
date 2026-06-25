@@ -22,6 +22,23 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Bulk image upload moved to the main run view (item 35)** (PR #253)
+  The bulk image upload (drop N images, auto match by filename, drag to assign to posts, Apply)
+  used to live at the bottom of the Preview / Internal Review feed. It's now the primary upload
+  experience on the main batch run view: a new `BulkMediaUploadPanel` mounts at the TOP of the
+  Posts section as a prominent "Upload images" card whose button expands the existing drag-and-drop
+  mapping tray inline (`onApplied` → `router.refresh()`). Gated on `canUploadMedia` (`post.media.edit`)
+  + `isLive` + posts exist. Preview is now fully **view-only**: removed the bulk tray AND the
+  pre-existing per-post `MediaUpload` from the preview shell (per Julio: all upload moved to the main
+  view), so the AM sees posts exactly as the client will. The per-post uploader still lives on the
+  main run view's `PostCard` (kept), so no upload capability is lost. `BulkMediaTray` itself is
+  unchanged (same Vercel Blob + `POST /api/posts/[id]/media` path, no API change); normalized the gate
+  from the broader `client.edit` (old preview tray) to `post.media.edit` to match the per-post uploader.
+  Brainstorm → design → TDD → independent opus review READY TO MERGE (zero Critical/Important). 1866
+  unit tests, tsc clean, eslint clean on the new file (only pre-existing Date.now + rules-of-hooks
+  errors remain, untouched). No schema change → no Trigger.dev deploy. Design: vault
+  `2026-06-24-bulk-upload-main-view-design.md`.
+
 - [x] **2026-06-24 — Rename confusing "Preview" labels (item 34)** (PR #252)
   "Preview" was used for two different controls and neither is a preview. The batch-page **"Preview"**
   button opens the AM's INTERNAL markup/review surface (pin, comment, approve, submit to designer), so
