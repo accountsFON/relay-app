@@ -75,6 +75,12 @@ export type ReviewPostCardProps = {
    * with the AM.
    */
   locked?: boolean
+  /**
+   * When true, renders a "New reply" badge at the top of the card. Computed
+   * server-side from the per-reviewer `repliesSeenAt`: true when an AM has
+   * replied to one of this client's threads since the reviewer last visited.
+   */
+  hasNewReply?: boolean
   className?: string
 }
 
@@ -127,6 +133,7 @@ export function ReviewPostCard({
   onUploadImage,
   disabled,
   locked,
+  hasNewReply,
   className,
 }: ReviewPostCardProps) {
   // The verdict, the inline copy editor, and the Notes field lock when the
@@ -301,6 +308,15 @@ export function ReviewPostCard({
         className,
       )}
     >
+      {hasNewReply ? (
+        <span
+          data-testid="new-reply-badge"
+          className="inline-flex w-fit items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800"
+        >
+          <span className="size-1.5 rounded-full bg-sky-500" /> New reply
+        </span>
+      ) : null}
+
       {isUpdated ? (
         <div
           data-testid="review-post-card-updated-banner"

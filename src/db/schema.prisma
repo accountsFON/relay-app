@@ -111,6 +111,7 @@ enum ActivityKind {
   batch_step_advanced
 
   post_thread_opened
+  post_comment_added
   post_thread_resolved
   post_caption_ai_fixed
   magic_link_created
@@ -654,6 +655,9 @@ model MagicLink {
   createdBy            String
   createdAt            DateTime  @default(now())
   lastVisitedAt        DateTime?
+  /// Cooldown stamp for the "AM replied" client email. Set when an email is
+  /// sent; further replies within the cooldown window are coalesced.
+  replyEmailSentAt     DateTime?
 
   batch          Batch               @relation(fields: [batchId], references: [id], onDelete: Cascade)
   creator        User                @relation("MagicLinkCreator", fields: [createdBy], references: [id])
@@ -679,6 +683,9 @@ model MagicLinkReviewer {
   /// (or shown but POST to mark-seen failed). Per reviewer column because
   /// one magic link can have multiple reviewers.
   tutorialSeenAt DateTime?
+  /// Per-reviewer marker: last time this reviewer's review page rendered
+  /// (marks AM replies as "seen"). Null = never seen.
+  repliesSeenAt DateTime?
 
   magicLink      MagicLink       @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
   reviewSessions ReviewSession[]

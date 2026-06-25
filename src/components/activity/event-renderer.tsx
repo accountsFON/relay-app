@@ -489,6 +489,14 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         message: 'Image revisions requested — designer notified',
       }
     }
+    case 'post_comment_added': {
+      const postRef = shortPostRef(stringField(p, 'postId') ?? '')
+      return {
+        icon: MessageSquarePlus,
+        tone: 'default',
+        message: `replied on ${postRef}`,
+      }
+    }
   }
   // Fallback for not-yet-modeled kinds.
   return {

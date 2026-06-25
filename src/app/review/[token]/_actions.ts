@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { hashToken, signSession, verifySession, verifyToken } from '@/lib/magic-link'
 import { findByTokenHash, recordReviewer } from '@/server/repositories/magicLinks'
 import { addComment, createThread } from '@/server/repositories/threads'
+import { notifyAmOfClientReply } from '@/server/lib/notifyAmOfClientReply'
 import type { PinLocation } from '@/types/preview'
 import { isCommentImageBlobUrl } from '@/lib/comment-image'
 
@@ -182,7 +183,7 @@ export async function leaveCommentAsReviewer(
     throw new MagicLinkActionError('Comment requires text or an image')
   }
 
-  await createThread({
+  const created = await createThread({
     postId: input.postId,
     pin: input.pin,
     body,
@@ -198,6 +199,7 @@ export async function leaveCommentAsReviewer(
       reviewerName: reviewerRow.name,
     },
   })
+  await notifyAmOfClientReply({ threadId: created.threadId })
 
   revalidatePath(`/review/${input.token}`)
 }
@@ -261,6 +263,7 @@ export async function addCommentAsReviewer(
       reviewerName: reviewerRow.name,
     },
   })
+  await notifyAmOfClientReply({ threadId: input.threadId })
 
   revalidatePath(`/review/${input.token}`)
 }

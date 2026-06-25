@@ -37,6 +37,12 @@ export type ReviewSessionShellPost = {
    * highlight ranges in the caption. Defaults to an empty array.
    */
   threads?: FeedPostProps['threads']
+  /**
+   * True when an AM has replied to one of this client's threads on this post
+   * since the reviewer last visited. Computed server-side from the
+   * per-reviewer `repliesSeenAt`. Renders a "New reply" badge on the card.
+   */
+  hasNewReply?: boolean
 }
 
 export type ReviewSessionShellProps = {
@@ -489,7 +495,7 @@ export function ReviewSessionShell({
             No posts in this relay yet.
           </div>
         ) : (
-          posts.map(({ post, threads }) => {
+          posts.map(({ post, threads, hasNewReply }) => {
             const reviewItem = itemsByPostId[post.id]
             return (
               <ReviewPostCard
@@ -499,6 +505,7 @@ export function ReviewSessionShell({
                 clientAvatarUrl={clientAvatarUrl ?? null}
                 reviewItem={reviewItem}
                 threads={threads}
+                hasNewReply={hasNewReply}
                 platform={platform}
                 mode="review"
                 disabled={pending || submitting}

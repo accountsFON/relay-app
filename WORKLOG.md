@@ -22,6 +22,26 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Reply notifications: client email + bidirectional "reply waiting" indicators** (PR #251)
+  Follow-up to item 33. A reply in a review conversation was silent. Now: (1) when the AM replies to a
+  client's thread, the client gets an email (coalesced via an atomic 30-min cooldown claim on
+  `MagicLink.replyEmailSentAt`, so a burst of AM replies sends one "you have new replies" email with a
+  deep link back to their live review; `replyTo` = AM). New `AmReplyEmail` template + `notifyClientOfAmReply`
+  service hooked into `replyToPostFeedbackAction` (always) and `addCommentAction` (only when the actor is
+  an AM — clients never email themselves). (2) The AM's existing header bell lights when a client replies
+  or pins: the two reviewer actions call a new `notifyAmOfClientReply` that emits a new
+  `post_comment_added` activity mentioning the assigned AM (reuses the Mention/bell infra; closes the
+  deferred item-33 follow-up). (3) The client magic link badges each post with an unseen AM reply, via a
+  new per-reviewer `MagicLinkReviewer.repliesSeenAt` (compute from the pre-load value, then mark-seen on
+  open). One additive migration (`repliesSeenAt`, `replyEmailSentAt`, `post_comment_added`). Both notify
+  helpers live in `src/server/lib/` and never throw. Brainstorm → spec → plan → subagent-driven TDD;
+  final opus whole-branch review READY TO MERGE (zero Critical/Important; verified atomic cooldown,
+  email-direction symmetry, badge read-before-write ordering, internal-visibility bell path). 1858 unit
+  tests, tsc + eslint clean. NOTE: this PR changes `schema.prisma`, so the Trigger.dev pipeline deploy
+  runs on merge (expected, additive migration). Follow-ups (logged, NOT done): filter revoked/expired
+  links before emailing (avoid a dead-link email); add a wiring test for the reviewer-action bell calls;
+  guard the email subject against an empty client name.
+
 - [x] **2026-06-24 — Living review conversation: magic link stays interactive after submit + post-level threads (item 33)** (PR #250)
   The client review magic link no longer freezes at submit. Submitting used to swap the whole feed
   for a static "thanks, email us" screen, so the AM (who reads feedback AFTER submit) and the client

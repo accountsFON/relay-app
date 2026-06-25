@@ -183,6 +183,10 @@ export function renderSummary(row: MentionInboxRow): string {
       const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
       return `${prefix}Image revisions requested on ${relay}. Open the review to see the pinned graphics.`
     }
+    case 'post_comment_added': {
+      const postId = (payload.postId as string) ?? ''
+      return `${prefix}${actor} replied on post ${postId.slice(0, 6)}.`
+    }
     default:
       return `${prefix}${actor} mentioned you.`
   }
