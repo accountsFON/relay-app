@@ -22,6 +22,13 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Fix: "Go to NectrCRM" chip now shows on the retired scheduling steps too (item 37 follow-up)** (PR #255)
+  The item 37 chip gated on the NEW `scheduling` step only. Batches that reached scheduling before the
+  2026-06-22 pipeline rework still sit on the retired `ready_to_schedule` / `final_qa_schedule` steps,
+  so the chip was invisible for every in-flight pre-rework batch (Julio hit this: on a scheduling-stage
+  batch, no chip). Broadened the gate to a `SCHEDULING_STEPS` set covering all three. Component test adds
+  positive cases for the two retired steps. 1871 unit tests, tsc + eslint clean. No schema change.
+
 - [x] **2026-06-24 — "Go to NectrCRM" outbound link at the scheduling stage (item 37)** (PR #254)
   At the `scheduling` step the AM exports the Social Planner CSV and uploads it into NectrCRM (the
   white-labeled GoHighLevel app). Added a "Go to NectrCRM" chip to the batch detail action row, right
