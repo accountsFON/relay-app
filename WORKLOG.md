@@ -22,6 +22,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Tour coachmarks: tighten over-large anchors so the spotlight is visible** (PR #264)
+  Live verification found the `clients-list` and `relay-posts` coachmark anchors wrapped the WHOLE list,
+  so when scrolled to center the spotlight cutout was bigger than the viewport and the dim/highlight was
+  invisible. Moved both to the FIRST item: `clients-list` -> the first client row (bulk-generate.tsx,
+  `index === 0`), `relay-posts` -> the first post card (batch page, `idx === 0`). Now the spotlight frames
+  a single client/post, matching the "open one" copy. Small targets (dashboard nav, relay-track,
+  relay-actions, NectrCRM chip) were already fine. 1910 unit tests (batch anchor test now seeds a post),
+  tsc + eslint clean. No schema change.
+
 - [x] **2026-06-25 — Tour spotlight: smooth scroll tracking + scroll-target-into-view on Next** (PR #263)
   Two issues Julio caught live: (1) the spotlight ring lagged/jittered during scroll, and (2) advancing
   with Next could highlight an element below the fold without scrolling to it. Fixes in `TourPopover`:

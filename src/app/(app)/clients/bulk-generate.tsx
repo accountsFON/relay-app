@@ -162,7 +162,7 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
       )}
 
       <DataRowGroup>
-        {clients.map((client) => {
+        {clients.map((client, index) => {
           const subtitle = [client.industry, client.location].filter(Boolean).join(' · ') || 'No details set'
           const isArchived = Boolean(client.isArchived)
           const isSelectable = client.status === 'active' && !isArchived
@@ -170,7 +170,13 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
           const selection = selected.get(client.id)
 
           return (
-            <div key={client.id} className={`flex items-center${isArchived ? ' opacity-50 grayscale' : ''}`}>
+            <div
+              key={client.id}
+              // Onboarding tour anchor: first row only, so the coachmark
+              // spotlight frames a single client instead of the whole list.
+              data-tour-anchor={index === 0 ? 'clients-list' : undefined}
+              className={`flex items-center${isArchived ? ' opacity-50 grayscale' : ''}`}
+            >
               <div className="pl-5 shrink-0 flex items-center gap-3">
                 {isSelectable ? (
                   <BrandCheckbox

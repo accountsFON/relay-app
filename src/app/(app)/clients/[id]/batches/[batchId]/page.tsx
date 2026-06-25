@@ -579,7 +579,6 @@ export default async function BatchDetailPage({
             </PageSection>
           )}
           <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
-            <div data-tour-anchor="relay-posts">
             <PageSection
               title={`Posts (${posts.length})`}
               action={posts.length > 0 ? <PostListExpandAllToggle /> : undefined}
@@ -630,6 +629,9 @@ export default async function BatchDetailPage({
                         <div
                           key={post.id}
                           data-post-id={post.id}
+                          // Onboarding tour anchor: first post only, so the
+                          // coachmark spotlight frames one post, not the list.
+                          data-tour-anchor={idx === 0 ? 'relay-posts' : undefined}
                           className="space-y-2"
                         >
                           <PostCard
@@ -648,7 +650,6 @@ export default async function BatchDetailPage({
                 </>
               )}
             </PageSection>
-            </div>
           </PostListCollapseProvider>
         </div>
 
