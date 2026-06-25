@@ -220,6 +220,7 @@ vi.mock('@/components/batch/magic-link-row', () => ({
 // ---------- imports ----------
 
 import BatchDetailPage from '@/app/(app)/clients/[id]/batches/[batchId]/page'
+import { NECTR_CRM_URL } from '@/lib/nectr'
 import {
   requireClientViewer,
   canEditClients,
@@ -446,6 +447,33 @@ describe('BatchDetailPage', () => {
 
       const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
       expect(queryByTestId('bulk-media-upload-panel-stub')).toBeNull()
+    })
+  })
+
+  // ---- Go to NectrCRM chip (item 37) ----
+
+  describe('Go to NectrCRM chip', () => {
+    it('renders at the scheduling step, linking out to NectrCRM', async () => {
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'scheduling',
+      } as never)
+
+      const { getByRole } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      const link = getByRole('link', { name: /go to nectrcrm/i })
+      expect(link).toHaveAttribute('href', NECTR_CRM_URL)
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+
+    it('is hidden outside the scheduling step', async () => {
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'copy',
+      } as never)
+
+      const { queryByRole } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByRole('link', { name: /go to nectrcrm/i })).toBeNull()
     })
   })
 

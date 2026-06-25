@@ -22,6 +22,21 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — "Go to NectrCRM" outbound link at the scheduling stage (item 37)** (PR #254)
+  At the `scheduling` step the AM exports the Social Planner CSV and uploads it into NectrCRM (the
+  white-labeled GoHighLevel app). Added a "Go to NectrCRM" chip to the batch detail action row, right
+  next to the Export CSV button, that opens the app in a new tab. Self-gates to `RelayStep.scheduling`
+  (returns null elsewhere); no subaccount deep link (the AM picks the location inside). New
+  `GoToNectrCrmButton` modeled on `OpenClientContentButton` (secondary chip, `Link target="_blank"
+  rel="noopener noreferrer"`, ExternalLink icon) + a `NECTR_CRM_URL` constant in `src/lib/nectr.ts`.
+  **URL correction:** the brief said `app.nectarcrm.com`, but that host 301-redirects to itself (broken);
+  the live app is `app.nectrcrm.com` (HTTP 200, matches the brand spelling + the nectr-pit-setup runbook),
+  so the link points there. TDD: component test (renders at scheduling with correct href/target/rel,
+  hidden at every other step) + a batch-page describe block (visible at scheduling, hidden at copy).
+  1870 unit tests, tsc clean, eslint clean on the new files (only the pre-existing batch-page `Date.now`
+  error remains, untouched). Additive only, no schema change → no Trigger.dev deploy. Design: vault
+  `2026-06-24-go-to-nectrcrm-button-design.md`.
+
 - [x] **2026-06-24 — Bulk image upload moved to the main run view (item 35)** (PR #253)
   The bulk image upload (drop N images, auto match by filename, drag to assign to posts, Apply)
   used to live at the bottom of the Preview / Internal Review feed. It's now the primary upload
