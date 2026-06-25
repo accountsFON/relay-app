@@ -454,6 +454,21 @@ describe('BatchDetailPage', () => {
 
   describe('Tour coachmark anchors', () => {
     it('renders the data-tour-anchor targets the batch-detail coachmark points at', async () => {
+      // relay-posts now anchors the FIRST post card, so a post must exist.
+      vi.mocked(db.post.findMany).mockResolvedValue([
+        {
+          id: 'post_a',
+          postDate: new Date('2026-05-10T00:00:00Z'),
+          caption: 'Hello',
+          hashtags: [],
+          graphicHook: null,
+          designerNotes: null,
+          contentRunId: 'run_1',
+          deletedAt: null,
+          mediaUrls: [],
+        },
+      ] as never)
+
       const { container } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
       expect(container.querySelector('[data-tour-anchor="relay-track"]')).not.toBeNull()
       expect(container.querySelector('[data-tour-anchor="relay-posts"]')).not.toBeNull()

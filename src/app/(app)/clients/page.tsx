@@ -59,7 +59,7 @@ export default async function ClientsPage({
         </div>
       )}
 
-      <div className="mt-10" data-tour-anchor="clients-list">
+      <div className="mt-10">
         <div className="mb-4 flex items-center justify-between">
           <ShowArchivedToggle countArchived={archivedClientCount} />
         </div>
