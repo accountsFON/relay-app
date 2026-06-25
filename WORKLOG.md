@@ -22,6 +22,18 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Tour highlight: spotlight the component each step points at (item 39 follow-up)** (PR #258)
+  Tours were just floating tooltips with no visual link to the element they describe. Added a spotlight
+  to `TourPopover`: when a stop anchors to a real element, the page dims (huge spread box-shadow) with a
+  bright cutout + white ring framing the target, tracked every frame by the existing rAF loop. The
+  overlay is `pointer-events-none` so the page (and the target) stay clickable through the dim. Concept
+  stops (selector matches nothing) get no spotlight + a centered popover, unchanged. Foundational change
+  to the shared `TourPopover`, so it improves the dashboard overview tour, every future coachmark, AND
+  the magic-link review tutorial at once. 2 new tests (spotlight renders over a resolved target; absent
+  for a concept stop). 1884 unit tests, tsc + eslint clean. No schema change. Positioning/visual is best
+  eyeballed live (jsdom can't verify getBoundingClientRect). Next: the Phase 2 per-page coachmarks
+  (batch/review, scheduling, generation, inbox/clients).
+
 - [x] **2026-06-25 — Full-app onboarding tour: foundation + overview tour + Tips launcher (item 39, Phase 0+1)** (PR #257)
   Built a reusable multi-tour onboarding system and the first tour. **Foundation:** a `tour-registry.ts`
   (pure, shared client+server) of `TourDef`s with `selectAutoTour`/`getTourById`/`listToursForRole`/

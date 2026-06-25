@@ -151,6 +151,42 @@ describe('TourPopover', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('renders a spotlight over the target when the anchor resolves to an element', () => {
+    render(
+      <div>
+        <div data-tour-anchor="a">target</div>
+        <TourPopover
+          stops={stops}
+          currentIndex={0}
+          onNext={vi.fn()}
+          onSkip={vi.fn()}
+        />
+      </div>,
+    )
+    expect(screen.getByTestId('tour-popover-spotlight')).toBeInTheDocument()
+  })
+
+  it('renders no spotlight for a concept stop whose anchor matches nothing', () => {
+    const conceptStops: TourStop[] = [
+      {
+        id: 'concept',
+        anchorSelector: '[data-tour-anchor="__none__"]',
+        title: 'Concept',
+        body: 'No anchor here',
+      },
+    ]
+    render(
+      <TourPopover
+        stops={conceptStops}
+        currentIndex={0}
+        onNext={vi.fn()}
+        onSkip={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('tour-popover')).toBeInTheDocument()
+    expect(screen.queryByTestId('tour-popover-spotlight')).not.toBeInTheDocument()
+  })
+
   it('renders nothing when currentIndex is out of bounds', () => {
     const { container } = render(
       <TourPopover
