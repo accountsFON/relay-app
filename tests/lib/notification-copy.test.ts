@@ -441,6 +441,53 @@ describe('resolveHref, post-targeted events', () => {
   })
 })
 
+describe('renderSummary, post_comment_added', () => {
+  it('renders non-empty copy with the short post ref', () => {
+    const summary = renderSummary(row({ kind: 'post_comment_added', postId: 'abc123def456' }))
+    expect(summary).toMatch(/replied on post abc123/)
+    expect(summary.length).toBeGreaterThan(0)
+  })
+
+  it('uses "Someone" when actorId is null (magic-link reviewer)', () => {
+    const r = row({ kind: 'post_comment_added', postId: 'abc123def456' }, {
+      event: {
+        id: 'e1',
+        kind: 'post_comment_added' as MentionInboxRow['event']['kind'],
+        postId: 'abc123def456',
+        runId: null,
+        payload: { postId: 'abc123def456' } as unknown as MentionInboxRow['event']['payload'],
+        createdAt: new Date('2026-05-21T12:00:00Z'),
+        actor: null,
+      } as MentionInboxRow['event'],
+    })
+    expect(renderSummary(r)).toMatch(/Someone replied on post abc123/)
+  })
+})
+
+describe('resolveHref, post_comment_added', () => {
+  it('deep-links to the batch page with #post fragment when postId and postBatchId are set', () => {
+    expect(
+      resolveHref(
+        row(
+          { kind: 'post_comment_added' },
+          {
+            postBatchId: 'b9',
+            event: {
+              id: 'e1',
+              kind: 'post_comment_added' as MentionInboxRow['event']['kind'],
+              postId: 'p7',
+              runId: null,
+              payload: { postId: 'p7' } as unknown as MentionInboxRow['event']['payload'],
+              createdAt: new Date('2026-05-21T12:00:00Z'),
+              actor: null,
+            } as MentionInboxRow['event'],
+          },
+        ),
+      ),
+    ).toBe('/clients/c1/batches/b9#post-p7')
+  })
+})
+
 describe('renderSummary, batch_force_stepped', () => {
   it('renders the force moved copy with batch label and step label', () => {
     expect(
