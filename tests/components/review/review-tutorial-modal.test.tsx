@@ -3,16 +3,16 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { ReviewTutorialModal } from '@/components/review/review-tutorial-modal'
 
 describe('ReviewTutorialModal', () => {
-  it('renders the welcome step on mount', () => {
-    render(<ReviewTutorialModal />)
+  it('renders the welcome step on mount, with no video element', () => {
+    const { container } = render(<ReviewTutorialModal />)
 
     expect(screen.getByTestId('review-tutorial-modal')).toBeInTheDocument()
     expect(
       screen.getByTestId('review-tutorial-modal-welcome'),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByTestId('review-tutorial-modal-video'),
-    ).not.toBeInTheDocument()
+    // The broken placeholder video is gone for good.
+    expect(container.querySelector('video')).toBeNull()
+    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
   })
 
   it('names all four features in the welcome copy', () => {
@@ -27,48 +27,66 @@ describe('ReviewTutorialModal', () => {
     expect(welcome).toHaveTextContent(/Submit Review/)
   })
 
-  it('swaps to the video step when "Show me how" is tapped', () => {
+  it('starts the anchored tooltip tour when "Show me how" is tapped', () => {
     render(<ReviewTutorialModal />)
 
-    fireEvent.click(screen.getByTestId('review-tutorial-modal-show-video'))
+    fireEvent.click(screen.getByTestId('review-tutorial-modal-show-tour'))
 
+    // Welcome modal is replaced by the first anchored tour stop.
     expect(
       screen.queryByTestId('review-tutorial-modal-welcome'),
     ).not.toBeInTheDocument()
-    expect(
-      screen.getByTestId('review-tutorial-modal-video'),
-    ).toBeInTheDocument()
+    expect(screen.getByTestId('tour-popover')).toBeInTheDocument()
+    expect(screen.getByTestId('tour-popover-stop-comment')).toBeInTheDocument()
   })
 
-  it('closes when "Got it" on the welcome step is tapped', () => {
+  it('advances through all three stops and closes on the final "Got it"', () => {
+    render(<ReviewTutorialModal />)
+    fireEvent.click(screen.getByTestId('review-tutorial-modal-show-tour'))
+
+    expect(screen.getByTestId('tour-popover-stop-comment')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('tour-popover-next'))
+    expect(screen.getByTestId('tour-popover-stop-decide')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('tour-popover-next'))
+    expect(screen.getByTestId('tour-popover-stop-submit')).toBeInTheDocument()
+
+    // Last stop's primary button finishes the tour.
+    fireEvent.click(screen.getByTestId('tour-popover-next'))
+    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('review-tutorial-modal')).not.toBeInTheDocument()
+  })
+
+  it('closes when the tour is skipped', () => {
+    render(<ReviewTutorialModal />)
+    fireEvent.click(screen.getByTestId('review-tutorial-modal-show-tour'))
+    fireEvent.click(screen.getByTestId('tour-popover-skip'))
+
+    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('review-tutorial-modal')).not.toBeInTheDocument()
+  })
+
+  it('closes when the tour X is tapped', () => {
+    render(<ReviewTutorialModal />)
+    fireEvent.click(screen.getByTestId('review-tutorial-modal-show-tour'))
+    fireEvent.click(screen.getByTestId('tour-popover-close'))
+
+    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
+  })
+
+  it('closes when "Got it, let\'s go" on the welcome step is tapped', () => {
     render(<ReviewTutorialModal />)
 
     fireEvent.click(screen.getByTestId('review-tutorial-modal-got-it'))
 
-    expect(
-      screen.queryByTestId('review-tutorial-modal'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByTestId('review-tutorial-modal')).not.toBeInTheDocument()
   })
 
-  it('closes when the Skip X is tapped', () => {
+  it('closes when the welcome Skip X is tapped', () => {
     render(<ReviewTutorialModal />)
 
     fireEvent.click(screen.getByTestId('review-tutorial-modal-close'))
 
-    expect(
-      screen.queryByTestId('review-tutorial-modal'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('closes when "Got it" on the video step is tapped', () => {
-    render(<ReviewTutorialModal />)
-
-    fireEvent.click(screen.getByTestId('review-tutorial-modal-show-video'))
-    fireEvent.click(screen.getByTestId('review-tutorial-modal-got-it-video'))
-
-    expect(
-      screen.queryByTestId('review-tutorial-modal'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByTestId('review-tutorial-modal')).not.toBeInTheDocument()
   })
 
   it('does not make a network call on dismiss', () => {
@@ -81,22 +99,9 @@ describe('ReviewTutorialModal', () => {
     fetchSpy.mockRestore()
   })
 
-  it('keeps an accessible name on the video step', () => {
-    render(<ReviewTutorialModal />)
-    fireEvent.click(screen.getByTestId('review-tutorial-modal-show-video'))
-    const labelled = document.getElementById('review-tutorial-title')
-    expect(labelled).not.toBeNull()
-    expect(screen.getByTestId('review-tutorial-modal')).toHaveAttribute(
-      'aria-labelledby',
-      'review-tutorial-title',
-    )
-  })
-
-  it('closes on Escape', () => {
+  it('closes on Escape from the welcome step', () => {
     render(<ReviewTutorialModal />)
     fireEvent.keyDown(document, { key: 'Escape' })
-    expect(
-      screen.queryByTestId('review-tutorial-modal'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByTestId('review-tutorial-modal')).not.toBeInTheDocument()
   })
 })
