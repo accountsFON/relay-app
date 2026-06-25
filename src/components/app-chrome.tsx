@@ -148,7 +148,7 @@ export async function AppChrome({
   const onboarding = await db.user
     .findUnique({
       where: { id: ctx.userDbId },
-      select: { onboardingTourSeenAt: true, launchPadDismissedAt: true },
+      select: { onboardingTourSeenAt: true, launchPadDismissedAt: true, seenTours: true },
     })
     .catch(() => null)
   const tourSeen = !!onboarding?.onboardingTourSeenAt
@@ -170,7 +170,8 @@ export async function AppChrome({
       userAgencies={userAgencies}
       activeClerkOrgId={ctx.orgId}
       unreadMentions={unreadMentions}
-      tourSeen={tourSeen}
+      role={ctx.role}
+      seenTours={onboarding?.seenTours ?? []}
     >
       {children}
     </AppShell>

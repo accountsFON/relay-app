@@ -20,6 +20,7 @@ import { HeaderBell } from '@/components/notifications/header-bell'
 import { NotificationDropdown } from '@/components/notifications/notification-dropdown'
 import { DecorationCorner } from '@/components/decorations/decoration-corner'
 import { TourProvider } from '@/components/onboarding/tour-provider'
+import type { UserRole } from '@/lib/types'
 import { ReportBugButton } from '@/components/feedback/report-bug-button'
 import { Toaster } from 'sonner'
 
@@ -82,7 +83,8 @@ export function AppShell({
   userAgencies,
   activeClerkOrgId,
   unreadMentions = 0,
-  tourSeen = true,
+  role,
+  seenTours,
 }: {
   children: React.ReactNode
   showAdmin?: boolean
@@ -95,13 +97,8 @@ export function AppShell({
   userAgencies?: AgencyOption[]
   activeClerkOrgId?: string
   unreadMentions?: number
-  /**
-   * Whether this user has dismissed the Phase 4 guided tour. Defaults
-   * to true so the tour does not surprise users in non instrumented
-   * call sites (tests, storybook). The (app) layout passes the real
-   * value from `User.onboardingTourSeenAt !== null`.
-   */
-  tourSeen?: boolean
+  role: UserRole
+  seenTours: string[]
 }) {
   const navItems = [
     ...baseNavItems,
@@ -132,7 +129,7 @@ export function AppShell({
     <InFlightRunsProvider>
     <NotificationProvider>
     <CompletionNotificationsProvider>
-    <TourProvider tourSeen={tourSeen} onTourNavChange={setTourNavOpen}>
+    <TourProvider role={role} seenTours={seenTours} onTourNavChange={setTourNavOpen}>
     <div className="flex h-dvh flex-col md:flex-row bg-neutral-50">
       {sidebarOpen && (
         <div
