@@ -86,6 +86,27 @@ export async function markTourSeen(userDbId: string): Promise<MarkTourSeenResult
 }
 
 /**
+ * Append a versioned tour id to User.seenTours (deduped). Read-modify-write
+ * so a replay-then-finish never pushes a duplicate. Independent of the
+ * legacy markTourSeen/markLaunchPadDismissed columns.
+ */
+export async function markSeenTour(
+  userDbId: string,
+  tourId: string,
+): Promise<void> {
+  const user = await db.user.findUnique({
+    where: { id: userDbId },
+    select: { seenTours: true },
+  })
+  const current = user?.seenTours ?? []
+  if (current.includes(tourId)) return
+  await db.user.update({
+    where: { id: userDbId },
+    data: { seenTours: [...current, tourId] },
+  })
+}
+
+/**
  * Clear both onboarding columns so the user re lands on /welcome and
  * gets the tour again. Wired to the Settings "Restart guided tour"
  * control.
