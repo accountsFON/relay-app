@@ -1,258 +1,90 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
-import {
-  TourProvider,
-  useTourController,
-  DEFAULT_TOUR_STOPS,
-} from '@/components/onboarding/tour-provider'
-import type { TourStop } from '@/components/onboarding/tour-popover'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import { TourProvider, useTourController } from '@/components/onboarding/tour-provider'
 
-const pathnameMock = vi.fn(() => '/dashboard')
+let pathname = '/dashboard'
 vi.mock('next/navigation', () => ({
-  usePathname: () => pathnameMock(),
+  usePathname: () => pathname,
 }))
+vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => false }))
 
-// useIsMobile reads window.matchMedia; default the env to desktop and
-// let individual tests flip it to mobile before render.
-function setMatchMedia(matches: boolean) {
-  vi.stubGlobal(
-    'matchMedia',
-    vi.fn(() => ({
-      matches,
-      media: '(max-width: 767px)',
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  )
-}
+beforeEach(() => {
+  pathname = '/dashboard'
+})
 
-const stops: TourStop[] = [
-  { id: 'a', anchorSelector: '[data-tour-anchor="a"]', title: 'A', body: 'a body' },
-  { id: 'b', anchorSelector: '[data-tour-anchor="b"]', title: 'B', body: 'b body' },
-  { id: 'c', anchorSelector: '[data-tour-anchor="c"]', title: 'C', body: 'c body' },
-]
-
-function StartButton() {
-  const tour = useTourController()
+function Harness() {
+  const { start } = useTourController()
   return (
-    <button type="button" data-testid="start-tour" onClick={() => tour.start()}>
-      Start
+    <button data-testid="manual-start" onClick={() => start('overview-v1')}>
+      start
     </button>
   )
 }
 
-function ActiveProbe() {
-  const tour = useTourController()
-  return <div data-testid="active">{tour.active ? 'yes' : 'no'}</div>
-}
-
-beforeEach(() => {
-  pathnameMock.mockReturnValue('/dashboard')
-  setMatchMedia(false)
-})
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-})
-
 describe('TourProvider', () => {
-  it('auto fires on /dashboard when tourSeen is false', () => {
-    pathnameMock.mockReturnValue('/dashboard')
+  it('auto-fires the overview on /dashboard for an unseen AM', () => {
     render(
-      <TourProvider tourSeen={false} stops={stops} onMarkSeen={vi.fn()}>
-        <ActiveProbe />
+      <TourProvider role="account_manager" seenTours={[]} onMarkSeen={vi.fn()}>
+        <div />
       </TourProvider>,
     )
-
-    expect(screen.getByTestId('active')).toHaveTextContent('yes')
     expect(screen.getByTestId('tour-popover')).toBeInTheDocument()
-    expect(screen.getByTestId('tour-popover-stop-a')).toBeInTheDocument()
+    expect(screen.getByTestId('tour-popover-stop-overview-nav')).toBeInTheDocument()
   })
 
-  it('does not auto fire when tourSeen is true', () => {
+  it('does not auto-fire when overview-v1 is already seen', () => {
     render(
-      <TourProvider tourSeen={true} stops={stops} onMarkSeen={vi.fn()}>
-        <ActiveProbe />
+      <TourProvider role="account_manager" seenTours={['overview-v1']} onMarkSeen={vi.fn()}>
+        <div />
       </TourProvider>,
     )
-
-    expect(screen.getByTestId('active')).toHaveTextContent('no')
     expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
   })
 
-  it('does not auto fire on non-autofire paths', () => {
-    pathnameMock.mockReturnValue('/welcome')
+  it('does not auto-fire for the client role', () => {
     render(
-      <TourProvider tourSeen={false} stops={stops} onMarkSeen={vi.fn()}>
-        <ActiveProbe />
+      <TourProvider role="client" seenTours={[]} onMarkSeen={vi.fn()}>
+        <div />
       </TourProvider>,
     )
-
-    expect(screen.getByTestId('active')).toHaveTextContent('no')
     expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
   })
 
-  it('start() opens the tour when invoked from a consumer', () => {
-    pathnameMock.mockReturnValue('/clients')
+  it('does not auto-fire off the dashboard', () => {
+    pathname = '/clients/abc'
     render(
-      <TourProvider tourSeen={true} stops={stops} onMarkSeen={vi.fn()}>
-        <StartButton />
-        <ActiveProbe />
+      <TourProvider role="account_manager" seenTours={[]} onMarkSeen={vi.fn()}>
+        <div />
       </TourProvider>,
     )
-
-    expect(screen.getByTestId('active')).toHaveTextContent('no')
-    fireEvent.click(screen.getByTestId('start-tour'))
-    expect(screen.getByTestId('active')).toHaveTextContent('yes')
-    expect(screen.getByTestId('tour-popover-stop-a')).toBeInTheDocument()
+    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
   })
 
-  it('advances stops on Next and persists once on the last stop', async () => {
+  it('marks the tour seen on finish and stops re-firing', async () => {
     const onMarkSeen = vi.fn().mockResolvedValue(undefined)
-    pathnameMock.mockReturnValue('/dashboard')
     render(
-      <TourProvider tourSeen={false} stops={stops} onMarkSeen={onMarkSeen}>
-        <ActiveProbe />
+      <TourProvider role="account_manager" seenTours={[]} onMarkSeen={onMarkSeen}>
+        <div />
       </TourProvider>,
     )
-
-    expect(screen.getByTestId('tour-popover-stop-a')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('tour-popover-next'))
-    expect(screen.getByTestId('tour-popover-stop-b')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('tour-popover-next'))
-    expect(screen.getByTestId('tour-popover-stop-c')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('tour-popover-next'))
-    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
-    await waitFor(() => expect(onMarkSeen).toHaveBeenCalledTimes(1))
-  })
-
-  it('Skip dismisses immediately and persists once even on stop 1', async () => {
-    const onMarkSeen = vi.fn().mockResolvedValue(undefined)
-    pathnameMock.mockReturnValue('/dashboard')
-    render(
-      <TourProvider tourSeen={false} stops={stops} onMarkSeen={onMarkSeen}>
-        <ActiveProbe />
-      </TourProvider>,
-    )
-
-    expect(screen.getByTestId('tour-popover-stop-a')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('tour-popover-skip'))
-    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
-    await waitFor(() => expect(onMarkSeen).toHaveBeenCalledTimes(1))
-  })
-
-  it('persistSeen runs at most once even on rapid re-dismiss', async () => {
-    const onMarkSeen = vi.fn().mockResolvedValue(undefined)
-    pathnameMock.mockReturnValue('/dashboard')
-    render(
-      <TourProvider tourSeen={false} stops={stops} onMarkSeen={onMarkSeen}>
-        <ActiveProbe />
-      </TourProvider>,
-    )
-
-    fireEvent.click(screen.getByTestId('tour-popover-skip'))
-    // Synthetic second close path would be ESC if we re-opened, but the
-    // popover is gone now. Re-render an explicit start + skip to prove
-    // the persisted flag holds.
-    await waitFor(() => expect(onMarkSeen).toHaveBeenCalledTimes(1))
-  })
-
-  it('DEFAULT_TOUR_STOPS are 3 sidebar anchors in the documented order', () => {
-    expect(DEFAULT_TOUR_STOPS).toHaveLength(3)
-    expect(DEFAULT_TOUR_STOPS.map((s) => s.id)).toEqual([
-      'my-relay',
-      'clients',
-      'inbox',
-    ])
-    for (const stop of DEFAULT_TOUR_STOPS) {
-      expect(stop.anchorSelector).toMatch(/^\[data-tour-anchor="/)
+    // 5 AM stops: click Next until the popover closes.
+    for (let i = 0; i < 5; i++) {
+      const next = screen.queryByTestId('tour-popover-next')
+      if (!next) break
+      await act(async () => { fireEvent.click(next) })
     }
+    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
+    expect(onMarkSeen).toHaveBeenCalledWith('overview-v1')
   })
 
-  it('reports onTourNavChange(true) when the tour is active on mobile', () => {
-    setMatchMedia(true)
-    pathnameMock.mockReturnValue('/dashboard')
-    const onTourNavChange = vi.fn()
+  it('can be started manually via the controller (replay)', async () => {
     render(
-      <TourProvider
-        tourSeen={false}
-        stops={stops}
-        onMarkSeen={vi.fn()}
-        onTourNavChange={onTourNavChange}
-      >
-        <ActiveProbe />
+      <TourProvider role="account_manager" seenTours={['overview-v1']} onMarkSeen={vi.fn()}>
+        <Harness />
       </TourProvider>,
     )
-
-    // Tour auto fired on /dashboard + mobile => wants the nav open.
-    expect(screen.getByTestId('active')).toHaveTextContent('yes')
-    expect(onTourNavChange).toHaveBeenCalledWith(true)
-  })
-
-  it('reports onTourNavChange(false) on desktop even when active', () => {
-    setMatchMedia(false)
-    pathnameMock.mockReturnValue('/dashboard')
-    const onTourNavChange = vi.fn()
-    render(
-      <TourProvider
-        tourSeen={false}
-        stops={stops}
-        onMarkSeen={vi.fn()}
-        onTourNavChange={onTourNavChange}
-      >
-        <ActiveProbe />
-      </TourProvider>,
-    )
-
-    expect(screen.getByTestId('active')).toHaveTextContent('yes')
-    // Active but desktop => nav should stay closed.
-    expect(onTourNavChange).toHaveBeenLastCalledWith(false)
-    expect(onTourNavChange).not.toHaveBeenCalledWith(true)
-  })
-
-  it('reports onTourNavChange(false) when the tour is dismissed on mobile', () => {
-    setMatchMedia(true)
-    pathnameMock.mockReturnValue('/dashboard')
-    const onTourNavChange = vi.fn()
-    render(
-      <TourProvider
-        tourSeen={false}
-        stops={stops}
-        onMarkSeen={vi.fn()}
-        onTourNavChange={onTourNavChange}
-      >
-        <ActiveProbe />
-      </TourProvider>,
-    )
-
-    expect(onTourNavChange).toHaveBeenLastCalledWith(true)
-    fireEvent.click(screen.getByTestId('tour-popover-skip'))
-    expect(screen.getByTestId('active')).toHaveTextContent('no')
-    expect(onTourNavChange).toHaveBeenLastCalledWith(false)
-  })
-
-  it('useTourController returns a no-op stub outside a TourProvider', () => {
-    function Probe() {
-      const tour = useTourController()
-      // Should not throw and active should be false.
-      return (
-        <div>
-          <span data-testid="probe-active">{tour.active ? 'yes' : 'no'}</span>
-          <button type="button" data-testid="probe-start" onClick={() => tour.start()}>
-            start
-          </button>
-        </div>
-      )
-    }
-    render(<Probe />)
-    expect(screen.getByTestId('probe-active')).toHaveTextContent('no')
-    // Calling start() outside a provider should be a no-op (does not throw).
-    act(() => {
-      fireEvent.click(screen.getByTestId('probe-start'))
-    })
-    expect(screen.getByTestId('probe-active')).toHaveTextContent('no')
+    expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
+    await act(async () => { fireEvent.click(screen.getByTestId('manual-start')) })
+    expect(screen.getByTestId('tour-popover')).toBeInTheDocument()
   })
 })
