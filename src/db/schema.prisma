@@ -203,6 +203,11 @@ model User {
   /// /welcome. Reset together by the Settings "Restart guided tour"
   /// control. Phase 4 item 25.
   launchPadDismissedAt DateTime?
+  /// Versioned ids of onboarding tours this user has completed or
+  /// dismissed (e.g. ["overview-v1"]). Drives the multi-tour registry;
+  /// independent of the legacy onboardingTourSeenAt/launchPadDismissedAt
+  /// columns which still gate the /welcome first-timer redirect.
+  seenTours String[] @default([])
 
   organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assignedClients   Client[]             @relation("AssignedAM")

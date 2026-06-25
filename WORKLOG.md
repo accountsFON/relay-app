@@ -22,6 +22,29 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Full-app onboarding tour: foundation + overview tour + Tips launcher (item 39, Phase 0+1)** (PR #257)
+  Built a reusable multi-tour onboarding system and the first tour. **Foundation:** a `tour-registry.ts`
+  (pure, shared client+server) of `TourDef`s with `selectAutoTour`/`getTourById`/`listToursForRole`/
+  `isValidTourId`; per-tour versioned persistence via a new `User.seenTours String[]` column (additive
+  migration) marked through `POST /api/onboarding/tour-seen { tourId }` + a deduped `markSeenTour`
+  service; a rewritten role + multi-tour aware `TourProvider` (auto-fires the matching tour by
+  route/role/seen-state, supports manual `start(tourId)`, never re-fires once seen); `role` + `seenTours`
+  threaded AppChrome → AppShell → TourProvider. **Overview tour** (`overview-v1`, auto-fires once on
+  `/dashboard`): role-aware stops (admin/AM 5-stop, designer 3-stop) anchored to always-present sidebar
+  nav + centered concept stops, so it works on an empty day-one account; never shown to clients.
+  **Two replay entry points:** a sidebar **"Tips"** launcher (between Settings and Report) listing the
+  role's walkthroughs ("Account Manager Walkthrough" / "Designer Walkthrough" / "Admin Walkthrough"),
+  and a Settings `ToursPanel` — both role-labeled via `labelForRole(role)`, replay via
+  `router.push(homePath)` + `start(id)`, hidden for clients. Retired the legacy hardcoded 3-stop tour +
+  the now-unused `RestartTourButton`. Client onboarding stays ONLY in the magic-link review tutorial.
+  Built subagent-driven TDD (10 tasks) + opus whole-branch review READY TO MERGE (zero Critical/Important;
+  verified the no-refire guarantee, role gating, dedup persistence, wiring, hooks ordering). 1882 unit
+  tests, tsc clean, eslint clean on all new code (only 3 pre-existing errors remain in app-chrome/app-shell,
+  confirmed pre-existing via blame). NOTE: changes `schema.prisma`, so the Trigger.dev pipeline deploy
+  runs on merge (expected; additive migration). Contextual per-surface coachmarks (batch/review,
+  scheduling, generation, inbox/clients) are later phases on this foundation. Spec + plan:
+  `2026-06-25-full-app-tour-foundation-design.md`, `2026-06-25-full-app-tour-foundation-plan.md`.
+
 - [x] **2026-06-25 — Client review tutorial: anchored tooltips replace the (missing) video (item 39, part 1)** (PR #256)
   The magic-link client review tutorial's "Show me how (15 sec video)" step pointed at
   `/tutorial/review-markup.{mp4,webm,jpg}` — assets that were never recorded/committed, so it rendered

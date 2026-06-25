@@ -44,6 +44,7 @@ const mockUser: User = {
   createdAt: new Date(),
   onboardingTourSeenAt: null,
   launchPadDismissedAt: null,
+  seenTours: [],
 }
 
 beforeEach(() => {

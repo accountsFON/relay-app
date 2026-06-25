@@ -14,12 +14,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   update: vi.fn(),
+  findUnique: vi.fn(),
 }))
 
 vi.mock('@/db/client', () => ({
   db: {
     user: {
       update: (args: unknown) => mocks.update(args),
+      findUnique: (args: unknown) => mocks.findUnique(args),
     },
   },
 }))
@@ -27,6 +29,7 @@ vi.mock('@/db/client', () => ({
 import {
   markLaunchPadDismissed,
   markTourSeen,
+  markSeenTour,
   resetTour,
 } from '@/server/services/onboardingTour'
 
@@ -81,5 +84,25 @@ describe('resetTour', () => {
     expect(result.userId).toBe('user_3')
     expect(result.onboardingTourSeenAt).toBeNull()
     expect(result.launchPadDismissedAt).toBeNull()
+  })
+})
+
+describe('markSeenTour', () => {
+  it('appends a new tour id to seenTours', async () => {
+    mocks.findUnique.mockResolvedValue({ seenTours: [] } as never)
+    await markSeenTour('user_1', 'overview-v1')
+    expect(mocks.update).toHaveBeenCalledWith({
+      where: { id: 'user_1' },
+      data: { seenTours: ['overview-v1'] },
+    })
+  })
+
+  it('does not duplicate an id already present', async () => {
+    mocks.update.mockClear()
+    mocks.findUnique.mockResolvedValue({
+      seenTours: ['overview-v1'],
+    } as never)
+    await markSeenTour('user_1', 'overview-v1')
+    expect(mocks.update).not.toHaveBeenCalled()
   })
 })

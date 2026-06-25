@@ -6,267 +6,165 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import { usePathname } from 'next/navigation'
-import { TourPopover, type TourStop } from '@/components/onboarding/tour-popover'
+import { TourPopover } from '@/components/onboarding/tour-popover'
+import {
+  getTourById,
+  selectAutoTour,
+} from '@/components/onboarding/tour-registry'
+import type { UserRole } from '@/lib/types'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 
 type TourContextValue = {
-  /** Whether the tour is currently rendered. */
   active: boolean
-  /** Currently rendered stop index (0..stops.length-1). */
+  activeTourId: string | null
   currentIndex: number
-  /** Programmatically start the tour from step 0. */
-  start: () => void
-  /** Programmatically dismiss the tour (persists permanently). */
+  /** Start (or replay) a specific tour by id. */
+  start: (tourId: string) => void
+  /** Dismiss the active tour (marks it seen). */
   dismiss: () => void
 }
 
 const TourContext = createContext<TourContextValue | null>(null)
 
-/**
- * Default 3 stop tour for AM + designer + admin personas. The selectors
- * map to `data-tour-anchor` attributes on the sidebar nav items in
- * AppShell. If any anchor goes missing, the popover falls back to a
- * fixed bottom right placement so the copy still ships.
- *
- * Do not reorder or rename stop ids without updating the Playwright
- * spec; it asserts the order by id.
- */
-export const DEFAULT_TOUR_STOPS: TourStop[] = [
-  {
-    id: 'my-relay',
-    anchorSelector: '[data-tour-anchor="my-relay"]',
-    title: 'My Relay',
-    body: 'Your home base. In progress batches, recent activity, deep links to everything.',
-  },
-  {
-    id: 'clients',
-    anchorSelector: '[data-tour-anchor="clients"]',
-    title: 'Clients',
-    body: 'Every client lives here. The AM owns the page, the designer reads it.',
-  },
-  {
-    id: 'inbox',
-    anchorSelector: '[data-tour-anchor="inbox"]',
-    title: 'Notifications',
-    body: 'We will ping you here when a batch needs you, or when a client finishes a review.',
-  },
-]
-
 export type TourProviderProps = {
   children: React.ReactNode
-  /**
-   * Whether this user has already dismissed the tour. When false AND
-   * the user is on an autofire path (currently /dashboard), the tour
-   * auto fires once. Always overridable by the explicit start() trigger
-   * from /welcome.
-   */
-  tourSeen: boolean
-  /**
-   * Override the default stops. Mostly for tests; in app render uses
-   * DEFAULT_TOUR_STOPS.
-   */
-  stops?: TourStop[]
-  /**
-   * Optional mark-seen network override. Tests inject a stub so the
-   * provider does not need a real fetch implementation.
-   */
-  onMarkSeen?: () => Promise<void> | void
-  /**
-   * Paths that auto fire the tour for unseen users. Default: only
-   * `/dashboard` so the tour does not surprise users mid task on
-   * other routes (settings, client detail, review screens).
-   */
-  autoFirePaths?: string[]
-  /**
-   * Reports whether the tour currently wants the mobile nav drawer
-   * open. True only while the tour is active AND the viewport is below
-   * the `md` breakpoint (the sidebar nav lives in a hidden drawer
-   * there, so the popover's anchors are off screen). AppShell uses this
-   * to OR the drawer open without fighting its own sidebarOpen state.
-   * Reports false when the tour deactivates or on desktop.
-   */
+  /** Current user's role; drives which tours auto-fire. */
+  role: UserRole
+  /** Tour ids already completed/dismissed (from User.seenTours). */
+  seenTours: string[]
+  /** Test override for the mark-seen network call. */
+  onMarkSeen?: (tourId: string) => Promise<void> | void
+  /** Reports whether a tour wants the mobile nav drawer open. */
   onTourNavChange?: (open: boolean) => void
 }
 
-const DEFAULT_AUTOFIRE_PATHS = ['/dashboard']
-
 /**
- * Shell wide guided tour controller.
+ * Shell-wide multi-tour controller.
  *
- * Mounted near the top of AppShell so the popover anchors to sidebar
- * nav items via `data-tour-anchor` selectors. Holds active step state,
- * persists the dismissal exactly once, and exposes a context so the
- * /welcome launch pad can imperatively trigger the tour via
- * useTourController().
+ * Picks an auto-fire tour by route + role + seen-state (see the registry's
+ * selectAutoTour) and renders it with TourPopover. Per-tour "seen" state is
+ * marked on finish/skip via POST /api/onboarding/tour-seen and tracked
+ * locally so a tour never re-fires within a session. Manual start(id) (from
+ * the Settings replay panel or the /welcome launch pad) runs any tour
+ * regardless of seen-state.
  *
- * Auto fire rules:
- *   - Only when `tourSeen` is false.
- *   - Only on a path listed in `autoFirePaths` (default: /dashboard).
- *   - Runs once per provider lifetime; navigating away and back does
- *     not re fire because the local `hasAutoFired` flag stays set.
- *
- * Persistence: dismissal POSTs to /api/onboarding/tour-seen exactly
- * once per user session (the provider tracks a `persisted` flag so a
- * second dismissal does not double POST). Same fire and forget pattern
- * as ReviewTutorialModal; a flaky network just means the tour might
- * fire one extra time on next sign in.
- *
- * Phase 4 item 25.
+ * No cross-route navigation: each tour is single-page. Mounted at the
+ * AppShell root so it persists across route changes.
  */
 export function TourProvider({
   children,
-  tourSeen,
-  stops = DEFAULT_TOUR_STOPS,
+  role,
+  seenTours,
   onMarkSeen,
-  autoFirePaths = DEFAULT_AUTOFIRE_PATHS,
   onTourNavChange,
 }: TourProviderProps) {
   const pathname = usePathname()
   const isMobile = useIsMobile()
-  // Single state object so all tour related transitions happen in one
-  // atomic update. `seededFor` tracks which tourSeen prop value the
-  // current state was derived from; comparing against the live prop
-  // lets us detect /settings reset (prop flip) and reseed without an
-  // effect. `autoFired` blocks re-firing after the first showing for
-  // this provider instance.
-  type TourState = {
-    active: boolean
-    currentIndex: number
-    autoFired: boolean
-    persisted: boolean
-    seededFor: boolean
-  }
-  const initialAutoFire =
-    !tourSeen && autoFirePaths.some((p) => pathname.startsWith(p))
-  const [state, setState] = useState<TourState>({
-    active: initialAutoFire,
-    currentIndex: 0,
-    autoFired: initialAutoFire || tourSeen,
-    persisted: tourSeen,
-    seededFor: tourSeen,
-  })
 
-  // /settings reset path: tourSeen flips from true -> false. Reseed
-  // state inline so the path-change effect below can trigger the next
-  // auto fire on the next /dashboard navigation. Pure derivation from
-  // a prop change, no setState-in-effect dance.
-  let workingState = state
-  if (state.seededFor !== tourSeen) {
-    workingState = {
-      active: false,
-      currentIndex: 0,
-      autoFired: tourSeen,
-      persisted: tourSeen,
-      seededFor: tourSeen,
-    }
-    setState(workingState)
-  }
-  const { active, currentIndex, autoFired, persisted } = workingState
+  const [seen, setSeen] = useState<Set<string>>(() => new Set(seenTours))
+  const [activeTourId, setActiveTourId] = useState<string | null>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
 
-  // Path-change auto fire: covers the user who lands on /welcome
-  // (provider mounts with auto fire off), then navigates to /dashboard.
-  // The autoFired flag ensures this runs at most once per provider
-  // lifetime. Pathname is an external system the provider syncs
-  // against, which is the documented intent for an effect that calls
-  // setState in response to route changes.
+  const activeTour = activeTourId ? getTourById(activeTourId) : null
+  const stops = useMemo(
+    () => (activeTour ? activeTour.stopsForRole(role) : []),
+    [activeTour, role],
+  )
+
+  // Auto-fire: when nothing is active, sync against the route by picking the
+  // first eligible auto tour. Pathname is an external system; the seen-set
+  // guard means a finished tour can never re-pick.
   useEffect(() => {
-    if (autoFired) return
-    if (persisted) return
-    if (!autoFirePaths.some((p) => pathname.startsWith(p))) return
-    // Pathname is an external system (the router) the provider is
-    // synchronizing against. The autoFired flag guarantees this runs
-    // at most once per provider instance, so the cascading render risk
-    // the lint rule guards against does not apply here.
+    if (activeTourId) return
+    const tour = selectAutoTour(pathname, role, [...seen])
+    if (!tour) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setState((prev) => ({
-      ...prev,
-      active: true,
-      currentIndex: 0,
-      autoFired: true,
-    }))
-  }, [pathname, autoFirePaths, autoFired, persisted])
+    setActiveTourId(tour.id)
+    setCurrentIndex(0)
+  }, [pathname, role, seen, activeTourId])
 
-  // Track persistence in a ref so the callbacks read the live value
-  // (avoids a useCallback dependency cycle where persistSeen would
-  // capture a stale persisted snapshot).
-  const persistedRef = useRef(persisted)
-  useEffect(() => {
-    persistedRef.current = persisted
-  }, [persisted])
-
-  const persistSeen = useCallback(async () => {
-    if (persistedRef.current) return
-    persistedRef.current = true
-    setState((prev) => ({ ...prev, persisted: true }))
-    if (onMarkSeen) {
-      try {
-        await onMarkSeen()
-      } catch (err) {
-        console.error('[tour-provider] onMarkSeen threw', err)
-      }
-      return
-    }
-    try {
-      await fetch('/api/onboarding/tour-seen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
+  const persistSeen = useCallback(
+    async (tourId: string) => {
+      setSeen((prev) => {
+        if (prev.has(tourId)) return prev
+        const next = new Set(prev)
+        next.add(tourId)
+        return next
       })
-    } catch (err) {
-      // Optimistic dismiss: a failed POST means the tour may re-fire on
-      // the next sign in. Acceptable per the design.
-      console.error('[tour-provider] mark-seen POST threw', err)
-    }
-  }, [onMarkSeen])
+      if (onMarkSeen) {
+        try {
+          await onMarkSeen(tourId)
+        } catch (err) {
+          console.error('[tour-provider] onMarkSeen threw', err)
+        }
+        return
+      }
+      try {
+        await fetch('/api/onboarding/tour-seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tourId }),
+        })
+      } catch (err) {
+        console.error('[tour-provider] mark-seen POST threw', err)
+      }
+    },
+    [onMarkSeen],
+  )
 
-  const start = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      active: true,
-      currentIndex: 0,
-      autoFired: true,
-    }))
+  const finish = useCallback(
+    (tourId: string) => {
+      setActiveTourId(null)
+      setCurrentIndex(0)
+      void persistSeen(tourId)
+    },
+    [persistSeen],
+  )
+
+  const start = useCallback((tourId: string) => {
+    setActiveTourId(tourId)
+    setCurrentIndex(0)
   }, [])
 
   const dismiss = useCallback(() => {
-    setState((prev) => ({ ...prev, active: false }))
-    void persistSeen()
-  }, [persistSeen])
+    if (activeTourId) finish(activeTourId)
+  }, [activeTourId, finish])
 
   const handleNext = useCallback(() => {
-    setState((prev) => {
-      const next = prev.currentIndex + 1
-      if (next >= stops.length) {
-        // Last stop: finishing IS dismissing.
-        void persistSeen()
-        return { ...prev, active: false }
+    if (!activeTour) return
+    setCurrentIndex((i) => {
+      const next = i + 1
+      if (next >= activeTour.stopsForRole(role).length) {
+        finish(activeTour.id)
+        return 0
       }
-      return { ...prev, currentIndex: next }
+      return next
     })
-  }, [stops.length, persistSeen])
+  }, [activeTour, role, finish])
 
   // Tell AppShell whether the tour needs the mobile nav drawer open.
-  // Only on mobile + while active; reports false otherwise (tour
-  // deactivated, or desktop where the nav is always visible). AppShell
-  // ORs this with its own sidebarOpen, so this never fights the
-  // pathname-change auto-close (which only touches sidebarOpen).
   useEffect(() => {
-    onTourNavChange?.(active && isMobile)
-  }, [active, isMobile, onTourNavChange])
+    onTourNavChange?.(!!activeTourId && isMobile)
+  }, [activeTourId, isMobile, onTourNavChange])
 
   const value = useMemo<TourContextValue>(
-    () => ({ active, currentIndex, start, dismiss }),
-    [active, currentIndex, start, dismiss],
+    () => ({
+      active: !!activeTourId,
+      activeTourId,
+      currentIndex,
+      start,
+      dismiss,
+    }),
+    [activeTourId, currentIndex, start, dismiss],
   )
 
   return (
     <TourContext.Provider value={value}>
       {children}
-      {active && (
+      {activeTour && (
         <TourPopover
           stops={stops}
           currentIndex={currentIndex}
@@ -280,16 +178,15 @@ export function TourProvider({
 }
 
 /**
- * Read the tour controller from any descendant component. Safe outside
- * a TourProvider; returns a no-op stub instead of throwing so non
- * authenticated screens (sign in, error pages) do not crash if they
- * accidentally render a consumer.
+ * Read the tour controller from any descendant. Safe outside a provider;
+ * returns a no-op stub so non-app screens never crash.
  */
 export function useTourController(): TourContextValue {
   const ctx = useContext(TourContext)
   if (!ctx) {
     return {
       active: false,
+      activeTourId: null,
       currentIndex: 0,
       start: () => {},
       dismiss: () => {},

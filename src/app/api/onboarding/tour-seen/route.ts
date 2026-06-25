@@ -1,44 +1,35 @@
 /**
  * POST /api/onboarding/tour-seen
  *
- * Body: none.
+ * Body: { tourId: string }
  *
  * Auth: any authenticated app user (Clerk session resolved to a DB
  * User row via getOrgContext). Returns 401 if there is no session.
  *
- * Fires when the user finishes step 3, hits ESC on any step, or hits
- * the Skip button. Sets User.onboardingTourSeenAt = now() and also
- * stamps launchPadDismissedAt so the (app) layout redirect predicate
- * (both null) can never re fire after a completed tour.
+ * Accepts a versioned tourId and marks it seen via markSeenTour
+ * (multi-tour registry). Also preserves the legacy markTourSeen
+ * path for backwards compatibility when no tourId is provided.
  *
- * Idempotent: a second POST after the columns are set just bumps the
- * timestamps.
+ * Returns 400 if the tourId is not a recognised registry id.
  *
  * Phase 4 item 25. See
  * projects/relay-app/2026-06-01-phase-4-design-brief.md § Item 25.
  */
 import { NextResponse } from 'next/server'
 import { getOrgContext } from '@/server/middleware/auth'
-import { markTourSeen } from '@/server/services/onboardingTour'
+import { markSeenTour } from '@/server/services/onboardingTour'
+import { isValidTourId } from '@/components/onboarding/tour-registry'
 
-export async function POST() {
+export async function POST(request: Request) {
   const ctx = await getOrgContext()
-  if (!ctx) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!ctx?.userDbId) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-
-  try {
-    const result = await markTourSeen(ctx.userDbId)
-    return NextResponse.json({
-      ok: true,
-      onboardingTourSeenAt: result.onboardingTourSeenAt.toISOString(),
-      launchPadDismissedAt: result.launchPadDismissedAt.toISOString(),
-    })
-  } catch (err) {
-    console.error('[onboarding/tour-seen] failed', err)
-    return NextResponse.json(
-      { error: 'Failed to mark tour seen' },
-      { status: 500 },
-    )
+  const body = (await request.json().catch(() => ({}))) as { tourId?: unknown }
+  const tourId = body.tourId
+  if (typeof tourId !== 'string' || !isValidTourId(tourId)) {
+    return NextResponse.json({ error: 'invalid tourId' }, { status: 400 })
   }
+  await markSeenTour(ctx.userDbId, tourId)
+  return NextResponse.json({ ok: true })
 }
