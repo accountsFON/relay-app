@@ -55,6 +55,7 @@ import { GenerateContentDialog } from '@/components/relay/generate-content-dialo
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
 import { SendLinkButton } from '@/components/batch/send-link-button'
 import { OpenClientContentButton } from '@/components/batch/open-client-content-button'
+import { GoToNectrCrmButton } from '@/components/batch/go-to-nectrcrm-button'
 import { Button } from '@/components/ui/button'
 import { MagicLinkRow } from '@/components/batch/magic-link-row'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
@@ -435,6 +436,7 @@ export default async function BatchDetailPage({
                 filename={`${client.name}-${targetMonth}`}
               />
             )}
+            <GoToNectrCrmButton currentStep={batch.currentStep} />
             {canEdit && <ArchiveBatchButton batchId={batch.id} />}
           </>
         )}
