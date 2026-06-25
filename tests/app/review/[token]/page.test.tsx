@@ -40,6 +40,7 @@ const mocks = vi.hoisted(() => {
     updateMagicLink: vi.fn().mockResolvedValue({}),
     findManyPosts: vi.fn().mockResolvedValue([]),
     findUniqueReviewer: vi.fn(),
+    updateReviewer: vi.fn().mockResolvedValue({}),
     findActiveSession: vi.fn(),
     listSessionsForBatch: vi.fn(),
     findManyReviewItems: vi.fn(),
@@ -67,6 +68,7 @@ vi.mock('@/db/client', () => ({
     },
     magicLinkReviewer: {
       findUnique: (...args: unknown[]) => mocks.findUniqueReviewer(...args),
+      update: (...args: unknown[]) => mocks.updateReviewer(...args),
     },
     post: {
       findMany: (...args: unknown[]) => mocks.findManyPosts(...args),
