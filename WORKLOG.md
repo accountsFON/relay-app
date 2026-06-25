@@ -22,6 +22,17 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-24 — Rename confusing "Preview" labels (item 34)** (PR #252)
+  "Preview" was used for two different controls and neither is a preview. The batch-page **"Preview"**
+  button opens the AM's INTERNAL markup/review surface (pin, comment, approve, submit to designer), so
+  it's now **"Internal Review"**. The magic-link row **"Open Preview"** button actually opens the CLIENT
+  review page in a new tab, so it's now **"Open client review"**. Also aligned the breadcrumb + hero
+  title on the `/preview` page and the `preview_review_submitted` notification copy ("finished the
+  internal review"). **Labels only** — the `/preview` route, `src/components/preview/` dir (shared with
+  the client + feedback surfaces), all testids, and the `preview_review_submitted` enum are unchanged
+  (no broken bookmarks, no migration). 9 lines across 5 files. 1858 unit tests, tsc + eslint clean. No
+  schema change → no Trigger.dev deploy.
+
 - [x] **2026-06-24 — Reply notifications: client email + bidirectional "reply waiting" indicators** (PR #251)
   Follow-up to item 33. A reply in a review conversation was silent. Now: (1) when the AM replies to a
   client's thread, the client gets an email (coalesced via an atomic 30-min cooldown claim on
