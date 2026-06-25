@@ -22,6 +22,22 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Client review tutorial: anchored tooltips replace the (missing) video (item 39, part 1)** (PR #256)
+  The magic-link client review tutorial's "Show me how (15 sec video)" step pointed at
+  `/tutorial/review-markup.{mp4,webm,jpg}` — assets that were never recorded/committed, so it rendered
+  an empty black box ("the video isn't showing"). Per Julio, dropped the video and replaced it with an
+  in-page ANCHORED TOOLTIP tour that points at the real review controls, reusing the existing
+  `TourPopover` primitive (home-grown, no library, no backdrop, mobile-responsive). Flow: welcome card
+  stays; its button (now "Show me how") launches a 3-stop walkthrough anchored to `review-post-card`
+  (comment on a post) → `decision-button-row` (Approve / Changes / Edit Copy) → `review-submit-bar`
+  (Submit). Removed the `<video>` + asset constants. No persistence change (still shows every load when
+  unlocked); shell mount unchanged. No content to record, never goes stale, teaches in-context.
+  Rewrote the modal test (welcome has no `<video>`; Show me how → tour; Next walks all 3 stops; Got it /
+  Skip / X / ESC close). 1872 unit tests, tsc clean, eslint clean (one pre-existing `<img>` warning on
+  the untouched welcome illustration). No schema change → no Trigger.dev deploy. Follow-ups: the welcome
+  illustration SVG is also a missing placeholder (degrades via onError); TourPopover could scrollIntoView
+  on stop change. Design: vault `2026-06-25-review-tutorial-tooltips-design.md`.
+
 - [x] **2026-06-24 — Fix: "Go to NectrCRM" chip now shows on the retired scheduling steps too (item 37 follow-up)** (PR #255)
   The item 37 chip gated on the NEW `scheduling` step only. Batches that reached scheduling before the
   2026-06-22 pipeline rework still sit on the retired `ready_to_schedule` / `final_qa_schedule` steps,
