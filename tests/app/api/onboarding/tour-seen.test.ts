@@ -10,6 +10,7 @@ vi.mock('@/server/services/onboardingTour', () => ({
 
 import { POST } from '@/app/api/onboarding/tour-seen/route'
 import { markSeenTour } from '@/server/services/onboardingTour'
+import { getOrgContext } from '@/server/middleware/auth'
 
 function req(body: unknown) {
   return new Request('http://test/api/onboarding/tour-seen', {
@@ -31,6 +32,13 @@ describe('POST /api/onboarding/tour-seen', () => {
   it('rejects an unknown tourId', async () => {
     const res = await POST(req({ tourId: 'bogus' }))
     expect(res.status).toBe(400)
+    expect(markSeenTour).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when there is no authenticated user', async () => {
+    vi.mocked(getOrgContext).mockResolvedValueOnce(null as never)
+    const res = await POST(req({ tourId: 'overview-v1' }))
+    expect(res.status).toBe(401)
     expect(markSeenTour).not.toHaveBeenCalled()
   })
 })

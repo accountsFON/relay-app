@@ -34,9 +34,9 @@ type NavItem = {
   /**
    * Optional data-tour-anchor attribute value. The onboarding tour
    * positions its popovers by `[data-tour-anchor="..."]` selectors;
-   * do not rename or drop these without updating
-   * src/components/onboarding/tour-provider.tsx DEFAULT_TOUR_STOPS
-   * and the matching Playwright spec.
+   * do not rename or drop these without updating the matching stop
+   * selectors in src/components/onboarding/tour-registry.ts
+   * (OVERVIEW_AM / OVERVIEW_DESIGNER).
    */
   tourAnchor?: string
 }
@@ -291,8 +291,8 @@ export function AppShell({
  * Settings link below it, so the active state styling and icon
  * colouring stay aligned between the two. Optional `badgeCount`
  * shows the unread pill (main nav only); optional `dataTourAnchor`
- * threads through onboarding tour selectors (see TourProvider
- * DEFAULT_TOUR_STOPS).
+ * threads through onboarding tour selectors (see the stop selectors in
+ * tour-registry.ts).
  */
 function NavLink({
   href,
