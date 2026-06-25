@@ -34,6 +34,8 @@ export type TourPopoverProps = {
 }
 
 const FALLBACK_POSITION = { top: 96, left: 96 } as const
+/** Padding around the target rect for the spotlight cutout. */
+const SPOTLIGHT_PAD = 6
 
 /**
  * Lightweight popover that anchors itself to a DOM node by selector
@@ -69,6 +71,15 @@ export function TourPopover({
   const [position, setPosition] = useState<{ top: number; left: number }>(
     FALLBACK_POSITION,
   )
+  // When the stop anchors to a real element we draw a spotlight: the page
+  // dims and a bright cutout + ring frames the target. Concept stops (the
+  // selector matches nothing) get no spotlight and a centered popover.
+  const [spotlight, setSpotlight] = useState<{
+    top: number
+    left: number
+    width: number
+    height: number
+  } | null>(null)
 
   // Place the popover next to its anchor. While a stop is active we
   // re-run the position read every animation frame, so the popover
@@ -85,6 +96,7 @@ export function TourPopover({
       const target = document.querySelector(stop.anchorSelector)
       if (!target) {
         setPosition(FALLBACK_POSITION)
+        setSpotlight(null)
         return
       }
       const rect = target.getBoundingClientRect()
@@ -98,6 +110,12 @@ export function TourPopover({
         Math.max(margin, window.innerWidth - 320 - margin),
       )
       setPosition({ top, left })
+      setSpotlight({
+        top: rect.top - SPOTLIGHT_PAD,
+        left: rect.left - SPOTLIGHT_PAD,
+        width: rect.width + SPOTLIGHT_PAD * 2,
+        height: rect.height + SPOTLIGHT_PAD * 2,
+      })
     }
     const loop = () => {
       update()
@@ -126,17 +144,37 @@ export function TourPopover({
   const stepLabel = `${currentIndex + 1} of ${stops.length}`
 
   return (
-    <div
-      data-testid="tour-popover"
-      role="dialog"
-      aria-modal="false"
-      aria-labelledby={`tour-popover-title-${stop.id}`}
-      className={cn(
-        // z-[60] keeps the popover above the open mobile sidebar (z-50)
-        // so it renders over the drawer the tour just slid in.
-        'fixed z-[60] w-[320px] rounded-2xl bg-card p-5 shadow-xl ring-1 ring-neutral-200',
-        className,
+    <>
+      {spotlight && (
+        // Spotlight: dim the whole page via a huge spread box-shadow while
+        // leaving the target rect bright, plus a ring around it. z-[55] sits
+        // above page content but below the z-[60] popover. pointer-events
+        // none so the page (and the target) stay clickable through the dim.
+        <div
+          data-testid="tour-popover-spotlight"
+          aria-hidden
+          className="pointer-events-none fixed z-[55] rounded-lg transition-all duration-150"
+          style={{
+            top: spotlight.top,
+            left: spotlight.left,
+            width: spotlight.width,
+            height: spotlight.height,
+            boxShadow:
+              '0 0 0 9999px rgba(2, 6, 23, 0.6), 0 0 0 3px rgba(255, 255, 255, 0.95)',
+          }}
+        />
       )}
+      <div
+        data-testid="tour-popover"
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby={`tour-popover-title-${stop.id}`}
+        className={cn(
+          // z-[60] keeps the popover above the open mobile sidebar (z-50)
+          // so it renders over the drawer the tour just slid in.
+          'fixed z-[60] w-[320px] rounded-2xl bg-card p-5 shadow-xl ring-1 ring-neutral-200',
+          className,
+        )}
       style={{ top: position.top, left: position.left }}
     >
       <div
@@ -188,5 +226,6 @@ export function TourPopover({
         </div>
       </div>
     </div>
+    </>
   )
 }
