@@ -22,6 +22,21 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Tour coachmark: scheduling step (item 39 Phase 2, 4 of 4 — coachmarks complete)** (PR #261)
+  The last Phase 2 coachmark. Scheduling is a STATE (step) on the relay route, not its own page, so the
+  foundation got a small extension: a `requiresAnchor` field on `TourDef` + a new `eligibleAutoTours()`,
+  and the provider now prefers a step-specific tour whose `requiresAnchor` element is in the DOM,
+  otherwise falls back to the first route tour with no DOM requirement. `scheduling-v1` shares the relay
+  route with `batch-detail-v1` but only fires when the scheduling-only "Go to NectrCRM" chip is present
+  (`[data-tour-anchor="schedule-nectrcrm"]`), so it never shows scheduling copy on a non-scheduling relay.
+  2 stops: Export the CSV → load it into NectrCRM. Admin/AM only (scheduling is AM-held). Added
+  `data-tour-anchor`s `schedule-export` (Export CSV button) + `schedule-nectrcrm` (NectrCRM chip). The
+  pure `selectAutoTour` still defaults to `batch-detail-v1` on the route (scheduling listed after it);
+  the DOM preference lives in the provider. 1907 unit tests (registry: eligibility, requiresAnchor gate,
+  role scope, no menu listing; provider: scheduling fires when anchor present, falls back when absent),
+  tsc + eslint clean. No schema change. **Item 39 coachmarks now complete:** overview + relay detail +
+  client/generation + inbox + clients + scheduling, all with the spotlight highlight.
+
 - [x] **2026-06-25 — Tour coachmarks: client page (generation), inbox, clients list (item 39 Phase 2, 2 of 4)** (PR #260)
   Three more per-page coachmarks on the foundation. (1) **Client detail page** (`/clients/:id`, admin/AM
   only since generation is gated to them): anchors the "Generate content" button → "start a relay" + a

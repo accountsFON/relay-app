@@ -19,6 +19,14 @@ export type TourDef = {
   matchPath: (pathname: string) => boolean
   /** 'auto' fires on match; 'manual' is settings-only. */
   trigger: 'auto' | 'manual'
+  /**
+   * Optional DOM gate: the tour only auto-fires when this selector resolves
+   * to an element on the page. Used for step-specific coachmarks that share
+   * a route with a broader tour (e.g. the scheduling tour fires only when
+   * the scheduling-only "Go to NectrCRM" chip is present). The provider
+   * checks this against the live DOM; the pure registry helpers ignore it.
+   */
+  requiresAnchor?: string
   /** Role-tailored stops sharing one seen-key. */
   stopsForRole: (role: UserRole) => TourStop[]
 }
@@ -109,6 +117,24 @@ const BATCH_DETAIL_STOPS: TourStop[] = [
 // Exact relay detail route only (not its /preview or /review-sessions children).
 const BATCH_DETAIL_ROUTE = /^\/clients\/[^/]+\/batches\/[^/]+$/
 
+// Step coachmark: shares the relay detail route but only fires when the relay
+// is at a scheduling step, detected via the scheduling-only "Go to NectrCRM"
+// chip (requiresAnchor below).
+const SCHEDULING_STOPS: TourStop[] = [
+  {
+    id: 'schedule-export',
+    anchorSelector: '[data-tour-anchor="schedule-export"]',
+    title: 'Export the schedule',
+    body: 'Download the month of posts as a CSV, ready to load into your scheduler.',
+  },
+  {
+    id: 'schedule-nectrcrm',
+    anchorSelector: '[data-tour-anchor="schedule-nectrcrm"]',
+    title: 'Load them into NectrCRM',
+    body: 'Jump to NectrCRM and upload the CSV to schedule the posts. That finishes the relay.',
+  },
+]
+
 // Page coachmark: the client detail page — where a relay is generated.
 const CLIENT_DETAIL_STOPS: TourStop[] = [
   {
@@ -184,6 +210,20 @@ const TOURS: TourDef[] = [
     stopsForRole: () => BATCH_DETAIL_STOPS,
   },
   {
+    id: 'scheduling-v1',
+    labelForRole: () => 'Scheduling walkthrough',
+    // Scheduling is AM-held; the NectrCRM chip only renders for admin/AM.
+    roles: ['admin', 'account_manager'],
+    // Same route as batch-detail-v1, but requiresAnchor gates it to the
+    // scheduling step (the chip exists only then). The provider prefers this
+    // over batch-detail-v1 when the anchor is present. Listed AFTER
+    // batch-detail-v1 so the pure selectAutoTour default stays batch-detail.
+    matchPath: (p) => BATCH_DETAIL_ROUTE.test(p),
+    requiresAnchor: '[data-tour-anchor="schedule-nectrcrm"]',
+    trigger: 'auto',
+    stopsForRole: () => SCHEDULING_STOPS,
+  },
+  {
     id: 'client-detail-v1',
     labelForRole: () => 'Client page walkthrough',
     // Generation is admin/AM only (designers can't trigger it), so the
@@ -234,21 +274,32 @@ export function listToursForRole(role: UserRole): TourDef[] {
 }
 
 /**
+ * All auto-fire tours that match the current route + role and have not been
+ * seen, in registry order. The provider refines this with the DOM-based
+ * requiresAnchor check (which can't run in this pure function).
+ */
+export function eligibleAutoTours(
+  pathname: string,
+  role: UserRole,
+  seenTours: string[],
+): TourDef[] {
+  return TOURS.filter(
+    (t) =>
+      t.trigger === 'auto' &&
+      t.roles.includes(role) &&
+      t.matchPath(pathname) &&
+      !seenTours.includes(t.id),
+  )
+}
+
+/**
  * The first auto-fire tour that matches the current route + role and has
- * not been seen. Null when nothing should fire.
+ * not been seen (ignoring requiresAnchor). Null when nothing should fire.
  */
 export function selectAutoTour(
   pathname: string,
   role: UserRole,
   seenTours: string[],
 ): TourDef | null {
-  return (
-    TOURS.find(
-      (t) =>
-        t.trigger === 'auto' &&
-        t.roles.includes(role) &&
-        t.matchPath(pathname) &&
-        !seenTours.includes(t.id),
-    ) ?? null
-  )
+  return eligibleAutoTours(pathname, role, seenTours)[0] ?? null
 }

@@ -24,7 +24,7 @@ export function ExportButton({
   }
 
   return (
-    <Button variant="outline" onClick={handleExport}>
+    <Button variant="outline" onClick={handleExport} data-tour-anchor="schedule-export">
       Export CSV
     </Button>
   )

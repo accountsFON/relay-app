@@ -47,6 +47,7 @@ export function GoToNectrCrmButton({ currentStep }: Props) {
           target="_blank"
           rel="noopener noreferrer"
           data-testid="go-to-nectrcrm-link"
+          data-tour-anchor="schedule-nectrcrm"
         />
       }
     >

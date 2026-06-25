@@ -60,6 +60,29 @@ describe('TourProvider', () => {
     expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
   })
 
+  it('fires the scheduling tour on the relay route when its anchor is present', () => {
+    pathname = '/clients/abc/batches/xyz'
+    render(
+      <div>
+        <div data-tour-anchor="schedule-nectrcrm" />
+        <TourProvider role="account_manager" seenTours={[]} onMarkSeen={vi.fn()}>
+          <div />
+        </TourProvider>
+      </div>,
+    )
+    expect(screen.getByTestId('tour-popover-stop-schedule-export')).toBeInTheDocument()
+  })
+
+  it('falls back to the relay-page tour when the scheduling anchor is absent', () => {
+    pathname = '/clients/abc/batches/xyz'
+    render(
+      <TourProvider role="account_manager" seenTours={[]} onMarkSeen={vi.fn()}>
+        <div />
+      </TourProvider>,
+    )
+    expect(screen.getByTestId('tour-popover-stop-batch-track')).toBeInTheDocument()
+  })
+
   it('marks the tour seen on finish and stops re-firing', async () => {
     const onMarkSeen = vi.fn().mockResolvedValue(undefined)
     render(
