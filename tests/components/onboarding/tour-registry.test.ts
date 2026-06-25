@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   selectAutoTour,
+  eligibleAutoTours,
   getTourById,
   listToursForRole,
   isValidTourId,
@@ -70,8 +71,14 @@ describe('tour-registry', () => {
       ).toBeNull()
     })
 
-    it('does not fire when already seen', () => {
-      expect(selectAutoTour(ROUTE, 'account_manager', ['batch-detail-v1'])).toBeNull()
+    it('does not fire when all relay-route tours are seen', () => {
+      // The relay route also hosts scheduling-v1 (for AM), so both must be
+      // seen for the pure selector to go quiet.
+      expect(
+        selectAutoTour(ROUTE, 'account_manager', ['batch-detail-v1', 'scheduling-v1']),
+      ).toBeNull()
+      // For a designer (no scheduling tour), batch-detail alone silences it.
+      expect(selectAutoTour(ROUTE, 'designer', ['batch-detail-v1'])).toBeNull()
     })
 
     it('never fires for the client role', () => {
@@ -144,5 +151,38 @@ describe('tour-registry', () => {
     for (const id of ['client-detail-v1', 'inbox-v1', 'clients-v1']) {
       expect(isValidTourId(id)).toBe(true)
     }
+  })
+
+  describe('scheduling coachmark (step-gated via requiresAnchor)', () => {
+    const ROUTE = '/clients/abc/batches/xyz'
+
+    it('is eligible alongside the relay-page tour on the relay route (admin/AM)', () => {
+      const ids = eligibleAutoTours(ROUTE, 'account_manager', []).map((t) => t.id)
+      expect(ids).toContain('batch-detail-v1')
+      expect(ids).toContain('scheduling-v1')
+    })
+
+    it('declares a requiresAnchor DOM gate (the NectrCRM chip)', () => {
+      expect(getTourById('scheduling-v1')!.requiresAnchor).toBe(
+        '[data-tour-anchor="schedule-nectrcrm"]',
+      )
+    })
+
+    it('is admin/AM only (not designer or client)', () => {
+      expect(eligibleAutoTours(ROUTE, 'designer', []).map((t) => t.id)).not.toContain(
+        'scheduling-v1',
+      )
+      expect(eligibleAutoTours(ROUTE, 'client', [])).toHaveLength(0)
+    })
+
+    it('does not change the pure default — selectAutoTour is still batch-detail-v1', () => {
+      expect(selectAutoTour(ROUTE, 'account_manager', [])?.id).toBe('batch-detail-v1')
+    })
+
+    it('is auto-fire only — not in the replay menu', () => {
+      expect(listToursForRole('account_manager').map((t) => t.id)).not.toContain(
+        'scheduling-v1',
+      )
+    })
   })
 })

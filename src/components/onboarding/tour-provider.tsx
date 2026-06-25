@@ -12,7 +12,7 @@ import { usePathname } from 'next/navigation'
 import { TourPopover } from '@/components/onboarding/tour-popover'
 import {
   getTourById,
-  selectAutoTour,
+  eligibleAutoTours,
 } from '@/components/onboarding/tour-registry'
 import type { UserRole } from '@/lib/types'
 import { useIsMobile } from '@/hooks/use-is-mobile'
@@ -79,7 +79,15 @@ export function TourProvider({
   // guard means a finished tour can never re-pick.
   useEffect(() => {
     if (activeTourId) return
-    const tour = selectAutoTour(pathname, role, [...seen])
+    const candidates = eligibleAutoTours(pathname, role, [...seen])
+    if (candidates.length === 0) return
+    // Prefer a step-specific tour whose requiresAnchor is present in the DOM
+    // (e.g. the scheduling tour when the relay is at a scheduling step);
+    // otherwise the first tour with no DOM requirement.
+    const tour =
+      candidates.find(
+        (t) => t.requiresAnchor && document.querySelector(t.requiresAnchor),
+      ) ?? candidates.find((t) => !t.requiresAnchor)
     if (!tour) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTourId(tour.id)
