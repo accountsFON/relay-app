@@ -390,7 +390,7 @@ export default async function BatchDetailPage({
           }
         >
           <Eye className="text-muted-foreground" />
-          <span>Preview</span>
+          <span>Internal Review</span>
         </Button>
         <Button
           variant="secondary"

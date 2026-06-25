@@ -211,7 +211,7 @@ describe('renderSummary, new kinds (parity sweep)', () => {
   it('preview_review_submitted names comment count', () => {
     expect(
       renderSummary(row({ kind: 'preview_review_submitted', commentCount: 4 })),
-    ).toBe('Cedar Creek · Mollie finished reviewing the preview (4 comments).')
+    ).toBe('Cedar Creek · Mollie finished the internal review (4 comments).')
   })
 
   it('renders copy for revision_images_requested', () => {
@@ -330,7 +330,7 @@ describe('renderSummary, production payload shape (no kind in payload)', () => {
         runId: null,
       } as MentionInboxRow['event'],
     } as MentionInboxRow
-    expect(renderSummary(r)).toBe('Cedar Creek · Mollie finished reviewing the preview (4 comments).')
+    expect(renderSummary(r)).toBe('Cedar Creek · Mollie finished the internal review (4 comments).')
   })
 })
 

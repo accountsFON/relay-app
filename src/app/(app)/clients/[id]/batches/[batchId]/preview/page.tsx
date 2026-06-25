@@ -104,13 +104,13 @@ export default async function BatchPreviewPage({
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
       <EventAnchor />
       <HeroBand
-        title={`${batch.label} preview`}
+        title={`${batch.label} internal review`}
         subtitle={`${client.name} · ${approvalCounts.ready} ready · ${approvalCounts.pending} pending`}
         breadcrumb={[
           { label: 'My Relay', href: '/dashboard' },
           { label: client.name, href: `/clients/${client.id}` },
           { label: batch.label, href: `/clients/${client.id}/batches/${batch.id}` },
-          { label: 'Preview' },
+          { label: 'Internal Review' },
         ]}
       />
       <div className="mt-5 flex flex-wrap items-center gap-2">

@@ -284,12 +284,12 @@ export function MagicLinkRow(props: MagicLinkRowProps) {
           size="sm"
           onClick={handleOpenPreview}
           disabled={isBusy}
-          title="Open the review page in a new tab"
-          aria-label="Open Preview"
+          title="Open the client review page in a new tab"
+          aria-label="Open client review"
           data-testid={`open-link-button-${props.id}`}
         >
           <ExternalLink className="size-3.5" />
-          <span className="sr-only">Open Preview</span>
+          <span className="sr-only">Open client review</span>
         </Button>
         <Button
           variant="ghost"
