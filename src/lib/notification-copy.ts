@@ -176,7 +176,7 @@ export function renderSummary(row: MentionInboxRow): string {
     }
     case 'preview_review_submitted': {
       const count = (payload.commentCount as number) ?? 0
-      return `${prefix}${actor} finished reviewing the preview (${count} comments).`
+      return `${prefix}${actor} finished the internal review (${count} comments).`
     }
     case 'revision_images_requested': {
       const batchLabel = payload.batchLabel as string | undefined
