@@ -22,6 +22,19 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Invite member: show the real failure reason instead of a masked 500** (PR #265)
+  Inviting a member by email failed with the opaque "An error occurred in the Server Components render"
+  digest. Root cause was external: the ADMARK org hit Clerk's **dev-instance cap of 5 memberships**
+  (prod still runs on `pk_test_` keys), so `createOrganizationInvitation` returned 403
+  `organization_membership_quota_exceeded`. The action **threw** that error, and Next.js masks any thrown
+  server-action error in production, so the modal could only show the generic digest. Fix: `inviteMember`
+  now **returns** `{ ok: false, error }` for expected Clerk failures (quota, duplicate, bad email),
+  surfacing Clerk's own `longMessage` (returned values aren't masked; thrown ones are); unexpected
+  non-Clerk errors still throw. Modal reads the result. 8 invite-action tests (5 new: success result,
+  quota longMessage, short-message fallback, rethrow of non-Clerk errors, empty-email guard), tsc + eslint
+  clean. No schema change. Unblocked the immediate invite by freeing 2 redundant seats in the Clerk org.
+  Durable fix is still the Clerk production-keys cutover (standing follow-up).
+
 - [x] **2026-06-25 — Tour coachmarks: tighten over-large anchors so the spotlight is visible** (PR #264)
   Live verification found the `clients-list` and `relay-posts` coachmark anchors wrapped the WHOLE list,
   so when scrolled to center the spotlight cutout was bigger than the viewport and the dim/highlight was
