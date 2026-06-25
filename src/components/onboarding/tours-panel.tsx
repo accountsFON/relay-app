@@ -44,7 +44,7 @@ export function ToursPanel({ role, className }: ToursPanelProps) {
           <button
             type="button"
             data-testid={`tour-replay-${t.id}`}
-            onClick={() => replay(t.id, t.homePath)}
+            onClick={() => t.homePath && replay(t.id, t.homePath)}
             className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-neutral-50"
           >
             <Play aria-hidden className="size-3.5" />

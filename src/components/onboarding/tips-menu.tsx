@@ -54,7 +54,7 @@ export function TipsMenu({ role }: TipsMenuProps) {
               <button
                 type="button"
                 data-testid={`tips-tour-${t.id}`}
-                onClick={() => replay(t.id, t.homePath)}
+                onClick={() => t.homePath && replay(t.id, t.homePath)}
                 className="w-full rounded-md px-2 py-1.5 text-left text-sm text-foreground hover:bg-neutral-100"
               >
                 {t.labelForRole(role)}

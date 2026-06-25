@@ -22,6 +22,19 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Tour coachmark: relay (batch) detail page / review stages (item 39 Phase 2, 1 of 4)** (PR #259)
+  First per-page coachmark on the tour foundation — this is what makes tutorials appear on pages beyond
+  the dashboard. Added `data-tour-anchor`s to the relay detail page (the pipeline `relay-track`, the
+  `relay-posts` review section, the `relay-actions` sidebar/checklist) and a `batch-detail-v1` tour that
+  auto-fires once on first visit to the relay detail route (`/clients/:id/batches/:id`, exact route only,
+  not /preview or /review-sessions children). 3 stops: where the relay is in the pipeline → review the
+  posts → act and advance. Internal roles only. Registry change: `homePath` is now optional —
+  page-coachmarks on dynamic routes (no single page to replay-navigate to) auto-fire only and are not
+  listed in the Tips/Settings replay menu (`listToursForRole` filters to tours with a homePath). 1890
+  unit tests (registry route gating + child-route exclusion + a page-test asserting the 3 anchors render),
+  tsc + eslint clean. No schema change. Follow-up: contextual "replay this page's tour" for coachmarks.
+  Remaining Phase 2 coachmarks: content generation, inbox/clients, scheduling (needs a step predicate).
+
 - [x] **2026-06-25 — Tour highlight: spotlight the component each step points at (item 39 follow-up)** (PR #258)
   Tours were just floating tooltips with no visual link to the element they describe. Added a spotlight
   to `TourPopover`: when a stop anchors to a real element, the page dims (huge spread box-shadow) with a

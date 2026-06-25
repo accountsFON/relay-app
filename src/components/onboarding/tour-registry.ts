@@ -8,8 +8,13 @@ export type TourDef = {
   labelForRole: (role: UserRole) => string
   /** Roles that see this tour. Never includes 'client'. */
   roles: UserRole[]
-  /** Route a manual replay navigates to before starting. */
-  homePath: string
+  /**
+   * Route a manual replay navigates to before starting. Tours WITHOUT a
+   * homePath (page coachmarks on dynamic routes like a specific relay) are
+   * auto-fire-on-first-visit only and are not listed in the Tips/Settings
+   * replay menu, since there's no single page to send the user to.
+   */
+  homePath?: string
   /** Route gate for auto-fire. */
   matchPath: (pathname: string) => boolean
   /** 'auto' fires on match; 'manual' is settings-only. */
@@ -78,6 +83,32 @@ const OVERVIEW_DESIGNER: TourStop[] = [
   },
 ]
 
+// Page coachmark: the relay (batch) detail page — the review-stages surface.
+// Anchored to data-tour-anchor attributes on that page.
+const BATCH_DETAIL_STOPS: TourStop[] = [
+  {
+    id: 'batch-track',
+    anchorSelector: '[data-tour-anchor="relay-track"]',
+    title: 'Where this relay is',
+    body: 'This track shows every stage a relay moves through, from copy to scheduling. The highlighted step is where it sits right now.',
+  },
+  {
+    id: 'batch-posts',
+    anchorSelector: '[data-tour-anchor="relay-posts"]',
+    title: 'Review the posts',
+    body: 'Each generated post shows here. Open one to read the caption, check the image, and leave notes.',
+  },
+  {
+    id: 'batch-actions',
+    anchorSelector: '[data-tour-anchor="relay-actions"]',
+    title: 'Act on it, then advance',
+    body: 'Run the checklist, then approve, request changes, or move the relay to the next stage from here.',
+  },
+]
+
+// Exact relay detail route only (not its /preview or /review-sessions children).
+const BATCH_DETAIL_ROUTE = /^\/clients\/[^/]+\/batches\/[^/]+$/
+
 const TOURS: TourDef[] = [
   {
     id: 'overview-v1',
@@ -94,6 +125,15 @@ const TOURS: TourDef[] = [
     stopsForRole: (role) =>
       role === 'designer' ? OVERVIEW_DESIGNER : OVERVIEW_AM,
   },
+  {
+    id: 'batch-detail-v1',
+    labelForRole: () => 'Relay page walkthrough',
+    roles: ['admin', 'account_manager', 'designer'],
+    // No homePath: dynamic route, auto-fire-on-first-visit only.
+    matchPath: (p) => BATCH_DETAIL_ROUTE.test(p),
+    trigger: 'auto',
+    stopsForRole: () => BATCH_DETAIL_STOPS,
+  },
 ]
 
 export function getTourById(id: string): TourDef | undefined {
@@ -104,8 +144,13 @@ export function isValidTourId(id: string): boolean {
   return TOURS.some((t) => t.id === id)
 }
 
+/**
+ * Tours to show in the Tips launcher + Settings replay menu for a role.
+ * Only tours with a homePath are listed (a page coachmark on a dynamic
+ * route has nowhere to replay-navigate to, so it auto-fires only).
+ */
 export function listToursForRole(role: UserRole): TourDef[] {
-  return TOURS.filter((t) => t.roles.includes(role))
+  return TOURS.filter((t) => t.roles.includes(role) && t.homePath != null)
 }
 
 /**

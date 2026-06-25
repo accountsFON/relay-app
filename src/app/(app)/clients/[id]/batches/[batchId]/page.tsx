@@ -470,7 +470,7 @@ export default async function BatchDetailPage({
         />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8" data-tour-anchor="relay-track">
         <RelayTrack
           batch={batchSummary}
           audience={ctx.role === 'client' ? 'client' : 'internal'}
@@ -579,6 +579,7 @@ export default async function BatchDetailPage({
             </PageSection>
           )}
           <PostListCollapseProvider postIds={posts.map((p) => p.id)}>
+            <div data-tour-anchor="relay-posts">
             <PageSection
               title={`Posts (${posts.length})`}
               action={posts.length > 0 ? <PostListExpandAllToggle /> : undefined}
@@ -647,12 +648,14 @@ export default async function BatchDetailPage({
                 </>
               )}
             </PageSection>
+            </div>
           </PostListCollapseProvider>
         </div>
 
         <aside
           aria-label="Relay sidebar"
           data-testid="relay-sidebar-rail"
+          data-tour-anchor="relay-actions"
           className="lg:sticky lg:top-4 lg:self-start lg:order-2 lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto space-y-4"
         >
           {isClientDecisionView ? (
