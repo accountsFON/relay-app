@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Lightbulb } from 'lucide-react'
 import { useTourController } from '@/components/onboarding/tour-provider'
 import { listToursForRole } from '@/components/onboarding/tour-registry'
@@ -20,6 +20,7 @@ export type TipsMenuProps = {
  */
 export function TipsMenu({ role }: TipsMenuProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { start } = useTourController()
   const [open, setOpen] = useState(false)
   const tours = listToursForRole(role)
@@ -27,10 +28,13 @@ export function TipsMenu({ role }: TipsMenuProps) {
   const replay = useCallback(
     (tourId: string, homePath: string) => {
       setOpen(false)
-      router.push(homePath)
+      // Only navigate when we're not already on the tour's home route.
+      // Pushing the current route resets the provider before start() takes
+      // effect, so the replay would silently no-op.
+      if (pathname !== homePath) router.push(homePath)
       start(tourId)
     },
-    [router, start],
+    [pathname, router, start],
   )
 
   if (tours.length === 0) return null

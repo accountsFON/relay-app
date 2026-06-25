@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Play } from 'lucide-react'
 import { useTourController } from '@/components/onboarding/tour-provider'
 import { listToursForRole } from '@/components/onboarding/tour-registry'
@@ -20,15 +20,18 @@ export type ToursPanelProps = {
  */
 export function ToursPanel({ role, className }: ToursPanelProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { start } = useTourController()
   const tours = listToursForRole(role)
 
   const replay = useCallback(
     (tourId: string, homePath: string) => {
-      router.push(homePath)
+      // Only navigate when not already on the tour's home route; pushing the
+      // current route resets the provider before start() takes effect.
+      if (pathname !== homePath) router.push(homePath)
       start(tourId)
     },
-    [router, start],
+    [pathname, router, start],
   )
 
   if (tours.length === 0) return null

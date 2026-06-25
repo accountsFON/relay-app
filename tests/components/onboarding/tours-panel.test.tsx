@@ -4,14 +4,19 @@ import { ToursPanel } from '@/components/onboarding/tours-panel'
 
 const start = vi.fn()
 const push = vi.fn()
+let pathname = '/settings/org'
 vi.mock('@/components/onboarding/tour-provider', () => ({
   useTourController: () => ({ start, active: false, activeTourId: null, currentIndex: 0, dismiss: vi.fn() }),
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => pathname,
+}))
 
 beforeEach(() => {
   start.mockClear()
   push.mockClear()
+  pathname = '/settings/org'
 })
 
 describe('ToursPanel', () => {
@@ -20,6 +25,16 @@ describe('ToursPanel', () => {
     const replay = screen.getByTestId('tour-replay-overview-v1')
     await act(async () => { fireEvent.click(replay) })
     expect(push).toHaveBeenCalledWith('/dashboard')
+    expect(start).toHaveBeenCalledWith('overview-v1')
+  })
+
+  it('starts without navigating when already on the tour home route', async () => {
+    pathname = '/dashboard'
+    render(<ToursPanel role="account_manager" />)
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('tour-replay-overview-v1'))
+    })
+    expect(push).not.toHaveBeenCalled()
     expect(start).toHaveBeenCalledWith('overview-v1')
   })
 

@@ -4,14 +4,19 @@ import { TipsMenu } from '@/components/onboarding/tips-menu'
 
 const start = vi.fn()
 const push = vi.fn()
+let pathname = '/somewhere-else'
 vi.mock('@/components/onboarding/tour-provider', () => ({
   useTourController: () => ({ start, active: false, activeTourId: null, currentIndex: 0, dismiss: vi.fn() }),
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => pathname,
+}))
 
 beforeEach(() => {
   start.mockClear()
   push.mockClear()
+  pathname = '/somewhere-else'
 })
 
 describe('TipsMenu', () => {
@@ -39,6 +44,15 @@ describe('TipsMenu', () => {
     await act(async () => { fireEvent.click(screen.getByTestId('tips-button')) })
     await act(async () => { fireEvent.click(screen.getByTestId('tips-tour-overview-v1')) })
     expect(push).toHaveBeenCalledWith('/dashboard')
+    expect(start).toHaveBeenCalledWith('overview-v1')
+  })
+
+  it('starts without navigating when already on the tour home route', async () => {
+    pathname = '/dashboard'
+    render(<TipsMenu role="account_manager" />)
+    await act(async () => { fireEvent.click(screen.getByTestId('tips-button')) })
+    await act(async () => { fireEvent.click(screen.getByTestId('tips-tour-overview-v1')) })
+    expect(push).not.toHaveBeenCalled()
     expect(start).toHaveBeenCalledWith('overview-v1')
   })
 
