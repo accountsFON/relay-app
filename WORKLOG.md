@@ -22,6 +22,16 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Fix: Tips/Settings tour replay was a no-op when already on the tour's home route** (PR #262)
+  Caught during live verification of the dashboard spotlight: clicking a walkthrough in the Tips menu (or
+  Settings) while ALREADY on its home route (e.g. replaying the overview from `/dashboard`) did nothing —
+  the replay did `router.push(homePath)` to the current route, which reset the provider before `start()`
+  took effect. Fix: both `TipsMenu` and `ToursPanel` now skip the navigation when `pathname === homePath`
+  and just call `start()`; cross-route replay is unchanged. Tests added for the same-route case in both.
+  (Spotlight positioning itself verified correct live: the dashboard overview cleanly frames the My Relay
+  nav item with the dim + ring cutout; the /clients coachmark frames the clients list.) 1909 unit tests,
+  tsc + eslint clean. No schema change.
+
 - [x] **2026-06-25 — Tour coachmark: scheduling step (item 39 Phase 2, 4 of 4 — coachmarks complete)** (PR #261)
   The last Phase 2 coachmark. Scheduling is a STATE (step) on the relay route, not its own page, so the
   foundation got a small extension: a `requiresAnchor` field on `TourDef` + a new `eligibleAutoTours()`,
