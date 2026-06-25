@@ -22,6 +22,18 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Tour spotlight: smooth scroll tracking + scroll-target-into-view on Next** (PR #263)
+  Two issues Julio caught live: (1) the spotlight ring lagged/jittered during scroll, and (2) advancing
+  with Next could highlight an element below the fold without scrolling to it. Fixes in `TourPopover`:
+  (a) removed the `transition-all duration-150` on the spotlight so it snaps to the target each frame
+  instead of CSS-animating behind it during scroll; (b) the rAF tracker now only commits to state when
+  the geometry actually changes (no React re-render every frame on a still page); (c) on stop change the
+  active stop's target is scrolled into view (instant — smooth scrollIntoView is a no-op in this app's
+  scroll containers, per PR #243), so Next always brings the next highlight on screen. Guarded the
+  scrollIntoView call (jsdom doesn't implement it). 1910 unit tests (added a scroll-into-view test),
+  tsc + eslint clean. No schema change. Shared `TourPopover` change, so it improves every tour +
+  coachmark + the magic-link review tutorial at once.
+
 - [x] **2026-06-25 — Fix: Tips/Settings tour replay was a no-op when already on the tour's home route** (PR #262)
   Caught during live verification of the dashboard spotlight: clicking a walkthrough in the Tips menu (or
   Settings) while ALREADY on its home route (e.g. replaying the overview from `/dashboard`) did nothing —

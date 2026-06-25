@@ -166,6 +166,27 @@ describe('TourPopover', () => {
     expect(screen.getByTestId('tour-popover-spotlight')).toBeInTheDocument()
   })
 
+  it('scrolls the target into view when the stop is shown', () => {
+    // jsdom doesn't implement scrollIntoView, so define it for this test.
+    const proto = Element.prototype as { scrollIntoView?: (arg?: unknown) => void }
+    const original = proto.scrollIntoView
+    const scrollSpy = vi.fn()
+    proto.scrollIntoView = scrollSpy
+    render(
+      <div>
+        <div data-tour-anchor="a">target</div>
+        <TourPopover
+          stops={stops}
+          currentIndex={0}
+          onNext={vi.fn()}
+          onSkip={vi.fn()}
+        />
+      </div>,
+    )
+    expect(scrollSpy).toHaveBeenCalled()
+    proto.scrollIntoView = original
+  })
+
   it('renders no spotlight for a concept stop whose anchor matches nothing', () => {
     const conceptStops: TourStop[] = [
       {
