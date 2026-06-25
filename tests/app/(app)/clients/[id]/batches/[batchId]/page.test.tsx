@@ -450,6 +450,17 @@ describe('BatchDetailPage', () => {
     })
   })
 
+  // ---- Tour coachmark anchors (item 39 Phase 2) ----
+
+  describe('Tour coachmark anchors', () => {
+    it('renders the data-tour-anchor targets the batch-detail coachmark points at', async () => {
+      const { container } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(container.querySelector('[data-tour-anchor="relay-track"]')).not.toBeNull()
+      expect(container.querySelector('[data-tour-anchor="relay-posts"]')).not.toBeNull()
+      expect(container.querySelector('[data-tour-anchor="relay-actions"]')).not.toBeNull()
+    })
+  })
+
   // ---- Go to NectrCRM chip (item 37) ----
 
   describe('Go to NectrCRM chip', () => {
