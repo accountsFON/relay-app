@@ -67,6 +67,9 @@ vi.mock('@/server/lib/promotePostFeedback', () => ({
   promotePostFeedbackToThread: vi.fn(),
 }))
 
+// --- mock notifyClientOfAmReply (Task 4) ---
+vi.mock('@/server/lib/notifyClientOfAmReply', () => ({ notifyClientOfAmReply: vi.fn() }))
+
 import { getOrgContext } from '@/server/middleware/auth'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { requireCan } from '@/server/middleware/permissions'
@@ -74,6 +77,7 @@ import { createThread, addComment } from '@/server/repositories/threads'
 import { db } from '@/db/client'
 import { attachMediaToPost } from '@/lib/media'
 import { promotePostFeedbackToThread } from '@/server/lib/promotePostFeedback'
+import { notifyClientOfAmReply } from '@/server/lib/notifyClientOfAmReply'
 import {
   createThreadAction,
   addCommentAction,
@@ -501,5 +505,38 @@ describe('replyToPostFeedbackAction', () => {
       'Comment requires text or an image',
     )
     expect(promotePostFeedbackToThread).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// AM reply notifies the client
+// ---------------------------------------------------------------------------
+
+describe('AM reply notifies the client', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(db.postThread.findUnique).mockResolvedValue(null as never) // revalidate helper no-op
+  })
+
+  it('replyToPostFeedbackAction notifies with the promoted thread id', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(promotePostFeedbackToThread).mockResolvedValue({ threadId: 't_new' })
+    await replyToPostFeedbackAction({ reviewItemId: 'ri1', body: 'On it' })
+    expect(notifyClientOfAmReply).toHaveBeenCalledWith({ threadId: 't_new', amUserId: 'u_am' })
+  })
+
+  it('addCommentAction notifies when an AM (Clerk session) comments', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(addComment).mockResolvedValue({ id: 'c1', threadId: 't1' } as never)
+    await addCommentAction({ threadId: 't1', body: 'reply' })
+    expect(notifyClientOfAmReply).toHaveBeenCalledWith({ threadId: 't1', amUserId: 'u_am' })
+  })
+
+  it('addCommentAction does NOT notify when a magic-link reviewer comments', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue(null as never)
+    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue({ tokenHash: 'HASH', name: 'Dana' } as never)
+    vi.mocked(addComment).mockResolvedValue({ id: 'c1', threadId: 't1' } as never)
+    await addCommentAction({ threadId: 't1', body: 'reply' })
+    expect(notifyClientOfAmReply).not.toHaveBeenCalled()
   })
 })

@@ -20,6 +20,7 @@ import {
 import type { PinLocation } from '@/types/preview'
 import { isCommentImageBlobUrl } from '@/lib/comment-image'
 import { attachMediaToPost } from '@/lib/media'
+import { notifyClientOfAmReply } from '@/server/lib/notifyClientOfAmReply'
 
 type CommentImage = { url: string; width?: number; height?: number }
 
@@ -159,6 +160,9 @@ export async function addCommentAction(input: {
     imageWidth: image?.width ?? null,
     imageHeight: image?.height ?? null,
   })
+  if (author.kind === 'am') {
+    await notifyClientOfAmReply({ threadId: input.threadId, amUserId: author.userId })
+  }
   await revalidatePathForThread(input.threadId)
   return result
 }
@@ -242,6 +246,7 @@ export async function replyToPostFeedbackAction(input: {
     imageWidth: image?.width ?? null,
     imageHeight: image?.height ?? null,
   })
+  await notifyClientOfAmReply({ threadId: result.threadId, amUserId: userDbId })
   await revalidatePathForThread(result.threadId)
   return result
 }
