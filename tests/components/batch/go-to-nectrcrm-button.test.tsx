@@ -18,7 +18,19 @@ describe('GoToNectrCrmButton', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('does not render outside the scheduling step', () => {
+  // Pre-rework in-flight batches still sit on the retired scheduling steps;
+  // the chip must show there too.
+  it('renders on the retired scheduling steps (ready_to_schedule, final_qa_schedule)', () => {
+    for (const step of [RelayStep.ready_to_schedule, RelayStep.final_qa_schedule]) {
+      const { unmount } = render(<GoToNectrCrmButton currentStep={step} />)
+      expect(
+        screen.getByRole('link', { name: /go to nectrcrm/i }),
+      ).toBeInTheDocument()
+      unmount()
+    }
+  })
+
+  it('does not render outside the scheduling stage', () => {
     const offSteps: RelayStep[] = [
       RelayStep.copy,
       RelayStep.in_design,
