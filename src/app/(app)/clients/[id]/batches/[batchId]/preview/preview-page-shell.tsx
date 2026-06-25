@@ -6,8 +6,6 @@ import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
 import { InstagramFeedPost } from '@/components/preview/instagram-post'
 import { FacebookPost } from '@/components/preview/facebook-post'
-import { MediaUpload } from '@/components/posts/media-upload'
-import { BulkMediaTray } from '@/components/posts/bulk-media-tray'
 import { PostApprovalBadge } from '@/components/preview/post-approval-badge'
 import { BulkResolveButton } from '@/components/preview/bulk-resolve-button'
 import type { HydratedThread } from '@/server/repositories/threads'
@@ -30,11 +28,9 @@ export type PreviewShellPost = {
 }
 
 export type PreviewPageShellProps = {
-  batchId: string
   client: { id: string; name: string }
   posts: ReadonlyArray<PreviewShellPost>
   canEdit: boolean
-  canUploadMedia: boolean
   /**
    * 'internal' = AM Clerk-authenticated; 'review' = magic-link client view.
    * Defaults to 'internal' for backwards compatibility with the existing
@@ -54,21 +50,17 @@ export type PreviewPageShellProps = {
  * Client composition for the internal batch preview page.
  *
  * Holds platform state (IG vs FB) and renders the matching feed-post
- * component per post. Per-post media upload zone surfaces above each card
- * so AMs can swap an image in line without navigating away. Bulk tray
- * lives at the bottom so a single drop can fan out media across the whole
- * batch.
+ * component per post. This surface is view + review only: all image upload
+ * (bulk and per-post) now lives on the main batch run view, so the AM sees
+ * the posts exactly as the client will.
  *
- * After any media upload the router refresh re-pulls the server data so
- * mediaUrl / threads props stay in sync without a hard reload. Future Task
- * 2.3 plugs in real thread interactions via onCreateThread.
+ * After a review action the router refresh re-pulls the server data so
+ * threads props stay in sync without a hard reload.
  */
 export function PreviewPageShell({
-  batchId,
   client,
   posts,
   canEdit,
-  canUploadMedia,
   mode = 'internal',
   userDbId,
 }: PreviewPageShellProps) {
@@ -100,15 +92,6 @@ export function PreviewPageShell({
     }
     return map
   }, [posts])
-
-  // Bulk tray needs the post date + a caption snippet for the per-post slot
-  // labels. Pre-shape the props so the tray doesn't have to know about the
-  // hydrated thread payload.
-  const bulkTrayPosts = posts.map((p) => ({
-    id: p.id,
-    postDate: p.postDate,
-    caption: p.caption,
-  }))
 
   return (
     <div className="flex flex-col gap-6" data-testid="preview-page-shell">
@@ -149,14 +132,6 @@ export function PreviewPageShell({
                     />
                   )}
                 </div>
-
-                {canUploadMedia && (
-                  <MediaUpload
-                    postId={post.id}
-                    currentMediaUrl={post.mediaUrl}
-                    onUploaded={handleRefresh}
-                  />
-                )}
 
                 {platform === 'instagram' ? (
                   <InstagramFeedPost
@@ -260,19 +235,6 @@ export function PreviewPageShell({
           })
         )}
       </FeedShell>
-
-      {canEdit && posts.length > 0 && (
-        <div
-          className="mx-auto w-full max-w-[470px] px-4 sm:px-6"
-          data-testid="preview-page-bulk-tray"
-        >
-          <BulkMediaTray
-            batchId={batchId}
-            posts={bulkTrayPosts}
-            onApplied={handleRefresh}
-          />
-        </div>
-      )}
     </div>
   )
 }

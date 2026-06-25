@@ -173,6 +173,15 @@ vi.mock('@/components/posts/post-version-history', () => ({
   PostVersionHistory: () => <div data-testid="post-version-history-stub" />,
 }))
 
+vi.mock('@/components/posts/bulk-media-upload-panel', () => ({
+  BulkMediaUploadPanel: (props: { posts: ReadonlyArray<{ id: string }> }) => (
+    <div
+      data-testid="bulk-media-upload-panel-stub"
+      data-post-count={props.posts.length}
+    />
+  ),
+}))
+
 vi.mock('@/components/posts/post-list-collapse', () => ({
   PostListCollapseProvider: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -384,6 +393,59 @@ describe('BatchDetailPage', () => {
 
       const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
       expect(queryByTestId('cost-breakdown-stub')).toBeNull()
+    })
+  })
+
+  // ---- Bulk media upload panel (item 35) ----
+
+  describe('Bulk media upload panel', () => {
+    const post = {
+      id: 'post_a',
+      postDate: new Date('2026-05-10T00:00:00Z'),
+      caption: 'Hello',
+      hashtags: [],
+      graphicHook: null,
+      designerNotes: null,
+      contentRunId: 'run_1',
+      deletedAt: null,
+      mediaUrls: [],
+    }
+
+    it('renders at the top of the posts section when the actor can upload media', async () => {
+      vi.mocked(canUploadPostMedia).mockReturnValue(true)
+      vi.mocked(db.post.findMany).mockResolvedValue([post] as never)
+
+      const { getByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      const panel = getByTestId('bulk-media-upload-panel-stub')
+      expect(panel.dataset.postCount).toBe('1')
+    })
+
+    it('is hidden when the actor cannot upload media', async () => {
+      vi.mocked(canUploadPostMedia).mockReturnValue(false)
+      vi.mocked(db.post.findMany).mockResolvedValue([post] as never)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('bulk-media-upload-panel-stub')).toBeNull()
+    })
+
+    it('is hidden when there are no posts', async () => {
+      vi.mocked(canUploadPostMedia).mockReturnValue(true)
+      vi.mocked(db.post.findMany).mockResolvedValue([] as never)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('bulk-media-upload-panel-stub')).toBeNull()
+    })
+
+    it('is hidden when the batch is archived', async () => {
+      vi.mocked(canUploadPostMedia).mockReturnValue(true)
+      vi.mocked(db.post.findMany).mockResolvedValue([post] as never)
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        deletedAt: new Date('2026-05-20T00:00:00Z'),
+      } as never)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('bulk-media-upload-panel-stub')).toBeNull()
     })
   })
 

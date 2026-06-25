@@ -41,6 +41,7 @@ import {
 } from '@/lib/celebration-avatars'
 import { clerkClient } from '@clerk/nextjs/server'
 import { PostCard } from '@/components/posts/post-card'
+import { BulkMediaUploadPanel } from '@/components/posts/bulk-media-upload-panel'
 import { EventAnchor } from '@/components/notifications/event-anchor'
 import {
   PostListCollapseProvider,
@@ -596,7 +597,20 @@ export default async function BatchDetailPage({
                   />
                 )
               ) : (
-                <div className="space-y-4">
+                <>
+                  {canUploadMedia && isLive && (
+                    <div className="mb-4">
+                      <BulkMediaUploadPanel
+                        batchId={batch.id}
+                        posts={posts.map((p) => ({
+                          id: p.id,
+                          postDate: p.postDate,
+                          caption: p.caption,
+                        }))}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-4">
                   {await Promise.all(
                     posts.map(async (post, idx) => {
                       const versions = await listVersionsForPost(post.id)
@@ -628,6 +642,7 @@ export default async function BatchDetailPage({
                     }),
                   )}
                 </div>
+                </>
               )}
             </PageSection>
           </PostListCollapseProvider>
