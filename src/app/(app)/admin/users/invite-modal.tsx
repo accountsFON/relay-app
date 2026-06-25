@@ -36,11 +36,18 @@ export function InviteMemberButton() {
     setSuccess(false)
     startTransition(async () => {
       try {
-        await inviteMember({ email, role })
-        setSuccess(true)
-        setEmail('')
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to send invite')
+        const result = await inviteMember({ email, role })
+        if (result.ok) {
+          setSuccess(true)
+          setEmail('')
+        } else {
+          setError(result.error)
+        }
+      } catch {
+        // The action returns a friendly result for expected failures; a
+        // throw here is an unexpected error (auth guard, network), which
+        // production masks, so show a generic fallback.
+        setError('Failed to send invite. Please try again.')
       }
     })
   }

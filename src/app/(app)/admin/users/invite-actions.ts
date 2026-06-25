@@ -1,9 +1,12 @@
 'use server'
 
-import { auth, clerkClient } from '@clerk/nextjs/server'
+import { clerkClient } from '@clerk/nextjs/server'
+import { isClerkAPIResponseError } from '@clerk/shared/error'
 import { revalidatePath } from 'next/cache'
 import { requireAdminPortal } from '@/server/middleware/permissions'
 import type { UserRole } from '@/lib/types'
+
+export type InviteMemberResult = { ok: true } | { ok: false; error: string }
 
 /**
  * Sends a Clerk org invitation. Two things ride along:
@@ -14,15 +17,24 @@ import type { UserRole } from '@/lib/types'
  *      Path 2 reads `relayRole` back to set the real Membership role. Without
  *      this, every invited user collapsed to org:member and onboarding could
  *      not recover the chosen role (it defaulted them all to admin).
+ *
+ * Returns a result object rather than throwing on an expected failure
+ * (Clerk rejecting the invite: membership quota reached, duplicate
+ * invitation, invalid email, etc.). A THROWN error from a server action is
+ * replaced with an opaque "An error occurred in the Server Components
+ * render" digest in production, so the caller could never show the real
+ * reason. A RETURNED value passes through intact, so the modal can render
+ * Clerk's own explanation (e.g. "You have reached your limit of 5
+ * organization memberships"). Unexpected non-Clerk errors still throw.
  */
 export async function inviteMember(input: {
   email: string
   role: UserRole
-}) {
+}): Promise<InviteMemberResult> {
   const ctx = await requireAdminPortal()
 
   const email = input.email.trim().toLowerCase()
-  if (!email) throw new Error('Email is required')
+  if (!email) return { ok: false, error: 'Email is required' }
 
   const clerkRole = input.role === 'admin' ? 'org:admin' : 'org:member'
 
@@ -43,15 +55,31 @@ export async function inviteMember(input: {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
   const clerk = await clerkClient()
-  await clerk.organizations.createOrganizationInvitation({
-    organizationId: ctx.orgId,
-    inviterUserId: ctx.userId,
-    emailAddress: email,
-    role: clerkRole,
-    // The real role, read back by onboarding Path 2 to set Membership.role.
-    publicMetadata: { relayRole: input.role },
-    redirectUrl: `${appUrl}/sign-up`,
-  })
+  try {
+    await clerk.organizations.createOrganizationInvitation({
+      organizationId: ctx.orgId,
+      inviterUserId: ctx.userId,
+      emailAddress: email,
+      // The real role, read back by onboarding Path 2 to set Membership.role.
+      role: clerkRole,
+      publicMetadata: { relayRole: input.role },
+      redirectUrl: `${appUrl}/sign-up`,
+    })
+  } catch (err) {
+    if (isClerkAPIResponseError(err)) {
+      const first = err.errors?.[0]
+      return {
+        ok: false,
+        error:
+          first?.longMessage ??
+          first?.message ??
+          'Could not send the invite. Please try again.',
+      }
+    }
+    // Unexpected (network, Clerk SDK bug, etc.) — let it bubble to the
+    // nearest error boundary so it is logged, not silently swallowed.
+    throw err
+  }
 
   revalidatePath('/admin/users')
   return { ok: true }
