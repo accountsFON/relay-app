@@ -22,6 +22,21 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-25 — Tour coachmarks: client page (generation), inbox, clients list (item 39 Phase 2, 2 of 4)** (PR #260)
+  Three more per-page coachmarks on the foundation. (1) **Client detail page** (`/clients/:id`, admin/AM
+  only since generation is gated to them): anchors the "Generate content" button → "start a relay" + a
+  pipeline concept stop. (2) **Inbox** (`/inbox`, internal roles): anchors the Timeline/By-client view
+  toggle → "anything needing you shows here." (3) **Clients list** (`/clients`, internal roles): anchors
+  the clients list → "every brand lives here; open one to start content." Added `data-tour-anchor`s:
+  `generate-content` (on the shared GenerateContentDialog trigger), `inbox-views`, `clients-list`. Note
+  the `/clients/:id/generate` route is just a redirect to `/clients/:id`, so generation is taught on the
+  client page. Inbox + clients are static routes so those tours have a homePath and ARE replayable from
+  the Tips/Settings menu (Inbox / Clients walkthrough); the client-detail one is dynamic-route so it's
+  auto-fire-only. Load-bearing route regexes (no collision between `/clients`, `/clients/:id`,
+  `/clients/:id/batches/:id`, `/clients/new`, `/clients/import`) are all covered by registry tests. 1900
+  unit tests, tsc + eslint clean. No schema change. Remaining Phase 2: the scheduling coachmark (needs a
+  relay-step predicate — it's a state on the relay route, not its own page).
+
 - [x] **2026-06-25 — Tour coachmark: relay (batch) detail page / review stages (item 39 Phase 2, 1 of 4)** (PR #259)
   First per-page coachmark on the tour foundation — this is what makes tutorials appear on pages beyond
   the dashboard. Added `data-tour-anchor`s to the relay detail page (the pipeline `relay-track`, the
