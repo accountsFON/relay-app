@@ -20,6 +20,7 @@ import { HeaderBell } from '@/components/notifications/header-bell'
 import { NotificationDropdown } from '@/components/notifications/notification-dropdown'
 import { DecorationCorner } from '@/components/decorations/decoration-corner'
 import { TourProvider } from '@/components/onboarding/tour-provider'
+import { TipsMenu } from '@/components/onboarding/tips-menu'
 import type { UserRole } from '@/lib/types'
 import { ReportBugButton } from '@/components/feedback/report-bug-button'
 import { Toaster } from 'sonner'
@@ -195,6 +196,10 @@ export function AppShell({
             icon={settingsNavItem.icon}
             isActive={pathname.startsWith('/settings')}
           />
+        </div>
+
+        <div className="px-3 pt-1">
+          <TipsMenu role={role} />
         </div>
 
         <div className="px-3 pb-1 pt-1">
