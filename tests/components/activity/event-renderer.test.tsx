@@ -40,6 +40,23 @@ describe('EventRenderer copy', () => {
     expect(node.textContent ?? '').not.toMatch(/[\u2013\u2014]/)
   })
 
+  it('renders a URL inside a system-event reason as a clickable link', () => {
+    const event = makeEvent(ActivityKind.batch_sent_back, {
+      batchId: 'b1',
+      batchLabel: 'May Round 1',
+      fromStep: 'am_review_design',
+      toStep: 'in_design',
+      fromUserName: 'Mollie',
+      toUserName: 'Julio',
+      reason: 'see https://ex.com/brief',
+    })
+    render(<EventRenderer event={event} />)
+    const link = screen.getByRole('link', { name: 'https://ex.com/brief' })
+    expect(link).toHaveAttribute('href', 'https://ex.com/brief')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
   it('renders run_completed with a comma instead of an em dash', () => {
     const event = makeEvent(ActivityKind.run_completed, {
       targetMonth: '2026-05',
@@ -87,9 +104,11 @@ describe('EventRenderer copy', () => {
       assignedToName: 'Caleb',
     })
     render(<EventRenderer event={event} />)
-    const node = screen.getByText(/assigned Caleb as Account Manager/)
-    expect(node.className).not.toMatch(/\btruncate\b/)
-    expect(node.className).toMatch(/break-words/)
+    // The message text now renders inside a <Linkify> <span>; the wrapping
+    // classes live on the enclosing <p>, so assert against that.
+    const para = screen.getByText(/assigned Caleb as Account Manager/).closest('p')!
+    expect(para.className).not.toMatch(/\btruncate\b/)
+    expect(para.className).toMatch(/break-words/)
   })
 
   it('shows an expandable diff for a new-shape client_profile_edited (changes present)', () => {

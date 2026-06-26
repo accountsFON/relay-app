@@ -41,6 +41,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Linkify } from '@/components/ui/linkify'
 import { cn } from '@/lib/utils'
 import { initials } from '@/lib/initials'
 import { tokenizeBody } from '@/lib/mentions'
@@ -182,7 +183,9 @@ function SystemEventRow({ event, className }: EventRendererProps) {
       <Icon className="mt-0.5 size-3.5 shrink-0" />
       <p className="min-w-0 flex-1 break-words">
         {event.actor && <span className="font-medium">{event.actor.name} · </span>}
-        {message}
+        {/* System messages embed user-entered free text (send-back / force-move
+            / thread-resolved reasons), so URLs must be clickable too. */}
+        <Linkify text={message} />
       </p>
       <span className="mt-0.5 shrink-0 text-[11px] text-muted-foreground">
         {formatRelative(event.createdAt)}
