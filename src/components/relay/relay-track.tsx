@@ -41,7 +41,7 @@ export interface RelayTrackProps {
   batch: BatchSummary
   /** Historical send-back events for arcs. Empty for V1 placeholder render. */
   sendBacks?: SendBackArc[]
-  /** "internal" shows all 13 nodes; "client" shows the 3-node abstraction. */
+  /** "internal" shows the full live track; "client" shows the 3-node abstraction. */
   audience?: 'internal' | 'client'
   className?: string
 }
@@ -314,11 +314,15 @@ function RelayNodeLabel({
 }
 
 /**
- * Client view abstracts the 13 internal steps to 3 user-facing buckets.
+ * Client view abstracts the internal steps to 3 user-facing buckets.
  * Mapping is rendered virtually; the underlying batch.currentStep is unchanged.
+ * Post 2026-06-22 rework these are the live client-facing steps (the old
+ * sent_to_client / client_decision / final_qa_schedule were retired); leaving
+ * retired steps here made indexOf(currentStep) return -1 and blank the track
+ * for a client viewing a post-rework batch.
  */
 const CLIENT_TRACK_VIEW: RelayStep[] = [
-  RelayStep.sent_to_client,
-  RelayStep.client_decision,
-  RelayStep.final_qa_schedule,
+  RelayStep.client_review,
+  RelayStep.scheduling,
+  RelayStep.completed,
 ]
