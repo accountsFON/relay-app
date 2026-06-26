@@ -31,7 +31,7 @@ export const HOLDER_ROLE: Record<RelayStep, RelayRole> = {
   [RelayStep.in_design]: RelayRole.designer,
   [RelayStep.designs_completed]: RelayRole.designer, // retired step, kept for historical rows
   [RelayStep.am_review_design]: RelayRole.am,
-  [RelayStep.design_revisions]: RelayRole.designer,
+  [RelayStep.design_revisions]: RelayRole.designer, // retired (merge design steps 2026-06-26), kept for history
   [RelayStep.am_qa_pre_client]: RelayRole.am,
   [RelayStep.sent_to_client]: RelayRole.client, // retired, kept for history
   [RelayStep.client_decision]: RelayRole.client, // retired, kept for history
@@ -61,15 +61,16 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
   { from: RelayStep.in_design, to: RelayStep.am_review_design, direction: 'forward' },
   { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },
 
+  // Merge design steps (2026-06-26): Design Review is AM-held start to finish.
+  // "Request changes" is now an in-step action (requestDesignChanges), not a
+  // transition, so am_review_design has no send_back target and design_revisions
+  // is retired (removed from both transition tables). It stays in RelayStep +
+  // HOLDER_ROLE for historical rows only.
   { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
-  { from: RelayStep.am_review_design, to: RelayStep.design_revisions, direction: 'send_back' },
-
-  // Re-check loop: a revision always returns to Design Review for re-approval.
-  { from: RelayStep.design_revisions, to: RelayStep.am_review_design, direction: 'forward' },
 
   // QA -> Client Review (the merged client step).
   { from: RelayStep.am_qa_pre_client, to: RelayStep.client_review, direction: 'forward' },
-  { from: RelayStep.am_qa_pre_client, to: RelayStep.design_revisions, direction: 'send_back' },
+  { from: RelayStep.am_qa_pre_client, to: RelayStep.am_review_design, direction: 'send_back' },
 
   // Client Review exits are driven by advanceFromClientReview (client submit)
   // or the auto-advance cron. Marked `auto` so passBaton accepts them when an
@@ -100,14 +101,14 @@ export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
   { from: RelayStep.in_design, to: RelayStep.am_review_design, direction: 'forward' },
   { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },
 
+  // Merge design steps (2026-06-26): see LEGAL_TRANSITIONS above. design_revisions
+  // is retired here too; am_review_design's send_back is replaced by the in-step
+  // "Request changes" action.
   { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
-  { from: RelayStep.am_review_design, to: RelayStep.design_revisions, direction: 'send_back' },
-
-  { from: RelayStep.design_revisions, to: RelayStep.am_review_design, direction: 'forward' },
 
   // Final QA -> Scheduling (no client steps).
   { from: RelayStep.am_qa_pre_client, to: RelayStep.scheduling, direction: 'forward' },
-  { from: RelayStep.am_qa_pre_client, to: RelayStep.design_revisions, direction: 'send_back' },
+  { from: RelayStep.am_qa_pre_client, to: RelayStep.am_review_design, direction: 'send_back' },
 
   { from: RelayStep.scheduling, to: RelayStep.completed, direction: 'forward' },
   { from: RelayStep.scheduling, to: RelayStep.am_qa_pre_client, direction: 'send_back' },

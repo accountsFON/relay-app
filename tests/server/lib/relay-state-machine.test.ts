@@ -36,26 +36,79 @@ describe('validateTransition', () => {
     expect(validateTransition(RelayStep.copy, RelayStep.copy, true).ok).toBe(false)
   })
 
-  it('rejects step 8 send-back to copy (must go to designer)', () => {
+  it('rejects step 8 send-back to copy; sends back to am_review_design (merge design steps: was design_revisions)', () => {
     expect(
       validateTransition(RelayStep.am_qa_pre_client, RelayStep.copy, true).ok,
     ).toBe(false)
+    // design_revisions is retired; QA send-back now lands on Design Review.
     expect(
       validateTransition(RelayStep.am_qa_pre_client, RelayStep.design_revisions, true).ok,
+    ).toBe(false)
+    expect(
+      validateTransition(RelayStep.am_qa_pre_client, RelayStep.am_review_design, true).ok,
     ).toBe(true)
   })
 })
 
-describe('legalSendBackTargets', () => {
-  it('returns design_revisions for am_review_design', () => {
-    expect(legalSendBackTargets(RelayStep.am_review_design, true)).toEqual([
-      RelayStep.design_revisions,
+describe('merge design steps: design_revisions retired from live tables', () => {
+  it('design_revisions appears in NO LEGAL_TRANSITIONS entry as from or to', () => {
+    for (const t of LEGAL_TRANSITIONS) {
+      expect(t.from, `from ${t.from}`).not.toBe(RelayStep.design_revisions)
+      expect(t.to, `to ${t.to}`).not.toBe(RelayStep.design_revisions)
+    }
+  })
+
+  it('design_revisions appears in NO LEGAL_TRANSITIONS_NO_REVIEW entry as from or to', () => {
+    for (const t of LEGAL_TRANSITIONS_NO_REVIEW) {
+      expect(t.from, `from ${t.from}`).not.toBe(RelayStep.design_revisions)
+      expect(t.to, `to ${t.to}`).not.toBe(RelayStep.design_revisions)
+    }
+  })
+
+  it('legalNextSteps(am_review_design, true) returns only forward to am_qa_pre_client', () => {
+    expect(legalNextSteps(RelayStep.am_review_design, true)).toEqual([
+      { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
     ])
   })
 
-  it('returns design_revisions only for am_qa_pre_client', () => {
+  it('legalNextSteps(am_review_design, false) returns only forward to am_qa_pre_client', () => {
+    expect(legalNextSteps(RelayStep.am_review_design, false)).toEqual([
+      { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
+    ])
+  })
+
+  it('legalSendBackTargets(am_review_design) is empty in both tracks', () => {
+    expect(legalSendBackTargets(RelayStep.am_review_design, true)).toEqual([])
+    expect(legalSendBackTargets(RelayStep.am_review_design, false)).toEqual([])
+  })
+
+  it('both tables still contain in_design -> am_review_design and am_review_design -> am_qa_pre_client', () => {
+    for (const table of [LEGAL_TRANSITIONS, LEGAL_TRANSITIONS_NO_REVIEW]) {
+      expect(
+        table.some(
+          (t) => t.from === RelayStep.in_design && t.to === RelayStep.am_review_design && t.direction === 'forward',
+        ),
+      ).toBe(true)
+      expect(
+        table.some(
+          (t) =>
+            t.from === RelayStep.am_review_design &&
+            t.to === RelayStep.am_qa_pre_client &&
+            t.direction === 'forward',
+        ),
+      ).toBe(true)
+    }
+  })
+})
+
+describe('legalSendBackTargets', () => {
+  it('returns empty for am_review_design (merge design steps: design_revisions retired)', () => {
+    expect(legalSendBackTargets(RelayStep.am_review_design, true)).toEqual([])
+  })
+
+  it('returns am_review_design only for am_qa_pre_client (merge design steps: was design_revisions)', () => {
     expect(legalSendBackTargets(RelayStep.am_qa_pre_client, true)).toEqual([
-      RelayStep.design_revisions,
+      RelayStep.am_review_design,
     ])
   })
 
@@ -215,9 +268,11 @@ describe('go back on every step', () => {
       RelayStep.client_decision,
       RelayStep.ready_to_schedule,
       RelayStep.final_qa_schedule,
-      // design_revisions only has one outgoing edge (forward to am_review_design);
-      // it has no send_back edges in the new tables.
+      // design_revisions is fully retired (merge design steps): no live edges.
       RelayStep.design_revisions,
+      // am_review_design lost its only send_back target (design_revisions) in the
+      // merge; "Request changes" is now an in-step action, not a transition.
+      RelayStep.am_review_design,
       // implementing_revisions has two forward edges only (re-review + schedule); no send_back.
       // The re-review path uses direction: 'forward' to client_review (not 'revision').
       RelayStep.implementing_revisions,
@@ -245,9 +300,8 @@ describe('go back on every step', () => {
     expect(legalSendBackTargets(RelayStep.in_design, true)).toEqual([RelayStep.copy])
   })
 
-  it('design_revisions has no send_back edges (pipeline rework: only forward to am_review_design)', () => {
-    // Pipeline rework removed the design_revisions -> am_qa_pre_client send_back edge.
-    // The only outgoing edge is forward to am_review_design (re-check loop).
+  it('design_revisions has no send_back edges (merge design steps: fully retired)', () => {
+    // The merge removed the only outgoing edge (forward to am_review_design).
     expect(legalSendBackTargets(RelayStep.design_revisions, true)).toEqual([])
   })
 
@@ -348,11 +402,11 @@ describe('state machine, no review flow', () => {
     expect(result.direction).toBe('send_back')
   })
 
-  it('legalNextSteps(am_qa_pre_client, false) returns exactly scheduling + design_revisions (pipeline rework)', () => {
+  it('legalNextSteps(am_qa_pre_client, false) returns exactly scheduling + am_review_design (merge design steps: was design_revisions)', () => {
     const next = legalNextSteps(RelayStep.am_qa_pre_client, false)
     const summary = next.map((t) => `${t.to}:${t.direction}`).sort()
     expect(summary).toEqual([
-      `${RelayStep.design_revisions}:send_back`,
+      `${RelayStep.am_review_design}:send_back`,
       `${RelayStep.scheduling}:forward`,
     ].sort())
   })
@@ -491,8 +545,8 @@ describe('pipeline rework: with-review transitions', () => {
   it('scheduling completes', () => {
     expect(validateTransition(RelayStep.scheduling, RelayStep.completed, true).ok).toBe(true)
   })
-  it('design_revisions re-check loop goes back to design review', () => {
-    expect(validateTransition(RelayStep.design_revisions, RelayStep.am_review_design, true).ok).toBe(true)
+  it('design_revisions re-check loop is removed (merge design steps: retired)', () => {
+    expect(validateTransition(RelayStep.design_revisions, RelayStep.am_review_design, true).ok).toBe(false)
   })
   it('old sent_to_client is no longer a forward target from QA', () => {
     const allTos = legalNextSteps(RelayStep.am_qa_pre_client, true).map((t) => t.to)
