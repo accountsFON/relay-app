@@ -5,6 +5,11 @@ import { findUserByClerkId } from '@/server/repositories/users'
 import { findOrgByClerkId } from '@/server/repositories/organizations'
 import { findMembership } from '@/server/repositories/memberships'
 import type { OrgContext, UserRole } from '@/lib/types'
+import {
+  VIEW_AS_COOKIE,
+  isEligibleImpersonationTarget,
+  canInitiateImpersonation,
+} from '@/server/auth/impersonation'
 
 export const STEP_INTO_COOKIE = 'relay_step_into_org'
 
@@ -22,7 +27,7 @@ export const STEP_INTO_COOKIE = 'relay_step_into_org'
  *   3. If platform owner with no Memberships, returns a placeholder ctx
  *      with empty orgId so the caller can route to /platform
  */
-export async function getOrgContext(): Promise<OrgContext | null> {
+async function resolveRealOrgContext(): Promise<OrgContext | null> {
   const { userId, orgId: clerkActiveOrgId } = await auth()
   if (!userId) return null
 
@@ -132,6 +137,78 @@ export async function getOrgContext(): Promise<OrgContext | null> {
     permissionOverrides:
       (membership.permissionOverrides as Record<string, boolean> | null) ?? null,
     roleDefaults,
+  }
+}
+
+/**
+ * Resolves the request context, then applies "view as" if an admin has an
+ * active impersonation cookie. The real Clerk session is never swapped; we
+ * only rebuild the returned context as the target user.
+ */
+export async function getOrgContext(): Promise<OrgContext | null> {
+  const realCtx = await resolveRealOrgContext()
+  if (!realCtx) return null
+  return applyViewAs(realCtx)
+}
+
+async function applyViewAs(realCtx: OrgContext): Promise<OrgContext> {
+  if (!canInitiateImpersonation(realCtx)) return realCtx
+
+  const cookieStore = await cookies()
+  const targetUserId = cookieStore.get(VIEW_AS_COOKIE)?.value
+  if (!targetUserId) return realCtx
+
+  const targetUser = await db.user.findUnique({ where: { id: targetUserId } })
+  if (!targetUser) return realCtx
+
+  // Org admins are pinned to their active org; a platform owner may view a
+  // user in any org, so resolve against the target's home org.
+  const orgDbId = realCtx.platformOwner ? targetUser.organizationId : realCtx.organizationDbId
+  const targetMembership = await findMembership(targetUser.id, orgDbId)
+  if (!targetMembership) return realCtx
+
+  const eligible = isEligibleImpersonationTarget(realCtx, {
+    userId: targetUser.id,
+    role: targetMembership.role,
+    deactivatedAt: targetUser.deactivatedAt,
+    platformOwner: targetUser.platformOwner,
+    organizationDbId: targetMembership.organizationId,
+  })
+  if (!eligible) return realCtx
+
+  const org = await db.organization.findUnique({ where: { id: orgDbId } })
+  if (!org) return realCtx
+
+  const roleDefaultRows = await db.roleDefault.findMany({ where: { organizationId: org.id } })
+  const roleDefaults: OrgContext['roleDefaults'] = {}
+  for (const rd of roleDefaultRows) {
+    const bucket = (roleDefaults[rd.role] ??= {})
+    bucket[rd.permissionKey] = rd.allow
+  }
+
+  const realUser = await db.user.findUnique({
+    where: { id: realCtx.userDbId },
+    select: { name: true },
+  })
+
+  return {
+    userId: realCtx.userId, // real Clerk session stays the admin's
+    orgId: org.clerkOrgId,
+    role: targetMembership.role,
+    plan: org.plan,
+    organizationDbId: org.id,
+    userDbId: targetUser.id,
+    avatarUrl: targetUser.avatarUrl,
+    platformOwner: false, // never transfers
+    linkedClientId: targetUser.linkedClientId,
+    permissionOverrides:
+      (targetMembership.permissionOverrides as Record<string, boolean> | null) ?? null,
+    roleDefaults,
+    impersonation: {
+      realUserId: realCtx.userDbId,
+      realUserName: realUser?.name ?? '',
+      targetUserName: targetUser.name,
+    },
   }
 }
 
