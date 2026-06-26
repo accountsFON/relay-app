@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { Eye } from 'lucide-react'
 import { listImpersonationTargets, startViewAs } from '@/components/view-as-actions'
 
@@ -17,6 +17,29 @@ export function ViewAsDropdown() {
   const [targets, setTargets] = useState<Target[] | null>(null)
   const [query, setQuery] = useState('')
   const [, startTransition] = useTransition()
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  // Close the menu when the user clicks in open space outside it, or presses
+  // Escape. Mirrors the pin-draft composer's dismissal pattern (mousedown so
+  // it fires before the next click target activates).
+  useEffect(() => {
+    if (!open) return
+    function handlePointer(event: MouseEvent) {
+      const el = containerRef.current
+      if (!el) return
+      if (event.target instanceof Node && el.contains(event.target)) return
+      setOpen(false)
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointer)
+    window.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handlePointer)
+      window.removeEventListener('keydown', handleKey)
+    }
+  }, [open])
 
   const toggle = async () => {
     const next = !open
@@ -39,7 +62,7 @@ export function ViewAsDropdown() {
   })
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={toggle}
