@@ -11,13 +11,13 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-06-26 triage (Batch A shipped; Batch B in PR; C/D remain):
+From the 2026-06-26 triage (Batch A + B shipped; C/D remain):
 - [ ] **Merge Design Review + Design Revision into one Design step** — new enum + migration + backfill; designer in-step handoff notifies + routes to internal review. (Batch C)
 - [ ] **Next-action board** replacing the cost-breakdown banner slot — per-step "primary action + destination" (e.g. design step -> "Review designs" -> internal review). (Batch C)
 - [ ] **Internal review parity with client review** — reuse `ReviewPostCard`; needs a scoping brainstorm. (Batch D)
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
-- [ ] **(open question) Also remove Fix-with-AI from the `/preview` markup pin popover?** #270 removed it only from the View-client-feedback rail.
+- [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
 
 ## Notes / standing rules
 
@@ -28,7 +28,16 @@ From the 2026-06-26 triage (Batch A shipped; Batch B in PR; C/D remain):
 
 ## Shipped
 
-- [x] **2026-06-26 — Internal review notifications (Batch B)** (PR #TBD)
+- [x] **2026-06-26 — Remove Fix-with-AI from the /preview markup pin popover** (PR #TBD)
+  Per Julio: Fix copy with AI should only live on the main relay page (whose post cards already have
+  "Regenerate caption with AI"); the feedback-based rewrite comes out everywhere else. #270 removed it
+  from the View-client-feedback rail; this removes its last mount (the `/preview` pin popover) plus the
+  now-dead `postId`/`postCaption`/`onFixAccepted` props threaded into `PinPopover` and the three callers
+  (`instagram-post`, `facebook-post`, `review-pinned-post`). `FixWithAIButton` is now fully unmounted
+  (component + API routes left in place as a separate cleanup, logged above). Full unit suite 1984 pass,
+  tsc + eslint clean. No schema change.
+
+- [x] **2026-06-26 — Internal review notifications (Batch B)** (PR #272)
   Internal-review pins now reach people. (1) Replying on a pin notifies via the header bell: targets =
   thread participants ∪ the relay's current holder ∪ @-mentioned, minus the actor, **internal users
   only** (a role filter keeps client-role holders/commenters out, important during client_review).
