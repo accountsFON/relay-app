@@ -58,6 +58,7 @@ export async function startViewAs(targetUserId: string) {
     maxAge: VIEW_AS_MAX_AGE_SECONDS,
     sameSite: 'lax',
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
   })
   await recordImpersonationStart({
     realActorId: ctx.userDbId,
