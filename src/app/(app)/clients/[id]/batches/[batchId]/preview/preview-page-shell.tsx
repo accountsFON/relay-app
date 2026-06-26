@@ -16,6 +16,7 @@ import {
   useCommentImageAsPostMediaAction,
 } from '@/server/actions/threads'
 import type { PinLocation } from '@/types/preview'
+import type { MentionTarget } from '@/lib/mentions'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
 
 export type PreviewShellPost = {
@@ -44,6 +45,13 @@ export type PreviewPageShellProps = {
    * the attach button is suppressed (graceful degradation).
    */
   userDbId?: string
+  /**
+   * Internal @-mention roster (AM + designer + admins) for this client. Passed
+   * into the pin composers so typing `@` shows an autocomplete dropdown.
+   * Defaulted to [] so the client `/review/[token]` shell (which passes no
+   * roster) shows no autocomplete and is unchanged.
+   */
+  mentionRoster?: MentionTarget[]
 }
 
 /**
@@ -63,6 +71,7 @@ export function PreviewPageShell({
   canEdit,
   mode = 'internal',
   userDbId,
+  mentionRoster = [],
 }: PreviewPageShellProps) {
   const router = useRouter()
   const [platform, setPlatform] = useState<Platform>('instagram')
@@ -144,6 +153,7 @@ export function PreviewPageShell({
                     client={{ name: client.name }}
                     threads={post.threads}
                     mode={mode}
+                    mentionRoster={mentionRoster}
                     onUploadImage={handleUploadImage}
                     onUseAsPostImage={
                       mode === 'internal'
@@ -192,6 +202,7 @@ export function PreviewPageShell({
                     client={{ name: client.name }}
                     threads={post.threads}
                     mode={mode}
+                    mentionRoster={mentionRoster}
                     onUploadImage={handleUploadImage}
                     onUseAsPostImage={
                       mode === 'internal'

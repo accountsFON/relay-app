@@ -81,6 +81,7 @@ export function InstagramFeedPost({
   captionOverride,
   onEditCaption,
   suppressInlinePopover = false,
+  mentionRoster = [],
 }: FeedPostProps) {
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
@@ -492,6 +493,7 @@ export function InstagramFeedPost({
           onComment={handleComment}
           onUploadImage={onUploadImage}
           onUseAsPostImage={mode === 'internal' ? onUseAsPostImage : undefined}
+          mentionRoster={mentionRoster}
           onResolve={
             mode === 'internal' && onResolveThread ? handleResolve : undefined
           }
@@ -507,6 +509,7 @@ export function InstagramFeedPost({
           anchor={draftPin.anchor}
           onSubmit={handleDraftSubmit}
           onUploadImage={onUploadImage}
+          mentionRoster={mentionRoster}
           onCancel={() => setDraftPin(null)}
         />
       ) : null}

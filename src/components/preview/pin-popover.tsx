@@ -19,6 +19,8 @@ import {
   type AttachedImage,
 } from '@/components/preview/comment-image-attach-button'
 import type { PinLocation, ThreadAuthor } from '@/types/preview'
+import { useMentionAutocomplete } from '@/lib/use-mention-autocomplete'
+import type { MentionTarget } from '@/lib/mentions'
 
 /**
  * Shared popover that opens when a pin (image or caption) is clicked. Renders
@@ -93,6 +95,12 @@ export type PinPopoverProps = {
    * + handleRefresh. Never shown in review mode.
    */
   onUseAsPostImage?: (commentId: string) => Promise<void>
+  /**
+   * Internal @-mention roster. When non-empty, typing `@` in the reply composer
+   * opens an autocomplete dropdown. Defaulted to [] so the client review path
+   * (no roster) is unchanged.
+   */
+  mentionRoster?: MentionTarget[]
 }
 
 const POPOVER_WIDTH = 320
@@ -114,9 +122,17 @@ export function PinPopover({
   onFixAccepted,
   onUploadImage,
   onUseAsPostImage,
+  mentionRoster = [],
 }: PinPopoverProps) {
   const popoverRef = useRef<HTMLDivElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [body, setBody] = useState('')
+  const mention = useMentionAutocomplete({
+    roster: mentionRoster,
+    textareaRef,
+    body,
+    setBody,
+  })
   const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [resolving, setResolving] = useState(false)
@@ -305,20 +321,30 @@ export function PinPopover({
         onSubmit={handleSubmit}
         className="flex flex-col gap-2"
       >
-        <textarea
-          data-testid="pin-popover-input"
-          aria-label="Add a comment"
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          disabled={submitting || thread.status === 'resolved'}
-          rows={2}
-          placeholder={
-            thread.status === 'resolved'
-              ? 'Thread resolved'
-              : 'Add a comment...'
-          }
-          className="resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[13px] text-[#262626] outline-none focus:border-[#8e8e8e]"
-        />
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            data-testid="pin-popover-input"
+            aria-label="Add a comment"
+            value={body}
+            onChange={(event) => {
+              setBody(event.target.value)
+              mention.onBodyChange(event.target.value)
+            }}
+            onKeyDown={(event) => {
+              mention.handleKeyDown(event)
+            }}
+            disabled={submitting || thread.status === 'resolved'}
+            rows={2}
+            placeholder={
+              thread.status === 'resolved'
+                ? 'Thread resolved'
+                : 'Add a comment...'
+            }
+            className="w-full resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[13px] text-[#262626] outline-none focus:border-[#8e8e8e]"
+          />
+          {mention.dropdown}
+        </div>
         {onUploadImage && thread.status !== 'resolved' ? (
           <CommentImageAttachButton
             onUploadImage={onUploadImage}
