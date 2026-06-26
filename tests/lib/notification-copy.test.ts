@@ -488,6 +488,78 @@ describe('resolveHref, post_comment_added', () => {
   })
 })
 
+describe('resolveHref, internal_review surface', () => {
+  function internalReviewRow(): MentionInboxRow {
+    return row(
+      { kind: 'post_comment_added' },
+      {
+        postBatchId: 'b9',
+        event: {
+          id: 'e1',
+          kind: 'post_comment_added' as MentionInboxRow['event']['kind'],
+          postId: 'p7',
+          runId: null,
+          payload: { postId: 'p7', surface: 'internal_review' } as unknown as MentionInboxRow['event']['payload'],
+          createdAt: new Date('2026-05-21T12:00:00Z'),
+          actor: null,
+        } as MentionInboxRow['event'],
+      },
+    )
+  }
+
+  it('routes a surface:internal_review row to the /preview page #post anchor', () => {
+    expect(resolveHref(internalReviewRow())).toBe(
+      '/clients/c1/batches/b9/preview#post-p7',
+    )
+  })
+
+  it('the same row WITHOUT surface keeps the existing batch-page #post href (regression guard)', () => {
+    const r = internalReviewRow()
+    ;(r.event.payload as Record<string, unknown>).surface = undefined
+    expect(resolveHref(r)).toBe('/clients/c1/batches/b9#post-p7')
+  })
+
+  it('does NOT apply the /preview branch to a post_thread_opened row without surface', () => {
+    const r = row(
+      { kind: 'post_thread_opened' },
+      {
+        postBatchId: 'b9',
+        event: {
+          id: 'e1',
+          kind: 'post_thread_opened' as MentionInboxRow['event']['kind'],
+          postId: 'p7',
+          runId: null,
+          payload: { postId: 'p7' } as unknown as MentionInboxRow['event']['payload'],
+          createdAt: new Date('2026-05-21T12:00:00Z'),
+          actor: null,
+        } as MentionInboxRow['event'],
+      },
+    )
+    expect(resolveHref(r)).toBe('/clients/c1/batches/b9#post-p7')
+  })
+
+  it('falls back to the existing #post href when surface is set but no postBatchId', () => {
+    const r = row(
+      { kind: 'post_comment_added' },
+      {
+        postBatchId: null,
+        event: {
+          id: 'e1',
+          kind: 'post_comment_added' as MentionInboxRow['event']['kind'],
+          postId: 'p7',
+          runId: null,
+          payload: { postId: 'p7', surface: 'internal_review' } as unknown as MentionInboxRow['event']['payload'],
+          createdAt: new Date('2026-05-21T12:00:00Z'),
+          actor: null,
+        } as MentionInboxRow['event'],
+      },
+    )
+    // No postBatchId → neither the internal-review branch nor the post branch
+    // fire; falls back to the client root #comment anchor.
+    expect(resolveHref(r)).toBe('/clients/c1#comment-e1')
+  })
+})
+
 describe('renderSummary, batch_force_stepped', () => {
   it('renders the force moved copy with batch label and step label', () => {
     expect(

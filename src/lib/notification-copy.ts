@@ -211,6 +211,17 @@ export function resolveHref(row: MentionInboxRow): string {
   const clientId = row.client.id
   const eventId = row.event.id
 
+  // Internal-review events (pin reply / pin create on the AM markup page) tag
+  // their payload with surface: 'internal_review'. Route those to the internal
+  // review page instead of the run/batch view. Everything without the tag keeps
+  // its existing behavior.
+  if (
+    row.event.postId &&
+    row.postBatchId &&
+    (payload as { surface?: string }).surface === 'internal_review'
+  ) {
+    return `/clients/${clientId}/batches/${row.postBatchId}/preview#post-${row.event.postId}`
+  }
   if (row.event.postId && row.postBatchId) {
     return `/clients/${clientId}/batches/${row.postBatchId}#post-${row.event.postId}`
   }

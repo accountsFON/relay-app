@@ -105,6 +105,12 @@ export type ModeledActivityPayload =
       postId: string
       /** Where the thread was pinned. Matches PinLocation['kind']. */
       pinLocation: 'post' | 'image' | 'caption'
+      /**
+       * Discriminator for notification routing. 'internal_review' routes the
+       * bell + deep link to the AM markup /preview page. Absent on historical
+       * events; readers must treat undefined as "no special surface".
+       */
+      surface?: 'internal_review'
     }
   | {
       kind: 'post_thread_resolved'
