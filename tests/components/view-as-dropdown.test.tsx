@@ -35,4 +35,34 @@ describe('ViewAsDropdown', () => {
     fireEvent.click(screen.getByText('Payton Monzon'))
     expect(start).toHaveBeenCalledWith('payton_1')
   })
+
+  it('closes when clicking outside the menu', async () => {
+    render(
+      <div>
+        <span data-testid="outside">elsewhere</span>
+        <ViewAsDropdown />
+      </div>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /view as/i }))
+    await waitFor(() => expect(screen.getByText('Payton Monzon')).toBeInTheDocument())
+    // mousedown in open space outside the dropdown closes it.
+    fireEvent.mouseDown(screen.getByTestId('outside'))
+    await waitFor(() => expect(screen.queryByText('Payton Monzon')).not.toBeInTheDocument())
+  })
+
+  it('stays open when clicking inside the menu', async () => {
+    render(<ViewAsDropdown />)
+    fireEvent.click(screen.getByRole('button', { name: /view as/i }))
+    await waitFor(() => expect(screen.getByText('Payton Monzon')).toBeInTheDocument())
+    fireEvent.mouseDown(screen.getByPlaceholderText(/search users/i))
+    expect(screen.getByText('Payton Monzon')).toBeInTheDocument()
+  })
+
+  it('closes on Escape', async () => {
+    render(<ViewAsDropdown />)
+    fireEvent.click(screen.getByRole('button', { name: /view as/i }))
+    await waitFor(() => expect(screen.getByText('Payton Monzon')).toBeInTheDocument())
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByText('Payton Monzon')).not.toBeInTheDocument())
+  })
 })
