@@ -28,14 +28,19 @@ import {
 import { relayStepLabel, RELAY_STEP_LABELS } from '@/lib/relay-step-labels'
 import { forceStepAction } from '@/server/actions/relay'
 
-/** Canonical pipeline order for the step dropdown. designs_completed is
- *  excluded (retired step). */
+/** Canonical pipeline order for the step dropdown. Retired steps are excluded
+ *  so an admin can't strand a batch on a step with no outgoing transitions:
+ *  designs_completed and (2026-06-26) design_revisions, which the merge into
+ *  am_review_design left with zero edges.
+ *  TODO(followup): this list still predates the 2026-06-22 rework — it omits
+ *  the live client_review + scheduling steps and lists their retirees
+ *  (sent_to_client/client_decision/ready_to_schedule/revisions_complete/
+ *  final_qa_schedule). Refresh to the live step set separately. */
 const STEP_ORDER: RelayStep[] = [
   RelayStep.onboarding_gate,
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,
-  RelayStep.design_revisions,
   RelayStep.am_qa_pre_client,
   RelayStep.sent_to_client,
   RelayStep.client_decision,
