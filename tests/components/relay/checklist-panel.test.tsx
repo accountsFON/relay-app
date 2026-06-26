@@ -6,6 +6,7 @@ import type { BatchSummary, ChecklistItem } from '@/components/relay/types'
 import { SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
 import {
   passBatonAction,
+  requestDesignChangesAction,
   tickChecklistItemAction,
 } from '@/server/actions/relay'
 import { createAndSendMagicLinkAction } from '@/server/actions/magicLink'
@@ -20,6 +21,7 @@ vi.mock('@/server/actions/relay', () => ({
   finishBatchAction: vi.fn(),
   passBatonAction: vi.fn(),
   sendBackBatonAction: vi.fn(),
+  requestDesignChangesAction: vi.fn(),
   tickChecklistItemAction: vi.fn(),
   forceStepAction: vi.fn(),
 }))
@@ -448,5 +450,67 @@ describe('ChecklistPanel admin force-step gating (Task 8)', () => {
     expect(
       screen.queryByRole('button', { name: /admin tools/i }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('ChecklistPanel Request changes (merge design steps)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders a "Request changes" control on am_review_design and calls the action', async () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.am_review_design })}
+        items={[]}
+        canAct={true}
+        nextStep={RelayStep.am_qa_pre_client}
+      />,
+    )
+    const btn = screen.getByTestId('request-design-changes')
+    expect(btn).toBeInTheDocument()
+    fireEvent.click(btn)
+    await waitFor(() => {
+      expect(requestDesignChangesAction).toHaveBeenCalledWith({ batchId: 'batch-1' })
+    })
+  })
+
+  it('still renders the pass-to-QA forward button on am_review_design', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.am_review_design })}
+        items={[]}
+        canAct={true}
+        nextStep={RelayStep.am_qa_pre_client}
+      />,
+    )
+    // Approve / pass forward CTA is still present alongside Request changes.
+    expect(screen.getByText(/send to client review|send to final qa|pass to/i)).toBeInTheDocument()
+  })
+
+  it('does NOT offer a send-back-to-Design-Revision option (empty send-back targets)', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.am_review_design })}
+        items={[]}
+        canAct={true}
+        nextStep={RelayStep.am_qa_pre_client}
+        legalSendBackTargets={[]}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: /send back/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/design revision/i)).not.toBeInTheDocument()
+  })
+
+  it('does NOT render "Request changes" on other steps', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({ currentStep: RelayStep.am_qa_pre_client })}
+        items={[]}
+        canAct={true}
+        nextStep={RelayStep.client_review}
+      />,
+    )
+    expect(screen.queryByTestId('request-design-changes')).not.toBeInTheDocument()
   })
 })
