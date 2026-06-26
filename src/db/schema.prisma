@@ -173,6 +173,7 @@ model Organization {
   permissionAuditLogs PermissionAuditLog[]
   memberships         Membership[]
   trashAuditLogs      TrashAuditLog[]
+  impersonationLogs   ImpersonationLog[]
 
   @@map("organizations")
 }
@@ -214,8 +215,10 @@ model User {
   designedClients   Client[]             @relation("AssignedDesigner")
   linkedClient      Client?              @relation("LinkedClient", fields: [linkedClientId], references: [id])
   triggeredRuns     ContentRun[]         @relation("TriggeredBy")
-  auditLogsAsActor  PermissionAuditLog[] @relation("AuditActor")
-  auditLogsAsTarget PermissionAuditLog[] @relation("AuditTarget")
+  auditLogsAsActor       PermissionAuditLog[] @relation("AuditActor")
+  auditLogsAsTarget      PermissionAuditLog[] @relation("AuditTarget")
+  impersonationsAsActor  ImpersonationLog[]   @relation("ImpersonationActor")
+  impersonationsAsTarget ImpersonationLog[]   @relation("ImpersonationTarget")
   memberships       Membership[]
   heldBatches       Batch[]              @relation("BatchHolder")
   firedActivity     ActivityEvent[]      @relation("ActivityActor")
@@ -437,6 +440,24 @@ model PermissionAuditLog {
   @@index([organizationId])
   @@index([targetUserId])
   @@map("permission_audit_logs")
+}
+
+model ImpersonationLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  realActorId    String
+  targetUserId   String
+  action         String   // 'start' | 'stop'
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  realActor    User         @relation("ImpersonationActor", fields: [realActorId], references: [id])
+  target       User         @relation("ImpersonationTarget", fields: [targetUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([realActorId])
+  @@index([targetUserId])
+  @@map("impersonation_logs")
 }
 
 model Membership {

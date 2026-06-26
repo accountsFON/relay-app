@@ -6,6 +6,19 @@ export type ClientStatus = 'active' | 'paused' | 'archived'
 
 export type RunStatus = 'queued' | 'running' | 'complete' | 'failed'
 
+/**
+ * Marker attached to an OrgContext that is an admin "viewing as" another
+ * user. When present, every OTHER field on the context describes the
+ * TARGET (role, userDbId, scope, perms, platformOwner forced false). This
+ * marker carries what the Exit banner needs plus the real admin's id for
+ * the impersonation audit log.
+ */
+export type ImpersonationActor = {
+  realUserId: string       // the admin's DB User.id (audit + back-reference)
+  realUserName: string     // the admin's name (banner context)
+  targetUserName: string   // shown in the banner: "Acting as <targetUserName>"
+}
+
 /** Resolved org + user context attached to every authenticated request. */
 export type OrgContext = {
   userId: string           // Clerk user ID
@@ -19,6 +32,12 @@ export type OrgContext = {
   linkedClientId: string | null
   permissionOverrides: Record<string, boolean> | null
   roleDefaults: Partial<Record<UserRole, Partial<Record<string, boolean>>>>
+  /**
+   * Present only while an admin is viewing-as another user. Truthy means
+   * "this context is impersonated". Optional so the many places that build
+   * a normal OrgContext do not need to set it.
+   */
+  impersonation?: ImpersonationActor | null
 }
 
 /** Minimum client data needed to trigger a pipeline run. */

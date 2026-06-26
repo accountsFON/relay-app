@@ -152,3 +152,19 @@ export async function deleteMembership(membershipId: string) {
 
   return db.membership.delete({ where: { id: membershipId } })
 }
+
+/**
+ * Members of an org eligible to be a view-as target: active users, with
+ * the user's role + platformOwner so the caller can run the eligibility
+ * filter. Separate from listMembershipsForOrg so that function's narrower
+ * select stays unchanged.
+ */
+export async function listImpersonationCandidates(organizationId: string) {
+  return db.membership.findMany({
+    where: { organizationId, user: { deactivatedAt: null } },
+    include: {
+      user: { select: { id: true, name: true, email: true, platformOwner: true } },
+    },
+    orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+  })
+}

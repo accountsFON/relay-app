@@ -158,6 +158,12 @@ export async function AppChrome({
     redirect('/welcome')
   }
 
+  const impersonation = ctx.impersonation ?? null
+  // Admin/PO only, and never while already impersonating (during which
+  // ctx.role is the target's non-admin role and platformOwner is false, so
+  // this is already false — kept explicit for clarity).
+  const showViewAs = !impersonation && (ctx.role === 'admin' || ctx.platformOwner)
+
   return (
     <AppShell
       showAdmin={showAdmin}
@@ -172,6 +178,12 @@ export async function AppChrome({
       unreadMentions={unreadMentions}
       role={ctx.role}
       seenTours={onboarding?.seenTours ?? []}
+      showViewAs={showViewAs}
+      impersonation={
+        impersonation
+          ? { targetUserName: impersonation.targetUserName }
+          : null
+      }
     >
       {children}
     </AppShell>
