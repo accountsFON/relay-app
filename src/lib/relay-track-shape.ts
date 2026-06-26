@@ -10,33 +10,35 @@
  */
 import { RelayStep } from '@prisma/client'
 
+// Live steps only. Retired values (`designs_completed` per Phase 3 item 15 PR1;
+// `sent_to_client`, `client_decision`, `ready_to_schedule`, `revisions_complete`,
+// `final_qa_schedule` per the 2026-06-22 pipeline rework) are kept in the enum
+// for historical rows but MUST stay out of these arrays: relay-track.tsx does
+// `steps.indexOf(batch.currentStep)`, so a live step missing here resolves to -1
+// and blanks the whole timeline (the bug when a batch advanced into
+// client_review / scheduling).
 export const FULL_TRACK: RelayStep[] = [
   RelayStep.onboarding_gate,
   RelayStep.copy,
   RelayStep.in_design,
-  // `designs_completed` removed per Phase 3 item 15 PR1. Enum value is
-  // preserved so historical events render; no live batch lands here.
   RelayStep.am_review_design,
   RelayStep.design_revisions,
   RelayStep.am_qa_pre_client,
-  RelayStep.sent_to_client,
-  RelayStep.client_decision,
-  RelayStep.ready_to_schedule,
-  RelayStep.implementing_revisions,
-  RelayStep.revisions_complete,
-  RelayStep.final_qa_schedule,
+  RelayStep.client_review, // merges old sent_to_client + client_decision
+  RelayStep.implementing_revisions, // Post Revision (client-requested changes)
+  RelayStep.scheduling, // merges old ready_to_schedule + final_qa_schedule
 ]
 
 export const NO_REVIEW_TRACK: RelayStep[] = [
   RelayStep.onboarding_gate,
   RelayStep.copy,
   RelayStep.in_design,
-  // `designs_completed` removed per Phase 3 item 15 PR1.
   RelayStep.am_review_design,
   RelayStep.design_revisions,
   RelayStep.am_qa_pre_client,
-  RelayStep.ready_to_schedule,
-  RelayStep.final_qa_schedule,
+  // No client review => no client_review step and no client-requested
+  // post-revision (implementing_revisions); QA goes straight to scheduling.
+  RelayStep.scheduling,
 ]
 
 export function relayTrackFor(clientReviewEnabled: boolean): RelayStep[] {

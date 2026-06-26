@@ -11,7 +11,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-- _(nothing in progress right now)_
+Batch A (clear bugs / quick wins) from the 2026-06-26 triage:
+- [ ] **Internal review notifications** — pin replies/creates don't notify; @-mention "ping" doesn't exist on the pin/thread path (`addComment` emits no ActivityEvent; no mention roster). (Batch B)
+- [ ] **Tagged users -> internal review page + per-post counts** — `resolveHref` has no `/preview` branch; no per-post aggregated notification copy. (Batch B)
+- [ ] **Merge Design Review + Design Revision into one Design step** — new enum + migration + backfill; designer in-step handoff notifies + routes to internal review. (Batch C)
+- [ ] **Next-action board** replacing the cost-breakdown banner slot — per-step "primary action + destination" (e.g. design step -> "Review designs" -> internal review). (Batch C)
+- [ ] **Internal review parity with client review** — reuse `ReviewPostCard`; needs a scoping brainstorm. (Batch D)
+- [ ] **Remove Fix-with-AI from the AM "View client feedback" rail** (item 9, per Julio). (Batch A)
+- [ ] **Magic-link AM-reply email -> error page** — filter expired/revoked/archived links before emailing. (Batch A)
+- [ ] **Clickable links in chat thread** — wrap `SystemEventRow` message in `<Linkify>`. (Batch A)
 
 ## Notes / standing rules
 
@@ -21,6 +29,17 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 ---
 
 ## Shipped
+
+- [x] **2026-06-26 — Fix: pipeline timeline went blank after the QA -> client review handoff** (PR #TBD)
+  Root cause: `src/lib/relay-track-shape.ts` was never updated for the 2026-06-22 step rework. The
+  `FULL_TRACK`/`NO_REVIEW_TRACK` arrays still listed the retired steps (`sent_to_client`,
+  `client_decision`, `ready_to_schedule`, `revisions_complete`, `final_qa_schedule`) and omitted the new
+  live `client_review` + `scheduling`. `relay-track.tsx` does `steps.indexOf(batch.currentStep)`, so the
+  moment a batch advanced out of `am_qa_pre_client` into `client_review` (or `scheduling`), indexOf
+  returned **-1** and the whole timeline blanked ("Step 0 of 12", no current node). Fix: rebuilt both
+  arrays to the 9 / 7 live steps and fixed `CLIENT_TRACK_VIEW` (same retired-step bug for the client
+  audience). No schema / jobs change, so the Trigger.dev deploy skips. Regression tests added (shape +
+  a `client_review` render assertion that was -1 before the fix). tsc + eslint clean.
 
 - [x] **2026-06-26 — View as user (admin impersonation)** (PR #266)
   A searchable top-bar **View as** dropdown lets an admin (or platform owner) fully act as another
