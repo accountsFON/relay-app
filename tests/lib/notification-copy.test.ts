@@ -174,6 +174,12 @@ describe('renderSummary, new kinds (parity sweep)', () => {
     ).toBe('Cedar Creek · Mollie opened a thread on post abc123.')
   })
 
+  it('post_thread_opened renders "Post N" when a postNumber is present', () => {
+    expect(
+      renderSummary(row({ kind: 'post_thread_opened', postId: 'abc123def456', postNumber: 5 })),
+    ).toBe('Cedar Creek · Mollie opened a thread on Post 5.')
+  })
+
   it('post_thread_resolved includes reason when present', () => {
     expect(
       renderSummary(row({ kind: 'post_thread_resolved', postId: 'abc123def456', resolvedReason: 'fixed' })),
@@ -442,6 +448,19 @@ describe('resolveHref, post-targeted events', () => {
 })
 
 describe('renderSummary, post_comment_added', () => {
+  it('renders "Post N" when a postNumber is present in the payload', () => {
+    const summary = renderSummary(
+      row({ kind: 'post_comment_added', postId: 'abc123def456', postNumber: 3 }),
+    )
+    expect(summary).toBe('Cedar Creek · Mollie replied on Post 3.')
+  })
+
+  it('falls back to the short post ref when no postNumber is present', () => {
+    const summary = renderSummary(row({ kind: 'post_comment_added', postId: 'abc123def456' }))
+    expect(summary).toMatch(/replied on post abc123/)
+    expect(summary.length).toBeGreaterThan(0)
+  })
+
   it('renders non-empty copy with the short post ref', () => {
     const summary = renderSummary(row({ kind: 'post_comment_added', postId: 'abc123def456' }))
     expect(summary).toMatch(/replied on post abc123/)
