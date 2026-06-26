@@ -3,18 +3,20 @@ import { RelayStep } from '@prisma/client'
 import { FULL_TRACK, NO_REVIEW_TRACK, relayTrackFor } from '@/lib/relay-track-shape'
 
 describe('relay-track-shape', () => {
-  it('FULL_TRACK has 9 live nodes (post 2026-06-22 rework; completed renders separately)', () => {
-    // 2026-06-22 rework: sent_to_client + client_decision merged into
-    // client_review; ready_to_schedule + revisions_complete + final_qa_schedule
-    // merged into scheduling. The retired steps must NOT be in the track or
-    // relay-track.tsx's indexOf(currentStep) returns -1 and the timeline blanks
-    // the moment a batch advances into client_review / scheduling.
-    expect(FULL_TRACK).toHaveLength(9)
+  it('FULL_TRACK has 8 live nodes (merge design steps drops design_revisions)', () => {
+    // 2026-06-22 rework merged the client + schedule steps. Merge design steps
+    // (2026-06-26) retires design_revisions: Design Review is now one AM-held
+    // step. The retired steps must NOT be in the track or relay-track.tsx's
+    // indexOf(currentStep) returns -1 and the timeline blanks.
+    expect(FULL_TRACK).toHaveLength(8)
     expect(FULL_TRACK[0]).toBe(RelayStep.onboarding_gate)
+    expect(FULL_TRACK).toContain(RelayStep.in_design)
+    expect(FULL_TRACK).toContain(RelayStep.am_review_design)
     expect(FULL_TRACK).toContain(RelayStep.client_review)
     expect(FULL_TRACK).toContain(RelayStep.implementing_revisions)
     expect(FULL_TRACK[FULL_TRACK.length - 1]).toBe(RelayStep.scheduling)
     // Retired steps stay out of the live track.
+    expect(FULL_TRACK).not.toContain(RelayStep.design_revisions)
     expect(FULL_TRACK).not.toContain(RelayStep.sent_to_client)
     expect(FULL_TRACK).not.toContain(RelayStep.client_decision)
     expect(FULL_TRACK).not.toContain(RelayStep.ready_to_schedule)
@@ -23,14 +25,17 @@ describe('relay-track-shape', () => {
     expect(FULL_TRACK).not.toContain(RelayStep.designs_completed)
   })
 
-  it('NO_REVIEW_TRACK has 7 live nodes and drops the client steps', () => {
-    expect(NO_REVIEW_TRACK).toHaveLength(7)
+  it('NO_REVIEW_TRACK has 6 live nodes and drops the client steps + design_revisions', () => {
+    expect(NO_REVIEW_TRACK).toHaveLength(6)
     expect(NO_REVIEW_TRACK[0]).toBe(RelayStep.onboarding_gate)
+    expect(NO_REVIEW_TRACK).toContain(RelayStep.in_design)
+    expect(NO_REVIEW_TRACK).toContain(RelayStep.am_review_design)
     expect(NO_REVIEW_TRACK[NO_REVIEW_TRACK.length - 1]).toBe(RelayStep.scheduling)
     // No client review => no client_review and no client-requested post revision.
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.client_review)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.implementing_revisions)
     // Retired steps stay out.
+    expect(NO_REVIEW_TRACK).not.toContain(RelayStep.design_revisions)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.sent_to_client)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.client_decision)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.ready_to_schedule)
