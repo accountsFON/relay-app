@@ -36,6 +36,13 @@ vi.mock('@/server/services/approval', () => ({
   derivePostApprovalForBatch: vi.fn(),
 }))
 
+// The page fetches the internal @-mention roster for the composers; stub it so
+// the page render doesn't reach into db.client (its own logic is unit-tested in
+// tests/server/lib/internalMentionRoster.test.ts).
+vi.mock('@/server/lib/internalMentionRoster', () => ({
+  internalMentionRosterForClient: vi.fn().mockResolvedValue([]),
+}))
+
 vi.mock('@/db/client', () => ({
   db: {
     post: {
