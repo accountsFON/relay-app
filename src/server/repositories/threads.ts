@@ -128,6 +128,13 @@ export interface CreateThreadInput {
   imageUrl?: string | null
   imageWidth?: number | null
   imageHeight?: number | null
+  /**
+   * Internal @-mentioned user ids, resolved server-side from the body against
+   * the internal mention roster (see internalMentionRosterForClient). Added to
+   * the post_thread_opened event's mentions alongside the assigned designer.
+   * The actor is filtered out so a self-mention never self-pings.
+   */
+  mentionedUserIds?: string[]
 }
 
 export interface CreateThreadResult {
@@ -219,8 +226,14 @@ export async function createThread(
   if (post) {
     const actorUserId = author.kind === 'am' ? author.userId : null
     const designerId = post.client?.assignedDesignerId ?? null
-    const mentionedUserIds =
-      designerId && designerId !== actorUserId ? [designerId] : []
+    // Designer auto-notify (kept) ∪ resolved @-mentioned users, deduped, minus
+    // the actor so a self-mention never self-pings.
+    const mentionSet = new Set<string>([
+      ...(designerId ? [designerId] : []),
+      ...(input.mentionedUserIds ?? []),
+    ])
+    if (actorUserId) mentionSet.delete(actorUserId)
+    const mentionedUserIds = Array.from(mentionSet)
 
     await recordActivity({
       clientId: post.clientId,
@@ -228,6 +241,7 @@ export async function createThread(
       actorId: actorUserId,
       kind: ActivityKind.post_thread_opened,
       payload: {
+        surface: 'internal_review',
         threadId: result.threadId,
         postId,
         pinLocation: pin.kind,

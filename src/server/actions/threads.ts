@@ -134,6 +134,23 @@ export async function createThreadAction(input: {
   const image = validateImage(input.image)
   if (!input.body.trim() && !image) throw new Error('Comment requires text or an image')
   const author = await resolveActor()
+
+  // Resolve internal @-mentions server-side from the body against the client's
+  // internal roster (never trust a client-sent id list). Reviewers (no Clerk
+  // session) get no roster, so the pin/thread path never @-pings from the
+  // client review surface.
+  let mentionedUserIds: string[] = []
+  if (author.kind === 'am') {
+    const post = await db.post.findUnique({
+      where: { id: input.postId },
+      select: { clientId: true },
+    })
+    if (post?.clientId) {
+      const roster = await internalMentionRosterForClient(post.clientId)
+      mentionedUserIds = resolveMentionedUserIds(input.body, roster)
+    }
+  }
+
   const result = await createThread({
     postId: input.postId,
     pin: input.pin,
@@ -142,6 +159,7 @@ export async function createThreadAction(input: {
     imageUrl: image?.url ?? null,
     imageWidth: image?.width ?? null,
     imageHeight: image?.height ?? null,
+    mentionedUserIds,
   })
   await revalidatePathForPost(input.postId)
   return result

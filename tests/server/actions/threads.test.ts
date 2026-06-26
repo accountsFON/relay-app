@@ -258,6 +258,27 @@ describe('createThreadAction', () => {
       }),
     )
   })
+
+  it('resolves @mentions server-side from the body + roster and passes mentionedUserIds to createThread', async () => {
+    vi.mocked(db.post.findUnique).mockResolvedValue({
+      clientId: 'client_1',
+      batchId: 'batch_1',
+    } as never)
+    vi.mocked(internalMentionRosterForClient).mockResolvedValue([
+      { id: 'u_des', name: 'Dan Designer', handle: 'dan.designer' },
+    ])
+
+    await createThreadAction({
+      postId: 'post_1',
+      pin: { kind: 'post' },
+      body: 'pinging @dan.designer here',
+    })
+
+    expect(internalMentionRosterForClient).toHaveBeenCalledWith('client_1')
+    expect(createThread).toHaveBeenCalledWith(
+      expect.objectContaining({ mentionedUserIds: ['u_des'] }),
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
