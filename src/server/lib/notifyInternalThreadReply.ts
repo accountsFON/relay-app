@@ -56,7 +56,17 @@ export async function notifyInternalThreadReply(input: {
     ])
     candidates.delete(input.actorUserId)
 
-    const targets = Array.from(candidates)
+    if (candidates.size === 0) return
+
+    // Internal recipients only. The current holder is a client-role user while
+    // the batch is at client_review, and a client-role Clerk user could have
+    // authored a comment, so filter by role here (not just authorId != null)
+    // to never write a Mention row pointing a client at an internal reply.
+    const internal = await db.user.findMany({
+      where: { id: { in: Array.from(candidates) }, role: { not: 'client' } },
+      select: { id: true },
+    })
+    const targets = internal.map((u) => u.id)
     if (targets.length === 0) return
 
     await recordActivity({

@@ -183,6 +183,28 @@ describe('createThread mention emit', () => {
     expect(mentions).not.toContain(AM_USER_ID)
     expect((activityInput.payload as Record<string, unknown>).surface).toBe('internal_review')
   })
+
+  it('does NOT tag surface for a reviewer-created pin (client /review path stays untouched)', async () => {
+    vi.mocked(db.post.findUnique).mockResolvedValue({
+      clientId: CLIENT_ID,
+      client: { assignedDesignerId: DESIGNER_USER_ID },
+    } as never)
+
+    await createThread({
+      postId: POST_ID,
+      pin: { kind: 'image', x: 10, y: 20 },
+      body: 'Please fix this',
+      author: { kind: 'reviewer', reviewerToken: 'rt1', reviewerName: 'Dana Client' },
+    })
+
+    expect(recordActivity).toHaveBeenCalledTimes(1)
+    const activityInput = vi.mocked(recordActivity).mock.calls[0][0]
+    // Designer is still notified (kept behavior)...
+    expect(activityInput.mentionedUserIds).toContain(DESIGNER_USER_ID)
+    // ...but the event is NOT stamped internal_review, so the designer's deep
+    // link keeps its prior (non-/preview) routing for client-originated pins.
+    expect((activityInput.payload as Record<string, unknown>).surface).toBeUndefined()
+  })
 })
 
 // ---------------------------------------------------------------------------

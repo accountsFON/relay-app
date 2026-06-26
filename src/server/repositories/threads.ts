@@ -241,7 +241,10 @@ export async function createThread(
       actorId: actorUserId,
       kind: ActivityKind.post_thread_opened,
       payload: {
-        surface: 'internal_review',
+        // Only internal (AM/designer/admin) pin creates route to /preview.
+        // Reviewer (magic-link client) pins keep their prior routing so the
+        // client `/review/[token]` path stays untouched per spec.
+        ...(author.kind === 'am' ? { surface: 'internal_review' as const } : {}),
         threadId: result.threadId,
         postId,
         pinLocation: pin.kind,
