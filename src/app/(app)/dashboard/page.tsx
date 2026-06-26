@@ -41,7 +41,8 @@ const AM_TRACK_STEPS: RelayStep[] = [
   // `designs_completed` removed per Phase 3 item 15 PR1. Enum value
   // preserved so historical events render; no live batch lands here.
   RelayStep.am_review_design,
-  RelayStep.design_revisions,
+  // `design_revisions` removed (merge design steps 2026-06-26). "Request changes"
+  // is an in-step action on am_review_design; enum value kept for historical rows.
   RelayStep.am_qa_pre_client,
   RelayStep.sent_to_client,
   RelayStep.client_decision,
@@ -60,7 +61,8 @@ const AM_TRACK_STEPS: RelayStep[] = [
 const DESIGNER_TRACK_STEPS: RelayStep[] = [
   RelayStep.in_design,
   // `designs_completed` removed per Phase 3 item 15 PR1.
-  RelayStep.design_revisions,
+  // `design_revisions` removed (merge design steps 2026-06-26): the designer
+  // reworks in-step while the batch stays at am_review_design, AM-held.
 ]
 
 const CLIENT_COLUMNS: ClientKanbanColumn[] = [
