@@ -75,6 +75,12 @@ export interface ForceStepInput {
   actorOrganizationId: string
 }
 
+export interface RequestDesignChangesInput {
+  batchId: string
+  actorId: string
+  actorOrganizationId: string
+}
+
 export class RelayServiceError extends Error {
   constructor(message: string) {
     super(message)
@@ -763,5 +769,73 @@ export async function sendBackBaton(input: SendBackBatonInput) {
     )
 
     return { batchId: batch.id, toStep: input.toStep, newHolderId: next.userId }
+  })
+}
+
+/**
+ * Merge design steps (2026-06-26): "Request changes" on Design Review.
+ *
+ * This is an IN-STEP action, not a state-machine transition. The batch stays
+ * at `am_review_design`, AM-held; we only set `currentSubState =
+ * 'awaiting_design_revisions'` (board shows "Awaiting design revisions") and
+ * notify the assigned designer with a deep-link to the internal review page.
+ * The AM later re-reviews and either requests more changes or passes to QA.
+ *
+ * - Guard: batch must be at `am_review_design`. The AM / admin role gate lives
+ *   at the action layer (mirrors sendBackBaton).
+ * - No required note (unlike send-back).
+ * - The `design_changes_requested` activity write never blocks: `recordActivity`
+ *   swallows its own errors. If no designer is assigned the mention list is
+ *   empty but the sub-state still flips.
+ */
+export async function requestDesignChanges(input: RequestDesignChangesInput) {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({
+      where: { id: input.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        label: true,
+        client: { select: { organizationId: true, assignedDesignerId: true } },
+      },
+    })
+    if (!batch) throw new RelayServiceError('Relay not found')
+    // Cross-tenant scope: see passBaton above.
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
+    if (batch.currentStep !== RelayStep.am_review_design) {
+      throw new RelayServiceError(
+        'Request changes is only valid at Design Review',
+      )
+    }
+
+    const designerId = batch.client.assignedDesignerId
+
+    await tx.batch.update({
+      where: { id: batch.id },
+      data: { currentSubState: 'awaiting_design_revisions' },
+    })
+
+    await recordActivity(
+      {
+        clientId: batch.clientId,
+        actorId: input.actorId,
+        kind: ActivityKind.design_changes_requested,
+        visibility: EventVisibility.internal,
+        payload: {
+          batchId: batch.id,
+          batchLabel: batch.label,
+          surface: 'internal_review',
+        },
+        mentionedUserIds: designerId
+          ? mentionsExcludingActor([designerId], input.actorId)
+          : [],
+      },
+      tx,
+    )
+
+    return { batchId: batch.id, subState: 'awaiting_design_revisions' as const }
   })
 }

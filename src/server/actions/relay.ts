@@ -12,6 +12,7 @@ import {
   finishBatch,
   forceStep,
   passBaton,
+  requestDesignChanges,
   sendBackBaton,
 } from '@/server/services/relay'
 import { legalNextSteps } from '@/server/lib/relay-state-machine'
@@ -167,6 +168,38 @@ export async function sendBackBatonAction(input: {
     actorId: ctx.userDbId,
     actorOrganizationId: ctx.organizationDbId,
     wasOverride: isOverride,
+  })
+  revalidateBatchSurfaces(holder.clientId, input.batchId)
+  return result
+}
+
+/**
+ * Merge design steps (2026-06-26): "Request changes" on Design Review.
+ *
+ * In-step action (no baton handoff). Sets the batch sub-state to
+ * `awaiting_design_revisions` and notifies the assigned designer; the batch
+ * stays at am_review_design, AM-held. Same holder-override gate as
+ * sendBackBatonAction (AM / admin can act on any batch they do not hold).
+ *
+ * Permission: `relay.sendBack` (requesting changes is the spiritual successor
+ * to the old send-back-to-design-revision control).
+ */
+export async function requestDesignChangesAction(input: { batchId: string }) {
+  const ctx = await requireCan('relay.sendBack')
+
+  // See passBatonAction above for the holder-override rationale.
+  const holder = await loadHolderForGate(input.batchId, ctx.organizationDbId)
+  const isOverride = ctx.userDbId !== holder.currentHolder
+  if (isOverride && !canOverrideHolder(ctx.role, ctx.platformOwner)) {
+    throw new Error(
+      'Only the current holder, an AM, or an admin can request design changes.',
+    )
+  }
+
+  const result = await requestDesignChanges({
+    batchId: input.batchId,
+    actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
   })
   revalidateBatchSurfaces(holder.clientId, input.batchId)
   return result
