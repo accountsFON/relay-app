@@ -11,15 +11,14 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-Batch A (clear bugs / quick wins) from the 2026-06-26 triage:
+From the 2026-06-26 triage (Batch A clear bugs shipped; B/C/D remain):
 - [ ] **Internal review notifications** — pin replies/creates don't notify; @-mention "ping" doesn't exist on the pin/thread path (`addComment` emits no ActivityEvent; no mention roster). (Batch B)
 - [ ] **Tagged users -> internal review page + per-post counts** — `resolveHref` has no `/preview` branch; no per-post aggregated notification copy. (Batch B)
 - [ ] **Merge Design Review + Design Revision into one Design step** — new enum + migration + backfill; designer in-step handoff notifies + routes to internal review. (Batch C)
 - [ ] **Next-action board** replacing the cost-breakdown banner slot — per-step "primary action + destination" (e.g. design step -> "Review designs" -> internal review). (Batch C)
 - [ ] **Internal review parity with client review** — reuse `ReviewPostCard`; needs a scoping brainstorm. (Batch D)
-- [ ] **Remove Fix-with-AI from the AM "View client feedback" rail** (item 9, per Julio). (Batch A)
-- [ ] **Magic-link AM-reply email -> error page** — filter expired/revoked/archived links before emailing. (Batch A)
-- [ ] **Clickable links in chat thread** — wrap `SystemEventRow` message in `<Linkify>`. (Batch A)
+- [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
+- [ ] **(open question) Also remove Fix-with-AI from the `/preview` markup pin popover?** #270 removed it only from the View-client-feedback rail.
 
 ## Notes / standing rules
 
@@ -30,7 +29,32 @@ Batch A (clear bugs / quick wins) from the 2026-06-26 triage:
 
 ## Shipped
 
-- [x] **2026-06-26 — Fix: pipeline timeline went blank after the QA -> client review handoff** (PR #TBD)
+- [x] **2026-06-26 — Fix: remove "Fix copy with AI" from the AM View client feedback rail** (PR #270)
+  Per Julio (triage item 9): Fix-with-AI should not be on the client-feedback surface. Removed the
+  `FixWithAIButton` mount + `showFixWithAi`/`hasCopyFeedback` derivation + the now-unused `useRouter`
+  from `ReviewFeedbackRail`. The API routes + component are untouched and still mounted in the `/preview`
+  internal markup pin popover (open question logged: remove there too?). Already double-guarded off the
+  client magic-link `/review/[token]` page. Rail tests flipped to "never renders the button"; tsc + eslint
+  clean. No schema change.
+
+- [x] **2026-06-26 — Fix: clickable links in the chat thread** (PR #269)
+  Comment bodies already linkified; the gap was system-event rows (`SystemEventRow`), which rendered
+  their message (embedding user-entered send-back / force-move / thread-resolved **reasons**) as plain
+  text. Wrapped the message in the shared `<Linkify>` primitive. Regression test: a URL in a
+  `batch_sent_back` reason renders an `<a target=_blank rel=noopener>`. tsc + eslint clean. No schema change.
+
+- [x] **2026-06-26 — Fix: AM-reply email linked to localhost / dead links -> error page** (PR #268)
+  Client got the "AM replied" email but the link hit an error page. Two causes in
+  `notifyClientOfAmReply.ts`: (1) **dominant** — `appBaseUrl()` was `NEXT_PUBLIC_APP_URL ?? localhost`
+  with no Vercel fallback, and `NEXT_PUBLIC_APP_URL` is **not set in prod** (verified via `vercel env ls`),
+  so every link pointed at localhost; fixed to the canonical chain (`NEXT_PUBLIC_APP_URL ->
+  VERCEL_PROJECT_PRODUCTION_URL -> VERCEL_URL -> localhost`). (2) No validity filtering — the email
+  re-mints a token to `/review/[token]`, but middleware 404s an expired token and 410s a revoked link /
+  archived batch; added a guard mirroring middleware **before** the cooldown claim so a dead link doesn't
+  burn the 30-min window. 4 new tests; tsc + eslint clean. No schema change. Follow-up: set
+  `NEXT_PUBLIC_APP_URL` in prod.
+
+- [x] **2026-06-26 — Fix: pipeline timeline went blank after the QA -> client review handoff** (PR #267)
   Root cause: `src/lib/relay-track-shape.ts` was never updated for the 2026-06-22 step rework. The
   `FULL_TRACK`/`NO_REVIEW_TRACK` arrays still listed the retired steps (`sent_to_client`,
   `client_decision`, `ready_to_schedule`, `revisions_complete`, `final_qa_schedule`) and omitted the new
