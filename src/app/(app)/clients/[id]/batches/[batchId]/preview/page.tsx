@@ -5,6 +5,7 @@ import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { listThreadsForBatch } from '@/server/repositories/threads'
+import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
 import { derivePostApprovalForBatch } from '@/server/services/approval'
 import { db } from '@/db/client'
 import { HeroBand } from '@/components/hero-band'
@@ -50,9 +51,10 @@ export default async function BatchPreviewPage({
     },
   })
 
-  const [threadsByPost, approvalCounts] = await Promise.all([
+  const [threadsByPost, approvalCounts, mentionRoster] = await Promise.all([
     listThreadsForBatch({ batchId: batch.id }),
     derivePostApprovalForBatch(batch.id),
+    internalMentionRosterForClient(client.id),
   ])
 
   // Count AM-authored unresolved post-thread comments on this batch so the
@@ -135,6 +137,7 @@ export default async function BatchPreviewPage({
           posts={hydratedPosts}
           canEdit={canEdit}
           userDbId={ctx.userDbId}
+          mentionRoster={mentionRoster}
         />
       </div>
 

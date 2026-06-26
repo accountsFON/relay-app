@@ -15,6 +15,8 @@ import {
   CommentImageAttachButton,
   type AttachedImage,
 } from '@/components/preview/comment-image-attach-button'
+import { useMentionAutocomplete } from '@/lib/use-mention-autocomplete'
+import type { MentionTarget } from '@/lib/mentions'
 
 /**
  * Inline composer that pops up when a user drops a new pin (image click or
@@ -36,6 +38,12 @@ export type PinDraftComposerProps = {
    * identity so the component stays identity-agnostic.
    */
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
+  /**
+   * Internal @-mention roster. When non-empty, typing `@` opens an autocomplete
+   * dropdown. Defaulted to [] so the client `/review/[token]` path (which passes
+   * no roster) shows no autocomplete and behaves exactly as before.
+   */
+  mentionRoster?: MentionTarget[]
   className?: string
 }
 
@@ -48,11 +56,18 @@ export function PinDraftComposer({
   onSubmit,
   onCancel,
   onUploadImage,
+  mentionRoster = [],
   className,
 }: PinDraftComposerProps) {
   const composerRef = useRef<HTMLDivElement | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [body, setBody] = useState('')
+  const mention = useMentionAutocomplete({
+    roster: mentionRoster,
+    textareaRef,
+    body,
+    setBody,
+  })
   const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [position, setPosition] = useState<{ top: number; left: number }>(() =>
@@ -122,11 +137,18 @@ export function PinDraftComposer({
   }
 
   function handleKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    // Let the mention dropdown consume navigation/insert/close keys first.
+    if (mention.handleKeyDown(event)) return
     // Cmd/Ctrl+Enter submits.
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault()
       void handleSubmit()
     }
+  }
+
+  function handleBodyChange(value: string) {
+    setBody(value)
+    mention.onBodyChange(value)
   }
 
   const canSubmit = (body.trim().length > 0 || attachedImage !== null) && !submitting
@@ -150,18 +172,21 @@ export function PinDraftComposer({
       )}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <textarea
-          ref={textareaRef}
-          data-testid="pin-draft-composer-input"
-          aria-label="Comment body"
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={submitting}
-          rows={3}
-          placeholder="Leave a comment..."
-          className="resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[13px] text-[#262626] outline-none focus:border-[#8e8e8e]"
-        />
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            data-testid="pin-draft-composer-input"
+            aria-label="Comment body"
+            value={body}
+            onChange={(event) => handleBodyChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={submitting}
+            rows={3}
+            placeholder="Leave a comment..."
+            className="w-full resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[13px] text-[#262626] outline-none focus:border-[#8e8e8e]"
+          />
+          {mention.dropdown}
+        </div>
         {onUploadImage ? (
           <CommentImageAttachButton
             onUploadImage={onUploadImage}

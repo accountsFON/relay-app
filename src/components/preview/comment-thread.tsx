@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Linkify } from '@/components/ui/linkify'
 import type { ThreadAuthor } from '@/types/preview'
+import { useMentionAutocomplete } from '@/lib/use-mention-autocomplete'
+import type { MentionTarget } from '@/lib/mentions'
 
 /**
  * A lean inline comment thread for the client review surface. Unlike the
@@ -28,6 +30,11 @@ export type CommentThreadProps = {
   /** When true, hide the composer (e.g. a resolved thread). */
   readOnly?: boolean
   placeholder?: string
+  /**
+   * Internal @-mention roster. When non-empty, typing `@` opens an autocomplete
+   * dropdown. Defaulted to [] so the client review path (no roster) is unchanged.
+   */
+  mentionRoster?: MentionTarget[]
   className?: string
 }
 
@@ -36,10 +43,18 @@ export function CommentThread({
   onSend,
   readOnly,
   placeholder,
+  mentionRoster = [],
   className,
 }: CommentThreadProps) {
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const mention = useMentionAutocomplete({
+    roster: mentionRoster,
+    textareaRef,
+    body,
+    setBody,
+  })
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -95,16 +110,26 @@ export function CommentThread({
           onSubmit={handleSubmit}
           className="flex flex-col gap-2"
         >
-          <textarea
-            data-testid="comment-composer-input"
-            aria-label="Add a comment"
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            disabled={submitting}
-            rows={2}
-            placeholder={placeholder ?? 'Add a comment...'}
-            className="resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[13px] text-[#262626] outline-none focus:border-[#8e8e8e]"
-          />
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              data-testid="comment-composer-input"
+              aria-label="Add a comment"
+              value={body}
+              onChange={(event) => {
+                setBody(event.target.value)
+                mention.onBodyChange(event.target.value)
+              }}
+              onKeyDown={(event) => {
+                mention.handleKeyDown(event)
+              }}
+              disabled={submitting}
+              rows={2}
+              placeholder={placeholder ?? 'Add a comment...'}
+              className="w-full resize-none rounded-md border border-[#dbdbdb] bg-white px-2 py-1.5 text-[13px] text-[#262626] outline-none focus:border-[#8e8e8e]"
+            />
+            {mention.dropdown}
+          </div>
           <div className="flex items-center justify-end">
             <Button
               type="submit"

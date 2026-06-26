@@ -10,6 +10,21 @@
 import { relayStepLabel } from '@/lib/relay-step-labels'
 import type { MentionInboxRow } from '@/components/activity/types'
 
+/**
+ * Human reference for a post in notification copy. Prefers "Post N" (the post's
+ * 1-based position within its batch) when a `postNumber` rode in on the payload;
+ * otherwise falls back to the legacy short hash ref ("post abc123"). The builder
+ * does not currently source `postNumber` (it would cost a per-row batch index
+ * query), so today this returns the fallback. The signature is fallback-safe so
+ * a future cheap join can light up "Post N" with no further copy change.
+ */
+function postRef(payload: Record<string, unknown>): string {
+  const num = payload.postNumber
+  if (typeof num === 'number' && Number.isFinite(num)) return `Post ${num}`
+  const postId = (payload.postId as string) ?? ''
+  return `post ${postId.slice(0, 6)}`
+}
+
 export function renderSummary(row: MentionInboxRow): string {
   const actor = row.event.actor?.name ?? 'Someone'
   const clientName = row.client.name
@@ -134,8 +149,7 @@ export function renderSummary(row: MentionInboxRow): string {
       return `${prefix}Round ${round} review opened.`
     }
     case 'post_thread_opened': {
-      const postId = (payload.postId as string) ?? ''
-      return `${prefix}${actor} opened a thread on post ${postId.slice(0, 6)}.`
+      return `${prefix}${actor} opened a thread on ${postRef(payload)}.`
     }
     case 'post_thread_resolved': {
       const postId = (payload.postId as string) ?? ''
@@ -184,8 +198,7 @@ export function renderSummary(row: MentionInboxRow): string {
       return `${prefix}Image revisions requested on ${relay}. Open the review to see the pinned graphics.`
     }
     case 'post_comment_added': {
-      const postId = (payload.postId as string) ?? ''
-      return `${prefix}${actor} replied on post ${postId.slice(0, 6)}.`
+      return `${prefix}${actor} replied on ${postRef(payload)}.`
     }
     default:
       return `${prefix}${actor} mentioned you.`
@@ -211,6 +224,17 @@ export function resolveHref(row: MentionInboxRow): string {
   const clientId = row.client.id
   const eventId = row.event.id
 
+  // Internal-review events (pin reply / pin create on the AM markup page) tag
+  // their payload with surface: 'internal_review'. Route those to the internal
+  // review page instead of the run/batch view. Everything without the tag keeps
+  // its existing behavior.
+  if (
+    row.event.postId &&
+    row.postBatchId &&
+    (payload as { surface?: string }).surface === 'internal_review'
+  ) {
+    return `/clients/${clientId}/batches/${row.postBatchId}/preview#post-${row.event.postId}`
+  }
   if (row.event.postId && row.postBatchId) {
     return `/clients/${clientId}/batches/${row.postBatchId}#post-${row.event.postId}`
   }

@@ -1,3 +1,5 @@
+import type { MentionTarget } from '@/lib/mentions';
+
 // Used by Layer 1 IG/FB components and Layer 2 markup overlay
 export type PinLocation =
   | { kind: 'post' }
@@ -93,4 +95,11 @@ export type FeedPostProps = {
   // surfaces (e.g. the sidebar-driven client review view) that render thread
   // detail in their own panel rather than the floating popover.
   suppressInlinePopover?: boolean;
+  // mentionRoster: internal @-mention roster (AM + designer + admins). When
+  // non-empty, the new-pin draft composer + the pin reply popover show an @
+  // autocomplete dropdown. Defaulted to [] so the client review path (which
+  // passes no roster) renders no autocomplete and is unchanged. The composer
+  // still submits a plain body; the server actions resolve ids from body +
+  // the server-side roster, so this prop drives the autocomplete UI only.
+  mentionRoster?: MentionTarget[];
 };

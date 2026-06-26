@@ -174,6 +174,12 @@ describe('renderSummary, new kinds (parity sweep)', () => {
     ).toBe('Cedar Creek · Mollie opened a thread on post abc123.')
   })
 
+  it('post_thread_opened renders "Post N" when a postNumber is present', () => {
+    expect(
+      renderSummary(row({ kind: 'post_thread_opened', postId: 'abc123def456', postNumber: 5 })),
+    ).toBe('Cedar Creek · Mollie opened a thread on Post 5.')
+  })
+
   it('post_thread_resolved includes reason when present', () => {
     expect(
       renderSummary(row({ kind: 'post_thread_resolved', postId: 'abc123def456', resolvedReason: 'fixed' })),
@@ -442,6 +448,19 @@ describe('resolveHref, post-targeted events', () => {
 })
 
 describe('renderSummary, post_comment_added', () => {
+  it('renders "Post N" when a postNumber is present in the payload', () => {
+    const summary = renderSummary(
+      row({ kind: 'post_comment_added', postId: 'abc123def456', postNumber: 3 }),
+    )
+    expect(summary).toBe('Cedar Creek · Mollie replied on Post 3.')
+  })
+
+  it('falls back to the short post ref when no postNumber is present', () => {
+    const summary = renderSummary(row({ kind: 'post_comment_added', postId: 'abc123def456' }))
+    expect(summary).toMatch(/replied on post abc123/)
+    expect(summary.length).toBeGreaterThan(0)
+  })
+
   it('renders non-empty copy with the short post ref', () => {
     const summary = renderSummary(row({ kind: 'post_comment_added', postId: 'abc123def456' }))
     expect(summary).toMatch(/replied on post abc123/)
@@ -485,6 +504,78 @@ describe('resolveHref, post_comment_added', () => {
         ),
       ),
     ).toBe('/clients/c1/batches/b9#post-p7')
+  })
+})
+
+describe('resolveHref, internal_review surface', () => {
+  function internalReviewRow(): MentionInboxRow {
+    return row(
+      { kind: 'post_comment_added' },
+      {
+        postBatchId: 'b9',
+        event: {
+          id: 'e1',
+          kind: 'post_comment_added' as MentionInboxRow['event']['kind'],
+          postId: 'p7',
+          runId: null,
+          payload: { postId: 'p7', surface: 'internal_review' } as unknown as MentionInboxRow['event']['payload'],
+          createdAt: new Date('2026-05-21T12:00:00Z'),
+          actor: null,
+        } as MentionInboxRow['event'],
+      },
+    )
+  }
+
+  it('routes a surface:internal_review row to the /preview page #post anchor', () => {
+    expect(resolveHref(internalReviewRow())).toBe(
+      '/clients/c1/batches/b9/preview#post-p7',
+    )
+  })
+
+  it('the same row WITHOUT surface keeps the existing batch-page #post href (regression guard)', () => {
+    const r = internalReviewRow()
+    ;(r.event.payload as Record<string, unknown>).surface = undefined
+    expect(resolveHref(r)).toBe('/clients/c1/batches/b9#post-p7')
+  })
+
+  it('does NOT apply the /preview branch to a post_thread_opened row without surface', () => {
+    const r = row(
+      { kind: 'post_thread_opened' },
+      {
+        postBatchId: 'b9',
+        event: {
+          id: 'e1',
+          kind: 'post_thread_opened' as MentionInboxRow['event']['kind'],
+          postId: 'p7',
+          runId: null,
+          payload: { postId: 'p7' } as unknown as MentionInboxRow['event']['payload'],
+          createdAt: new Date('2026-05-21T12:00:00Z'),
+          actor: null,
+        } as MentionInboxRow['event'],
+      },
+    )
+    expect(resolveHref(r)).toBe('/clients/c1/batches/b9#post-p7')
+  })
+
+  it('falls back to the existing #post href when surface is set but no postBatchId', () => {
+    const r = row(
+      { kind: 'post_comment_added' },
+      {
+        postBatchId: null,
+        event: {
+          id: 'e1',
+          kind: 'post_comment_added' as MentionInboxRow['event']['kind'],
+          postId: 'p7',
+          runId: null,
+          payload: { postId: 'p7', surface: 'internal_review' } as unknown as MentionInboxRow['event']['payload'],
+          createdAt: new Date('2026-05-21T12:00:00Z'),
+          actor: null,
+        } as MentionInboxRow['event'],
+      },
+    )
+    // No postBatchId → neither the internal-review branch nor the post branch
+    // fire; falls back to the client root #comment anchor.
+    expect(resolveHref(r)).toBe('/clients/c1#comment-e1')
   })
 })
 

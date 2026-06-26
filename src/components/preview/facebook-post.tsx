@@ -65,6 +65,7 @@ export function FacebookPost(props: FeedPostProps) {
     captionOverride,
     onEditCaption,
     suppressInlinePopover = false,
+    mentionRoster = [],
   } = props
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
@@ -471,6 +472,7 @@ export function FacebookPost(props: FeedPostProps) {
           onComment={handleComment}
           onUploadImage={onUploadImage}
           onUseAsPostImage={mode === 'internal' ? onUseAsPostImage : undefined}
+          mentionRoster={mentionRoster}
           onResolve={
             mode === 'internal' && onResolveThread ? handleResolve : undefined
           }
@@ -486,6 +488,7 @@ export function FacebookPost(props: FeedPostProps) {
           anchor={draftPin.anchor}
           onSubmit={handleDraftSubmit}
           onUploadImage={onUploadImage}
+          mentionRoster={mentionRoster}
           onCancel={() => setDraftPin(null)}
         />
       ) : null}
