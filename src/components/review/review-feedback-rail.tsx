@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { PinCommentRow } from '@/components/review/pin-comment-row'
 import { CaptionDiffView } from '@/components/preview/caption-diff-view'
-import { FixWithAIButton } from '@/components/preview/fix-with-ai-button'
 import { diffText } from '@/lib/text-diff'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
@@ -93,19 +91,12 @@ function FeedbackRow({
 }: FeedbackRowProps) {
   const [pending, startTransition] = useTransition()
   const [generalDraft, setGeneralDraft] = useState('')
-  const router = useRouter()
 
   // Coordinate pins (image/caption) carry numbered badges and stay aligned with
   // the center canvas, which numbers only those. Post-level threads have no
   // coordinates, so they render in their own "General feedback" subsection.
   const pinThreads = post.threads.filter((t) => t.pin.kind !== 'post')
   const postThreads = post.threads.filter((t) => t.pin.kind === 'post')
-
-  const hasCopyFeedback =
-    post.verdict === 'changes_requested' ||
-    post.verdict === 'caption_edited' ||
-    post.threads.some((t) => t.status === 'open')
-  const showFixWithAi = !isDesigner && hasCopyFeedback
 
   // "Approved-clean" = approved verdict with no threads at all — collapsed.
   const isApprovedClean = post.verdict === 'approved' && post.threads.length === 0
@@ -335,18 +326,6 @@ function FeedbackRow({
                 </div>
               </div>
             )}
-
-          {showFixWithAi && (
-            <div className="mt-1">
-              <FixWithAIButton
-                postId={post.postId}
-                mode="internal"
-                label="Fix copy with AI"
-                originalCaption={post.caption}
-                onAccepted={() => router.refresh()}
-              />
-            </div>
-          )}
 
           {/* Mark addressed / Move back (AM only) */}
           {!isDesigner && (

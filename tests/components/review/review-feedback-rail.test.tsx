@@ -569,29 +569,22 @@ describe('ReviewFeedbackRail — Fix with AI (per post)', () => {
     )
   }
 
-  it('shows the Fix with AI button for a changes_requested post', () => {
+  // Fix with AI was removed from the AM "View client feedback" rail (Julio:
+  // it should not appear on this client-feedback surface). It must not render
+  // for any verdict/thread combination here.
+  it('never renders the Fix with AI button (removed from this surface)', () => {
     renderRail(vm({ postId: 'post-1', verdict: 'changes_requested', threads: [] }))
-    expect(screen.getByTestId('fix-with-ai-button')).toBeInTheDocument()
+    expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
   })
 
-  it('shows it for a caption_edited post', () => {
+  it('never renders Fix with AI for a caption_edited post', () => {
     renderRail(vm({ postId: 'post-1', verdict: 'caption_edited', suggestedCaption: 'x', reviewItemId: 'ri', threads: [] }))
-    expect(screen.getByTestId('fix-with-ai-button')).toBeInTheDocument()
-  })
-
-  it('hides it for an approved-clean post with no threads', () => {
-    renderRail(vm({ postId: 'post-1', verdict: 'approved', threads: [] }))
     expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
   })
 
-  it('hides it in the designer lane', () => {
-    renderRail(vm({ postId: 'post-1', verdict: 'changes_requested', threads: [] }), true)
-    expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
-  })
-
-  it('shows it for a verdict=none post that has an open thread', () => {
+  it('never renders Fix with AI for a verdict=none post with an open thread', () => {
     renderRail(vm({ postId: 'post-1', verdict: 'none', threads: [makeThread('t1')] }))
-    expect(screen.getByTestId('fix-with-ai-button')).toBeInTheDocument()
+    expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
   })
 })
 
