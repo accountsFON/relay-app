@@ -17,12 +17,14 @@ import { RelayStep } from '@prisma/client'
 // `steps.indexOf(batch.currentStep)`, so a live step missing here resolves to -1
 // and blanks the whole timeline (the bug when a batch advanced into
 // client_review / scheduling).
+// Merge design steps (2026-06-26): `design_revisions` is retired. Design Review
+// (`am_review_design`) is one AM-held step; "Request changes" is an in-step
+// action, not a separate timeline node.
 export const FULL_TRACK: RelayStep[] = [
   RelayStep.onboarding_gate,
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,
-  RelayStep.design_revisions,
   RelayStep.am_qa_pre_client,
   RelayStep.client_review, // merges old sent_to_client + client_decision
   RelayStep.implementing_revisions, // Post Revision (client-requested changes)
@@ -34,7 +36,6 @@ export const NO_REVIEW_TRACK: RelayStep[] = [
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,
-  RelayStep.design_revisions,
   RelayStep.am_qa_pre_client,
   // No client review => no client_review step and no client-requested
   // post-revision (implementing_revisions); QA goes straight to scheduling.

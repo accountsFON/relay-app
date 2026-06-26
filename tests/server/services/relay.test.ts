@@ -110,6 +110,7 @@ import {
   forceStep,
   getNotifyTargetsForStep,
   passBaton,
+  requestDesignChanges,
   sendBackBaton,
 } from '@/server/services/relay'
 
@@ -212,10 +213,12 @@ describe('passBaton', () => {
   })
 
   it('rejects send-back direction (caller should use sendBackBaton)', async () => {
+    // merge design steps: am_qa_pre_client -> am_review_design is the surviving
+    // send_back edge (was am_review_design -> design_revisions).
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_review_design,
+      currentStep: RelayStep.am_qa_pre_client,
       currentHolder: 'u1',
       label: '2026-05',
       client: { organizationId: 'org_1' },
@@ -223,7 +226,7 @@ describe('passBaton', () => {
     await expect(
       passBaton({
         batchId: 'b1',
-        toStep: RelayStep.design_revisions,
+        toStep: RelayStep.am_review_design,
         actorId: 'u1',
         actorOrganizationId: 'org_1',
       }),
@@ -357,7 +360,7 @@ describe('sendBackBaton', () => {
     ).rejects.toThrow(/non-send_back/)
   })
 
-  it('advances backward + reseeds + records send-back event', async () => {
+  it('advances backward + reseeds + records send-back event (merge design steps: QA -> am_review_design)', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
@@ -368,16 +371,103 @@ describe('sendBackBaton', () => {
     })
     const result = await sendBackBaton({
       batchId: 'b1',
-      toStep: RelayStep.design_revisions,
+      toStep: RelayStep.am_review_design,
       reason: 'logo too small',
       actorId: 'u_am',
       actorOrganizationId: 'org_1',
     })
-    expect(result.toStep).toBe(RelayStep.design_revisions)
+    expect(result.toStep).toBe(RelayStep.am_review_design)
     expect(currentTx.tx.relayEvent.create.mock.calls[0][0].data.reason).toBe(
       'logo too small',
     )
     expect(currentTx.tx.checklistItem.deleteMany).toHaveBeenCalledOnce()
+  })
+})
+
+describe('requestDesignChanges', () => {
+  function mockBatchAt(step: RelayStep, designerId: string | null = 'user_designer') {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: step,
+      label: '2026-05',
+      client: { organizationId: 'org_1', assignedDesignerId: designerId },
+    })
+  }
+
+  it('throws if batch not found', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce(null)
+    await expect(
+      requestDesignChanges({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_1' }),
+    ).rejects.toThrow(RelayServiceError)
+  })
+
+  it('throws on cross-tenant access (treated as not found)', async () => {
+    mockBatchAt(RelayStep.am_review_design)
+    await expect(
+      requestDesignChanges({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_OTHER' }),
+    ).rejects.toThrow(/not found/i)
+  })
+
+  it('throws unless the batch is at am_review_design', async () => {
+    mockBatchAt(RelayStep.am_qa_pre_client)
+    await expect(
+      requestDesignChanges({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_1' }),
+    ).rejects.toThrow(/Design Review/)
+  })
+
+  it('sets sub-state to awaiting_design_revisions without changing step or holder', async () => {
+    mockBatchAt(RelayStep.am_review_design)
+    const result = await requestDesignChanges({
+      batchId: 'b1',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.subState).toBe('awaiting_design_revisions')
+    const update = currentTx.tx.batch.update.mock.calls[0][0]
+    expect(update.data).toEqual({ currentSubState: 'awaiting_design_revisions' })
+    // No step or holder change.
+    expect(update.data).not.toHaveProperty('currentStep')
+    expect(update.data).not.toHaveProperty('currentHolder')
+  })
+
+  it('records a design_changes_requested event mentioning the designer with internal_review payload', async () => {
+    mockBatchAt(RelayStep.am_review_design, 'user_designer')
+    await requestDesignChanges({
+      batchId: 'b1',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.kind).toBe(ActivityKind.design_changes_requested)
+    const payload = data.payload as { surface?: string; batchId?: string }
+    expect(payload.surface).toBe('internal_review')
+    expect(payload.batchId).toBe('b1')
+    // designer is mentioned
+    expect(data.mentions.create).toEqual([{ mentionedUserId: 'user_designer' }])
+  })
+
+  it('no-ops the mention if no designer is assigned but still sets sub-state', async () => {
+    mockBatchAt(RelayStep.am_review_design, null)
+    const result = await requestDesignChanges({
+      batchId: 'b1',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.subState).toBe('awaiting_design_revisions')
+    expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.kind).toBe(ActivityKind.design_changes_requested)
+    // No mentions relation created when designer slot is empty.
+    expect(data.mentions).toBeUndefined()
+  })
+
+  it('does not throw even if the activity write fails (recordActivity swallows)', async () => {
+    mockBatchAt(RelayStep.am_review_design)
+    currentTx.tx.activityEvent.create.mockRejectedValueOnce(new Error('db down'))
+    await expect(
+      requestDesignChanges({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_1' }),
+    ).resolves.toMatchObject({ subState: 'awaiting_design_revisions' })
   })
 })
 
@@ -471,7 +561,7 @@ describe('sendBackBaton wasOverride flag', () => {
     })
     await sendBackBaton({
       batchId: 'b1',
-      toStep: RelayStep.design_revisions,
+      toStep: RelayStep.am_review_design,
       reason: 'logo too small',
       actorId: 'u_am',
       actorOrganizationId: 'org_1',
@@ -492,7 +582,7 @@ describe('sendBackBaton wasOverride flag', () => {
     })
     await sendBackBaton({
       batchId: 'b1',
-      toStep: RelayStep.design_revisions,
+      toStep: RelayStep.am_review_design,
       reason: 'logo too small',
       actorId: 'u_am',
       actorOrganizationId: 'org_1',

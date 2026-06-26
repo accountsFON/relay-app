@@ -25,7 +25,7 @@ export const STEP_COLOR: Record<RelayStep, StepCategoryColor> = {
   [RelayStep.in_design]: 'coral', // mockup explicit
   [RelayStep.designs_completed]: 'coral', // Caleb extrapolated (Designer = coral)
   [RelayStep.am_review_design]: 'yellow', // mockup explicit
-  [RelayStep.design_revisions]: 'coral', // Caleb extrapolated (Designer = coral)
+  [RelayStep.design_revisions]: 'coral', // retired (merge design steps 2026-06-26), kept for history
   [RelayStep.am_qa_pre_client]: 'yellow', // Caleb extrapolated (AM = yellow)
   [RelayStep.sent_to_client]: 'blue', // Caleb extrapolated (Client = blue)
   [RelayStep.client_decision]: 'blue', // Caleb extrapolated (Client = blue)

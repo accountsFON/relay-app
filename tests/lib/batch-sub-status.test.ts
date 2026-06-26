@@ -29,6 +29,25 @@ describe('deriveSubStatus', () => {
     expect(result.tone).toBe('progress')
   })
 
+  it('reports "Awaiting design revisions" on am_review_design with that sub-state (merge design steps)', () => {
+    const result = deriveSubStatus({
+      currentStep: RelayStep.am_review_design,
+      currentSubState: 'awaiting_design_revisions',
+      createdAt: new Date(),
+    })
+    expect(result.label).toBe('Awaiting design revisions')
+    expect(result.tone).toBe('attention')
+  })
+
+  it('reports "Ready for review" on am_review_design with no sub-state', () => {
+    const result = deriveSubStatus({
+      currentStep: RelayStep.am_review_design,
+      currentSubState: null,
+      createdAt: new Date(),
+    })
+    expect(result.label).toBe('Ready for review')
+  })
+
   it('humanizes copy sub-states', () => {
     expect(
       deriveSubStatus({

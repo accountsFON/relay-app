@@ -24,10 +24,10 @@ describe('OpenClientContentButton', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('renders on design_revisions', () => {
+  it('renders on am_review_design (Design Review, incl. the revision sub-state)', () => {
     render(
       <OpenClientContentButton
-        currentStep={RelayStep.design_revisions}
+        currentStep={RelayStep.am_review_design}
         assetsFolderUrl={FOLDER_URL}
       />,
     )
@@ -36,11 +36,11 @@ describe('OpenClientContentButton', () => {
     ).toBeInTheDocument()
   })
 
-  it('does not render on steps outside the design pair', () => {
+  it('does not render on steps outside the design phase', () => {
     const offSteps: RelayStep[] = [
       RelayStep.copy,
       RelayStep.designs_completed,
-      RelayStep.am_review_design,
+      RelayStep.design_revisions,
       RelayStep.sent_to_client,
       RelayStep.completed,
     ]

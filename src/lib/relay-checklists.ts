@@ -37,10 +37,10 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
     { label: 'Designs are free of spelling and layout issues' },
     { label: 'Designs reflect the themes of the copy' },
   ],
-  [RelayStep.design_revisions]: [
-    { label: 'All flagged revisions have been addressed' },
-    { label: 'Updated content has been uploaded where needed' },
-  ],
+  // Retired step (merge design steps 2026-06-26): "Request changes" is now an
+  // in-step action on am_review_design, so no live batch seeds this. Kept empty
+  // for record totality + pre-cutover historical batches.
+  [RelayStep.design_revisions]: [],
   [RelayStep.am_qa_pre_client]: [
     { label: 'Final captions have been reviewed' },
     { label: 'Designs have received a final pass review' },

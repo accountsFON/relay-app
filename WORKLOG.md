@@ -11,13 +11,13 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-06-26 triage (Batch A + B shipped; C/D remain):
-- [ ] **Merge Design Review + Design Revision into one Design step** — new enum + migration + backfill; designer in-step handoff notifies + routes to internal review. (Batch C)
-- [ ] **Next-action board** replacing the cost-breakdown banner slot — per-step "primary action + destination" (e.g. design step -> "Review designs" -> internal review). (Batch C)
+From the 2026-06-26 triage (Batch A + B + the design-step merge shipped; next-action board + D remain):
+- [ ] **Next-action board** replacing the cost-breakdown banner slot — per-step "primary action + destination" (e.g. design step -> "Review designs" -> internal review). **Must also give the DESIGNER a visible queue item for batches at `am_review_design` + sub-state `awaiting_design_revisions`** (the merge made those AM-held, so they dropped off the designer dashboard/kanban; the designer is still notified durably via the bell deep-link, but the board surface is gone until this lands). (Batch C part 2)
 - [ ] **Internal review parity with client review** — reuse `ReviewPostCard`; needs a scoping brainstorm. (Batch D)
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
 - [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
+- [ ] **(follow-up) Refresh the admin force-step list** (`admin-force-step-section.tsx` `STEP_ORDER`) to the live step set — it predates the 2026-06-22 rework (omits `client_review`/`scheduling`, lists their retirees). `design_revisions` already removed.
 
 ## Notes / standing rules
 
@@ -28,7 +28,26 @@ From the 2026-06-26 triage (Batch A + B shipped; C/D remain):
 
 ## Shipped
 
-- [x] **2026-06-26 — Remove Fix-with-AI from the /preview markup pin popover** (PR #TBD)
+- [x] **2026-06-26 — Merge Design Review + Design Revision into one step (Batch C, part 1)** (PR #TBD)
+  Collapsed the design phase to one AM-held `am_review_design` (Design Review) step; `design_revisions`
+  is retired (kept in the enum/HOLDER_ROLE for history). The review<->revise loop edges were removed
+  from both transition tables, and the QA send-back was redirected `am_qa_pre_client -> am_review_design`
+  (its only send-back target, since design_revisions is gone). New in-step **"Request changes"** action
+  (`requestDesignChanges`): AM-only, sets `currentSubState='awaiting_design_revisions'` with NO step/holder
+  change, and records a new `design_changes_requested` ActivityKind mentioning the designer with
+  `surface:'internal_review'`+batchId so their bell deep-links to the internal review page (`/preview`).
+  Ripple: timeline arrays (8/6), labels/colors/checklist/dashboard retire `design_revisions`, sub-status
+  label "Awaiting design revisions", the "Request changes" button replaces send-back-to-revision on the
+  batch page, and the "Open client content" chip now shows on `am_review_design` so designers keep content
+  access during revisions. Migrations: additive `ActivityKind` ADD VALUE + a data backfill
+  (`design_revisions` batches -> `am_review_design`, AM holder, awaiting-revisions sub-state, checklist
+  reseeded). Built subagent-driven TDD (10 tasks); whole-branch review no Critical, 1 Important (designer
+  board visibility — deferred to the next-action board, see Open) + 1 Minor (admin force-step list, fixed).
+  Full unit suite 2012 pass, tsc + eslint clean. NOTE: touches `relay.ts` + `schema.prisma`, so the
+  Trigger.dev pipeline deploy fires on merge (expected; no generation logic changed). Spec + plan:
+  `vault projects/relay-app/2026-06-26-merge-design-steps-{design,plan}.md`.
+
+- [x] **2026-06-26 — Remove Fix-with-AI from the /preview markup pin popover** (PR #273)
   Per Julio: Fix copy with AI should only live on the main relay page (whose post cards already have
   "Regenerate caption with AI"); the feedback-based rewrite comes out everywhere else. #270 removed it
   from the View-client-feedback rail; this removes its last mount (the `/preview` pin popover) plus the

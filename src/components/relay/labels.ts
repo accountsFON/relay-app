@@ -14,13 +14,13 @@ export const STEP_LABEL: Record<RelayStep, string> = {
   [RelayStep.copy]: 'Copy Review',
   [RelayStep.in_design]: 'Initial Design',
   [RelayStep.am_review_design]: 'Design Review',
-  [RelayStep.design_revisions]: 'Design Revision',
   [RelayStep.am_qa_pre_client]: 'Pre-Client QA',
   [RelayStep.implementing_revisions]: 'Post Revision',
   [RelayStep.client_review]: 'Client Review',
   [RelayStep.scheduling]: 'Scheduling',
   [RelayStep.completed]: 'Completed',
   // Retired steps (keep existing labels for historical rows)
+  [RelayStep.design_revisions]: 'Design Revision', // retired (merge design steps 2026-06-26)
   [RelayStep.designs_completed]: 'Designs done',
   [RelayStep.sent_to_client]: 'With client',
   [RelayStep.client_decision]: 'Client decision',
@@ -78,13 +78,13 @@ export const STEP_ROLE: Record<RelayStep, RelayRole> = {
   [RelayStep.copy]: RelayRole.am,
   [RelayStep.in_design]: RelayRole.designer,
   [RelayStep.am_review_design]: RelayRole.am,
-  [RelayStep.design_revisions]: RelayRole.designer,
   [RelayStep.am_qa_pre_client]: RelayRole.am,
   [RelayStep.implementing_revisions]: RelayRole.am,
   [RelayStep.client_review]: RelayRole.client, // NEW
   [RelayStep.scheduling]: RelayRole.am, // NEW
   [RelayStep.completed]: RelayRole.am,
   // Retired steps
+  [RelayStep.design_revisions]: RelayRole.designer, // retired (merge design steps 2026-06-26)
   [RelayStep.designs_completed]: RelayRole.designer,
   [RelayStep.sent_to_client]: RelayRole.client,
   [RelayStep.client_decision]: RelayRole.client,

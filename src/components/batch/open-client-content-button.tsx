@@ -13,9 +13,11 @@ interface Props {
  * the client's content folder (Google Drive) in a new tab.
  *
  * Visibility gate, Phase 3 item 18:
- *   - Renders only when `currentStep` is `in_design` or `design_revisions`.
- *     These are the steps where a designer is the natural holder; the chip
- *     is harmless on other steps but the step gate keeps the row tidy.
+ *   - Renders only when `currentStep` is `in_design` or `am_review_design`.
+ *     These are the design-phase steps where a designer works the content
+ *     (initial design, and the revision sub-state of Design Review after the
+ *     2026-06-26 merge that retired `design_revisions`). The chip is harmless
+ *     on other steps but the step gate keeps the row tidy.
  *   - Hides entirely when `assetsFolderUrl` is null or empty. The folder is
  *     optional per client; a dead button is worse than a missing one.
  *
@@ -25,7 +27,7 @@ export function OpenClientContentButton({ currentStep, assetsFolderUrl }: Props)
   if (!assetsFolderUrl) return null
   if (
     currentStep !== RelayStep.in_design &&
-    currentStep !== RelayStep.design_revisions
+    currentStep !== RelayStep.am_review_design
   ) {
     return null
   }

@@ -16,13 +16,13 @@ export const RELAY_STEP_LABELS: Record<RelayStep, string> = {
   [RelayStep.copy]: 'Copy Review',
   [RelayStep.in_design]: 'Initial Design',
   [RelayStep.am_review_design]: 'Design Review',
-  [RelayStep.design_revisions]: 'Design Revision',
   [RelayStep.am_qa_pre_client]: 'Pre-Client QA',
   [RelayStep.implementing_revisions]: 'Post Revision',
   [RelayStep.client_review]: 'Client Review',
   [RelayStep.scheduling]: 'Scheduling',
   [RelayStep.completed]: 'Completed',
   // Retired steps (keep existing labels for historical rows)
+  [RelayStep.design_revisions]: 'Design Revision', // retired (merge design steps 2026-06-26)
   [RelayStep.designs_completed]: 'Design complete',
   [RelayStep.sent_to_client]: 'Sent to client',
   [RelayStep.client_decision]: 'Client review',

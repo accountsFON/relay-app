@@ -518,6 +518,20 @@ describe('revision_images_requested', () => {
   })
 })
 
+describe('design_changes_requested', () => {
+  it('renders the requested-design-changes message with the batch label', () => {
+    const event = makeEvent(ActivityKind.design_changes_requested, {
+      batchId: 'b1',
+      batchLabel: 'Greenway Jun 2026',
+      surface: 'internal_review',
+    })
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/requested design changes on "Greenway Jun 2026" — designer notified/),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('batch_force_stepped', () => {
   it('renders the force moved message with human step labels', () => {
     const event = makeEvent(ActivityKind.batch_force_stepped, {

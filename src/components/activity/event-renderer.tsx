@@ -500,6 +500,15 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         message: `replied on ${postRef}`,
       }
     }
+    case 'design_changes_requested': {
+      const batchLabel = stringField(p, 'batchLabel')
+      const relay = batchLabel ? `"${batchLabel}"` : 'this relay'
+      return {
+        icon: Pencil,
+        tone: 'default',
+        message: `requested design changes on ${relay} — designer notified`,
+      }
+    }
   }
   // Fallback for not-yet-modeled kinds.
   return {

@@ -112,6 +112,7 @@ enum ActivityKind {
 
   post_thread_opened
   post_comment_added
+  design_changes_requested
   post_thread_resolved
   post_caption_ai_fixed
   magic_link_created

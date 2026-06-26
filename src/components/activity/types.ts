@@ -216,6 +216,12 @@ export type ModeledActivityPayload =
       batchLabel: string
       reviewSessionId: string
     }
+  | {
+      kind: 'design_changes_requested'
+      batchId: string
+      batchLabel: string
+      surface: 'internal_review'
+    }
 
 type ModeledKind = ModeledActivityPayload['kind']
 type UnmodeledKind = Exclude<ActivityKind, ModeledKind>

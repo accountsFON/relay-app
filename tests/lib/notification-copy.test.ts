@@ -579,6 +579,72 @@ describe('resolveHref, internal_review surface', () => {
   })
 })
 
+describe('resolveHref, batch-level internal_review (design_changes_requested)', () => {
+  function designChangesRow(): MentionInboxRow {
+    // No postId, surface internal_review, batchId in payload.
+    return row(
+      { kind: 'design_changes_requested', batchId: 'b9', surface: 'internal_review' },
+      {
+        postBatchId: null,
+        event: {
+          id: 'e1',
+          kind: 'design_changes_requested' as MentionInboxRow['event']['kind'],
+          postId: null,
+          runId: null,
+          payload: { batchId: 'b9', surface: 'internal_review' } as unknown as MentionInboxRow['event']['payload'],
+          createdAt: new Date('2026-06-26T12:00:00Z'),
+          actor: { id: 'u1', name: 'Mollie', avatarUrl: null },
+        } as MentionInboxRow['event'],
+      },
+    )
+  }
+
+  it('routes a batch-level internal_review row (no postId) to the /preview page', () => {
+    expect(resolveHref(designChangesRow())).toBe('/clients/c1/batches/b9/preview')
+  })
+
+  it('does NOT shadow the post-level internal_review branch', () => {
+    // Regression: a post-scoped internal_review row still anchors to #post.
+    const r = row(
+      { kind: 'post_comment_added' },
+      {
+        postBatchId: 'b9',
+        event: {
+          id: 'e1',
+          kind: 'post_comment_added' as MentionInboxRow['event']['kind'],
+          postId: 'p7',
+          runId: null,
+          payload: { postId: 'p7', batchId: 'b9', surface: 'internal_review' } as unknown as MentionInboxRow['event']['payload'],
+          createdAt: new Date('2026-06-26T12:00:00Z'),
+          actor: null,
+        } as MentionInboxRow['event'],
+      },
+    )
+    expect(resolveHref(r)).toBe('/clients/c1/batches/b9/preview#post-p7')
+  })
+
+  it('a batch-level row WITHOUT the surface tag keeps the generic #comment href', () => {
+    const r = row({ kind: 'design_changes_requested', batchId: 'b9' })
+    expect(resolveHref(r)).toBe('/clients/c1/batches/b9#comment-e1')
+  })
+})
+
+describe('renderSummary, design_changes_requested', () => {
+  it('renders the requested-design-changes copy with the batch label', () => {
+    expect(
+      renderSummary(
+        row({ kind: 'design_changes_requested', batchLabel: 'May batch', surface: 'internal_review' }),
+      ),
+    ).toBe('Cedar Creek · Mollie requested design changes on "May batch". Open the internal review to see the notes.')
+  })
+
+  it('falls back to "a relay" when batchLabel is missing', () => {
+    expect(
+      renderSummary(row({ kind: 'design_changes_requested', surface: 'internal_review' })),
+    ).toBe('Cedar Creek · Mollie requested design changes on a relay. Open the internal review to see the notes.')
+  })
+})
+
 describe('renderSummary, batch_force_stepped', () => {
   it('renders the force moved copy with batch label and step label', () => {
     expect(

@@ -44,6 +44,7 @@ import { SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
 import {
   finishBatchAction,
   passBatonAction,
+  requestDesignChangesAction,
   sendBackBatonAction,
   tickChecklistItemAction,
 } from '@/server/actions/relay'
@@ -200,6 +201,17 @@ export function ChecklistPanel({
         : 'Send to final QA'
     }
     return `Pass to ${STEP_LABEL[nextStep]}`
+  }
+
+  function requestDesignChanges() {
+    startActing(async () => {
+      try {
+        await requestDesignChangesAction({ batchId: batch.id })
+        router.refresh()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Request changes failed')
+      }
+    })
   }
 
   function confirmSendBack() {
@@ -378,6 +390,21 @@ export function ChecklistPanel({
               </Button>
             </SimpleTooltip>
           ) : null}
+
+          {batch.currentStep === RelayStep.am_review_design && (
+            <SimpleTooltip content="Notify the designer that this batch needs changes. The relay stays on Design Review while they rework the visuals.">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isActing}
+                className="w-full"
+                onClick={requestDesignChanges}
+                data-testid="request-design-changes"
+              >
+                {isActing ? 'Requesting…' : 'Request changes'}
+              </Button>
+            </SimpleTooltip>
+          )}
 
           {legalSendBackTargets.length > 0 && (
             <DropdownMenu>

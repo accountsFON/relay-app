@@ -430,6 +430,10 @@ export async function listClientPipelineBatches(linkedClientId: string) {
           // batch should sit here after the backfill. Enum value preserved
           // for historical RelayEvent rows.
           'am_review_design',
+          // `design_revisions` retired per merge design steps (2026-06-26); no
+          // live batch lands here after the backfill (they move to
+          // am_review_design, which is already in this list). Kept in the filter
+          // so any pre-cutover historical row still surfaces in the client view.
           'design_revisions',
           'am_qa_pre_client',
           'ready_to_schedule',

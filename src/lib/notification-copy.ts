@@ -200,6 +200,11 @@ export function renderSummary(row: MentionInboxRow): string {
     case 'post_comment_added': {
       return `${prefix}${actor} replied on ${postRef(payload)}.`
     }
+    case 'design_changes_requested': {
+      const batchLabel = payload.batchLabel as string | undefined
+      const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
+      return `${prefix}${actor} requested design changes on ${relay}. Open the internal review to see the notes.`
+    }
     default:
       return `${prefix}${actor} mentioned you.`
   }
@@ -237,6 +242,18 @@ export function resolveHref(row: MentionInboxRow): string {
   }
   if (row.event.postId && row.postBatchId) {
     return `/clients/${clientId}/batches/${row.postBatchId}#post-${row.event.postId}`
+  }
+  // Batch-level internal-review events (merge design steps: design_changes_requested)
+  // carry surface: 'internal_review' + a payload batchId but NO postId. Route the
+  // designer's bell to the batch internal review page (no #post anchor). Placed
+  // AFTER the post-level branch so it never shadows post-scoped internal_review
+  // events, and BEFORE the generic batchId #comment branch below.
+  if (
+    !row.event.postId &&
+    (payload as { surface?: string }).surface === 'internal_review' &&
+    typeof payload.batchId === 'string'
+  ) {
+    return `/clients/${clientId}/batches/${payload.batchId}/preview`
   }
   const reviewSessionId =
     typeof payload.reviewSessionId === 'string' ? payload.reviewSessionId : null

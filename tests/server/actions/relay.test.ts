@@ -20,6 +20,7 @@ vi.mock('@/server/services/relay', () => ({
   sendBackBaton: vi.fn(),
   finishBatch: vi.fn(),
   forceStep: vi.fn(),
+  requestDesignChanges: vi.fn(),
 }))
 
 vi.mock('@/server/services/activity', () => ({
@@ -48,12 +49,14 @@ import {
   sendBackBaton,
   finishBatch,
   forceStep,
+  requestDesignChanges,
 } from '@/server/services/relay'
 import {
   passBatonAction,
   sendBackBatonAction,
   finishBatchAction,
   forceStepAction,
+  requestDesignChangesAction,
   tickChecklistItemAction,
   setBatchAutoAdvanceAction,
 } from '@/server/actions/relay'
@@ -96,6 +99,10 @@ beforeEach(() => {
     newHolderId: 'u_designer',
   })
   vi.mocked(finishBatch).mockResolvedValue({ batchId: 'b1' })
+  vi.mocked(requestDesignChanges).mockResolvedValue({
+    batchId: 'b1',
+    subState: 'awaiting_design_revisions',
+  })
 })
 
 describe('passBatonAction holder gate', () => {
@@ -246,6 +253,38 @@ describe('sendBackBatonAction holder gate', () => {
       }),
     ).rejects.toThrow(/only the current holder, an AM, or an admin/i)
     expect(sendBackBaton).not.toHaveBeenCalled()
+  })
+})
+
+describe('requestDesignChangesAction holder gate', () => {
+  it('AM holder can request changes', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    mockBatch('u_actor')
+
+    await requestDesignChangesAction({ batchId: 'b1' })
+
+    expect(requestDesignChanges).toHaveBeenCalledWith(
+      expect.objectContaining({ batchId: 'b1', actorId: 'u_actor', actorOrganizationId: 'org_1' }),
+    )
+  })
+
+  it('admin (not holder) can override', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    mockBatch('u_someone_else')
+
+    await requestDesignChangesAction({ batchId: 'b1' })
+
+    expect(requestDesignChanges).toHaveBeenCalledOnce()
+  })
+
+  it('designer (not holder) is rejected', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    mockBatch('u_someone_else')
+
+    await expect(requestDesignChangesAction({ batchId: 'b1' })).rejects.toThrow(
+      /only the current holder, an AM, or an admin/i,
+    )
+    expect(requestDesignChanges).not.toHaveBeenCalled()
   })
 })
 
