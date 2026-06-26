@@ -22,6 +22,19 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Shipped
 
+- [x] **2026-06-26 — View as user (admin impersonation)** (PR #266)
+  A searchable top-bar **View as** dropdown lets an admin (or platform owner) fully act as another
+  non-admin user, seeing ONLY that user's scoped clients/relays/inbox — a full identity substitution,
+  not an overlay. Built on the existing step-into pattern: a `relay_view_as_user` cookie read by
+  `getOrgContext`, which re-validates eligibility every request and rebuilds the context as the target
+  with `platformOwner` forced false (so a forged cookie is inert and impersonation can never elevate).
+  Targets are non-admins only (org-scoped for admins, any org for the platform owner). Amber Exit banner
+  on every page while acting-as; `ImpersonationLog` table records start/stop with the real actor; 60-min
+  auto-expiry; `secure` cookie. 33 new unit tests, tsc clean, opus whole-branch review READY TO MERGE.
+  **Live-verified on prod:** acted as Payton (AM) → Admin/Platform nav disappeared, Clients showed only
+  his 2 assigned clients (vs the full ADMARK roster), Exit reverted cleanly, and `impersonation_logs`
+  recorded the start + stop. Spec: `vault projects/relay-app/2026-06-26-view-as-user-design.md`.
+
 - [x] **2026-06-25 — Invite member: show the real failure reason instead of a masked 500** (PR #265)
   Inviting a member by email failed with the opaque "An error occurred in the Server Components render"
   digest. Root cause was external: the ADMARK org hit Clerk's **dev-instance cap of 5 memberships**
