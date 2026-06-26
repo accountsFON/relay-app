@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
 import { Button } from '@/components/ui/button'
 import { Linkify } from '@/components/ui/linkify'
-import { FixWithAIButton } from '@/components/preview/fix-with-ai-button'
 import {
   CommentImageAttachButton,
   type AttachedImage,
@@ -69,20 +68,6 @@ export type PinPopoverProps = {
   onClose?: () => void
   className?: string
   /**
-   * Post id is required to render the Fix with AI button (which calls the
-   * /api/posts/[id]/fix-with-ai endpoint). When omitted, the button is
-   * suppressed (host hasn't wired the integration yet). Layer 3 plan
-   * Task 3.1 wires this from the preview page shell.
-   */
-  postId?: string
-  /**
-   * Original caption text for the post the thread belongs to. Optional;
-   * surfaces in the diff modal so AM edits recompute the diff live.
-   */
-  postCaption?: string
-  /** Called after the AM accepts an AI fix so the host can refresh. */
-  onFixAccepted?: () => void
-  /**
    * When provided, renders an "Attach image" button in the reply composer.
    * The host passes uploadCommentImage partially applied with the user's
    * identity so the component stays identity-agnostic.
@@ -117,9 +102,6 @@ export function PinPopover({
   onResolve,
   onClose,
   className,
-  postId,
-  postCaption,
-  onFixAccepted,
   onUploadImage,
   onUseAsPostImage,
   mentionRoster = [],
@@ -223,15 +205,6 @@ export function PinPopover({
         ]
 
   const showResolveButton = mode === 'internal' && thread.status === 'open'
-  // Fix with AI is AM-only and only for post-level / caption-text threads
-  // (image pins don't drive caption rewrites in v1). The button itself
-  // guards on these flags as well; we also need a known postId to call the
-  // API endpoint, so suppress when missing.
-  const showFixWithAi =
-    mode === 'internal' &&
-    thread.status === 'open' &&
-    thread.pin.kind !== 'image' &&
-    typeof postId === 'string'
 
   return (
     <div
@@ -354,16 +327,6 @@ export function PinPopover({
           />
         ) : null}
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {showFixWithAi && postId ? (
-            <FixWithAIButton
-              postId={postId}
-              threadId={thread.id}
-              pinKind={thread.pin.kind}
-              mode={mode}
-              originalCaption={postCaption}
-              onAccepted={onFixAccepted}
-            />
-          ) : null}
           {showResolveButton && onResolve ? (
             <Button
               type="button"

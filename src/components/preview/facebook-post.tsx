@@ -467,8 +467,6 @@ export function FacebookPost(props: FeedPostProps) {
           thread={popoverThread}
           anchor={popoverAnchor}
           mode={mode}
-          postId={post.id}
-          postCaption={post.caption}
           onComment={handleComment}
           onUploadImage={onUploadImage}
           onUseAsPostImage={mode === 'internal' ? onUseAsPostImage : undefined}

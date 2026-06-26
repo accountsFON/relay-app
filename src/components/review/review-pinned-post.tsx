@@ -209,8 +209,6 @@ export function ReviewPinnedPost({
           thread={popoverThread}
           anchor={anchor}
           mode="internal"
-          postId={postId}
-          postCaption={caption}
           onUploadImage={onUploadImage}
           onUseAsPostImage={onUseAsPostImage}
           onComment={async (body, image) => {
