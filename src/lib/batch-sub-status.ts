@@ -44,6 +44,11 @@ export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
       return { label: 'Implementing revisions', tone: 'progress', daysHere }
 
     case RelayStep.am_review_design:
+      // Merge design steps (2026-06-26): "Request changes" sets this sub-state
+      // in-step (no baton handoff) while the designer reworks the visuals.
+      if (batch.currentSubState === 'awaiting_design_revisions') {
+        return { label: 'Awaiting design revisions', tone: 'attention', daysHere }
+      }
       return { label: 'Ready for review', tone: 'attention', daysHere }
 
     case RelayStep.am_qa_pre_client:
