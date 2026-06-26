@@ -70,6 +70,10 @@ vi.mock('@/server/lib/promotePostFeedback', () => ({
 // --- mock notifyClientOfAmReply (Task 4) ---
 vi.mock('@/server/lib/notifyClientOfAmReply', () => ({ notifyClientOfAmReply: vi.fn() }))
 
+// --- mock internal-review notify helpers (internal review notifications) ---
+vi.mock('@/server/lib/notifyInternalThreadReply', () => ({ notifyInternalThreadReply: vi.fn() }))
+vi.mock('@/server/lib/internalMentionRoster', () => ({ internalMentionRosterForClient: vi.fn() }))
+
 import { getOrgContext } from '@/server/middleware/auth'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { requireCan } from '@/server/middleware/permissions'
@@ -78,6 +82,8 @@ import { db } from '@/db/client'
 import { attachMediaToPost } from '@/lib/media'
 import { promotePostFeedbackToThread } from '@/server/lib/promotePostFeedback'
 import { notifyClientOfAmReply } from '@/server/lib/notifyClientOfAmReply'
+import { notifyInternalThreadReply } from '@/server/lib/notifyInternalThreadReply'
+import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
 import {
   createThreadAction,
   addCommentAction,
@@ -154,7 +160,11 @@ beforeEach(() => {
   } as never)
   vi.mocked(db.postThread.findUnique).mockResolvedValue({
     postId: 'post_1',
+    post: { clientId: 'client_1' },
   } as never)
+
+  // Internal-review roster default: empty (no roster members).
+  vi.mocked(internalMentionRosterForClient).mockResolvedValue([])
 
   // postComment findUnique: default happy-path comment with a valid imageUrl
   vi.mocked(db.postComment.findUnique).mockResolvedValue({
@@ -538,5 +548,54 @@ describe('AM reply notifies the client', () => {
     vi.mocked(addComment).mockResolvedValue({ id: 'c1', threadId: 't1' } as never)
     await addCommentAction({ threadId: 't1', body: 'reply' })
     expect(notifyClientOfAmReply).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Internal reply bell notify (participants / holder / mentioned)
+// ---------------------------------------------------------------------------
+
+describe('addCommentAction internal reply notify', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue(null)
+    vi.mocked(addComment).mockResolvedValue({ id: 'c1', threadId: 't1' } as never)
+    vi.mocked(db.postThread.findUnique).mockResolvedValue({
+      postId: 'post_1',
+      post: { clientId: 'client_1' },
+    } as never)
+    vi.mocked(internalMentionRosterForClient).mockResolvedValue([])
+  })
+
+  it('calls notifyInternalThreadReply with resolved mentionedUserIds for an internal author', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(internalMentionRosterForClient).mockResolvedValue([
+      { id: 'u_des', name: 'Dan Designer', handle: 'dan.designer' },
+    ])
+    await addCommentAction({ threadId: 't1', body: 'hey @dan.designer take a look' })
+
+    expect(internalMentionRosterForClient).toHaveBeenCalledWith('client_1')
+    expect(notifyInternalThreadReply).toHaveBeenCalledWith({
+      threadId: 't1',
+      actorUserId: 'u_am',
+      mentionedUserIds: ['u_des'],
+    })
+  })
+
+  it('resolves no mentions when the body has none (still notifies participants/holder)', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    await addCommentAction({ threadId: 't1', body: 'plain reply' })
+    expect(notifyInternalThreadReply).toHaveBeenCalledWith({
+      threadId: 't1',
+      actorUserId: 'u_am',
+      mentionedUserIds: [],
+    })
+  })
+
+  it('does NOT call notifyInternalThreadReply when a magic-link reviewer comments', async () => {
+    vi.mocked(getOrgContext).mockResolvedValue(null as never)
+    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue({ tokenHash: 'HASH', name: 'Dana' } as never)
+    await addCommentAction({ threadId: 't1', body: 'reply @dan.designer' })
+    expect(notifyInternalThreadReply).not.toHaveBeenCalled()
   })
 })

@@ -21,6 +21,9 @@ import type { PinLocation } from '@/types/preview'
 import { isCommentImageBlobUrl } from '@/lib/comment-image'
 import { attachMediaToPost } from '@/lib/media'
 import { notifyClientOfAmReply } from '@/server/lib/notifyClientOfAmReply'
+import { notifyInternalThreadReply } from '@/server/lib/notifyInternalThreadReply'
+import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
+import { resolveMentionedUserIds } from '@/lib/mentions'
 
 type CommentImage = { url: string; width?: number; height?: number }
 
@@ -161,7 +164,28 @@ export async function addCommentAction(input: {
     imageHeight: image?.height ?? null,
   })
   if (author.kind === 'am') {
+    // Client-facing email reply (early-returns on a purely internal thread).
     await notifyClientOfAmReply({ threadId: input.threadId, amUserId: author.userId })
+
+    // Internal-review bell notify: ping thread participants + relay holder +
+    // any @-mentioned roster members. Mentions are resolved server-side from
+    // the body against the internal roster (never trust a client-sent list).
+    // The two notifies are independent: an AM reply on a client thread can
+    // both email the client and bell internal participants.
+    const thread = await db.postThread.findUnique({
+      where: { id: input.threadId },
+      select: { post: { select: { clientId: true } } },
+    })
+    const clientId = thread?.post?.clientId
+    if (clientId) {
+      const roster = await internalMentionRosterForClient(clientId)
+      const mentionedUserIds = resolveMentionedUserIds(input.body, roster)
+      await notifyInternalThreadReply({
+        threadId: input.threadId,
+        actorUserId: author.userId,
+        mentionedUserIds,
+      })
+    }
   }
   await revalidatePathForThread(input.threadId)
   return result
