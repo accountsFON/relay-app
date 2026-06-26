@@ -24,6 +24,8 @@ import { TipsMenu } from '@/components/onboarding/tips-menu'
 import type { UserRole } from '@/lib/types'
 import { ReportBugButton } from '@/components/feedback/report-bug-button'
 import { Toaster } from 'sonner'
+import { ViewAsDropdown } from '@/components/view-as-dropdown'
+import { ImpersonationBanner } from '@/components/impersonation-banner'
 
 type BadgeKey = 'unreadMentions'
 type NavItem = {
@@ -86,6 +88,8 @@ export function AppShell({
   unreadMentions = 0,
   role,
   seenTours,
+  showViewAs = false,
+  impersonation = null,
 }: {
   children: React.ReactNode
   showAdmin?: boolean
@@ -100,6 +104,8 @@ export function AppShell({
   unreadMentions?: number
   role: UserRole
   seenTours: string[]
+  showViewAs?: boolean
+  impersonation?: { targetUserName: string } | null
 }) {
   const navItems = [
     ...baseNavItems,
@@ -131,7 +137,9 @@ export function AppShell({
     <NotificationProvider>
     <CompletionNotificationsProvider>
     <TourProvider role={role} seenTours={seenTours} onTourNavChange={setTourNavOpen}>
-    <div className="flex h-dvh flex-col md:flex-row bg-neutral-50">
+    <div className="flex h-dvh flex-col bg-neutral-50">
+      {impersonation && <ImpersonationBanner targetName={impersonation.targetUserName} role={role} />}
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-neutral-900/40 md:hidden"
@@ -235,6 +243,7 @@ export function AppShell({
             className="h-8 w-auto"
           />
           <div className="ml-auto flex items-center gap-2">
+            {showViewAs && <ViewAsDropdown />}
             <MobileSearchSheet />
             <DateScopePill />
             <div className="relative">
@@ -245,6 +254,7 @@ export function AppShell({
         </header>
 
         <header className="hidden h-12 shrink-0 items-center justify-end gap-3 border-b border-neutral-200 bg-neutral-100/40 px-6 md:flex">
+          {showViewAs && <ViewAsDropdown />}
           <SearchBar />
           <InFlightRunsPill />
           <DateScopePill />
@@ -261,6 +271,7 @@ export function AppShell({
         <main tabIndex={0} className="flex-1 overflow-y-auto focus:outline-none">
           {children}
         </main>
+      </div>
       </div>
       <DecorationCorner />
     </div>
