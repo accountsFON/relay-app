@@ -120,7 +120,7 @@ describe('nextActionForRelay', () => {
       expect(a.secondaryButton?.href).toBe('https://drive.example/folder')
     })
 
-    it('AM is the non-actor here and waits on design revisions', () => {
+    it('AM is the non-actor here and waits on design revisions, but can open the internal review', () => {
       const a = nextActionForRelay({
         ...BASE,
         step: RelayStep.am_review_design,
@@ -130,7 +130,8 @@ describe('nextActionForRelay', () => {
       })
       expect(a.tone).toBe('waiting')
       expect(a.title).toMatch(/waiting on design revisions/i)
-      expect(a.button).toBeUndefined()
+      expect(a.button?.label).toMatch(/open internal review/i)
+      expect(a.button?.href).toBe(PREVIEW)
     })
   })
 
