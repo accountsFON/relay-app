@@ -72,10 +72,31 @@ describe('renderSummary, existing kinds', () => {
     expect(out).toBe('Cedar Creek · Mollie asked you to revise caption: "Tighten hook"')
   })
 
-  it('batch_revision_completed renders without item details', () => {
+  it('batch_revision_completed (legacy, no surface) renders the flat copy', () => {
     expect(renderSummary(row({ kind: 'batch_revision_completed' }))).toBe(
       'Cedar Creek · Mollie marked the revision complete.',
     )
+  })
+
+  it('batch_revision_completed on internal_review names the batch and says re-review', () => {
+    expect(
+      renderSummary(
+        row({
+          kind: 'batch_revision_completed',
+          surface: 'internal_review',
+          batchId: 'b1',
+          batchLabel: 'May batch',
+        }),
+      ),
+    ).toBe('Cedar Creek · Mollie finished revisions on "May batch" — ready to re-review.')
+  })
+
+  it('batch_revision_completed on internal_review falls back to "a relay" without a label', () => {
+    expect(
+      renderSummary(
+        row({ kind: 'batch_revision_completed', surface: 'internal_review', batchId: 'b1' }),
+      ),
+    ).toBe('Cedar Creek · Mollie finished revisions on a relay — ready to re-review.')
   })
 
   it('batch_step_advanced names target step', () => {
