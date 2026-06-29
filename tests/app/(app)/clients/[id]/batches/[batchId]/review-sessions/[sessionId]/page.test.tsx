@@ -131,11 +131,15 @@ vi.mock(
       isSuperseded: boolean
       actions: { replyToFeedback?: unknown }
       startNextRoundSlot?: React.ReactNode
+      respondSlot?: React.ReactNode
     }) => (
       <div
         data-testid="review-feedback-shell-stub"
         data-has-reply-action={String(typeof props.actions?.replyToFeedback === 'function')}
       >
+        {props.respondSlot ? (
+          <div data-testid="respond-slot">{props.respondSlot}</div>
+        ) : null}
         {/* Rail zone */}
         <div data-testid="review-feedback-rail">
           {props.posts.map((p) => (
@@ -225,6 +229,8 @@ const mockBatch = {
   id: 'batch_1',
   clientId: 'client_1',
   label: 'May 2026',
+  currentStep: 'am_review_design' as const,
+  currentSubState: 'awaiting_design_revisions' as const,
 }
 
 const mockSession = {
@@ -1013,5 +1019,66 @@ describe('ReviewSessionDetailPage', () => {
         }),
       ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
     })
+
+    it('shows the Mark-revisions-done control to the assigned designer while awaiting revisions', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(getByTestId('respond-slot')).toBeTruthy()
+      expect(getByTestId('mark-revisions-done-button')).toBeTruthy()
+    })
+
+    it('hides the Mark-revisions-done control from the AM on an internal session', async () => {
+      // mockCtx is account_manager — they read the designer's read-back but do
+      // not get the designer respond control.
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(queryByTestId('respond-slot')).toBeNull()
+      expect(queryByTestId('mark-revisions-done-button')).toBeNull()
+    })
+
+    it('hides the Mark-revisions-done control when not awaiting design revisions', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+      // Batch is at am_review_design but the sub-state is cleared (the AM is
+      // re-reviewing, not waiting on revisions).
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentSubState: null,
+      } as never)
+
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(queryByTestId('mark-revisions-done-button')).toBeNull()
+    })
+  })
+
+  it('client session never renders the designer respond control', async () => {
+    // Default client session + default batch (awaiting_design_revisions). The
+    // respond control is internal-only, so the client read-back must not show it.
+    const { queryByTestId } = await renderPage({
+      id: 'client_1',
+      batchId: 'batch_1',
+      sessionId: 'session_1',
+    })
+
+    expect(queryByTestId('respond-slot')).toBeNull()
+    expect(queryByTestId('mark-revisions-done-button')).toBeNull()
   })
 })

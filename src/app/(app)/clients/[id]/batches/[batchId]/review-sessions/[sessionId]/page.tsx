@@ -33,9 +33,12 @@ import {
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { buildMentionRoster } from '@/lib/mentions'
 import { db } from '@/db/client'
+import { RelayStep } from '@prisma/client'
 import { ReviewSessionHeader } from '@/components/review/review-session-header'
 import { type HydratedItemWithPost } from '@/components/review/review-item-row'
 import { StartNextRoundButton } from '@/components/review/start-next-round-button'
+import { MarkRevisionsDoneButton } from '@/components/review/mark-revisions-done-button'
+import { markDesignRevisionsDoneAction } from '@/server/actions/relay'
 import {
   acceptCaptionEditAction,
   rejectCaptionEditAction,
@@ -409,6 +412,27 @@ export default async function ReviewSessionDetailPage({
       />
     ) : null
 
+  // Designer respond control (internal review parity Phase 3). Shown only on an
+  // internal read-back, to the ASSIGNED DESIGNER, while the batch is at Design
+  // Review awaiting their revisions. "Mark revisions done" clears the sub-state
+  // and notifies the AM to re-review. The guard mirrors the
+  // markDesignRevisionsDone service (am_review_design && awaiting_design_revisions).
+  const isAwaitingDesignRevisions =
+    batch.currentStep === RelayStep.am_review_design &&
+    batch.currentSubState === 'awaiting_design_revisions'
+  const canMarkRevisionsDone =
+    session.kind === 'internal' &&
+    ctx.userDbId === client.assignedDesignerId &&
+    isAwaitingDesignRevisions
+  const respondSlot = canMarkRevisionsDone ? (
+    <MarkRevisionsDoneButton
+      onClick={async () => {
+        'use server'
+        await markDesignRevisionsDoneAction({ batchId: batchId_ })
+      }}
+    />
+  ) : null
+
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
       <ReviewSessionHeader
@@ -449,6 +473,7 @@ export default async function ReviewSessionDetailPage({
           clientName={client.name}
           clientAvatarUrl={null}
           startNextRoundSlot={startNextRoundSlot}
+          respondSlot={respondSlot}
         />
         {/* Internal chat is a toggle popup (floating button → slide-up panel)
             on every screen size, so the feedback rail + posts get the full
