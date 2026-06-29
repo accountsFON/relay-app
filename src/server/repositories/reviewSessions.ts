@@ -112,19 +112,38 @@ export function computeSummary(items: { decision: string }[]): ReviewSessionSumm
 export interface StartSessionInput {
   magicLinkId: string
   reviewerId: string
+  /// Optional: when omitted it is derived from the magic link's batch so
+  /// existing client call sites need no change. The new `batchId` column is
+  /// required on the row (backfilled for legacy rows).
+  batchId?: string
   round?: number
 }
 
 /**
- * Creates a new in_progress ReviewSession. Round defaults to 1. The
- * caller is responsible for choosing the right round (e.g. via
- * startNextRound which lives in `reviewRound.ts` in Task 2.4).
+ * Creates a new in_progress (client) ReviewSession. Round defaults to 1.
+ * The caller is responsible for choosing the right round (e.g. via
+ * startNextRound which lives in `reviewRound.ts`).
+ *
+ * `batchId` is required on the row; when the caller does not pass it we
+ * resolve it from the magic link so the existing client call sites keep
+ * working unchanged.
  */
 export async function startSession(
   input: StartSessionInput,
 ): Promise<ReviewSessionRow> {
+  const batchId =
+    input.batchId ??
+    (
+      await db.magicLink.findUniqueOrThrow({
+        where: { id: input.magicLinkId },
+        select: { batchId: true },
+      })
+    ).batchId
+
   return db.reviewSession.create({
     data: {
+      kind: 'client',
+      batchId,
       magicLinkId: input.magicLinkId,
       reviewerId: input.reviewerId,
       round: input.round ?? 1,
@@ -330,7 +349,9 @@ export async function findSessionWithItems(
 /// sends one email at the longer threshold rather than two back to back.
 export interface StaleReviewSession {
   sessionId: string
-  magicLinkId: string
+  /// Always set in practice: the reminder query is client-only (it filters
+  /// on `magicLink`), but the column is nullable on the model now.
+  magicLinkId: string | null
   reviewerId: string | null
   startedAt: Date
   threshold: '48h' | '96h'

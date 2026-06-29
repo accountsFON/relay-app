@@ -1088,11 +1088,8 @@ function primeAmReviewItem(
     reviewSession: {
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
-      magicLink: {
-        id: MAGIC_LINK_ID,
-        batchId: BATCH_ID,
-        batch: { id: BATCH_ID, clientId: CLIENT_ID },
-      },
+      batchId: BATCH_ID,
+      batch: { id: BATCH_ID, clientId: CLIENT_ID },
     },
   } as never)
 }

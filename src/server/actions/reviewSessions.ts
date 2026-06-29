@@ -590,7 +590,7 @@ interface ResolvedReviewItemContext {
   reviewItemId: string
   reviewSessionId: string
   postId: string
-  magicLinkId: string
+  magicLinkId: string | null
   batchId: string
   clientId: string
   decision: string
@@ -642,20 +642,17 @@ async function resolveReviewItemForAm(
         select: {
           id: true,
           magicLinkId: true,
-          magicLink: {
-            select: {
-              id: true,
-              batchId: true,
-              batch: { select: { id: true, clientId: true } },
-            },
-          },
+          batchId: true,
+          batch: { select: { id: true, clientId: true } },
         },
       },
     },
   })
   if (!row) throw new ReviewSessionActionError('Review item not found')
 
-  const clientId = row.reviewSession.magicLink.batch.clientId
+  // Reach the batch via the session's direct batchId (works for both
+  // kinds). The legacy magicLink->batch join is no longer needed.
+  const clientId = row.reviewSession.batch.clientId
   const client = await findClientForUser(ctx, clientId)
   if (!client) throw new ReviewSessionActionError('Review item not found')
 
@@ -666,7 +663,7 @@ async function resolveReviewItemForAm(
       reviewSessionId: row.reviewSessionId,
       postId: row.postId,
       magicLinkId: row.reviewSession.magicLinkId,
-      batchId: row.reviewSession.magicLink.batchId,
+      batchId: row.reviewSession.batchId,
       clientId,
       decision: row.decision,
       comment: row.comment,

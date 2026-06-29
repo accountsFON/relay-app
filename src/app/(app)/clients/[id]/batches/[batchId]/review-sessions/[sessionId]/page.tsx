@@ -80,6 +80,9 @@ export default async function ReviewSessionDetailPage({
 
   const session = await findSessionWithItems({ reviewSessionId: sessionId })
   if (!session) redirectAccessDenied()
+  // This page renders the client (magic-link) review session. Internal
+  // sessions have no magic link and get their own surface in a later phase.
+  if (!session.magicLinkId) redirectAccessDenied()
 
   const magicLink = await db.magicLink.findUnique({
     where: { id: session.magicLinkId },

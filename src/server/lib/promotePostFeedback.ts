@@ -45,9 +45,16 @@ export async function promotePostFeedbackToThread(
   })
   if (!ri) throw new ReviewItemNotFoundError(input.reviewItemId)
 
-  const reviewerToken = ri.reviewSession.magicLink.tokenHash
+  // This promotes a magic-link reviewer's feedback into a reviewer thread, so
+  // it only applies to client sessions. Internal sessions have no magic link.
+  const magicLink = ri.reviewSession.magicLink
+  if (!magicLink) {
+    throw new ReviewItemNotFoundError(input.reviewItemId)
+  }
+
+  const reviewerToken = magicLink.tokenHash
   const reviewerName =
-    ri.reviewSession.reviewer?.name ?? ri.reviewSession.magicLink.defaultReviewerName
+    ri.reviewSession.reviewer?.name ?? magicLink.defaultReviewerName
 
   let threadId = await findOpenPostLevelReviewerThread({ postId: ri.postId, reviewerToken })
   if (!threadId) {

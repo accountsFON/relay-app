@@ -518,6 +518,7 @@ describe('findStaleInProgressSessions', () => {
   }): Promise<string> {
     const row = await db.reviewSession.create({
       data: {
+        batchId,
         magicLinkId: opts.magicLinkId ?? magicLinkId,
         reviewerId,
         round: 1,
