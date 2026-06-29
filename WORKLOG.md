@@ -11,9 +11,8 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-06-26 triage (Batch A + B + C shipped; Batch D in flight, Phase 1 done):
-- [ ] **Internal review parity with client review (Batch D) — Phase 2: AM `/preview` surface.** Widen `ReviewPostCard` to `mode:'internal'` + build the verdict/notes/edit-copy/progress/submit shell on `/preview`, wired to the Phase 1 internal actions. (Phase 1 data+engine shipped; design `2026-06-29-internal-review-parity-design.md`.)
-- [ ] **Internal review parity (Batch D) — Phase 3: designer respond surface.** The designer read-back of the AM's internal feedback + mark-revisions-done, closing the round loop.
+From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2 done, Phase 3 in plan):
+- [ ] **Internal review parity (Batch D) — Phase 3: designer respond surface.** The designer read-back of the AM's internal feedback + a `markDesignRevisionsDone` action (clears `awaiting_design_revisions`, notifies the AM) + AM start-next-internal-round, closing the round loop. Plan: `2026-06-29-internal-review-parity-phase3-plan.md`. Build on merged Phase 2.
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
 - [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
@@ -27,6 +26,21 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D in flight, Phase 1 
 ---
 
 ## Shipped
+
+- [x] **2026-06-29 — Internal review parity, Phase 2: AM /preview verdict surface** (PR #TBD)
+  The visible parity: `/preview` is now a client-style review for the AM. Widened `ReviewPostCard` to
+  `mode:'internal'`; new `InternalReviewShell` (per-post Approve/Request-changes, Notes, inline edit-copy,
+  progress, Approve-all, Submit) backed by the Phase 1 internal `ReviewSession` + Clerk-authed
+  `saveInternalDraftAction`/`submitInternalReviewAction` (Submit advances the Design Review step per
+  Phase 1: all approved -> QA; changes -> notify designer). The page resumes-or-creates the AM's active
+  internal session on open; editors get the verdict surface, non-editors keep the read-only view. Built
+  subagent-driven TDD; whole-branch review caught that the first cut DROPPED four AM capabilities
+  (per-pin Resolve, image-attach, @-mention autocomplete, use-comment-as-post-image) — all RESTORED as
+  forwarded `ReviewPostCard` props so the surface is a true superset of the old `/preview`, plus a
+  "Review submitted" banner + soft advance-error notice, plus a deleted-posts fix on the approval counts.
+  Client `mode='review'` path behaviorally identical (negative test added). 2078 unit tests, tsc + eslint
+  clean. Touches `src/server/services/approval.ts` (deletedAt filter) so the Trigger.dev deploy fires on
+  merge. Plan: `vault projects/relay-app/2026-06-29-internal-review-parity-phase2-plan.md`.
 
 - [x] **2026-06-29 — Internal review parity, Phase 1: data + engine** (PR #TBD)
   Makes the `ReviewSession`/`ReviewItem` engine able to back an INTERNAL (Clerk AM) review beside the

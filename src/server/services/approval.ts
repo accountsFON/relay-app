@@ -29,7 +29,9 @@ export async function derivePostApprovalForBatch(
   // Pull all postIds in the batch, then group open-thread counts by postId.
   // Two queries is fine at v1 scale (a batch is ~10-30 posts).
   const posts = await db.post.findMany({
-    where: { batchId },
+    // Exclude soft-deleted posts so the count matches the feed (which filters
+    // `deletedAt: null`); otherwise the hero subtitle over-counts.
+    where: { batchId, deletedAt: null },
     select: { id: true },
   })
   if (posts.length === 0) return { ready: 0, pending: 0 }

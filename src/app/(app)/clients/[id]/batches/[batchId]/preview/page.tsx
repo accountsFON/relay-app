@@ -5,25 +5,39 @@ import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { listThreadsForBatch } from '@/server/repositories/threads'
+import {
+  findActiveSession,
+  startSession,
+} from '@/server/repositories/reviewSessions'
 import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
 import { derivePostApprovalForBatch } from '@/server/services/approval'
 import { db } from '@/db/client'
 import { HeroBand } from '@/components/hero-band'
 import { MarkBatchReviewedButton } from '@/components/preview/mark-batch-reviewed-button'
 import { PreviewPageShell } from './preview-page-shell'
+import { InternalReviewShell } from '@/components/review/internal-review-shell'
 import { EventAnchor } from '@/components/notifications/event-anchor'
-import { PreviewSubmitButton } from '@/components/notifications/preview-submit-button'
 import { Button } from '@/components/ui/button'
+import type {
+  ReviewItemHydrated,
+  ReviewSessionStatusType,
+} from '@/types/review-session'
 
 /**
- * Internal batch preview page (Layer 2 / Task 2.1).
+ * Internal batch preview page (`/preview`).
  *
- * Composes the Layer 1 preview components (FeedShell, IG/FB feed posts,
- * per-post media upload, bulk media tray) into a single AM-facing surface.
+ * For an AM/editor this is the Clerk-authed verdict surface (Phase 2): a
+ * resume-or-create INTERNAL ReviewSession (Phase 1) rendered through
+ * `InternalReviewShell` — per-post Approve / Request changes, Notes, inline
+ * caption edit, image/caption pins, progress, Approve all, and Submit. Submit
+ * routes through `submitInternalReviewAction`, which advances the Design Review
+ * step only when the batch is at `am_review_design` (Phase 1 guard).
+ *
+ * For a non-editor viewer the page keeps the existing read-only feed
+ * (`PreviewPageShell`) so view-only access is unaffected.
  *
  * Auth: standard client.view gate via requireClientViewer + findClientForUser
- * scoping. Mode is always 'internal' here, magic-link client view ships in
- * Task 2.2 at /review/[token] reusing the same preview shell with mode='review'.
+ * scoping. The verdict surface itself is gated on `canEditClients`.
  */
 export default async function BatchPreviewPage({
   params,
@@ -39,8 +53,11 @@ export default async function BatchPreviewPage({
   const batch = await findBatch(batchId)
   if (!batch || batch.clientId !== client.id) redirectAccessDenied()
 
+  // canEdit gates the AM-only verdict surface + review controls.
+  const canEdit = canEditClients(ctx)
+
   const posts = await db.post.findMany({
-    where: { batchId: batch.id },
+    where: { batchId: batch.id, deletedAt: null },
     orderBy: { postDate: 'asc' },
     select: {
       id: true,
@@ -57,31 +74,114 @@ export default async function BatchPreviewPage({
     internalMentionRosterForClient(client.id),
   ])
 
-  // Count AM-authored unresolved post-thread comments on this batch so the
-  // sticky Submit button can show the count + disable itself when there is
-  // nothing to send. Mirrors the count query in submitPreviewReviewAction;
-  // computing it here in the server component avoids a round trip on mount
-  // and a flash of "Submit (0)".
-  const [initialCommentCount, assignedDesigner] = await Promise.all([
-    db.postComment.count({
-      where: {
-        authorId: ctx.userDbId,
-        thread: {
-          resolvedAt: null,
-          post: { batchId: batch.id },
-        },
-      },
-    }),
-    client.assignedDesignerId
-      ? db.user.findUnique({
-          where: { id: client.assignedDesignerId },
-          select: { name: true },
-        })
-      : Promise.resolve(null),
-  ])
-  const designerName = assignedDesigner?.name ?? null
+  const heroBand = (
+    <HeroBand
+      title={`${batch.label} internal review`}
+      subtitle={`${client.name} · ${approvalCounts.ready} ready · ${approvalCounts.pending} pending`}
+      breadcrumb={[
+        { label: 'My Relay', href: '/dashboard' },
+        { label: client.name, href: `/clients/${client.id}` },
+        { label: batch.label, href: `/clients/${client.id}/batches/${batch.id}` },
+        { label: 'Internal Review' },
+      ]}
+    />
+  )
 
-  // Hydrate posts with media + threads for the client shell.
+  const backToRelay = (
+    <Button
+      variant="secondary"
+      size="sm"
+      render={<Link href={`/clients/${client.id}/batches/${batch.id}`} />}
+    >
+      <ChevronLeft className="text-muted-foreground" />
+      <span>Back to relay</span>
+    </Button>
+  )
+
+  // ---- AM / editor: the internal verdict surface ----
+  if (canEdit) {
+    // Resume the AM's active internal session for this batch, or create one on
+    // open (mirrors the client opening the magic link). Idempotent: a fresh
+    // session is only created when none is in_progress for this AM.
+    let session = await findActiveSession({
+      kind: 'internal',
+      batchId: batch.id,
+      reviewerUserId: ctx.userDbId,
+    })
+    if (!session) {
+      session = await startSession({
+        kind: 'internal',
+        batchId: batch.id,
+        reviewerUserId: ctx.userDbId,
+        round: 1,
+      })
+    }
+
+    const itemRows = await db.reviewItem.findMany({
+      where: { reviewSessionId: session.id },
+    })
+    const initialItems: ReviewItemHydrated[] = itemRows.map((it) => ({
+      id: it.id,
+      postId: it.postId,
+      decision: it.decision as ReviewItemHydrated['decision'],
+      comment: it.comment,
+      suggestedCaption: it.suggestedCaption,
+      acceptedAsPostVersionId: it.acceptedAsPostVersionId,
+      updatedSinceLastReview: it.updatedSinceLastReview,
+      lastReviewedVersionId: it.lastReviewedVersionId,
+      reviewedAt: it.reviewedAt,
+      addressedAt: it.addressedAt,
+    }))
+
+    const feedPosts = posts.map((p) => ({
+      post: {
+        id: p.id,
+        caption: p.caption,
+        hashtags: p.hashtags,
+        mediaUrl: p.mediaUrls?.[0] ?? null,
+      },
+      threads: threadsByPost.get(p.id) ?? [],
+    }))
+
+    // The AM's display name for the "Reviewing as" line.
+    const reviewer = await db.user.findUnique({
+      where: { id: ctx.userDbId },
+      select: { name: true },
+    })
+
+    return (
+      <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
+        <EventAnchor />
+        {heroBand}
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <MarkBatchReviewedButton
+            batchId={batch.id}
+            openThreadCount={feedPosts.reduce(
+              (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
+              0,
+            )}
+          />
+          {backToRelay}
+        </div>
+
+        <div className="mt-8">
+          <InternalReviewShell
+            batchId={batch.id}
+            clientName={client.name}
+            batchLabel={batch.label}
+            reviewerName={reviewer?.name ?? 'You'}
+            reviewerUserId={ctx.userDbId}
+            mentionRoster={mentionRoster}
+            posts={feedPosts}
+            initialItems={initialItems}
+            sessionStatus={session.status as ReviewSessionStatusType}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // ---- Non-editor viewer: the existing read-only feed ----
   const hydratedPosts = posts.map((p) => ({
     id: p.id,
     caption: p.caption,
@@ -91,45 +191,11 @@ export default async function BatchPreviewPage({
     threads: threadsByPost.get(p.id) ?? [],
   }))
 
-  // canEdit gates the AM-only review controls (bulk-resolve, submit).
-  const canEdit = canEditClients(ctx)
-
-  // Total open thread count across the whole batch powers the
-  // Mark batch reviewed confirm dialog copy.
-  const totalOpenThreads = hydratedPosts.reduce(
-    (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
-    0,
-  )
-
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
       <EventAnchor />
-      <HeroBand
-        title={`${batch.label} internal review`}
-        subtitle={`${client.name} · ${approvalCounts.ready} ready · ${approvalCounts.pending} pending`}
-        breadcrumb={[
-          { label: 'My Relay', href: '/dashboard' },
-          { label: client.name, href: `/clients/${client.id}` },
-          { label: batch.label, href: `/clients/${client.id}/batches/${batch.id}` },
-          { label: 'Internal Review' },
-        ]}
-      />
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        {canEdit && (
-          <MarkBatchReviewedButton
-            batchId={batch.id}
-            openThreadCount={totalOpenThreads}
-          />
-        )}
-        <Button
-          variant="secondary"
-          size="sm"
-          render={<Link href={`/clients/${client.id}/batches/${batch.id}`} />}
-        >
-          <ChevronLeft className="text-muted-foreground" />
-          <span>Back to relay</span>
-        </Button>
-      </div>
+      {heroBand}
+      <div className="mt-5 flex flex-wrap items-center gap-2">{backToRelay}</div>
 
       <div className="mt-8">
         <PreviewPageShell
@@ -140,14 +206,6 @@ export default async function BatchPreviewPage({
           mentionRoster={mentionRoster}
         />
       </div>
-
-      {canEdit && (
-        <PreviewSubmitButton
-          batchId={batch.id}
-          designerName={designerName}
-          initialCommentCount={initialCommentCount}
-        />
-      )}
     </div>
   )
 }
