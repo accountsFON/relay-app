@@ -459,6 +459,76 @@ describe('listSessionsForBatch', () => {
   })
 })
 
+describe('internal sessions (kind=internal)', () => {
+  it('startSession creates an internal session with reviewerUserId, batchId, magicLinkId null', async () => {
+    const session = await startSession({
+      kind: 'internal',
+      reviewerUserId: userId,
+      batchId,
+    })
+
+    expect(session.id).toBeTruthy()
+    expect(session.kind).toBe('internal')
+    expect(session.batchId).toBe(batchId)
+    expect(session.reviewerUserId).toBe(userId)
+    expect(session.magicLinkId).toBeNull()
+    expect(session.reviewerId).toBeNull()
+    expect(session.status).toBe('in_progress')
+    expect(session.round).toBe(1)
+  })
+
+  it('a client session created the old way still has kind=client + batchId populated', async () => {
+    const session = await startSession({ magicLinkId, reviewerId })
+
+    expect(session.kind).toBe('client')
+    expect(session.batchId).toBe(batchId)
+    expect(session.magicLinkId).toBe(magicLinkId)
+    expect(session.reviewerUserId).toBeNull()
+  })
+
+  it('findActiveSession resolves an internal session keyed on (batchId, reviewerUserId)', async () => {
+    const created = await startSession({
+      kind: 'internal',
+      reviewerUserId: userId,
+      batchId,
+    })
+
+    const active = await findActiveSession({
+      kind: 'internal',
+      batchId,
+      reviewerUserId: userId,
+    })
+    expect(active?.id).toBe(created.id)
+
+    // A submitted internal session is no longer active.
+    await submitSession({ reviewSessionId: created.id })
+    const afterSubmit = await findActiveSession({
+      kind: 'internal',
+      batchId,
+      reviewerUserId: userId,
+    })
+    expect(afterSubmit).toBeNull()
+  })
+
+  it('listSessionsForBatch returns BOTH a client and an internal session for the batch', async () => {
+    const clientSession = await startSession({ magicLinkId, reviewerId })
+    const internalSession = await startSession({
+      kind: 'internal',
+      reviewerUserId: userId,
+      batchId,
+    })
+
+    const list = await listSessionsForBatch(batchId)
+    const ids = list.map((s) => s.id)
+    expect(ids).toContain(clientSession.id)
+    expect(ids).toContain(internalSession.id)
+
+    const internalRow = list.find((s) => s.id === internalSession.id)
+    expect(internalRow?.kind).toBe('internal')
+    expect(internalRow?.reviewerUserId).toBe(userId)
+  })
+})
+
 describe('findSessionWithItems', () => {
   it('hydrates items in the ReviewItemHydrated shape', async () => {
     const session = await startSession({ magicLinkId, reviewerId })
@@ -518,6 +588,7 @@ describe('findStaleInProgressSessions', () => {
   }): Promise<string> {
     const row = await db.reviewSession.create({
       data: {
+        batchId,
         magicLinkId: opts.magicLinkId ?? magicLinkId,
         reviewerId,
         round: 1,
@@ -648,5 +719,28 @@ describe('findStaleInProgressSessions', () => {
     const byId = new Map(rows.map((r) => [r.sessionId, r.threshold]))
     expect(byId.get(a)).toBe('48h')
     expect(byId.get(b)).toBe('96h')
+  })
+
+  it('excludes internal sessions (no email reminders for internal)', async () => {
+    // A stale client session (should be returned) and a stale internal
+    // session on the same batch (should be excluded).
+    const clientStale = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 50 * 60 * 60 * 1000),
+    })
+    const internalStale = await db.reviewSession.create({
+      data: {
+        kind: 'internal',
+        batchId,
+        reviewerUserId: userId,
+        round: 1,
+        status: 'in_progress',
+        startedAt: new Date(now.getTime() - 100 * 60 * 60 * 1000),
+      },
+    })
+
+    const rows = await findStaleInProgressSessions({ now })
+    const sids = rows.map((r) => r.sessionId)
+    expect(sids).toContain(clientStale)
+    expect(sids).not.toContain(internalStale.id)
   })
 })

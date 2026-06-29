@@ -68,6 +68,17 @@ export async function runSendReviewReminders(
         continue
       }
 
+      if (!session.magicLinkId) {
+        // Reminder emails are client-only; findStaleInProgressSessions
+        // already filters to magic-link sessions, so this is defensive
+        // against an internal session somehow surfacing here.
+        logger.warn('[sendReviewReminders] session has no magicLinkId, skipping', {
+          sessionId: session.sessionId,
+        })
+        errors += 1
+        continue
+      }
+
       // Per send context: one round trip per session. At expected volumes
       // (single digit per day) this is fine; if we ever back up to dozens
       // per tick we can batch the lookups.

@@ -11,8 +11,9 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-06-26 triage (Batch A + B + C shipped; D in design):
-- [ ] **Internal review parity with client review (Batch D)** — make `/preview` (the AM<->designer review) look AND flow like the client link: per-post Approve/Request-changes verdict, the ReviewPostCard look, and a round-based review->submit->respond loop with the designer working on `/preview`, tied to the Design Review step + the next-action banner. In design (`2026-06-29-...`).
+From the 2026-06-26 triage (Batch A + B + C shipped; Batch D in flight, Phase 1 done):
+- [ ] **Internal review parity with client review (Batch D) — Phase 2: AM `/preview` surface.** Widen `ReviewPostCard` to `mode:'internal'` + build the verdict/notes/edit-copy/progress/submit shell on `/preview`, wired to the Phase 1 internal actions. (Phase 1 data+engine shipped; design `2026-06-29-internal-review-parity-design.md`.)
+- [ ] **Internal review parity (Batch D) — Phase 3: designer respond surface.** The designer read-back of the AM's internal feedback + mark-revisions-done, closing the round loop.
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
 - [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
@@ -26,6 +27,23 @@ From the 2026-06-26 triage (Batch A + B + C shipped; D in design):
 ---
 
 ## Shipped
+
+- [x] **2026-06-29 — Internal review parity, Phase 1: data + engine** (PR #TBD)
+  Makes the `ReviewSession`/`ReviewItem` engine able to back an INTERNAL (Clerk AM) review beside the
+  client (magic-link) flow, anchored on the Design Review step. Schema: `ReviewSessionKind {client,
+  internal}` + a direct required `batchId` + `reviewerUserId` on `ReviewSession`, `magicLinkId` made
+  nullable, existing rows backfilled to `client` (one transaction: add cols -> drop NOT NULL -> backfill
+  batchId from the magic link -> SET NOT NULL -> FKs+index). Engine: internal Clerk-authed
+  create/draft/submit actions (real `actorId`, not the client path's null); internal submit ->
+  `advanceFromDesignReview` (all approved -> QA `am_qa_pre_client`; any changes -> reuse
+  `requestDesignChanges` -> awaiting_design_revisions + notify designer); `startNextRound` +
+  `listSessionsForBatch` generalized (query by direct `batchId`); kind invariant enforced at create;
+  internal excluded from the reminder cron. **NO UI change — `/preview` unchanged** (Phases 2-3 add the
+  surface). Client (magic-link) flow behaviorally identical. Built subagent-driven TDD (6 tasks);
+  whole-branch review clean/ship-ready (no Critical/Important; cosmetic minors only). 2063 unit + 32
+  review integration tests pass, tsc + eslint clean. Touches `schema.prisma` + services -> Trigger.dev
+  deploy fires on merge. Spec + plan: `vault projects/relay-app/2026-06-29-internal-review-parity-design.md`
+  + `-phase1-plan.md`.
 
 - [x] **2026-06-29 — Next-action board + designer revision tile (Batch C, part 2)** (PR #TBD)
   A role-aware "what to do next" board on the relay detail page: a pure `nextActionForRelay(step, subState,

@@ -8,7 +8,10 @@
  * Kept separate so it runs under the unit runner without a TEST_DATABASE_URL.
  */
 import { describe, it, expect } from 'vitest'
-import { computeSummary } from '@/server/repositories/reviewSessions'
+import {
+  assertSessionKindInvariant,
+  computeSummary,
+} from '@/server/repositories/reviewSessions'
 
 describe('computeSummary', () => {
   it('rolls up a mix of decisions', () => {
@@ -50,5 +53,67 @@ describe('computeSummary', () => {
       captionEdited: 0,
       totalPosts: 3,
     })
+  })
+})
+
+describe('assertSessionKindInvariant', () => {
+  it('accepts a valid client session (magicLinkId set, no reviewerUserId)', () => {
+    expect(() =>
+      assertSessionKindInvariant({
+        kind: 'client',
+        magicLinkId: 'ml_1',
+        reviewerUserId: null,
+      }),
+    ).not.toThrow()
+  })
+
+  it('accepts a valid internal session (reviewerUserId set, no magicLinkId)', () => {
+    expect(() =>
+      assertSessionKindInvariant({
+        kind: 'internal',
+        magicLinkId: null,
+        reviewerUserId: 'user_1',
+      }),
+    ).not.toThrow()
+  })
+
+  it('throws when a client session also has a reviewerUserId', () => {
+    expect(() =>
+      assertSessionKindInvariant({
+        kind: 'client',
+        magicLinkId: 'ml_1',
+        reviewerUserId: 'user_1',
+      }),
+    ).toThrow()
+  })
+
+  it('throws when a client session has no magicLinkId', () => {
+    expect(() =>
+      assertSessionKindInvariant({
+        kind: 'client',
+        magicLinkId: null,
+        reviewerUserId: null,
+      }),
+    ).toThrow()
+  })
+
+  it('throws when an internal session also has a magicLinkId', () => {
+    expect(() =>
+      assertSessionKindInvariant({
+        kind: 'internal',
+        magicLinkId: 'ml_1',
+        reviewerUserId: 'user_1',
+      }),
+    ).toThrow()
+  })
+
+  it('throws when an internal session has no reviewerUserId', () => {
+    expect(() =>
+      assertSessionKindInvariant({
+        kind: 'internal',
+        magicLinkId: null,
+        reviewerUserId: null,
+      }),
+    ).toThrow()
   })
 })

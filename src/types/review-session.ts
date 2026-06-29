@@ -32,7 +32,9 @@ export interface ReviewSessionSummary {
 /// client-facing review surface and the AM-side detail page.
 export interface ReviewSessionWithItems {
   id: string
-  magicLinkId: string
+  /// Null for internal (Clerk-user) sessions; set for client (magic-link)
+  /// sessions. See 2026-06-29 internal review parity.
+  magicLinkId: string | null
   reviewerId: string | null
   status: ReviewSessionStatusType
   round: number

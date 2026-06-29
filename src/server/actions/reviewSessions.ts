@@ -15,7 +15,7 @@ import {
   submitSession,
 } from '@/server/repositories/reviewSessions'
 import { startNextRound } from '@/server/services/reviewRound'
-import { advanceFromClientReview } from '@/server/services/relay'
+import { advanceFromClientReview, advanceFromDesignReview } from '@/server/services/relay'
 import { mapReviewDecision } from '@/lib/relay-review-decision'
 import { snapshotPostVersion } from '@/server/services/postVersions'
 import { recordActivity } from '@/server/services/activity'
@@ -590,7 +590,7 @@ interface ResolvedReviewItemContext {
   reviewItemId: string
   reviewSessionId: string
   postId: string
-  magicLinkId: string
+  magicLinkId: string | null
   batchId: string
   clientId: string
   decision: string
@@ -642,20 +642,17 @@ async function resolveReviewItemForAm(
         select: {
           id: true,
           magicLinkId: true,
-          magicLink: {
-            select: {
-              id: true,
-              batchId: true,
-              batch: { select: { id: true, clientId: true } },
-            },
-          },
+          batchId: true,
+          batch: { select: { id: true, clientId: true } },
         },
       },
     },
   })
   if (!row) throw new ReviewSessionActionError('Review item not found')
 
-  const clientId = row.reviewSession.magicLink.batch.clientId
+  // Reach the batch via the session's direct batchId (works for both
+  // kinds). The legacy magicLink->batch join is no longer needed.
+  const clientId = row.reviewSession.batch.clientId
   const client = await findClientForUser(ctx, clientId)
   if (!client) throw new ReviewSessionActionError('Review item not found')
 
@@ -666,7 +663,7 @@ async function resolveReviewItemForAm(
       reviewSessionId: row.reviewSessionId,
       postId: row.postId,
       magicLinkId: row.reviewSession.magicLinkId,
-      batchId: row.reviewSession.magicLink.batchId,
+      batchId: row.reviewSession.batchId,
       clientId,
       decision: row.decision,
       comment: row.comment,
@@ -951,6 +948,239 @@ export async function startNextRoundAction(input: {
   return emailError
     ? { ok: true, newSessionId: newSession.id, newRound: newSession.round, emailError }
     : { ok: true, newSessionId: newSession.id, newRound: newSession.round }
+}
+
+// ---- Internal (Clerk-authed AM) review actions ----
+
+/**
+ * Resolves the AM context for an internal review on `batchId`. Loads the
+ * batch, gates the calling AM via `requireClientEditor` + `findClientForUser`
+ * (same pattern as the client AM-side actions), and returns the ids the
+ * internal create/draft/submit actions need.
+ *
+ * Internal sessions are anchored on the batch, not a magic link, so the
+ * reviewer is the Clerk user (`ctx.userDbId`) rather than a MagicLinkReviewer.
+ */
+async function resolveInternalReviewContext(batchId: string): Promise<{
+  ctx: Awaited<ReturnType<typeof requireClientEditor>>
+  batchId: string
+  clientId: string
+}> {
+  if (!batchId || typeof batchId !== 'string') {
+    throw new ReviewSessionActionError('batchId required')
+  }
+
+  const ctx = await requireClientEditor()
+
+  const batch = await db.batch.findUnique({
+    where: { id: batchId },
+    select: { id: true, clientId: true, deletedAt: true },
+  })
+  if (!batch || batch.deletedAt) {
+    throw new ReviewSessionActionError('Relay not found')
+  }
+
+  const client = await findClientForUser(ctx, batch.clientId)
+  if (!client) throw new ReviewSessionActionError('Relay not found')
+
+  return { ctx, batchId: batch.id, clientId: batch.clientId }
+}
+
+/**
+ * AM opens an internal Design Review session for a batch. Idempotent: if an
+ * in_progress internal session already exists for this AM on this batch,
+ * returns its id. Otherwise creates one at round 1. The internal analog of
+ * `startReviewSessionAction`, Clerk-authed (no token/cookie).
+ */
+export async function startInternalReviewAction(input: {
+  batchId: string
+}): Promise<{ reviewSessionId: string }> {
+  const { ctx, batchId, clientId } = await resolveInternalReviewContext(
+    input.batchId,
+  )
+
+  const existing = await findActiveSession({
+    kind: 'internal',
+    batchId,
+    reviewerUserId: ctx.userDbId,
+  })
+  if (existing) {
+    return { reviewSessionId: existing.id }
+  }
+
+  const created = await startSession({
+    kind: 'internal',
+    batchId,
+    reviewerUserId: ctx.userDbId,
+    round: 1,
+  })
+
+  revalidatePath(`/clients/${clientId}/batches/${batchId}`)
+  return { reviewSessionId: created.id }
+}
+
+/**
+ * AM marks a verdict (or saves a draft comment / suggested caption) on a
+ * single post inside the internal Design Review session. Upserts the
+ * ReviewItem keyed on (reviewSessionId, postId). Internal analog of
+ * `saveReviewDraftAction`. Lazily creates the session on first draft.
+ */
+export async function saveInternalDraftAction(input: {
+  batchId: string
+  postId: string
+  decision: ReviewDecisionType
+  comment?: string | null
+  suggestedCaption?: string | null
+}): Promise<{ reviewItemId: string }> {
+  const { ctx, batchId, clientId } = await resolveInternalReviewContext(
+    input.batchId,
+  )
+
+  if (!input.postId || typeof input.postId !== 'string') {
+    throw new ReviewSessionActionError('postId required')
+  }
+
+  let session = await findActiveSession({
+    kind: 'internal',
+    batchId,
+    reviewerUserId: ctx.userDbId,
+  })
+  if (!session) {
+    session = await startSession({
+      kind: 'internal',
+      batchId,
+      reviewerUserId: ctx.userDbId,
+      round: 1,
+    })
+  }
+
+  // Cross-batch postId guard, same as the client path.
+  const post = await db.post.findUnique({
+    where: { id: input.postId },
+    select: { id: true, batchId: true },
+  })
+  if (!post || post.batchId !== batchId) {
+    throw new ReviewSessionActionError('Post does not belong to this review')
+  }
+
+  const item = await saveDraftItem({
+    reviewSessionId: session.id,
+    postId: input.postId,
+    decision: input.decision,
+    comment: input.comment ?? null,
+    suggestedCaption: input.suggestedCaption ?? null,
+  })
+
+  revalidatePath(`/clients/${clientId}/batches/${batchId}`)
+  return { reviewItemId: item.id }
+}
+
+export interface SubmitInternalReviewActionResult {
+  ok: true
+  summary: ReviewSessionSummary
+  /** Soft warning: submission succeeded but the state-machine advance failed. */
+  advanceError?: string
+  /** Present when the submit advanced the relay. */
+  advanced?: { toStep: RelayStep; newHolderId: string }
+}
+
+/**
+ * AM submits the internal Design Review. Flips the session to submitted,
+ * persists the summary snapshot, and emits a `review_session_submitted`
+ * ActivityEvent with a REAL actorId (the AM) , unlike the client path's
+ * actorId:null. The Design Review step advance is wired in Task 4.
+ *
+ * No email (internal reviewers/designers get the in-app bell, not email).
+ */
+export async function submitInternalReviewAction(input: {
+  batchId: string
+}): Promise<SubmitInternalReviewActionResult> {
+  const { ctx, batchId, clientId } = await resolveInternalReviewContext(
+    input.batchId,
+  )
+
+  const active = await findActiveSession({
+    kind: 'internal',
+    batchId,
+    reviewerUserId: ctx.userDbId,
+  })
+  if (!active) {
+    throw new ReviewSessionActionError('No active internal session to submit')
+  }
+
+  const hydrated = await findSessionWithItems({ reviewSessionId: active.id })
+  if (!hydrated) {
+    throw new ReviewSessionActionError('No active internal session to submit')
+  }
+  if (hydrated.items.length === 0) {
+    throw new ReviewSessionActionError(
+      'Cannot submit a review with no decisions. Mark at least one post first.',
+    )
+  }
+
+  const submitted = await submitSession({ reviewSessionId: active.id })
+  const summary =
+    (submitted.submittedSummary as unknown as ReviewSessionSummary | null) ?? {
+      approved: 0,
+      changesRequested: 0,
+      captionEdited: 0,
+      totalPosts: hydrated.items.length,
+    }
+
+  // Durable audit trail. The AM is a real Clerk user, so the event carries a
+  // real actorId (the client submit path uses actorId:null). recordActivity
+  // swallows its own errors so this never throws.
+  await recordActivity({
+    clientId,
+    postId: null,
+    runId: null,
+    actorId: ctx.userDbId,
+    kind: ActivityKind.review_session_submitted,
+    visibility: EventVisibility.internal,
+    payload: {
+      batchId,
+      reviewSessionId: active.id,
+      round: submitted.round,
+      summary,
+      surface: 'internal_review',
+    },
+  })
+
+  // Advance the Design Review step. all approved -> QA; any changes ->
+  // requestDesignChanges (sub-state flip + designer notify, no step change).
+  // The decision is strict over the batch's real post count, not the review
+  // summary's totalPosts (untouched posts would otherwise look approved).
+  let advanceError: string | undefined
+  let advanced: { toStep: RelayStep; newHolderId: string } | undefined
+  try {
+    const batchPostCount = await db.post.count({
+      where: { batchId, deletedAt: null },
+    })
+    const decision = mapReviewDecision(summary, batchPostCount)
+    const moved = await advanceFromDesignReview({
+      batchId,
+      decision,
+      actorUserId: ctx.userDbId,
+      actorOrganizationId: ctx.organizationDbId,
+      reviewSessionId: active.id,
+    })
+    if (moved.advanced && moved.toStep && moved.newHolderId) {
+      advanced = { toStep: moved.toStep, newHolderId: moved.newHolderId }
+    }
+  } catch (err) {
+    advanceError = err instanceof Error ? err.message : String(err)
+    console.error('[review] submitInternalReviewAction advance failed', {
+      reviewSessionId: active.id,
+      batchId,
+      err: advanceError,
+    })
+  }
+
+  revalidatePath(`/clients/${clientId}/batches/${batchId}`)
+  const result: SubmitInternalReviewActionResult = { ok: true, summary }
+  if (advanceError) result.advanceError = advanceError
+  if (advanced) result.advanced = advanced
+  return result
 }
 
 const REVIEW_PIN_RESOLVE_REASON = 'Addressed from review session'

@@ -107,24 +107,136 @@ export function computeSummary(items: { decision: string }[]): ReviewSessionSumm
   }
 }
 
-// ---- Public API ----
+// ---- Invariant ----
 
-export interface StartSessionInput {
-  magicLinkId: string
-  reviewerId: string
-  round?: number
+export class ReviewSessionKindInvariantError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ReviewSessionKindInvariantError'
+  }
 }
 
 /**
- * Creates a new in_progress ReviewSession. Round defaults to 1. The
- * caller is responsible for choosing the right round (e.g. via
- * startNextRound which lives in `reviewRound.ts` in Task 2.4).
+ * Enforces the session-kind invariant at the create boundary:
+ *   - kind='client'   => magicLinkId set AND reviewerUserId null
+ *   - kind='internal' => reviewerUserId set AND magicLinkId null
+ *
+ * A row that carries both a MagicLinkReviewer identity and a Clerk reviewer
+ * (or neither for its kind) is malformed. The typed `startSession` inputs make
+ * this structurally hard to express, but this guard defends the DB row against
+ * a cast or a future caller that bypasses the union.
+ */
+export function assertSessionKindInvariant(row: {
+  kind: 'client' | 'internal'
+  magicLinkId: string | null
+  reviewerUserId: string | null
+}): void {
+  if (row.kind === 'client') {
+    if (!row.magicLinkId) {
+      throw new ReviewSessionKindInvariantError(
+        'client session requires a magicLinkId',
+      )
+    }
+    if (row.reviewerUserId) {
+      throw new ReviewSessionKindInvariantError(
+        'client session must not have a reviewerUserId',
+      )
+    }
+    return
+  }
+  // internal
+  if (!row.reviewerUserId) {
+    throw new ReviewSessionKindInvariantError(
+      'internal session requires a reviewerUserId',
+    )
+  }
+  if (row.magicLinkId) {
+    throw new ReviewSessionKindInvariantError(
+      'internal session must not have a magicLinkId',
+    )
+  }
+}
+
+// ---- Public API ----
+
+/// Client (magic-link reviewer) session input. `batchId` is optional: when
+/// omitted it is derived from the magic link so existing client call sites
+/// need no change.
+export interface StartClientSessionInput {
+  kind?: 'client'
+  magicLinkId: string
+  reviewerId: string
+  batchId?: string
+  round?: number
+}
+
+/// Internal (Clerk-user / AM) session input. No magic link; `batchId` and the
+/// `reviewerUserId` are required.
+export interface StartInternalSessionInput {
+  kind: 'internal'
+  batchId: string
+  reviewerUserId: string
+  round?: number
+}
+
+export type StartSessionInput =
+  | StartClientSessionInput
+  | StartInternalSessionInput
+
+/**
+ * Creates a new in_progress ReviewSession. Round defaults to 1. The caller
+ * is responsible for choosing the right round (e.g. via startNextRound which
+ * lives in `reviewRound.ts`).
+ *
+ * Two kinds:
+ *   - client (default): magic-link reviewer. `batchId` is derived from the
+ *     magic link when not passed, so existing call sites are unchanged.
+ *   - internal: Clerk-user (AM) reviewer. No magic link; `reviewerUserId` +
+ *     `batchId` are required.
+ *
+ * The kind invariant (client => magicLinkId set + no reviewerUserId; internal
+ * => reviewerUserId set + no magicLinkId) is structurally guaranteed by these
+ * inputs and asserted at the action boundary (Task 6).
  */
 export async function startSession(
   input: StartSessionInput,
 ): Promise<ReviewSessionRow> {
+  if (input.kind === 'internal') {
+    assertSessionKindInvariant({
+      kind: 'internal',
+      magicLinkId: null,
+      reviewerUserId: input.reviewerUserId,
+    })
+    return db.reviewSession.create({
+      data: {
+        kind: 'internal',
+        batchId: input.batchId,
+        reviewerUserId: input.reviewerUserId,
+        round: input.round ?? 1,
+        status: 'in_progress',
+      },
+    })
+  }
+
+  assertSessionKindInvariant({
+    kind: 'client',
+    magicLinkId: input.magicLinkId,
+    reviewerUserId: null,
+  })
+
+  const batchId =
+    input.batchId ??
+    (
+      await db.magicLink.findUniqueOrThrow({
+        where: { id: input.magicLinkId },
+        select: { batchId: true },
+      })
+    ).batchId
+
   return db.reviewSession.create({
     data: {
+      kind: 'client',
+      batchId,
       magicLinkId: input.magicLinkId,
       reviewerId: input.reviewerId,
       round: input.round ?? 1,
@@ -133,25 +245,50 @@ export async function startSession(
   })
 }
 
-export interface FindActiveSessionInput {
+export interface FindActiveClientSessionInput {
+  kind?: 'client'
   magicLinkId: string
   reviewerId: string
 }
 
+export interface FindActiveInternalSessionInput {
+  kind: 'internal'
+  batchId: string
+  reviewerUserId: string
+}
+
+export type FindActiveSessionInput =
+  | FindActiveClientSessionInput
+  | FindActiveInternalSessionInput
+
 /**
- * Returns the most-recently-started in_progress session for this reviewer
- * on this magic link, or null. Used by the page loader to decide whether
- * to render the returning-reviewer banner or start a fresh session.
+ * Returns the most-recently-started in_progress session for this reviewer,
+ * or null. Used by the page loader to decide whether to render the
+ * returning-reviewer banner or start a fresh session.
+ *
+ * Client: keyed on (magicLinkId, reviewerId). Internal: keyed on
+ * (batchId, reviewerUserId).
  */
 export async function findActiveSession(
   input: FindActiveSessionInput,
 ): Promise<ReviewSessionRow | null> {
+  const where =
+    input.kind === 'internal'
+      ? {
+          kind: 'internal' as const,
+          batchId: input.batchId,
+          reviewerUserId: input.reviewerUserId,
+          status: 'in_progress' as const,
+        }
+      : {
+          kind: 'client' as const,
+          magicLinkId: input.magicLinkId,
+          reviewerId: input.reviewerId,
+          status: 'in_progress' as const,
+        }
+
   return db.reviewSession.findFirst({
-    where: {
-      magicLinkId: input.magicLinkId,
-      reviewerId: input.reviewerId,
-      status: 'in_progress',
-    },
+    where,
     orderBy: { startedAt: 'desc' },
   })
 }
@@ -282,8 +419,11 @@ export async function markSuperseded(
 export async function listSessionsForBatch(
   batchId: string,
 ): Promise<ReviewSessionWithReviewer[]> {
+  // Query by the direct batchId so BOTH client and internal sessions are
+  // returned (the old `magicLink: { batchId }` join missed internal rows,
+  // which have no magic link).
   return db.reviewSession.findMany({
-    where: { magicLink: { batchId } },
+    where: { batchId },
     orderBy: [
       { submittedAt: { sort: 'desc', nulls: 'last' } },
       { startedAt: 'desc' },
@@ -330,7 +470,9 @@ export async function findSessionWithItems(
 /// sends one email at the longer threshold rather than two back to back.
 export interface StaleReviewSession {
   sessionId: string
-  magicLinkId: string
+  /// Always set in practice: the reminder query is client-only (it filters
+  /// on `magicLink`), but the column is nullable on the model now.
+  magicLinkId: string | null
   reviewerId: string | null
   startedAt: Date
   threshold: '48h' | '96h'
@@ -364,6 +506,9 @@ export async function findStaleInProgressSessions(
 
   const rows = await db.reviewSession.findMany({
     where: {
+      // Reminder emails are client-only; internal (AM) sessions get the
+      // in-app bell, not email.
+      kind: 'client',
       status: 'in_progress',
       magicLink: {
         revokedAt: null,

@@ -135,6 +135,16 @@ enum ReviewSessionStatus {
   superseded
 }
 
+/// Discriminator between the external client review (magic-link reviewer,
+/// `client`) and the internal AM<->designer Design Review (Clerk-user
+/// reviewer, `internal`). `client` is the default + backfilled value so the
+/// existing client flow is untouched. See
+/// projects/relay-app/2026-06-29-internal-review-parity-design.md.
+enum ReviewSessionKind {
+  client
+  internal
+}
+
 enum ReviewDecision {
   not_reviewed
   approved
@@ -230,6 +240,7 @@ model User {
   commentsAuthored  PostComment[]        @relation("CommentAuthor")
   magicLinksCreated MagicLink[]          @relation("MagicLinkCreator")
   feedback          Feedback[]           @relation("FeedbackSubmitter")
+  internalReviewSessions ReviewSession[] @relation("InternalReviewer")
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -503,6 +514,7 @@ model Batch {
   relayEvents           RelayEvent[]
   targetedByContentRuns ContentRun[]    @relation("ContentRunTargetBatch")
   magicLinks            MagicLink[]
+  reviewSessions        ReviewSession[]
 
   @@index([clientId, currentStep])
   @@index([currentHolder, currentStep])
@@ -725,11 +737,26 @@ model MagicLinkReviewer {
 /// the initial review; round N+1 fires after the AM has addressed all items
 /// from round N and called startNextRound. v2 of the client review flow.
 model ReviewSession {
-  id          String  @id @default(cuid())
-  magicLinkId String
+  id   String            @id @default(cuid())
+  /// `client` (external magic-link review, default) or `internal` (AM<->designer
+  /// Design Review). Invariant enforced in code at the create boundary:
+  /// client => magicLinkId set + reviewerUserId null; internal =>
+  /// reviewerUserId set + magicLinkId null.
+  kind ReviewSessionKind @default(client)
+
+  /// Direct FK to the batch under review, populated for BOTH kinds (backfilled
+  /// from magicLink.batchId for pre-existing client rows). Lets
+  /// listSessionsForBatch match by batchId without the magic-link join.
+  batchId String
+  /// Nullable since 2026-06-29: internal sessions have no magic link. Set for
+  /// client sessions only.
+  magicLinkId String?
   /// Null until first-visit name confirm associates the session with a
-  /// MagicLinkReviewer.
+  /// MagicLinkReviewer. Client sessions only.
   reviewerId  String?
+  /// The Clerk User (AM) reviewing on an internal session. Internal sessions
+  /// only; null for client sessions.
+  reviewerUserId String?
 
   status ReviewSessionStatus @default(in_progress)
   /// 1 for the first review, 2 for re-review after AM addressed changes, etc.
@@ -749,12 +776,15 @@ model ReviewSession {
   /// Null = not yet reminded at this threshold.
   reminder96hSentAt DateTime?
 
-  magicLink MagicLink          @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
-  reviewer  MagicLinkReviewer? @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
-  items     ReviewItem[]
+  batch        Batch              @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  magicLink    MagicLink?         @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
+  reviewer     MagicLinkReviewer? @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewerUser User?              @relation("InternalReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  items        ReviewItem[]
 
   @@index([magicLinkId, round])
   @@index([reviewerId])
+  @@index([batchId])
   @@map("review_sessions")
 }
 
