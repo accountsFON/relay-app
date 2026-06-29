@@ -26,6 +26,23 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-06-29 — Collapse client review to one pill + feedback badge** (PR #TBD)
+  The batch detail "Review Sessions" list now shows ONE client pill per batch (was one per
+  ReviewSession, so re-opening the magic link or prior rounds stacked extra pills). Root cause:
+  re-confirming the name on the magic link mints a fresh reviewer identity, so the session lookup
+  (keyed on reviewerId) missed the prior session and lazily created a new round-1 one. Fixed by
+  resolving the client session by `magicLinkId` (new `findActiveClientSessionForLink` /
+  `findLatestClientSessionForLink`), reused across the review page load + start/save/submit actions,
+  plus a guard so a post-submit revisit can't fork a new round-1 (only the AM opens a new round).
+  Render side: a pure `selectClientReviewPill` selector collapses to the current client session
+  (highest round, submitted over in-progress, excludes internal + superseded) — no data migration,
+  existing duplicate rows are just hidden. New amber "N Feedback" badge on the pill when the client
+  left changes/caption-edits/comments (clean approve-all shows none). AM submit notification was
+  already firing (review_session_submitted + client_review_decided) — left as is. No schema change;
+  `src/server/services/*` untouched so the Trigger.dev deploy skips. 2130 unit tests pass, tsc +
+  eslint clean (only the pre-existing batch-page Date.now purity error remains, untouched). Spec +
+  plan: `vault projects/relay-app/2026-06-29-client-review-pill-collapse-{design,plan}.md`.
+
 - [x] **2026-06-29 — Internal review parity, Phase 3: designer respond surface (closes Batch D)** (PR #TBD)
   Closes the AM<->designer round loop, the internal review now flows like the client link end to end.
   (1) `markDesignRevisionsDone` service + `markDesignRevisionsDoneAction`: the inverse of
