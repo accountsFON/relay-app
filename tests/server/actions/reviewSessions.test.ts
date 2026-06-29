@@ -40,6 +40,8 @@ vi.mock('@/server/repositories/magicLinks', () => ({
 
 vi.mock('@/server/repositories/reviewSessions', () => ({
   findActiveSession: vi.fn(),
+  findActiveClientSessionForLink: vi.fn(),
+  findLatestClientSessionForLink: vi.fn(),
   findSessionWithItems: vi.fn(),
   saveDraftItem: vi.fn(),
   startSession: vi.fn(),
@@ -107,6 +109,8 @@ import { verifyToken, verifySession } from '@/lib/magic-link'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 import {
   findActiveSession,
+  findActiveClientSessionForLink,
+  findLatestClientSessionForLink,
   findSessionWithItems,
   saveDraftItem,
   startSession,
@@ -128,9 +132,11 @@ import {
   markPostAddressedAction,
   rejectCaptionEditAction,
   saveInternalDraftAction,
+  saveReviewDraftAction,
   startInternalNextRoundAction,
   startInternalReviewAction,
   startNextRoundAction,
+  startReviewSessionAction,
   submitInternalReviewAction,
   submitSessionAction,
   unmarkPostAddressedAction,
@@ -185,10 +191,50 @@ beforeEach(() => {
   })
 })
 
+describe('startReviewSessionAction — by-link resume', () => {
+  it('reuses the link active session regardless of reviewerId', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({ id: 'existing' } as never)
+    const res = await startReviewSessionAction({ token: TOKEN })
+    expect(res).toEqual({ reviewSessionId: 'existing' })
+    expect(startSession).not.toHaveBeenCalled()
+  })
+
+  it('returns the submitted session id without creating a new round-1', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue(null)
+    vi.mocked(findLatestClientSessionForLink).mockResolvedValue({ id: 'done', status: 'submitted' } as never)
+    const res = await startReviewSessionAction({ token: TOKEN })
+    expect(res).toEqual({ reviewSessionId: 'done' })
+    expect(startSession).not.toHaveBeenCalled()
+  })
+
+  it('creates round-1 when the link has no prior session', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue(null)
+    vi.mocked(findLatestClientSessionForLink).mockResolvedValue(null)
+    vi.mocked(startSession).mockResolvedValue({ id: 'new' } as never)
+    const res = await startReviewSessionAction({ token: TOKEN })
+    expect(res).toEqual({ reviewSessionId: 'new' })
+  })
+})
+
+describe('saveReviewDraftAction — post-submit guard', () => {
+  it('throws when the current round is already submitted', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue(null)
+    vi.mocked(findLatestClientSessionForLink).mockResolvedValue({ id: 'done', status: 'submitted' } as never)
+    await expect(
+      saveReviewDraftAction({ token: TOKEN, postId: 'p1', decision: 'approved' }),
+    ).rejects.toThrow('Review already submitted')
+    expect(startSession).not.toHaveBeenCalled()
+  })
+})
+
 describe('submitSessionAction', () => {
   it('happy path: flips status, sends digest, emits activity, returns summary', async () => {
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -337,7 +383,7 @@ describe('submitSessionAction', () => {
 
   it('fetches open client-left pins for the batch and renders them on the digest item (Wave J4)', async () => {
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -458,7 +504,7 @@ describe('submitSessionAction', () => {
 
   it('throws when the active session has no items, and does NOT submit or send', async () => {
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -488,7 +534,7 @@ describe('submitSessionAction', () => {
 
   it('mentions both AM and designer when both are assigned on the client', async () => {
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -578,7 +624,7 @@ describe('submitSessionAction', () => {
 
   it('mentions only the AM when assignedDesignerId is null', async () => {
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -665,7 +711,7 @@ describe('submitSessionAction', () => {
 
   it('email failure does NOT roll back the submission , status still flipped, returns emailError', async () => {
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -763,7 +809,7 @@ describe('submitSessionAction', () => {
   // Helper shared by the advanceFromClientReview tests.
   function primeAllApprovedSubmit(): void {
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -853,7 +899,7 @@ describe('submitSessionAction', () => {
 
   it('any-change summary maps to decision "changes"', async () => {
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -940,7 +986,7 @@ describe('submitSessionAction', () => {
     // which under the OLD code looked like "all approved". The fix uses
     // posts.length from db.post.findMany (the actual batch post count) instead.
     primeReviewerResolve()
-    vi.mocked(findActiveSession).mockResolvedValue({
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
       id: SESSION_ID,
       magicLinkId: MAGIC_LINK_ID,
       reviewerId: REVIEWER_ID,
