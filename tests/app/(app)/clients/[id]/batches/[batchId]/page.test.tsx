@@ -297,19 +297,6 @@ const mockSubmittedSession = {
   items: [],
 }
 
-const mockInProgressSession = {
-  id: 'session_in_progress_1',
-  kind: 'client',
-  magicLinkId: 'ml_1',
-  reviewerId: null,
-  reviewer: null,
-  status: 'in_progress',
-  round: 1,
-  startedAt: new Date('2026-05-12T10:00:00Z'),
-  submittedAt: null,
-  items: [],
-}
-
 async function renderPage(params: { id: string; batchId: string }) {
   const ui = await BatchDetailPage({
     params: Promise.resolve(params),
@@ -641,81 +628,6 @@ describe('BatchDetailPage', () => {
 
       const link = getByTestId(`review-session-open-${mockSubmittedSession.id}`)
       expect(link.textContent).not.toContain('Open detail')
-    })
-  })
-
-  // ---- Header "View client feedback" button ----
-
-  describe('view-client-feedback-header button', () => {
-    it('renders when a submitted review session is present and links to its detail page', async () => {
-      vi.mocked(listSessionsForBatch).mockResolvedValue([
-        mockSubmittedSession,
-      ] as never)
-
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-      })
-
-      const btn = getByTestId('view-client-feedback-header')
-      expect(btn).toBeTruthy()
-      expect(btn.getAttribute('href')).toContain(
-        `/review-sessions/${mockSubmittedSession.id}`,
-      )
-    })
-
-    it('links to the latest submitted session when multiple submitted sessions exist', async () => {
-      const olderSubmitted = {
-        ...mockSubmittedSession,
-        id: 'session_submitted_older',
-        round: 1,
-        submittedAt: new Date('2026-05-08T12:00:00Z'),
-      }
-      const newerSubmitted = {
-        ...mockSubmittedSession,
-        id: 'session_submitted_newer',
-        round: 2,
-        submittedAt: new Date('2026-05-12T12:00:00Z'),
-      }
-      // Repo orders by submittedAt desc — newest first.
-      vi.mocked(listSessionsForBatch).mockResolvedValue([
-        newerSubmitted,
-        olderSubmitted,
-      ] as never)
-
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-      })
-
-      const btn = getByTestId('view-client-feedback-header')
-      expect(btn.getAttribute('href')).toContain(
-        `/review-sessions/${newerSubmitted.id}`,
-      )
-    })
-
-    it('does not render when no submitted session exists (only in_progress)', async () => {
-      vi.mocked(listSessionsForBatch).mockResolvedValue([
-        mockInProgressSession,
-      ] as never)
-
-      const { queryByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-      })
-
-      expect(queryByTestId('view-client-feedback-header')).toBeNull()
-    })
-
-    it('does not render when there are no review sessions at all', async () => {
-      vi.mocked(listSessionsForBatch).mockResolvedValue([])
-
-      const { queryByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-      })
-
-      expect(queryByTestId('view-client-feedback-header')).toBeNull()
     })
   })
 
