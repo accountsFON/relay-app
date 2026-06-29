@@ -136,7 +136,20 @@ export function amKanbanColumn(step: RelayStep): AmKanbanColumn | null {
 
 export type DesignerKanbanColumn = 'In Design' | 'Awaiting QA' | 'Revisions'
 
-export function designerKanbanColumn(step: RelayStep): DesignerKanbanColumn | null {
+/**
+ * Map a step (+ sub-state) to the designer kanban column.
+ *
+ * Merge design steps (2026-06-26): requested changes now live on
+ * `am_review_design` with the `awaiting_design_revisions` sub-state (AM-held,
+ * no baton handoff). To keep those visible to the designer, this returns the
+ * "Revisions" column for that case — but stays `null` for `am_review_design` in
+ * the default (AM-reviewing) sub-state, so plain AM-review batches do not leak
+ * onto the designer board.
+ */
+export function designerKanbanColumn(
+  step: RelayStep,
+  subState: string | null,
+): DesignerKanbanColumn | null {
   switch (step) {
     case RelayStep.in_design:
       return 'In Design'
@@ -144,6 +157,8 @@ export function designerKanbanColumn(step: RelayStep): DesignerKanbanColumn | nu
       return 'Awaiting QA'
     case RelayStep.design_revisions:
       return 'Revisions'
+    case RelayStep.am_review_design:
+      return subState === 'awaiting_design_revisions' ? 'Revisions' : null
     default:
       return null
   }

@@ -239,7 +239,7 @@ async function AmDashboard({
   )
 }
 
-async function DesignerDashboard({
+export async function DesignerDashboard({
   ctx,
 }: {
   ctx: { organizationDbId: string; userDbId: string }
@@ -255,12 +255,42 @@ async function DesignerDashboard({
   const transitions = await lastTransitionByBatch(myBatches.map((b) => b.id))
   const stations = bucketRunners(myBatches, DESIGNER_TRACK_STEPS, transitions)
 
+  // Merge design steps (2026-06-26): requested changes sit on am_review_design
+  // (AM-held), so they fall outside DESIGNER_TRACK_STEPS and dropped off the
+  // designer board. Surface them in a dedicated tile so the designer still sees
+  // what needs reworking without relying on the bell alone.
+  const awaitingRevisions = myBatches.filter(
+    (b) =>
+      b.currentStep === RelayStep.am_review_design &&
+      b.currentSubState === 'awaiting_design_revisions',
+  )
+
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <HeroBand
         title="My relay"
         subtitle="Your design queue, moving across the track."
       />
+      {awaitingRevisions.length > 0 && (
+        <div className="mt-8">
+          <PageSection title="Awaiting your revisions">
+            <DataRowGroup className="-mx-1">
+              {awaitingRevisions.map((b) => (
+                <DataRow
+                  key={b.id}
+                  href={`/clients/${b.clientId}/batches/${b.id}`}
+                  leading={
+                    <RowAvatar initials={(b.client?.name ?? '?').slice(0, 2)} />
+                  }
+                  title={b.label}
+                  subtitle={b.client?.name ?? ''}
+                  meta="Revise designs"
+                />
+              ))}
+            </DataRowGroup>
+          </PageSection>
+        </div>
+      )}
       <div className="mt-8">
         <DashboardRelayTrack stations={stations} viewerRole="designer" />
       </div>
