@@ -112,6 +112,56 @@ describe('ReviewPostCard', () => {
   })
 })
 
+describe('ReviewPostCard -- mode=internal', () => {
+  it('renders the verdict row, Notes, Edit-copy, and pins in internal mode', () => {
+    const onCreatePin = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="internal"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={vi.fn()}
+        onCreatePin={onCreatePin}
+      />,
+    )
+
+    // Verdict row (both buttons).
+    expect(screen.getByTestId('decision-button-approved')).toBeInTheDocument()
+    expect(
+      screen.getByTestId('decision-button-changes_requested'),
+    ).toBeInTheDocument()
+    // Notes field.
+    expect(
+      screen.getByTestId('review-post-card-notes-label'),
+    ).toBeInTheDocument()
+    // Inline Edit copy affordance (pin/markup chrome is the same IG post).
+    expect(
+      screen.getByTestId('instagram-post-edit-copy'),
+    ).toBeInTheDocument()
+  })
+
+  it('forwards a verdict click in internal mode', () => {
+    const onDecisionChange = vi.fn()
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="internal"
+        onDecisionChange={onDecisionChange}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    fireEvent.click(screen.getByTestId('decision-button-approved'))
+    expect(onDecisionChange).toHaveBeenCalledWith('approved')
+  })
+})
+
 describe('ReviewPostCard -- post-level Comments section', () => {
   function makePostThread(
     overrides: Partial<HydratedThread> = {},

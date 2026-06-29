@@ -25,8 +25,14 @@ export type ReviewPostCardProps = {
    */
   threads?: FeedPostProps['threads']
   platform: Platform
-  /** Only 'review' is supported on the v2 client surface. */
-  mode: 'review'
+  /**
+   * 'review' = magic-link client surface; 'internal' = Clerk-authed AM verdict
+   * surface on /preview. Both render the same verdict/Notes/edit-copy/pin
+   * chrome; the host shell wires the callbacks to the matching persistence
+   * layer (token draft endpoint vs Phase 1 internal server actions). Passed
+   * straight through to the embedded IG/FB chrome (`FeedPostProps.mode`).
+   */
+  mode: 'review' | 'internal'
   onDecisionChange: (decision: ReviewDecisionType) => void
   onCommentChange: (comment: string) => Promise<boolean>
   /**
