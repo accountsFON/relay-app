@@ -86,11 +86,25 @@ describe('amKanbanColumn', () => {
 
 describe('designerKanbanColumn', () => {
   it('only includes designer-held steps', () => {
-    expect(designerKanbanColumn(RelayStep.in_design)).toBe('In Design')
-    expect(designerKanbanColumn(RelayStep.designs_completed)).toBe('Awaiting QA')
-    expect(designerKanbanColumn(RelayStep.design_revisions)).toBe('Revisions')
-    expect(designerKanbanColumn(RelayStep.copy)).toBeNull()
-    expect(designerKanbanColumn(RelayStep.client_decision)).toBeNull()
+    expect(designerKanbanColumn(RelayStep.in_design, null)).toBe('In Design')
+    expect(designerKanbanColumn(RelayStep.designs_completed, null)).toBe('Awaiting QA')
+    expect(designerKanbanColumn(RelayStep.design_revisions, null)).toBe('Revisions')
+    expect(designerKanbanColumn(RelayStep.copy, null)).toBeNull()
+    expect(designerKanbanColumn(RelayStep.client_decision, null)).toBeNull()
+  })
+
+  it('returns the Revisions column for am_review_design + awaiting_design_revisions', () => {
+    expect(
+      designerKanbanColumn(RelayStep.am_review_design, 'awaiting_design_revisions'),
+    ).toBe('Revisions')
+  })
+
+  it('returns null for am_review_design in the default (AM-reviewing) sub-state', () => {
+    expect(designerKanbanColumn(RelayStep.am_review_design, null)).toBeNull()
+  })
+
+  it('leaves in_design unchanged regardless of sub-state', () => {
+    expect(designerKanbanColumn(RelayStep.in_design, 'whatever')).toBe('In Design')
   })
 })
 

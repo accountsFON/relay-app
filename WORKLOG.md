@@ -11,9 +11,8 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-06-26 triage (Batch A + B + the design-step merge shipped; next-action board + D remain):
-- [ ] **Next-action board** replacing the cost-breakdown banner slot — per-step "primary action + destination" (e.g. design step -> "Review designs" -> internal review). **Must also give the DESIGNER a visible queue item for batches at `am_review_design` + sub-state `awaiting_design_revisions`** (the merge made those AM-held, so they dropped off the designer dashboard/kanban; the designer is still notified durably via the bell deep-link, but the board surface is gone until this lands). (Batch C part 2)
-- [ ] **Internal review parity with client review** — reuse `ReviewPostCard`; needs a scoping brainstorm. (Batch D)
+From the 2026-06-26 triage (Batch A + B + C shipped; D in design):
+- [ ] **Internal review parity with client review (Batch D)** — make `/preview` (the AM<->designer review) look AND flow like the client link: per-post Approve/Request-changes verdict, the ReviewPostCard look, and a round-based review->submit->respond loop with the designer working on `/preview`, tied to the Design Review step + the next-action banner. In design (`2026-06-29-...`).
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
 - [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
@@ -28,7 +27,19 @@ From the 2026-06-26 triage (Batch A + B + the design-step merge shipped; next-ac
 
 ## Shipped
 
-- [x] **2026-06-26 — Merge Design Review + Design Revision into one step (Batch C, part 1)** (PR #TBD)
+- [x] **2026-06-29 — Next-action board + designer revision tile (Batch C, part 2)** (PR #TBD)
+  A role-aware "what to do next" board on the relay detail page: a pure `nextActionForRelay(step, subState,
+  viewerRole, ...)` map -> a `NextActionBoard` banner showing the viewer's next action + a button to the
+  right place (e.g. Design Review -> "Review designs" -> `/preview`; scheduling -> "Go to NectrCRM"; client
+  review -> "View client feedback" when a session is submitted). Non-actors see a muted "waiting on X".
+  The cost breakdown stays admin-only and now sits ABOVE the board. Also restores designer visibility lost
+  in the step merge: an "Awaiting your revisions" dashboard tile collecting the designer's
+  `am_review_design`+`awaiting_design_revisions` batches, plus a sub-state-aware `designerKanbanColumn`.
+  No schema/services change -> Trigger.dev deploy skips. 18 action-map + 5 component + page + dashboard
+  tests; full unit suite 2044 pass, tsc clean, eslint clean (one pre-existing batch-page `Date.now`
+  warning untouched). Spec + plan: `vault projects/relay-app/2026-06-29-next-action-board-{design,plan}.md`.
+
+- [x] **2026-06-26 — Merge Design Review + Design Revision into one step (Batch C, part 1)** (PR #274)
   Collapsed the design phase to one AM-held `am_review_design` (Design Review) step; `design_revisions`
   is retired (kept in the enum/HOLDER_ROLE for history). The review<->revise loop edges were removed
   from both transition tables, and the QA send-back was redirected `am_qa_pre_client -> am_review_design`
