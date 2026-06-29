@@ -239,11 +239,15 @@ export default async function BatchDetailPage({
   const canAct =
     batch.currentHolder === ctx.userDbId ||
     canOverrideHolder(ctx.role, ctx.platformOwner)
-  // Latest submitted client review session, reused by the next-action board's
-  // "View client feedback" deep link. Repo orders submittedAt desc, so the
-  // first submitted is the latest.
+  // Latest submitted CLIENT review session, reused by the next-action board's
+  // "View client feedback" deep link. Must filter on kind: internal Design
+  // Review sessions share this batchId, and during client_review the internal
+  // session is already submitted, so an unfiltered find would surface internal
+  // feedback as if the client had submitted. Repo orders submittedAt desc, so
+  // the first submitted client session is the latest.
   const latestSubmittedSession =
-    reviewSessions.find((s) => s.status === 'submitted') ?? null
+    reviewSessions.find((s) => s.kind === 'client' && s.status === 'submitted') ??
+    null
   // Single client-facing pill — collapses all client sessions to one row.
   const clientPill = selectClientReviewPill(reviewSessions)
   // Force step is admin role + platform owner only (stricter than canAct).
