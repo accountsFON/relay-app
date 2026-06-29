@@ -38,10 +38,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
   (highest round, submitted over in-progress, excludes internal + superseded) — no data migration,
   existing duplicate rows are just hidden. New amber "N Feedback" badge on the pill when the client
   left changes/caption-edits/comments (clean approve-all shows none). AM submit notification was
-  already firing (review_session_submitted + client_review_decided) — left as is. No schema change;
-  `src/server/services/*` untouched so the Trigger.dev deploy skips. 2130 unit tests pass, tsc +
-  eslint clean (only the pre-existing batch-page Date.now purity error remains, untouched). Spec +
-  plan: `vault projects/relay-app/2026-06-29-client-review-pill-collapse-{design,plan}.md`.
+  already firing (review_session_submitted + client_review_decided) — left as is. The whole-branch
+  review caught that the LIVE client draft path is `/api/review/[token]/draft` → `saveItemDraft`
+  (`src/server/services/reviewDraft.ts`), not the legacy `saveReviewDraftAction`, so the root-cause
+  fix was ported there too (by-link resolution + a `ReviewDraftSessionClosedError` 409 guard so an
+  already-submitted/superseded round can't fork a new round-1). No schema change; `reviewDraft.ts` is
+  a service, so the Trigger.dev deploy DOES fire on merge (no generation logic changed). 2134 unit
+  tests pass, tsc + eslint clean (only the pre-existing batch-page Date.now purity error remains,
+  untouched). Spec + plan:
+  `vault projects/relay-app/2026-06-29-client-review-pill-collapse-{design,plan}.md`.
 
 - [x] **2026-06-29 — Internal review parity, Phase 3: designer respond surface (closes Batch D)** (PR #TBD)
   Closes the AM<->designer round loop, the internal review now flows like the client link end to end.

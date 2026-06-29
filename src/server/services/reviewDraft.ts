@@ -23,12 +23,12 @@
  * Errors are thrown as named classes so the route handler can map them
  * to HTTP status codes without parsing message strings.
  *
- * NOTE on Task 1.4 dependency: this service imports `findActiveSession`,
- * `startSession`, and `saveDraftItem` from `@/server/repositories/reviewSessions`.
- * Layer 1.4 is in flight in parallel; the import resolves once both PRs
- * are squash-merged into main. The repo shape is locked in the plan doc
- * (Task 1.4 success criteria) so we code against it directly. Tests
- * mock the repo so they run independently of 1.4's merge order.
+ * Session resolution is keyed on the magic LINK, not the reviewer:
+ * `findActiveClientSessionForLink` / `findLatestClientSessionForLink` /
+ * `startSession` / `saveDraftItem` from `@/server/repositories/reviewSessions`.
+ * Keying on the link (not a per-confirm `reviewerId`) stops a re-opened link
+ * from forking a duplicate session. Tests mock the repo so they run
+ * independently.
  */
 import { cookies } from 'next/headers'
 import { db } from '@/db/client'
