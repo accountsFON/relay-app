@@ -720,4 +720,27 @@ describe('findStaleInProgressSessions', () => {
     expect(byId.get(a)).toBe('48h')
     expect(byId.get(b)).toBe('96h')
   })
+
+  it('excludes internal sessions (no email reminders for internal)', async () => {
+    // A stale client session (should be returned) and a stale internal
+    // session on the same batch (should be excluded).
+    const clientStale = await insertSessionAt({
+      startedAt: new Date(now.getTime() - 50 * 60 * 60 * 1000),
+    })
+    const internalStale = await db.reviewSession.create({
+      data: {
+        kind: 'internal',
+        batchId,
+        reviewerUserId: userId,
+        round: 1,
+        status: 'in_progress',
+        startedAt: new Date(now.getTime() - 100 * 60 * 60 * 1000),
+      },
+    })
+
+    const rows = await findStaleInProgressSessions({ now })
+    const sids = rows.map((r) => r.sessionId)
+    expect(sids).toContain(clientStale)
+    expect(sids).not.toContain(internalStale.id)
+  })
 })

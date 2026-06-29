@@ -107,6 +107,56 @@ export function computeSummary(items: { decision: string }[]): ReviewSessionSumm
   }
 }
 
+// ---- Invariant ----
+
+export class ReviewSessionKindInvariantError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ReviewSessionKindInvariantError'
+  }
+}
+
+/**
+ * Enforces the session-kind invariant at the create boundary:
+ *   - kind='client'   => magicLinkId set AND reviewerUserId null
+ *   - kind='internal' => reviewerUserId set AND magicLinkId null
+ *
+ * A row that carries both a MagicLinkReviewer identity and a Clerk reviewer
+ * (or neither for its kind) is malformed. The typed `startSession` inputs make
+ * this structurally hard to express, but this guard defends the DB row against
+ * a cast or a future caller that bypasses the union.
+ */
+export function assertSessionKindInvariant(row: {
+  kind: 'client' | 'internal'
+  magicLinkId: string | null
+  reviewerUserId: string | null
+}): void {
+  if (row.kind === 'client') {
+    if (!row.magicLinkId) {
+      throw new ReviewSessionKindInvariantError(
+        'client session requires a magicLinkId',
+      )
+    }
+    if (row.reviewerUserId) {
+      throw new ReviewSessionKindInvariantError(
+        'client session must not have a reviewerUserId',
+      )
+    }
+    return
+  }
+  // internal
+  if (!row.reviewerUserId) {
+    throw new ReviewSessionKindInvariantError(
+      'internal session requires a reviewerUserId',
+    )
+  }
+  if (row.magicLinkId) {
+    throw new ReviewSessionKindInvariantError(
+      'internal session must not have a magicLinkId',
+    )
+  }
+}
+
 // ---- Public API ----
 
 /// Client (magic-link reviewer) session input. `batchId` is optional: when
@@ -152,6 +202,11 @@ export async function startSession(
   input: StartSessionInput,
 ): Promise<ReviewSessionRow> {
   if (input.kind === 'internal') {
+    assertSessionKindInvariant({
+      kind: 'internal',
+      magicLinkId: null,
+      reviewerUserId: input.reviewerUserId,
+    })
     return db.reviewSession.create({
       data: {
         kind: 'internal',
@@ -162,6 +217,12 @@ export async function startSession(
       },
     })
   }
+
+  assertSessionKindInvariant({
+    kind: 'client',
+    magicLinkId: input.magicLinkId,
+    reviewerUserId: null,
+  })
 
   const batchId =
     input.batchId ??
@@ -445,6 +506,9 @@ export async function findStaleInProgressSessions(
 
   const rows = await db.reviewSession.findMany({
     where: {
+      // Reminder emails are client-only; internal (AM) sessions get the
+      // in-app bell, not email.
+      kind: 'client',
       status: 'in_progress',
       magicLink: {
         revokedAt: null,
