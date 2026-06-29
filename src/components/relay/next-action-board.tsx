@@ -56,8 +56,9 @@ function ActionLink({
  * card with the title, optional guidance line, and up to two off-page buttons.
  *
  * Internal hrefs render as a plain Next <Link>; external hrefs (NectrCRM, the
- * client content folder) open in a new tab. `tone:'waiting'` and `tone:'done'`
- * carry no button.
+ * client content folder) open in a new tab. `tone:'done'` carries no button;
+ * `tone:'waiting'` usually carries none, but may expose an off-page button
+ * (e.g. the AM watching design revisions can open the internal review).
  */
 export function NextActionBoard({ action }: Props) {
   return (

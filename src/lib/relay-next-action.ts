@@ -82,9 +82,14 @@ export function nextActionForRelay(input: NextActionInput): NextAction {
   const amViewer = viewerRole === 'account_manager' || viewerRole === 'admin'
   const designerViewer = viewerRole === 'designer'
 
-  const waiting = (holderRole: string, title?: string): NextAction => ({
+  const waiting = (
+    holderRole: string,
+    title?: string,
+    button?: NextActionButton,
+  ): NextAction => ({
     tone: 'waiting',
     title: title ?? `Waiting on the ${holderRole}`,
+    ...(button ? { button } : {}),
   })
 
   // Terminal: completed is a done note for everyone.
@@ -156,7 +161,12 @@ export function nextActionForRelay(input: NextActionInput): NextAction {
           }
           return a
         }
-        return waiting('designer', 'Waiting on design revisions')
+        // The AM (non-actor) waits, but can still open the internal review to
+        // watch the designer's in-progress revisions.
+        return waiting('designer', 'Waiting on design revisions', {
+          label: 'Open internal review',
+          href: preview,
+        })
       }
       // Default sub-state: the AM reviews the uploaded designs.
       if (amViewer) {
