@@ -487,6 +487,37 @@ describe('BatchDetailPage', () => {
       const board = getByTestId('next-action-board')
       expect(board.dataset.tone).toBe('waiting')
     })
+
+    it('does not surface an internal Design Review submission as client feedback during client_review', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'account_manager',
+      })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'client_review',
+        currentSubState: null,
+        currentHolder: 'someone_else',
+      } as never)
+      // Only an INTERNAL (Design Review) session is submitted; the client has
+      // not submitted yet. It must NOT count as client feedback / a deep link.
+      vi.mocked(listSessionsForBatch).mockResolvedValue([
+        {
+          ...mockSubmittedSession,
+          id: 'internal_submitted_1',
+          kind: 'internal',
+          magicLinkId: null,
+        },
+      ] as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+      const board = getByTestId('next-action-board')
+      expect(board.textContent).toMatch(/awaiting client review/i)
+      expect(board.textContent).not.toMatch(/view client feedback/i)
+    })
   })
 
   // ---- Bulk media upload panel (item 35) ----
