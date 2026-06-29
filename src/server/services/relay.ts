@@ -81,6 +81,12 @@ export interface RequestDesignChangesInput {
   actorOrganizationId: string
 }
 
+export interface MarkDesignRevisionsDoneInput {
+  batchId: string
+  actorId: string
+  actorOrganizationId: string
+}
+
 export class RelayServiceError extends Error {
   constructor(message: string) {
     super(message)
@@ -988,5 +994,83 @@ export async function requestDesignChanges(input: RequestDesignChangesInput) {
     )
 
     return { batchId: batch.id, subState: 'awaiting_design_revisions' as const }
+  })
+}
+
+/**
+ * Inverse of `requestDesignChanges` (internal review parity Phase 3): the
+ * designer marks their revisions done.
+ *
+ * Also an IN-STEP action, not a state-machine transition. The batch stays at
+ * `am_review_design`, AM-held; we only clear `currentSubState` from
+ * `awaiting_design_revisions` back to null (the default reviewing state) and
+ * notify the assigned AM with a deep-link to the internal review page so the
+ * AM can open the next round and re-review.
+ *
+ * - Guard: batch must be at `am_review_design` AND in the
+ *   `awaiting_design_revisions` sub-state (the only state this clears).
+ * - Allowed for the assigned designer OR an AM / admin. The role gate lives at
+ *   the action layer (mirrors requestDesignChangesAction); cross-tenant scope
+ *   is enforced here by the org check.
+ * - The activity write never blocks: `recordActivity` swallows its own errors.
+ *   If no AM is assigned the mention list is empty but the sub-state still
+ *   clears. `surface: 'internal_review'` + batchId routes the AM bell to
+ *   `/preview` (see resolveHref in src/lib/notification-copy.ts).
+ */
+export async function markDesignRevisionsDone(input: MarkDesignRevisionsDoneInput) {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({
+      where: { id: input.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        currentSubState: true,
+        label: true,
+        client: { select: { organizationId: true, assignedAmId: true } },
+      },
+    })
+    if (!batch) throw new RelayServiceError('Relay not found')
+    // Cross-tenant scope: see passBaton above.
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
+    if (batch.currentStep !== RelayStep.am_review_design) {
+      throw new RelayServiceError(
+        'Mark revisions done is only valid at Design Review',
+      )
+    }
+    if (batch.currentSubState !== 'awaiting_design_revisions') {
+      throw new RelayServiceError(
+        'Mark revisions done is only valid while awaiting design revisions',
+      )
+    }
+
+    const amId = batch.client.assignedAmId
+
+    await tx.batch.update({
+      where: { id: batch.id },
+      data: { currentSubState: null },
+    })
+
+    await recordActivity(
+      {
+        clientId: batch.clientId,
+        actorId: input.actorId,
+        kind: ActivityKind.batch_revision_completed,
+        visibility: EventVisibility.internal,
+        payload: {
+          batchId: batch.id,
+          batchLabel: batch.label,
+          surface: 'internal_review',
+        },
+        mentionedUserIds: amId
+          ? mentionsExcludingActor([amId], input.actorId)
+          : [],
+      },
+      tx,
+    )
+
+    return { batchId: batch.id, subState: null }
   })
 }
