@@ -43,6 +43,7 @@ import {
   acceptCaptionEditAction,
   rejectCaptionEditAction,
   startNextRoundAction,
+  startInternalNextRoundAction,
   markPostAddressedAction,
   unmarkPostAddressedAction,
 } from '@/server/actions/reviewSessions'
@@ -332,11 +333,14 @@ export default async function ReviewSessionDetailPage({
     )
   }
 
+  const isInternalSession = session.kind === 'internal'
   const startNextRound = async () => {
     'use server'
-    // Client sessions key on the magic link; internal sessions are wired to
-    // their own entry point in Task 4.
-    if (magicLinkId) {
+    // Client sessions key on the magic link; internal sessions key on the
+    // batch (the AM reviewer is resolved from the Clerk session).
+    if (isInternalSession) {
+      await startInternalNextRoundAction({ batchId: batchId_ })
+    } else if (magicLinkId) {
       await startNextRoundAction({ magicLinkId })
     }
   }
@@ -397,11 +401,26 @@ export default async function ReviewSessionDetailPage({
           ? ('am' as const)
           : ('am' as const)
 
-  // Start-next-round control. Client sessions key on the magic link; internal
-  // sessions get an internal entry point (Task 4). Rendered only for the
-  // client path here; the internal control is added in Task 4.
+  // Start-next-round control. Client sessions key on the magic link and
+  // re-send the reviewer's email; internal sessions key on the batch (AM
+  // reviewer from the Clerk session) and send no email. The AM uses this to
+  // open the next internal round and re-review on /preview after the designer
+  // marks revisions done. Hidden from the designer on an internal session
+  // (the designer's affordance is the Mark-revisions-done control above).
+  const isAmOrAdminViewer =
+    ctx.role === 'account_manager' || ctx.role === 'admin' || ctx.platformOwner
   const startNextRoundSlot =
-    magicLinkId !== null ? (
+    session.kind === 'internal' ? (
+      isAmOrAdminViewer ? (
+        <StartNextRoundButton
+          nextRound={sessionRound + 1}
+          onClick={async () => {
+            'use server'
+            await startInternalNextRoundAction({ batchId: batchId_ })
+          }}
+        />
+      ) : null
+    ) : magicLinkId !== null ? (
       <StartNextRoundButton
         magicLinkId={magicLinkId}
         nextRound={sessionRound + 1}

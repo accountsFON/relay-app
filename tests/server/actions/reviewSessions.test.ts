@@ -126,6 +126,7 @@ import {
   markPostAddressedAction,
   rejectCaptionEditAction,
   saveInternalDraftAction,
+  startInternalNextRoundAction,
   startInternalReviewAction,
   startNextRoundAction,
   submitInternalReviewAction,
@@ -1380,6 +1381,45 @@ describe('startNextRoundAction', () => {
     // The signToken mock returns the literal 'reminted-token-abc'; the
     // URL builder prefixes it with the `/review/` path.
     expect(sendArgs.reviewUrl).toContain('/review/reminted-token-abc')
+  })
+})
+
+describe('startInternalNextRoundAction', () => {
+  it('calls the generalized startNextRound for the internal session (no email)', async () => {
+    primeInternalAmCtx()
+    vi.mocked(startNextRound).mockResolvedValue({
+      id: 'internal_session_2',
+      round: 2,
+    } as never)
+
+    const result = await startInternalNextRoundAction({
+      batchId: INTERNAL_BATCH_ID,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.newSessionId).toBe('internal_session_2')
+    expect(result.newRound).toBe(2)
+
+    // Internal variant: keyed on (batchId, reviewerUserId), attributed to the
+    // AM, NOT magicLinkId.
+    expect(startNextRound).toHaveBeenCalledWith({
+      kind: 'internal',
+      batchId: INTERNAL_BATCH_ID,
+      reviewerUserId: AM_USER_DB_ID,
+      by: AM_USER_DB_ID,
+    })
+    // Internal rounds never email (the in-app bell covers it).
+    expect(sendMagicLinkEmail).not.toHaveBeenCalled()
+  })
+
+  it('rejects a non-editor (findClientForUser returns null)', async () => {
+    primeInternalAmCtx()
+    vi.mocked(findClientForUser).mockResolvedValue(null as never)
+
+    await expect(
+      startInternalNextRoundAction({ batchId: INTERNAL_BATCH_ID }),
+    ).rejects.toThrow()
+    expect(startNextRound).not.toHaveBeenCalled()
   })
 })
 

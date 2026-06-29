@@ -1069,6 +1069,63 @@ describe('ReviewSessionDetailPage', () => {
     })
   })
 
+  describe('internal session: AM start-next-round (close the loop)', () => {
+    const assignedDesignerCtx = {
+      ...mockCtx,
+      role: 'designer' as const,
+      userDbId: 'user_designer_1',
+    }
+    const clientWithDesigner = {
+      ...mockClient,
+      assignedDesignerId: 'user_designer_1',
+    }
+    // An all-approved internal session so the shell exposes the start-next-round
+    // slot (allAddressed). Sub-state cleared (the designer already marked done).
+    const allApprovedInternalSession = {
+      ...mockInternalSession,
+      items: mockInternalSession.items.map((it) => ({
+        ...it,
+        decision: 'approved' as const,
+      })),
+    }
+
+    beforeEach(() => {
+      vi.mocked(findSessionWithItems).mockResolvedValue(
+        allApprovedInternalSession as never,
+      )
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentSubState: null,
+      } as never)
+    })
+
+    it('shows the AM a start-next-round control on an all-addressed internal session', async () => {
+      // mockCtx is account_manager.
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(getByTestId('start-next-round-button-stub')).toBeTruthy()
+    })
+
+    it('hides the start-next-round control from the designer on an internal session', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(queryByTestId('start-next-round-button-stub')).toBeNull()
+    })
+  })
+
   it('client session never renders the designer respond control', async () => {
     // Default client session + default batch (awaiting_design_revisions). The
     // respond control is internal-only, so the client read-back must not show it.

@@ -15,8 +15,12 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 
 export interface StartNextRoundButtonProps {
-  /** ID of the magic link this session belongs to. Used by the wired action. */
-  magicLinkId: string
+  /**
+   * ID of the magic link this session belongs to (client sessions). Optional:
+   * internal sessions have no magic link and wire their own action via onClick;
+   * the id is display/data-attr only.
+   */
+  magicLinkId?: string
   /** The round number that will be created (currentRound + 1). Display only. */
   nextRound: number
   /** Disabled when there are still un-addressed items. */
@@ -47,7 +51,6 @@ export function StartNextRoundButton({
         } else {
           // Layer 3 task 3.4 wires this to startNextRoundAction; for now we
           // log so the affordance is observably present.
-          // eslint-disable-next-line no-console
           console.log('[start-next-round-button] stub click', {
             magicLinkId,
             nextRound,
