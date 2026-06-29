@@ -40,74 +40,110 @@ export class NoActiveSessionError extends Error {
 }
 
 export class NoSessionsToCarryFromError extends Error {
-  constructor(magicLinkId: string) {
-    super(
-      `No prior ReviewSession to carry decisions from on magicLink ${magicLinkId}`,
-    )
+  constructor(key: string) {
+    super(`No prior ReviewSession to carry decisions from on ${key}`)
     this.name = 'NoSessionsToCarryFromError'
   }
 }
 
 // ---- Public API ----
 
-export interface StartNextRoundInput {
+/// Client (magic-link) variant: locate the current session by magicLinkId.
+export interface StartNextClientRoundInput {
+  kind?: 'client'
   magicLinkId: string
   /** Clerk user id of the AM triggering the next round. Threaded into the
    * `markSuperseded` audit field and the emitted ActivityEvent. */
   by: string
 }
 
+/// Internal variant: locate the current session by (batchId, reviewerUserId).
+export interface StartNextInternalRoundInput {
+  kind: 'internal'
+  batchId: string
+  /** The AM reviewer the session is attributed to (carried forward). */
+  reviewerUserId: string
+  /** Clerk user id of the AM triggering the next round (audit + activity). */
+  by: string
+}
+
+export type StartNextRoundInput =
+  | StartNextClientRoundInput
+  | StartNextInternalRoundInput
+
 /**
- * Close out the current round on this magic link and open the next one.
+ * Close out the current round and open the next one. Works for both client
+ * (magic-link reviewer) and internal (Clerk-user / AM reviewer) sessions.
  * See file header for full semantics.
  */
 export async function startNextRound(
   input: StartNextRoundInput,
 ): Promise<ReviewSession> {
-  // 1. Find the current (not-yet-superseded) session for this magic
-  //    link. In the normal flow this is the round-N session the client
-  //    just submitted; `markSuperseded` accepts both in_progress and
-  //    submitted, so the AM can open the next round whether or not the
-  //    client formally submitted. There should be at most one
-  //    non-superseded row in the v2 model; we take the most-recently
-  //    started just to be safe.
+  const isInternal = input.kind === 'internal'
+
+  // 1. Find the current (not-yet-superseded) session. In the normal flow
+  //    this is the round-N session that was just submitted; `markSuperseded`
+  //    accepts both in_progress and submitted. There should be at most one
+  //    non-superseded row; take the most-recently started to be safe.
   const current = await db.reviewSession.findFirst({
-    where: {
-      magicLinkId: input.magicLinkId,
-      status: { in: ['in_progress', 'submitted'] },
-    },
+    where: isInternal
+      ? {
+          kind: 'internal',
+          batchId: input.batchId,
+          reviewerUserId: input.reviewerUserId,
+          status: { in: ['in_progress', 'submitted'] },
+        }
+      : {
+          kind: 'client',
+          magicLinkId: input.magicLinkId,
+          status: { in: ['in_progress', 'submitted'] },
+        },
     orderBy: { startedAt: 'desc' },
     include: { items: true },
   })
-  if (!current) throw new NoActiveSessionError(input.magicLinkId)
+  const locator = isInternal ? input.batchId : input.magicLinkId
+  if (!current) throw new NoActiveSessionError(locator)
 
-  // 2. Mark the current session superseded so future startNextRound
-  //    calls (and the UI's "active session" query) skip it.
+  // 2. Mark the current session superseded so future startNextRound calls
+  //    (and the UI's "active session" query) skip it.
   await markSuperseded({ reviewSessionId: current.id, by: input.by })
 
   // The session we just superseded IS "the latest submitted-or-superseded"
-  // session per spec. Its items + reviewerId drive the carry decision.
+  // session per spec. Its items + reviewer drive the carry decision.
   const prior = current
-  const priorReviewerId = prior.reviewerId
+  // Branch the reviewer carry-forward on kind: client carries the
+  // MagicLinkReviewer (reviewerId); internal carries the Clerk user
+  // (reviewerUserId). Either is a valid prior reviewer for the guard.
+  const priorReviewerId = isInternal ? prior.reviewerUserId : prior.reviewerId
   if (!priorReviewerId) {
-    // A session without a reviewer is a pre-confirm edge case. We
-    // can't carry decisions without an attributed reviewer.
-    throw new NoSessionsToCarryFromError(input.magicLinkId)
+    // A session without a reviewer is a pre-confirm edge case. We can't
+    // carry decisions without an attributed reviewer.
+    throw new NoSessionsToCarryFromError(locator)
   }
 
-  // Resolve the batch + clientId for activity emit and post lookup.
-  const link = await db.magicLink.findUniqueOrThrow({
-    where: { id: input.magicLinkId },
-    select: { batchId: true, batch: { select: { clientId: true } } },
+  // Reach the batch via the session's direct batchId (works for both kinds);
+  // resolve clientId for the activity emit + post lookup.
+  const batchRow = await db.batch.findUniqueOrThrow({
+    where: { id: prior.batchId },
+    select: { id: true, clientId: true },
   })
+  const link = { batchId: batchRow.id, batch: { clientId: batchRow.clientId } }
 
-  // 2. Create the new session at round N+1.
+  // Create the new session at round N+1, attributed to the same reviewer.
   const nextRound = prior.round + 1
-  const newSession = await startSession({
-    magicLinkId: input.magicLinkId,
-    reviewerId: priorReviewerId,
-    round: nextRound,
-  })
+  const newSession = isInternal
+    ? await startSession({
+        kind: 'internal',
+        batchId: prior.batchId,
+        reviewerUserId: priorReviewerId,
+        round: nextRound,
+      })
+    : await startSession({
+        magicLinkId: input.magicLinkId,
+        reviewerId: priorReviewerId,
+        batchId: prior.batchId,
+        round: nextRound,
+      })
 
   // 3. Build a lookup of prior items by postId for the carry decision.
   const priorItemByPost = new Map(
@@ -189,10 +225,17 @@ export async function startNextRound(
     actorId: input.by,
     kind: ActivityKind.review_round_started,
     visibility: EventVisibility.internal,
-    payload: {
-      magicLinkId: input.magicLinkId,
-      round: nextRound,
-    },
+    payload: isInternal
+      ? {
+          kind: 'internal',
+          batchId: prior.batchId,
+          reviewSessionId: newSession.id,
+          round: nextRound,
+        }
+      : {
+          magicLinkId: input.magicLinkId,
+          round: nextRound,
+        },
   })
 
   return newSession

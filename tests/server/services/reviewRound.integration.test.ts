@@ -177,8 +177,9 @@ beforeEach(async () => {
 
 afterEach(async () => {
   if (!orgId) return
-  await db.reviewItem.deleteMany({ where: { reviewSession: { magicLinkId } } })
-  await db.reviewSession.deleteMany({ where: { magicLinkId } })
+  // Delete by batchId so internal sessions (magicLinkId null) are cleaned up too.
+  await db.reviewItem.deleteMany({ where: { reviewSession: { batchId } } })
+  await db.reviewSession.deleteMany({ where: { batchId } })
   await db.magicLinkReviewer.deleteMany({ where: { magicLinkId } })
   await db.magicLink.deleteMany({ where: { batchId } })
 
@@ -449,5 +450,99 @@ describe('startNextRound', () => {
       magicLinkId,
       round: next.round,
     })
+  })
+})
+
+describe('startNextRound (internal sessions)', () => {
+  // Seed a submitted internal round-1 session attributed to the AM (userId).
+  async function seedInternalRound1(
+    decisions: Array<{
+      postId: string
+      decision: 'approved' | 'changes_requested' | 'not_reviewed'
+      lastReviewedVersionId: string | null
+    }>,
+  ): Promise<string> {
+    const session = await startSession({
+      kind: 'internal',
+      batchId,
+      reviewerUserId: userId,
+    })
+    for (const d of decisions) {
+      await db.reviewItem.upsert({
+        where: {
+          reviewSessionId_postId: {
+            reviewSessionId: session.id,
+            postId: d.postId,
+          },
+        },
+        create: {
+          reviewSessionId: session.id,
+          postId: d.postId,
+          decision: d.decision,
+          lastReviewedVersionId: d.lastReviewedVersionId,
+        },
+        update: { lastReviewedVersionId: d.lastReviewedVersionId },
+      })
+    }
+    await submitSession({ reviewSessionId: session.id })
+    return session.id
+  }
+
+  it('opens round 2 for an internal session, attributed to the reviewerUserId, via the direct batchId', async () => {
+    await seedInternalRound1([
+      {
+        postId: postIds[0],
+        decision: 'approved',
+        lastReviewedVersionId: versionByPost.get(postIds[0])!,
+      },
+      {
+        postId: postIds[1],
+        decision: 'changes_requested',
+        lastReviewedVersionId: versionByPost.get(postIds[1])!,
+      },
+      {
+        postId: postIds[2],
+        decision: 'approved',
+        lastReviewedVersionId: versionByPost.get(postIds[2])!,
+      },
+    ])
+
+    const next = await startNextRound({
+      kind: 'internal',
+      batchId,
+      reviewerUserId: userId,
+      by: userId,
+    })
+
+    expect(next.round).toBe(2)
+    expect(next.status).toBe('in_progress')
+    expect(next.kind).toBe('internal')
+    expect(next.reviewerUserId).toBe(userId)
+    expect(next.reviewerId).toBeNull()
+    expect(next.magicLinkId).toBeNull()
+    expect(next.batchId).toBe(batchId)
+
+    // Approval carries forward when the post is unchanged (same as client path).
+    const carried = await db.reviewItem.findUnique({
+      where: {
+        reviewSessionId_postId: { reviewSessionId: next.id, postId: postIds[0] },
+      },
+    })
+    expect(carried?.decision).toBe('approved')
+    expect(carried?.updatedSinceLastReview).toBe(false)
+
+    // The change-requested post resets to not_reviewed.
+    const reset = await db.reviewItem.findUnique({
+      where: {
+        reviewSessionId_postId: { reviewSessionId: next.id, postId: postIds[1] },
+      },
+    })
+    expect(reset?.decision).toBe('not_reviewed')
+
+    // The prior session is superseded.
+    const priorRows = await db.reviewSession.findMany({
+      where: { batchId, status: 'superseded' },
+    })
+    expect(priorRows).toHaveLength(1)
   })
 })
