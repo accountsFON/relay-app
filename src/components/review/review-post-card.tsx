@@ -9,6 +9,7 @@ import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps } from '@/types/preview'
 import type { PinLocation } from '@/types/preview'
 import type { ReviewDecisionType, ReviewItemHydrated } from '@/types/review-session'
+import type { MentionTarget } from '@/lib/mentions'
 import { DecisionButtonRow } from './decision-button-row'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
@@ -68,6 +69,26 @@ export type ReviewPostCardProps = {
    * identity so the component stays identity-agnostic.
    */
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
+  /**
+   * AM-only (internal mode). Resolve a pin/thread from the feed popover. The
+   * shell wires this to `resolveThreadAction`. Forwarded straight to the IG/FB
+   * chrome, which itself gates the resolve affordance on `mode === 'internal'`,
+   * so passing it in `mode='review'` is a no-op. Omitted on the client surface.
+   */
+  onResolveThread?: (threadId: string) => Promise<void>
+  /**
+   * AM-only (internal mode). Promote a comment's attached image to the post
+   * media. The shell wires this to `useCommentImageAsPostMediaAction`. The
+   * chrome gates the affordance on `mode === 'internal'`.
+   */
+  onUseAsPostImage?: (commentId: string) => Promise<void>
+  /**
+   * Internal @-mention roster (AM + designer + admins) for the new-pin draft
+   * composer and the pin reply popover autocomplete. Defaulted to [] so the
+   * client `mode='review'` surface (which passes no roster) shows no
+   * autocomplete and is unchanged.
+   */
+  mentionRoster?: MentionTarget[]
   /**
    * Transient disable (e.g. an in-flight save) — greys the verdict row and the
    * Notes field. Pins/threads stay live.
@@ -137,6 +158,9 @@ export function ReviewPostCard({
   onCreatePin,
   onAppendThreadComment,
   onUploadImage,
+  onResolveThread,
+  onUseAsPostImage,
+  mentionRoster,
   disabled,
   locked,
   hasNewReply,
@@ -342,6 +366,9 @@ export function ReviewPostCard({
         onCreateThread={onCreatePin}
         onComment={onAppendThreadComment}
         onUploadImage={onUploadImage}
+        onResolveThread={onResolveThread}
+        onUseAsPostImage={onUseAsPostImage}
+        mentionRoster={mentionRoster}
         editing={isEditing}
         captionDraft={isEditing ? captionDraft : undefined}
         onCaptionDraftChange={isEditing ? setCaptionDraft : undefined}

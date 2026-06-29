@@ -170,6 +170,8 @@ export default async function BatchPreviewPage({
             clientName={client.name}
             batchLabel={batch.label}
             reviewerName={reviewer?.name ?? 'You'}
+            reviewerUserId={ctx.userDbId}
+            mentionRoster={mentionRoster}
             posts={feedPosts}
             initialItems={initialItems}
             sessionStatus={session.status as ReviewSessionStatusType}

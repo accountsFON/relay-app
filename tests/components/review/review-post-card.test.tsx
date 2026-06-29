@@ -356,6 +356,135 @@ describe('ReviewPostCard -- notes auto-save', () => {
   })
 })
 
+describe('ReviewPostCard -- internal AM capabilities forwarded to chrome', () => {
+  const IMAGE_POST = {
+    id: 'post-1',
+    caption: 'Original caption',
+    hashtags: [],
+    mediaUrl: 'https://example.com/img.jpg',
+  }
+
+  function makeImagePinThread(): HydratedThread {
+    const firstComment = {
+      id: 'c-img-1',
+      author: { kind: 'am' as const, userId: 'am-1', name: 'AM', avatarUrl: null },
+      body: 'try this image',
+      createdAt: new Date(),
+      imageUrl: 'https://example.com/attached.jpg',
+      imageWidth: 400,
+      imageHeight: 400,
+    }
+    return {
+      id: 'thread-img-1',
+      status: 'open',
+      pin: { kind: 'image', x: 25, y: 75 },
+      firstComment,
+      comments: [firstComment],
+      commentCount: 1,
+    } as HydratedThread
+  }
+
+  it('forwards onResolveThread + onUseAsPostImage to the pin popover in internal mode', async () => {
+    const user = userEvent.setup()
+    const onResolveThread = vi.fn().mockResolvedValue(undefined)
+    const onUseAsPostImage = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ReviewPostCard
+        post={IMAGE_POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        threads={[makeImagePinThread()]}
+        platform="facebook"
+        mode="internal"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onResolveThread={onResolveThread}
+        onUseAsPostImage={onUseAsPostImage}
+      />,
+    )
+
+    await user.click(screen.getByTestId('markup-overlay-pin'))
+
+    // Use-as-post-image only renders when onUseAsPostImage is forwarded.
+    await user.click(screen.getByTestId('use-as-post-image-btn'))
+    expect(onUseAsPostImage).toHaveBeenCalledWith('c-img-1')
+
+    // Resolve affordance only renders when onResolveThread is forwarded.
+    await user.click(screen.getByTestId('pin-popover-resolve'))
+    expect(onResolveThread).toHaveBeenCalledWith('thread-img-1')
+  })
+
+  it('does NOT surface the AM resolve affordance in review mode (client path unchanged)', async () => {
+    const user = userEvent.setup()
+    render(
+      <ReviewPostCard
+        post={IMAGE_POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        threads={[makeImagePinThread()]}
+        platform="facebook"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+
+    await user.click(screen.getByTestId('markup-overlay-pin'))
+    expect(screen.queryByTestId('pin-popover-resolve')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('use-as-post-image-btn')).not.toBeInTheDocument()
+  })
+
+  it('forwards mentionRoster to the new-pin draft composer', async () => {
+    // Force a known 400x400 layout so MarkupOverlay accepts clicks under JSDOM.
+    vi.spyOn(HTMLDivElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 400,
+      bottom: 400,
+      width: 400,
+      height: 400,
+      toJSON() {
+        return {}
+      },
+    } as DOMRect)
+    const user = userEvent.setup()
+    render(
+      <ReviewPostCard
+        post={IMAGE_POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        threads={[]}
+        platform="facebook"
+        mode="internal"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCreatePin={vi.fn().mockResolvedValue(undefined)}
+        mentionRoster={[
+          { id: 'u-designer', name: 'Dan Designer', handle: 'dan.designer' },
+        ]}
+      />,
+    )
+
+    // Drop a new pin on the image to open the draft composer.
+    await user.pointer({
+      target: screen.getByTestId('markup-overlay'),
+      coords: { clientX: 200, clientY: 200 },
+      keys: '[MouseLeft]',
+    })
+    const input = (await screen.findByTestId(
+      'pin-draft-composer-input',
+    )) as HTMLTextAreaElement
+    fireEvent.change(input, { target: { value: '@dan' } })
+    // Autocomplete only appears when the roster is forwarded through the card.
+    expect(
+      screen.getByRole('listbox', { name: /mention/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Dan Designer')).toBeInTheDocument()
+  })
+})
+
 describe('ReviewPostCard -- new reply badge', () => {
   it('renders the new-reply badge when hasNewReply is true', () => {
     render(
