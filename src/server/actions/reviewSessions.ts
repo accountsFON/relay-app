@@ -9,6 +9,8 @@ import { db } from '@/db/client'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 import {
   findActiveSession,
+  findActiveClientSessionForLink,
+  findLatestClientSessionForLink,
   findSessionWithItems,
   saveDraftItem,
   startSession,
@@ -156,12 +158,15 @@ export async function startReviewSessionAction(input: {
 }): Promise<{ reviewSessionId: string }> {
   const ctx = await resolveReviewerForToken(input.token)
 
-  const existing = await findActiveSession({
-    magicLinkId: ctx.magicLinkId,
-    reviewerId: ctx.reviewerId,
-  })
+  const existing = await findActiveClientSessionForLink(ctx.magicLinkId)
   if (existing) {
     return { reviewSessionId: existing.id }
+  }
+
+  const latest = await findLatestClientSessionForLink(ctx.magicLinkId)
+  if (latest?.status === 'submitted') {
+    // Client already finished this round; only the AM opens a new one.
+    return { reviewSessionId: latest.id }
   }
 
   const created = await startSession({
@@ -201,11 +206,12 @@ export async function saveReviewDraftAction(input: {
   // reviewer never called startReviewSessionAction first; saving a draft
   // is the strongest signal of intent and we don't want a race where the
   // very first tap drops on the floor.
-  let session = await findActiveSession({
-    magicLinkId: ctx.magicLinkId,
-    reviewerId: ctx.reviewerId,
-  })
+  let session = await findActiveClientSessionForLink(ctx.magicLinkId)
   if (!session) {
+    const latest = await findLatestClientSessionForLink(ctx.magicLinkId)
+    if (latest?.status === 'submitted') {
+      throw new ReviewSessionActionError('Review already submitted')
+    }
     session = await startSession({
       magicLinkId: ctx.magicLinkId,
       reviewerId: ctx.reviewerId,
@@ -296,10 +302,7 @@ export async function submitSessionAction(input: {
 }): Promise<SubmitSessionActionResult> {
   const ctx = await resolveReviewerForToken(input.token)
 
-  const active = await findActiveSession({
-    magicLinkId: ctx.magicLinkId,
-    reviewerId: ctx.reviewerId,
-  })
+  const active = await findActiveClientSessionForLink(ctx.magicLinkId)
   if (!active) {
     throw new ReviewSessionActionError('No active session to submit')
   }

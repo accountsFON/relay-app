@@ -296,6 +296,39 @@ export async function findActiveSession(
   })
 }
 
+/**
+ * The active (in_progress) CLIENT session for a magic link, regardless of
+ * which MagicLinkReviewer confirmed. A magic link belongs to one client, so
+ * any in_progress client session on the link is "the" session, even after the
+ * client re-opens the link and re-confirms their name (which mints a fresh
+ * MagicLinkReviewer / reviewerId). Keying on the link, not the reviewer, stops
+ * a re-confirm from forking a duplicate session. Highest round first.
+ */
+export async function findActiveClientSessionForLink(
+  magicLinkId: string,
+): Promise<ReviewSessionRow | null> {
+  return db.reviewSession.findFirst({
+    where: { kind: 'client', magicLinkId, status: 'in_progress' },
+    orderBy: [{ round: 'desc' }, { startedAt: 'desc' }],
+  })
+}
+
+/**
+ * The most-recent CLIENT session for a magic link in ANY status (highest
+ * round, then most recently started). Used to decide whether a returning
+ * client has already submitted the current round, so a revisit does NOT
+ * lazily create a new round-1 session (only the AM's startNextRound opens a
+ * new round).
+ */
+export async function findLatestClientSessionForLink(
+  magicLinkId: string,
+): Promise<ReviewSessionRow | null> {
+  return db.reviewSession.findFirst({
+    where: { kind: 'client', magicLinkId },
+    orderBy: [{ round: 'desc' }, { startedAt: 'desc' }],
+  })
+}
+
 export interface SaveDraftItemInput {
   reviewSessionId: string
   postId: string

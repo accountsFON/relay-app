@@ -286,6 +286,7 @@ const mockBatch = {
 
 const mockSubmittedSession = {
   id: 'session_submitted_1',
+  kind: 'client',
   magicLinkId: 'ml_1',
   reviewerId: null,
   reviewer: { id: 'rev_1', name: 'Alice Reviewer', email: 'alice@example.com' },
@@ -298,11 +299,12 @@ const mockSubmittedSession = {
 
 const mockInProgressSession = {
   id: 'session_in_progress_1',
+  kind: 'client',
   magicLinkId: 'ml_1',
   reviewerId: null,
   reviewer: null,
   status: 'in_progress',
-  round: 2,
+  round: 1,
   startedAt: new Date('2026-05-12T10:00:00Z'),
   submittedAt: null,
   items: [],
@@ -714,6 +716,69 @@ describe('BatchDetailPage', () => {
       })
 
       expect(queryByTestId('view-client-feedback-header')).toBeNull()
+    })
+  })
+
+  // ---- Client review pill collapse + feedback badge ----
+
+  describe('client review pill collapse and feedback badge', () => {
+    it('collapses multiple sessions to one row, shows "Client review" title, and renders the feedback badge', async () => {
+      const supersededSession = {
+        id: 'session_superseded_1',
+        kind: 'client',
+        magicLinkId: 'ml_1',
+        reviewerId: null,
+        reviewer: { id: 'rev_1', name: 'Alice Reviewer', email: 'alice@example.com' },
+        status: 'superseded',
+        round: 1,
+        startedAt: new Date('2026-05-08T10:00:00Z'),
+        submittedAt: new Date('2026-05-08T12:00:00Z'),
+        items: [],
+      }
+      const duplicateInProgressSession = {
+        id: 'session_duplicate_in_progress_1',
+        kind: 'client',
+        magicLinkId: 'ml_1',
+        reviewerId: null,
+        reviewer: { id: 'rev_1', name: 'Alice Reviewer', email: 'alice@example.com' },
+        status: 'in_progress',
+        round: 1,
+        startedAt: new Date('2026-05-09T10:00:00Z'),
+        submittedAt: null,
+        items: [],
+      }
+      const submittedWithFeedback = {
+        id: 'session_submitted_with_feedback_1',
+        kind: 'client',
+        magicLinkId: 'ml_1',
+        reviewerId: null,
+        reviewer: { id: 'rev_1', name: 'Alice Reviewer', email: 'alice@example.com' },
+        status: 'submitted',
+        round: 1,
+        startedAt: new Date('2026-05-10T10:00:00Z'),
+        submittedAt: new Date('2026-05-10T12:00:00Z'),
+        items: [
+          { decision: 'changes_requested', comment: null },
+          { decision: 'approved', comment: null },
+          { decision: 'approved', comment: null },
+        ],
+      }
+
+      vi.mocked(listSessionsForBatch).mockResolvedValue([
+        supersededSession,
+        duplicateInProgressSession,
+        submittedWithFeedback,
+      ] as never)
+
+      const { getAllByTestId, getByText, getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+
+      const rows = getAllByTestId(/^review-session-list-row-/)
+      expect(rows).toHaveLength(1)
+      expect(getByText('Client review')).toBeInTheDocument()
+      expect(getByTestId('review-feedback-badge')).toHaveTextContent('1 Feedback')
     })
   })
 })

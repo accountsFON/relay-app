@@ -23,19 +23,20 @@
  * Errors are thrown as named classes so the route handler can map them
  * to HTTP status codes without parsing message strings.
  *
- * NOTE on Task 1.4 dependency: this service imports `findActiveSession`,
- * `startSession`, and `saveDraftItem` from `@/server/repositories/reviewSessions`.
- * Layer 1.4 is in flight in parallel; the import resolves once both PRs
- * are squash-merged into main. The repo shape is locked in the plan doc
- * (Task 1.4 success criteria) so we code against it directly. Tests
- * mock the repo so they run independently of 1.4's merge order.
+ * Session resolution is keyed on the magic LINK, not the reviewer:
+ * `findActiveClientSessionForLink` / `findLatestClientSessionForLink` /
+ * `startSession` / `saveDraftItem` from `@/server/repositories/reviewSessions`.
+ * Keying on the link (not a per-confirm `reviewerId`) stops a re-opened link
+ * from forking a duplicate session. Tests mock the repo so they run
+ * independently.
  */
 import { cookies } from 'next/headers'
 import { db } from '@/db/client'
 import { hashToken, verifySession, verifyToken } from '@/lib/magic-link'
 import { findByTokenHash, findReviewerBySession } from '@/server/repositories/magicLinks'
 import {
-  findActiveSession,
+  findActiveClientSessionForLink,
+  findLatestClientSessionForLink,
   saveDraftItem,
   startSession,
 } from '@/server/repositories/reviewSessions'
@@ -61,6 +62,13 @@ export class ReviewDraftPostNotInBatchError extends Error {
   constructor(message = 'Post does not belong to this magic link batch') {
     super(message)
     this.name = 'ReviewDraftPostNotInBatchError'
+  }
+}
+
+export class ReviewDraftSessionClosedError extends Error {
+  constructor() {
+    super('This review round is closed')
+    this.name = 'ReviewDraftSessionClosedError'
   }
 }
 
@@ -157,15 +165,20 @@ export async function saveItemDraft(
     throw new ReviewDraftPostNotInBatchError()
   }
 
-  // 6. Find or create the active ReviewSession. Layer 1.4's contract:
-  //    findActiveSession returns the latest in_progress session for
-  //    (magicLinkId, reviewerId) or null; startSession creates a fresh
-  //    round 1 session.
-  let activeSession = await findActiveSession({
-    magicLinkId: link.id,
-    reviewerId: reviewer.id,
-  })
+  // 6. Resolve (or lazily create) the active ReviewSession, keyed on the magic
+  //    LINK rather than the reviewer. A client who re-opens the link and
+  //    re-confirms their name mints a fresh MagicLinkReviewer/reviewerId;
+  //    keying on the reviewer would miss the link's existing in_progress
+  //    session and fork a duplicate round-1. If the link's latest session is
+  //    NOT in_progress (already submitted, or superseded because the AM
+  //    started/closed a round), the client must not silently open a new
+  //    round-1 -- only the AM opens a new round.
+  let activeSession = await findActiveClientSessionForLink(link.id)
   if (!activeSession) {
+    const latest = await findLatestClientSessionForLink(link.id)
+    if (latest && latest.status !== 'in_progress') {
+      throw new ReviewDraftSessionClosedError()
+    }
     activeSession = await startSession({
       magicLinkId: link.id,
       reviewerId: reviewer.id,

@@ -41,7 +41,7 @@ const mocks = vi.hoisted(() => {
     findManyPosts: vi.fn().mockResolvedValue([]),
     findUniqueReviewer: vi.fn(),
     updateReviewer: vi.fn().mockResolvedValue({}),
-    findActiveSession: vi.fn(),
+    findActiveClientSessionForLink: vi.fn(),
     listSessionsForBatch: vi.fn(),
     findManyReviewItems: vi.fn(),
     // Phase 4 item 22: pins hydration on the v2 client surface. Default
@@ -80,7 +80,8 @@ vi.mock('@/db/client', () => ({
 }))
 
 vi.mock('@/server/repositories/reviewSessions', () => ({
-  findActiveSession: (...args: unknown[]) => mocks.findActiveSession(...args),
+  findActiveClientSessionForLink: (...args: unknown[]) =>
+    mocks.findActiveClientSessionForLink(...args),
   listSessionsForBatch: (...args: unknown[]) =>
     mocks.listSessionsForBatch(...args),
 }))
@@ -172,7 +173,7 @@ beforeEach(() => {
   })
   mocks.updateMagicLink.mockResolvedValue({})
   mocks.findManyPosts.mockResolvedValue([])
-  mocks.findActiveSession.mockResolvedValue(null)
+  mocks.findActiveClientSessionForLink.mockResolvedValue(null)
   mocks.listSessionsForBatch.mockResolvedValue([])
   mocks.findManyReviewItems.mockResolvedValue([])
   mocks.notFoundMock.mockImplementation(() => {
@@ -240,7 +241,7 @@ describe('ReviewPage /review/[token] (v2 surface)', () => {
       name: 'Sarah',
       magicLinkId: FAKE_MAGIC_LINK_ID,
     })
-    mocks.findActiveSession.mockResolvedValue({
+    mocks.findActiveClientSessionForLink.mockResolvedValue({
       id: 'rs_1',
       magicLinkId: FAKE_MAGIC_LINK_ID,
       reviewerId: 'reviewer_2',

@@ -24,6 +24,7 @@ import {
   ReviewDraftInvalidInputError,
   ReviewDraftLinkGoneError,
   ReviewDraftPostNotInBatchError,
+  ReviewDraftSessionClosedError,
   ReviewDraftUnauthorizedError,
 } from '@/server/services/reviewDraft'
 import type { ReviewDecisionType } from '@/types/review-session'
@@ -124,6 +125,9 @@ export async function PATCH(
     }
     if (err instanceof ReviewDraftInvalidInputError) {
       return NextResponse.json({ error: err.message }, { status: 400 })
+    }
+    if (err instanceof ReviewDraftSessionClosedError) {
+      return NextResponse.json({ error: err.message }, { status: 409 })
     }
     console.error('[review/draft] saveItemDraft failed', err)
     return NextResponse.json(

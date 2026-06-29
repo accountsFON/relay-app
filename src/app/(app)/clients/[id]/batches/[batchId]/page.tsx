@@ -27,6 +27,7 @@ import { ActivityThread } from '@/components/activity/activity-thread'
 import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { STEP_LABEL } from '@/components/relay/labels'
 import { relayStepLabel } from '@/lib/relay-step-labels'
+import { selectClientReviewPill } from '@/lib/client-review-pill'
 import { passBaton } from '@/server/services/relay'
 import { parseDateScope } from '@/lib/date-scope'
 import { findRunForBatch } from '@/server/repositories/contentRuns'
@@ -238,11 +239,13 @@ export default async function BatchDetailPage({
   const canAct =
     batch.currentHolder === ctx.userDbId ||
     canOverrideHolder(ctx.role, ctx.platformOwner)
-  // Latest submitted client review session, reused by the review-sessions
-  // header link AND the next-action board's "View client feedback" deep link.
-  // Repo orders submittedAt desc, so the first submitted is the latest.
+  // Latest submitted client review session, reused by the next-action board's
+  // "View client feedback" deep link. Repo orders submittedAt desc, so the
+  // first submitted is the latest.
   const latestSubmittedSession =
     reviewSessions.find((s) => s.status === 'submitted') ?? null
+  // Single client-facing pill — collapses all client sessions to one row.
+  const clientPill = selectClientReviewPill(reviewSessions)
   // Force step is admin role + platform owner only (stricter than canAct).
   // AMs are NOT included; to reverse a batch they use the normal Send Back path.
   const canForceStep = ctx.role === 'admin' || ctx.platformOwner === true
@@ -567,36 +570,33 @@ export default async function BatchDetailPage({
               </div>
             </PageSection>
           )}
-          {batch.clientReviewEnabled && reviewSessions.length > 0 && (
+          {batch.clientReviewEnabled && clientPill && (
             <PageSection
-              title={`Review Sessions (${reviewSessions.length})`}
-              action={(() => {
-                if (!latestSubmittedSession) return undefined
-                return (
+              title="Client review"
+              action={
+                clientPill.session.status === 'submitted' ? (
                   <Link
-                    href={`/clients/${client.id}/batches/${batch.id}/review-sessions/${latestSubmittedSession.id}`}
+                    href={`/clients/${client.id}/batches/${batch.id}/review-sessions/${clientPill.session.id}`}
                     className="text-[13px] text-foreground underline-offset-4 hover:underline"
                     data-testid="view-client-feedback-header"
                     aria-label="View client feedback"
                   >
                     View client feedback <span aria-hidden="true">→</span>
                   </Link>
-                )
-              })()}
+                ) : undefined
+              }
             >
               <div className="space-y-2">
-                {reviewSessions.map((session) => (
-                  <ReviewSessionListRow
-                    key={session.id}
-                    clientId={client.id}
-                    batchId={batch.id}
-                    sessionId={session.id}
-                    reviewerName={session.reviewer?.name ?? 'Anonymous reviewer'}
-                    round={session.round}
-                    status={session.status}
-                    submittedAt={session.submittedAt}
-                  />
-                ))}
+                <ReviewSessionListRow
+                  clientId={client.id}
+                  batchId={batch.id}
+                  sessionId={clientPill.session.id}
+                  reviewerName={clientPill.session.reviewer?.name ?? 'Anonymous reviewer'}
+                  round={clientPill.session.round}
+                  status={clientPill.session.status}
+                  submittedAt={clientPill.session.submittedAt}
+                  feedbackCount={clientPill.feedbackCount}
+                />
               </div>
             </PageSection>
           )}
@@ -745,6 +745,7 @@ function ReviewSessionListRow({
   round,
   status,
   submittedAt,
+  feedbackCount = 0,
 }: {
   clientId: string
   batchId: string
@@ -753,6 +754,7 @@ function ReviewSessionListRow({
   round: number
   status: string
   submittedAt: Date | null
+  feedbackCount?: number
 }) {
   const submittedLabel = submittedAt
     ? new Intl.DateTimeFormat('en-US', {
@@ -783,6 +785,15 @@ function ReviewSessionListRow({
               ? 'In progress'
               : 'Superseded'}
         </p>
+        {status === 'submitted' && feedbackCount > 0 && (
+          <span
+            data-testid="review-feedback-badge"
+            className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+            {feedbackCount} Feedback
+          </span>
+        )}
       </div>
       <Link
         href={`/clients/${clientId}/batches/${batchId}/review-sessions/${sessionId}`}
