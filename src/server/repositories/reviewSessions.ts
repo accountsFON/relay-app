@@ -73,8 +73,11 @@ function toHydratedSession(
 ): ReviewSessionWithItems {
   return {
     id: row.id,
+    kind: row.kind as 'client' | 'internal',
+    batchId: row.batchId,
     magicLinkId: row.magicLinkId,
     reviewerId: row.reviewerId,
+    reviewerUserId: row.reviewerUserId,
     status: row.status as ReviewSessionStatusType,
     round: row.round,
     startedAt: row.startedAt,

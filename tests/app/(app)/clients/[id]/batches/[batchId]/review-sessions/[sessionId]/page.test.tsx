@@ -55,14 +55,20 @@ vi.mock('@/server/actions/reviewSessions', () => ({
   acceptCaptionEditAction: vi.fn(),
   rejectCaptionEditAction: vi.fn(),
   startNextRoundAction: vi.fn(),
+  startInternalNextRoundAction: vi.fn(),
   markPostAddressedAction: vi.fn(),
   unmarkPostAddressedAction: vi.fn(),
+}))
+
+vi.mock('@/server/actions/relay', () => ({
+  markDesignRevisionsDoneAction: vi.fn(),
 }))
 
 vi.mock('@/db/client', () => ({
   db: {
     magicLink: { findUnique: vi.fn() },
     magicLinkReviewer: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn() },
     post: { findMany: vi.fn() },
   },
 }))
@@ -223,8 +229,11 @@ const mockBatch = {
 
 const mockSession = {
   id: 'session_1',
+  kind: 'client' as const,
+  batchId: 'batch_1',
   magicLinkId: 'ml_1',
   reviewerId: 'reviewer_1',
+  reviewerUserId: null,
   status: 'submitted' as const,
   round: 1,
   startedAt: new Date('2026-05-15T10:00:00Z'),
@@ -288,6 +297,25 @@ const mockReviewer = {
   email: 'real@example.com',
 }
 
+// The AM (Clerk User) who reviewed an internal session.
+const mockReviewerUser = {
+  id: 'user_am_1',
+  name: 'Amy AM',
+  email: 'amy@fonmarketing.com',
+}
+
+// An internal-kind session: no magic link, reviewer is the AM (a Clerk user),
+// batch reached via the session's direct batchId.
+const mockInternalSession = {
+  ...mockSession,
+  id: 'session_int_1',
+  kind: 'internal' as const,
+  batchId: 'batch_1',
+  magicLinkId: null,
+  reviewerId: null,
+  reviewerUserId: 'user_am_1',
+}
+
 const mockPosts = [
   {
     id: 'post_a',
@@ -327,6 +355,7 @@ describe('ReviewSessionDetailPage', () => {
     vi.mocked(findSessionWithItems).mockResolvedValue(mockSession as never)
     vi.mocked(db.magicLink.findUnique).mockResolvedValue(mockMagicLink as never)
     vi.mocked(db.magicLinkReviewer.findUnique).mockResolvedValue(mockReviewer as never)
+    vi.mocked(db.user.findUnique).mockResolvedValue(mockReviewerUser as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)
     vi.mocked(listClientThreadsForBatch).mockResolvedValue(new Map())
     // Default both edit capabilities off; tests that need them opt in.
@@ -886,6 +915,103 @@ describe('ReviewSessionDetailPage', () => {
       // Accept and Reject buttons must be absent — they belong to the pending state
       expect(queryByTestId('rail-accept-post_c')).toBeNull()
       expect(queryByTestId('rail-reject-post_c')).toBeNull()
+    })
+  })
+
+  describe('internal session read-back (designer view)', () => {
+    const designerCtx = { ...mockCtx, role: 'designer' as const }
+    // The assigned designer's user db id must match for view access.
+    const assignedDesignerCtx = {
+      ...mockCtx,
+      role: 'designer' as const,
+      userDbId: 'user_designer_1',
+    }
+    const clientWithDesigner = {
+      ...mockClient,
+      assignedDesignerId: 'user_designer_1',
+    }
+
+    beforeEach(() => {
+      vi.mocked(findSessionWithItems).mockResolvedValue(
+        mockInternalSession as never,
+      )
+    })
+
+    it('does NOT redirect on the missing magic link for an internal session', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      // The page rendered (no redirect): the shell is present.
+      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+      // The magic-link lookup must not have driven access for an internal session.
+      expect(db.magicLink.findUnique).not.toHaveBeenCalled()
+    })
+
+    it('resolves the reviewer name from the AM User, not a MagicLinkReviewer', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      // Reviewer resolved via db.user.findUnique on the reviewerUserId (the AM).
+      expect(db.user.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'user_am_1' } }),
+      )
+      // The header shows the AM's name.
+      expect(getByTestId('review-session-header').textContent).toContain('Amy AM')
+      // No magic-link reviewer lookup on the internal path.
+      expect(db.magicLinkReviewer.findUnique).not.toHaveBeenCalled()
+    })
+
+    it('grants the assigned designer view access to an internal session', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+    })
+
+    it('grants an AM view access to an internal session', async () => {
+      // mockCtx is account_manager by default.
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+    })
+
+    it('denies a designer who is NOT the assigned designer', async () => {
+      // designerCtx has userDbId 'user_db_1' but the assigned designer is
+      // 'user_designer_1'.
+      vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      await expect(
+        renderPage({
+          id: 'client_1',
+          batchId: 'batch_1',
+          sessionId: 'session_int_1',
+        }),
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
     })
   })
 })

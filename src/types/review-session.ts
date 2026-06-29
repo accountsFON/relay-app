@@ -32,10 +32,19 @@ export interface ReviewSessionSummary {
 /// client-facing review surface and the AM-side detail page.
 export interface ReviewSessionWithItems {
   id: string
+  /// 'client' (magic-link reviewer) or 'internal' (Clerk-user / AM reviewer).
+  /// See 2026-06-29 internal review parity.
+  kind: 'client' | 'internal'
+  /// Direct FK to the batch (set for both kinds). The read-back page reaches
+  /// the batch via this directly for internal sessions (the old magicLink
+  /// join only works for client sessions).
+  batchId: string
   /// Null for internal (Clerk-user) sessions; set for client (magic-link)
   /// sessions. See 2026-06-29 internal review parity.
   magicLinkId: string | null
   reviewerId: string | null
+  /// The Clerk-user (AM) reviewer for internal sessions; null for client.
+  reviewerUserId: string | null
   status: ReviewSessionStatusType
   round: number
   startedAt: Date
