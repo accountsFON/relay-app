@@ -986,7 +986,12 @@ export async function startInternalNextRoundAction(input: {
     by: ctx.userDbId,
   })
 
+  // The AM opens and re-reviews the new round on `/preview`, not the batch
+  // detail page (M4, 2026-06-29). Revalidating only the detail page left the
+  // verdict surface (`/preview`) showing the prior round's stale state until a
+  // hard refresh. Revalidate both.
   revalidatePath(`/clients/${clientId}/batches/${batchId}`)
+  revalidatePath(`/clients/${clientId}/batches/${batchId}/preview`)
   return { ok: true, newSessionId: newSession.id, newRound: newSession.round }
 }
 

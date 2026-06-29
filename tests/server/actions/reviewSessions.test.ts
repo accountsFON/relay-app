@@ -25,6 +25,8 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
+import { revalidatePath } from 'next/cache'
+
 vi.mock('@/lib/magic-link', () => ({
   verifyToken: vi.fn(),
   verifySession: vi.fn(),
@@ -1410,6 +1412,15 @@ describe('startInternalNextRoundAction', () => {
     })
     // Internal rounds never email (the in-app bell covers it).
     expect(sendMagicLinkEmail).not.toHaveBeenCalled()
+
+    // M4: the AM re-reviews on `/preview`, so that surface must be revalidated
+    // (not just the batch detail page) or the verdict surface stays stale.
+    expect(revalidatePath).toHaveBeenCalledWith(
+      `/clients/${INTERNAL_CLIENT_ID}/batches/${INTERNAL_BATCH_ID}`,
+    )
+    expect(revalidatePath).toHaveBeenCalledWith(
+      `/clients/${INTERNAL_CLIENT_ID}/batches/${INTERNAL_BATCH_ID}/preview`,
+    )
   })
 
   it('rejects a non-editor (findClientForUser returns null)', async () => {
