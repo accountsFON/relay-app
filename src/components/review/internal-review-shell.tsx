@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { Check } from 'lucide-react'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
@@ -15,8 +16,19 @@ import { ReviewStickyBar } from '@/components/review/review-sticky-bar'
 import {
   saveInternalDraftAction,
   submitInternalReviewAction,
+  type SubmitInternalReviewActionResult,
 } from '@/server/actions/reviewSessions'
-import { createThreadAction, addCommentAction } from '@/server/actions/threads'
+import {
+  createThreadAction,
+  addCommentAction,
+  resolveThreadAction,
+  // Aliased: the source export starts with `use`, which trips the
+  // react-hooks/rules-of-hooks linter when called inside a useCallback. It is
+  // a server action, not a hook.
+  useCommentImageAsPostMediaAction as applyCommentImageAsPostMediaAction,
+} from '@/server/actions/threads'
+import { uploadCommentImage } from '@/lib/upload-comment-image'
+import type { MentionTarget } from '@/lib/mentions'
 import type {
   ReviewDecisionType,
   ReviewItemHydrated,
@@ -42,6 +54,18 @@ export type InternalReviewShellProps = {
   batchLabel: string
   /** The AM's display name (shown in the "Reviewing as" line). */
   reviewerName: string
+  /**
+   * The AM's database user id. Enables image-attach in the pin composers
+   * (uploads go to comment-images/am/<userDbId>/), exactly as the legacy
+   * /preview shell did. When omitted, the attach button is suppressed.
+   */
+  reviewerUserId?: string
+  /**
+   * Internal @-mention roster (AM + designer + admins) for this client. Passed
+   * into the pin composers' @-autocomplete. The page already fetches this; it
+   * was previously discarded for editors.
+   */
+  mentionRoster?: MentionTarget[]
   posts: ReadonlyArray<InternalReviewShellPost>
   /** Hydrated items from the AM's active internal ReviewSession. */
   initialItems: ReadonlyArray<ReviewItemHydrated>
@@ -73,6 +97,8 @@ export function InternalReviewShell({
   clientAvatarUrl,
   batchLabel,
   reviewerName,
+  reviewerUserId,
+  mentionRoster = [],
   posts,
   initialItems,
   sessionStatus,
@@ -100,6 +126,9 @@ export function InternalReviewShell({
 
   const [saveError, setSaveError] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // Soft warning: submit succeeded but the state-machine advance failed. The
+  // session is still submitted; this is a non-blocking notice, not an error.
+  const [advanceError, setAdvanceError] = useState<string | null>(null)
 
   useEffect(() => {
     const el = stickySentinelRef.current
@@ -294,6 +323,54 @@ export function InternalReviewShell({
     [router, startTransition],
   )
 
+  /**
+   * Resolve an AM pin/thread from the feed popover, via the Clerk-authed
+   * `resolveThreadAction` (the same action today's /preview uses), then refresh
+   * so the resolved state hydrates back onto the card.
+   */
+  const handleResolveThread = useCallback(
+    async (threadId: string) => {
+      try {
+        await resolveThreadAction({ threadId, resolvedReason: null })
+        startTransition(() => router.refresh())
+      } catch (err) {
+        console.error('[internal-review-shell] resolveThreadAction failed', err)
+      }
+    },
+    [router, startTransition],
+  )
+
+  /**
+   * Promote a comment's attached image to the post media. Scoped per post so
+   * the action receives the right `postId`. Refreshes to pull the new media.
+   */
+  const handleUseAsPostImage = useCallback(
+    async (postId: string, commentId: string) => {
+      try {
+        await applyCommentImageAsPostMediaAction({ postId, commentId })
+        startTransition(() => router.refresh())
+      } catch (err) {
+        console.error(
+          '[internal-review-shell] useCommentImageAsPostMediaAction failed',
+          err,
+        )
+      }
+    },
+    [router, startTransition],
+  )
+
+  // Image-attach in the pin composers. Built once; undefined when no
+  // reviewerUserId (graceful degradation: the attach button just won't render),
+  // exactly as the legacy /preview shell did it.
+  const handleUploadImage = useMemo(
+    () =>
+      reviewerUserId
+        ? (file: File) =>
+            uploadCommentImage(file, { mode: 'internal', userDbId: reviewerUserId })
+        : undefined,
+    [reviewerUserId],
+  )
+
   const handleSubmitClick = useCallback(() => {
     setSubmitError(null)
     setSubmitModalOpen(true)
@@ -302,9 +379,14 @@ export function InternalReviewShell({
   const handleSubmitConfirm = useCallback(async () => {
     setSubmitting(true)
     setSubmitError(null)
+    setAdvanceError(null)
     try {
-      await submitInternalReviewAction({ batchId })
+      const result: SubmitInternalReviewActionResult =
+        await submitInternalReviewAction({ batchId })
       setLocalStatus('submitted')
+      // Soft warning: the review IS submitted, but the relay didn't advance.
+      // Surface a non-blocking notice rather than failing the whole submit.
+      setAdvanceError(result.advanceError ?? null)
       setSubmitModalOpen(false)
       startTransition(() => router.refresh())
     } catch (err) {
@@ -333,6 +415,45 @@ export function InternalReviewShell({
 
   return (
     <div className="flex flex-col">
+      {locked ? (
+        <div className="mx-auto w-full max-w-[880px] px-4 pt-2 sm:px-6">
+          <div
+            data-testid="review-submitted-banner"
+            role="status"
+            className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+          >
+            <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+            <span>
+              Review submitted. You can still resolve pins and discuss changes
+              with the designer below.
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      {advanceError ? (
+        <div className="mx-auto w-full max-w-[880px] px-4 pt-2 sm:px-6">
+          <div
+            data-testid="review-advance-error"
+            role="status"
+            className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <span>
+              Your review was submitted, but the relay didn&apos;t advance to the
+              next step automatically. Open the relay to move it forward manually.
+            </span>
+            <button
+              type="button"
+              onClick={() => setAdvanceError(null)}
+              className="shrink-0 font-medium underline underline-offset-2"
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {!locked && pinned ? (
         <ReviewStickyBar
           reviewed={itemsReviewed}
@@ -426,6 +547,12 @@ export function InternalReviewShell({
                   handleCreatePin(post.id, pin, body, image)
                 }
                 onAppendThreadComment={handleAppendThreadComment}
+                onResolveThread={handleResolveThread}
+                onUseAsPostImage={(commentId) =>
+                  handleUseAsPostImage(post.id, commentId)
+                }
+                onUploadImage={handleUploadImage}
+                mentionRoster={mentionRoster}
               />
             )
           })

@@ -29,6 +29,14 @@ vi.mock('@/server/actions/reviewSessions', () => ({
 vi.mock('@/server/actions/threads', () => ({
   createThreadAction: vi.fn().mockResolvedValue({ id: 'thread-new' }),
   addCommentAction: vi.fn().mockResolvedValue({ id: 'comment-new' }),
+  resolveThreadAction: vi.fn().mockResolvedValue(undefined),
+  useCommentImageAsPostMediaAction: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/lib/upload-comment-image', () => ({
+  uploadCommentImage: vi
+    .fn()
+    .mockResolvedValue({ url: 'https://example.com/x.jpg', width: 10, height: 10 }),
 }))
 
 function makePost(id: string, caption: string): InternalReviewShellPost {
@@ -197,6 +205,94 @@ describe('InternalReviewShell', () => {
     )
     // Pins do NOT go through the draft action.
     expect(saveInternalDraftAction).not.toHaveBeenCalled()
+  })
+
+  it('renders the submitted banner after a successful submit', async () => {
+    vi.mocked(submitInternalReviewAction).mockResolvedValue({
+      ok: true,
+      summary: {
+        approved: 1,
+        changesRequested: 0,
+        captionEdited: 0,
+        totalPosts: 2,
+      },
+    })
+    const props = {
+      ...BASE_PROPS,
+      initialItems: [
+        {
+          id: 'i1',
+          postId: 'post-1',
+          decision: 'approved' as const,
+          comment: null,
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+          addressedAt: null,
+        },
+      ],
+    }
+    render(<InternalReviewShell {...props} />)
+
+    expect(screen.queryByTestId('review-submitted-banner')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('submit-review-bar-button'))
+    const confirm = await screen.findByTestId('submit-review-modal-confirm')
+    await act(async () => {
+      fireEvent.click(confirm)
+    })
+
+    expect(
+      await screen.findByTestId('review-submitted-banner'),
+    ).toBeInTheDocument()
+  })
+
+  it('surfaces a soft advanceError notice when submit succeeds but advance fails', async () => {
+    vi.mocked(submitInternalReviewAction).mockResolvedValue({
+      ok: true,
+      summary: {
+        approved: 1,
+        changesRequested: 0,
+        captionEdited: 0,
+        totalPosts: 2,
+      },
+      advanceError: 'batch is not at am_review_design',
+    })
+    const props = {
+      ...BASE_PROPS,
+      initialItems: [
+        {
+          id: 'i1',
+          postId: 'post-1',
+          decision: 'approved' as const,
+          comment: null,
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+          addressedAt: null,
+        },
+      ],
+    }
+    render(<InternalReviewShell {...props} />)
+
+    fireEvent.click(screen.getByTestId('submit-review-bar-button'))
+    const confirm = await screen.findByTestId('submit-review-modal-confirm')
+    await act(async () => {
+      fireEvent.click(confirm)
+    })
+
+    // Submitted (locked) banner still shows...
+    expect(
+      await screen.findByTestId('review-submitted-banner'),
+    ).toBeInTheDocument()
+    // ...plus a non-blocking advance-failed notice.
+    expect(
+      await screen.findByTestId('review-advance-error'),
+    ).toBeInTheDocument()
   })
 
   it('progress bar reflects decided/total', () => {
