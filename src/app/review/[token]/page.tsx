@@ -4,7 +4,7 @@ import { verifySession, hashToken } from '@/lib/magic-link'
 import { db } from '@/db/client'
 import { markMagicLinkVisited } from '@/server/services/magic-link-visited-emit'
 import {
-  findActiveSession,
+  findActiveClientSessionForLink,
   listSessionsForBatch,
 } from '@/server/repositories/reviewSessions'
 import { listThreadsForBatch } from '@/server/repositories/threads'
@@ -140,10 +140,9 @@ export default async function ReviewPage({
   // sees the thanks screen instead of an empty fresh feed). We DON'T start
   // a fresh session here -- the reviewer-side `saveReviewDraftAction` will
   // lazily create one the first time they tap a decision.
-  const activeSession = await findActiveSession({
-    magicLinkId: link.id,
-    reviewerId: recognizedReviewerId,
-  })
+  // Resolve by the link, not the reviewer: a re-confirm mints a new
+  // reviewerId, and we must reuse the link's one in-progress session.
+  const activeSession = await findActiveClientSessionForLink(link.id)
 
   let sessionStatus: ReviewSessionStatusType | null = null
   let initialItems: ReviewItemHydrated[] = []
@@ -170,9 +169,12 @@ export default async function ReviewPage({
     // No active session: check for a prior submitted one to render the
     // thanks screen for returning clients.
     const allSessions = await listSessionsForBatch(link.batch.id)
+    // listSessionsForBatch is ordered submittedAt desc, so the first
+    // submitted client session is the most recent. Match by link, not
+    // reviewerId, so a re-confirmed returning client still sees the thanks
+    // screen instead of an empty fresh feed.
     const mineSubmitted = allSessions.find(
-      (s) =>
-        s.reviewerId === recognizedReviewerId && s.status === 'submitted',
+      (s) => s.kind === 'client' && s.status === 'submitted',
     )
     if (mineSubmitted) {
       sessionStatus = 'submitted'
