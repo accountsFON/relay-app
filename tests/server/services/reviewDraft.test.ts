@@ -15,21 +15,32 @@
  *   - @/db/client `db.magicLinkReviewer.findUnique` /
  *     `db.post.findUnique` — controls reviewer + post lookup.
  *   - @/server/repositories/reviewSessions
- *     `findActiveSession` / `startSession` / `saveDraftItem` —
+ *     `findActiveClientSessionForLink` / `findLatestClientSessionForLink` /
+ *     `startSession` / `saveDraftItem` —
  *     controls Task 1.4's repo surface. Mocking lets these tests
  *     pass before Task 1.4's PR merges.
  *
- * Test inventory (4 cases per Task 1.5 plan):
- *   1. saves a NEW draft (no prior ReviewItem) — verifies the upsert
- *      path goes through `saveDraftItem` with the right inputs.
- *   2. updates an EXISTING draft — saveDraftItem is called the same
- *      way regardless (it owns the upsert branch), so this case
- *      confirms a different decision payload flows through cleanly
- *      against an already-existing session.
- *   3. rejects when the URL token is invalid (verifyToken returns
- *      null) — throws ReviewDraftUnauthorizedError, repo never called.
- *   4. rejects when postId is not in the link's batch — throws
- *      ReviewDraftPostNotInBatchError, repo never called.
+ * Test inventory:
+ *   1. saves a NEW draft (no prior ReviewSession) — both link lookups
+ *      return null → startSession is called to mint one, then saveDraftItem.
+ *   2. updates an EXISTING draft against the link's active session —
+ *      findActiveClientSessionForLink returns a session, startSession
+ *      is NOT called.
+ *   3. re-confirm reuses the link's existing session — verifies startSession
+ *      is not called when findActiveClientSessionForLink returns a session
+ *      (even if the reviewerId in the cookie is different, e.g. a freshly
+ *      minted MagicLinkReviewer).
+ *   4. forwards undefined decision to saveDraftItem when the route omits it
+ *      (comment-only PATCH).
+ *   5. throws Unauthorized when verifyToken returns null (bad / expired URL
+ *      token) — repo never called.
+ *   6. throws PostNotInBatch when postId belongs to a different batch.
+ *   7. throws ReviewDraftSessionClosedError when the link's latest session
+ *      has status 'submitted' — startSession NOT called.
+ *   8. throws ReviewDraftSessionClosedError when the link's latest session
+ *      has status 'superseded' — startSession NOT called.
+ *   9. calls startSession when both lookups return null (first-ever review,
+ *      round-1 creation path).
  */
 process.env.MAGIC_LINK_SECRET = 'test-secret-base64-min-32-bytes-xxxxxxxxxxx'
 
@@ -44,7 +55,8 @@ const mocks = vi.hoisted(() => ({
   findReviewerBySession: vi.fn(),
   findUniqueMagicLinkReviewer: vi.fn(),
   findUniquePost: vi.fn(),
-  findActiveSession: vi.fn(),
+  findActiveClientSessionForLink: vi.fn(),
+  findLatestClientSessionForLink: vi.fn(),
   startSession: vi.fn(),
   saveDraftItem: vi.fn(),
 }))
@@ -78,7 +90,10 @@ vi.mock('@/db/client', () => ({
 }))
 
 vi.mock('@/server/repositories/reviewSessions', () => ({
-  findActiveSession: (input: unknown) => mocks.findActiveSession(input),
+  findActiveClientSessionForLink: (magicLinkId: string) =>
+    mocks.findActiveClientSessionForLink(magicLinkId),
+  findLatestClientSessionForLink: (magicLinkId: string) =>
+    mocks.findLatestClientSessionForLink(magicLinkId),
   startSession: (input: unknown) => mocks.startSession(input),
   saveDraftItem: (input: unknown) => mocks.saveDraftItem(input),
 }))
@@ -86,6 +101,7 @@ vi.mock('@/server/repositories/reviewSessions', () => ({
 import {
   saveItemDraft,
   ReviewDraftPostNotInBatchError,
+  ReviewDraftSessionClosedError,
   ReviewDraftUnauthorizedError,
 } from '@/server/services/reviewDraft'
 import type { ReviewItemHydrated } from '@/types/review-session'
@@ -159,8 +175,9 @@ beforeEach(() => {
 describe('saveItemDraft', () => {
   it('saves a NEW draft when no active session exists yet (startSession path)', async () => {
     primeHappyAuth()
-    // No active session — service should call startSession to mint one.
-    mocks.findActiveSession.mockResolvedValue(null)
+    // No active session and no latest session — first ever review, mint one.
+    mocks.findActiveClientSessionForLink.mockResolvedValue(null)
+    mocks.findLatestClientSessionForLink.mockResolvedValue(null)
     mocks.startSession.mockResolvedValue({
       id: 'rs_new',
       magicLinkId: LINK_ID,
@@ -199,9 +216,9 @@ describe('saveItemDraft', () => {
     })
   })
 
-  it('updates an EXISTING draft against the active session (no startSession call)', async () => {
+  it('updates an EXISTING draft against the link\'s active session (no startSession call)', async () => {
     primeHappyAuth()
-    mocks.findActiveSession.mockResolvedValue({
+    mocks.findActiveClientSessionForLink.mockResolvedValue({
       id: 'rs_existing',
       magicLinkId: LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -239,6 +256,38 @@ describe('saveItemDraft', () => {
     })
   })
 
+  it('reuses the link\'s existing session when reviewer re-confirms name (no startSession)', async () => {
+    primeHappyAuth()
+    // Simulate a fresh MagicLinkReviewer minted after re-confirming name —
+    // the link already has an in_progress session; the service must reuse it.
+    mocks.findActiveClientSessionForLink.mockResolvedValue({
+      id: 'rs_existing',
+      magicLinkId: LINK_ID,
+      reviewerId: 'reviewer_old', // different reviewer than cookie, but link's session
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date('2026-05-16T09:00:00Z'),
+      submittedAt: null,
+      submittedSummary: null,
+    })
+    const item = happyPathHydratedItem({ decision: 'approved' })
+    mocks.saveDraftItem.mockResolvedValue(item)
+
+    const result = await saveItemDraft({
+      token: VALID_TOKEN,
+      postId: POST_ID,
+      decision: 'approved',
+    })
+
+    expect(result).toEqual(item)
+    // Critical: startSession must NOT be called when a link session already exists.
+    expect(mocks.startSession).not.toHaveBeenCalled()
+    expect(mocks.findLatestClientSessionForLink).not.toHaveBeenCalled()
+    expect(mocks.saveDraftItem).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewSessionId: 'rs_existing' }),
+    )
+  })
+
   // Regression: the PATCH /api/review/[token]/draft route forwards
   // undefined for any field the reviewer did not touch. The service must
   // pass that undefined through to the repo unchanged — coercing it to a
@@ -246,7 +295,7 @@ describe('saveItemDraft', () => {
   // the reviewer set previously. See projects/relay-app/2026-05-17-julio-handoff.md known bug #1.
   it('forwards undefined decision to saveDraftItem when the route omits it (comment-only PATCH)', async () => {
     primeHappyAuth()
-    mocks.findActiveSession.mockResolvedValue({
+    mocks.findActiveClientSessionForLink.mockResolvedValue({
       id: 'rs_existing',
       magicLinkId: LINK_ID,
       reviewerId: REVIEWER_ID,
@@ -299,7 +348,7 @@ describe('saveItemDraft', () => {
     ).rejects.toBeInstanceOf(ReviewDraftUnauthorizedError)
 
     expect(mocks.findByTokenHash).not.toHaveBeenCalled()
-    expect(mocks.findActiveSession).not.toHaveBeenCalled()
+    expect(mocks.findActiveClientSessionForLink).not.toHaveBeenCalled()
     expect(mocks.saveDraftItem).not.toHaveBeenCalled()
   })
 
@@ -320,8 +369,97 @@ describe('saveItemDraft', () => {
       }),
     ).rejects.toBeInstanceOf(ReviewDraftPostNotInBatchError)
 
-    expect(mocks.findActiveSession).not.toHaveBeenCalled()
+    expect(mocks.findActiveClientSessionForLink).not.toHaveBeenCalled()
     expect(mocks.startSession).not.toHaveBeenCalled()
     expect(mocks.saveDraftItem).not.toHaveBeenCalled()
+  })
+
+  it('throws ReviewDraftSessionClosedError and does NOT call startSession when latest session is submitted', async () => {
+    primeHappyAuth()
+    // No active (in_progress) session, but there is a submitted one.
+    // The client must not silently create a new round-1.
+    mocks.findActiveClientSessionForLink.mockResolvedValue(null)
+    mocks.findLatestClientSessionForLink.mockResolvedValue({
+      id: 'rs_submitted',
+      magicLinkId: LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'submitted',
+      round: 1,
+      startedAt: new Date('2026-05-16T09:00:00Z'),
+      submittedAt: new Date('2026-05-16T10:00:00Z'),
+      submittedSummary: null,
+    })
+
+    await expect(
+      saveItemDraft({
+        token: VALID_TOKEN,
+        postId: POST_ID,
+        decision: 'approved',
+      }),
+    ).rejects.toBeInstanceOf(ReviewDraftSessionClosedError)
+
+    expect(mocks.startSession).not.toHaveBeenCalled()
+    expect(mocks.saveDraftItem).not.toHaveBeenCalled()
+  })
+
+  it('throws ReviewDraftSessionClosedError and does NOT call startSession when latest session is superseded', async () => {
+    primeHappyAuth()
+    // No active (in_progress) session, and the latest is superseded (AM
+    // closed a round and opened a new one on a later reviewer).
+    mocks.findActiveClientSessionForLink.mockResolvedValue(null)
+    mocks.findLatestClientSessionForLink.mockResolvedValue({
+      id: 'rs_superseded',
+      magicLinkId: LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'superseded',
+      round: 1,
+      startedAt: new Date('2026-05-16T09:00:00Z'),
+      submittedAt: null,
+      submittedSummary: null,
+    })
+
+    await expect(
+      saveItemDraft({
+        token: VALID_TOKEN,
+        postId: POST_ID,
+        decision: 'approved',
+      }),
+    ).rejects.toBeInstanceOf(ReviewDraftSessionClosedError)
+
+    expect(mocks.startSession).not.toHaveBeenCalled()
+    expect(mocks.saveDraftItem).not.toHaveBeenCalled()
+  })
+
+  it('calls startSession when both findActiveClientSessionForLink and findLatestClientSessionForLink return null', async () => {
+    primeHappyAuth()
+    // Truly first ever review — no session of any kind exists yet.
+    mocks.findActiveClientSessionForLink.mockResolvedValue(null)
+    mocks.findLatestClientSessionForLink.mockResolvedValue(null)
+    mocks.startSession.mockResolvedValue({
+      id: 'rs_brand_new',
+      magicLinkId: LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+    })
+    mocks.saveDraftItem.mockResolvedValue(happyPathHydratedItem())
+
+    await saveItemDraft({
+      token: VALID_TOKEN,
+      postId: POST_ID,
+      decision: 'approved',
+    })
+
+    expect(mocks.startSession).toHaveBeenCalledTimes(1)
+    expect(mocks.startSession).toHaveBeenCalledWith({
+      magicLinkId: LINK_ID,
+      reviewerId: REVIEWER_ID,
+    })
+    expect(mocks.saveDraftItem).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewSessionId: 'rs_brand_new' }),
+    )
   })
 })
