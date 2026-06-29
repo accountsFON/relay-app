@@ -571,21 +571,7 @@ export default async function BatchDetailPage({
             </PageSection>
           )}
           {batch.clientReviewEnabled && clientPill && (
-            <PageSection
-              title="Client review"
-              action={
-                clientPill.session.status === 'submitted' ? (
-                  <Link
-                    href={`/clients/${client.id}/batches/${batch.id}/review-sessions/${clientPill.session.id}`}
-                    className="text-[13px] text-foreground underline-offset-4 hover:underline"
-                    data-testid="view-client-feedback-header"
-                    aria-label="View client feedback"
-                  >
-                    View client feedback <span aria-hidden="true">→</span>
-                  </Link>
-                ) : undefined
-              }
-            >
+            <PageSection title="Client review">
               <div className="space-y-2">
                 <ReviewSessionListRow
                   clientId={client.id}
