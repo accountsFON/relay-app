@@ -397,6 +397,109 @@ describe('BatchDetailPage', () => {
     })
   })
 
+  // ---- Next-action board (cost above, board below, all roles) ----
+
+  describe('NextActionBoard', () => {
+    const runWithBreakdown = {
+      id: 'run_1',
+      status: 'complete',
+      tokenUsage: {
+        breakdown: { total: 1.23, credits: 5 },
+        pipelineDurationSeconds: 12,
+      },
+    }
+
+    beforeEach(() => {
+      vi.mocked(can).mockImplementation(
+        (ctx: { role?: string; platformOwner?: boolean }, key: string) =>
+          key === 'cost.viewAll'
+            ? ctx.role === 'admin' || ctx.platformOwner === true
+            : false,
+      )
+    })
+
+    it('renders for a non-admin viewer with no cost access', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'designer',
+      })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'in_design',
+        currentSubState: null,
+        currentHolder: 'someone_else',
+      } as never)
+
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+      expect(queryByTestId('next-action-board')).not.toBeNull()
+      expect(queryByTestId('cost-breakdown-stub')).toBeNull()
+    })
+
+    it('renders the cost breakdown ABOVE the board for an admin', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'admin',
+      })
+      vi.mocked(findRunForBatch).mockResolvedValue(runWithBreakdown as never)
+
+      const { container, getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+      const cost = getByTestId('cost-breakdown-stub')
+      const board = getByTestId('next-action-board')
+      // DOM order: cost precedes the board.
+      const order = cost.compareDocumentPosition(board)
+      expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(container).toBeTruthy()
+    })
+
+    it('reflects the current step / sub-state in the action (designer revises at awaiting_design_revisions)', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'designer',
+      })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'am_review_design',
+        currentSubState: 'awaiting_design_revisions',
+        currentHolder: 'someone_else',
+      } as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+      const board = getByTestId('next-action-board')
+      expect(board.dataset.tone).toBe('action')
+      expect(board.textContent).toMatch(/revise the designs/i)
+    })
+
+    it('shows a waiting state for the non-actor', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'account_manager',
+      })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'in_design',
+        currentSubState: null,
+        currentHolder: 'someone_else',
+      } as never)
+      vi.mocked(can).mockReturnValue(false)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+      const board = getByTestId('next-action-board')
+      expect(board.dataset.tone).toBe('waiting')
+    })
+  })
+
   // ---- Bulk media upload panel (item 35) ----
 
   describe('Bulk media upload panel', () => {
@@ -485,8 +588,11 @@ describe('BatchDetailPage', () => {
         currentStep: 'scheduling',
       } as never)
 
-      const { getByRole } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
-      const link = getByRole('link', { name: /go to nectrcrm/i })
+      // The action-row chip is identified by its testid; the next-action board
+      // also surfaces a "Go to NectrCRM" link at the scheduling step, so scope
+      // this assertion to the chip specifically.
+      const { getByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      const link = getByTestId('go-to-nectrcrm-link')
       expect(link).toHaveAttribute('href', NECTR_CRM_URL)
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')

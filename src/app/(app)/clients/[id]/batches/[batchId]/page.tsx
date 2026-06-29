@@ -49,6 +49,8 @@ import {
 } from '@/components/posts/post-list-collapse'
 import { PostVersionHistory } from '@/components/posts/post-version-history'
 import { CostBreakdown } from '@/components/runs/cost-breakdown'
+import { NextActionBoard } from '@/components/relay/next-action-board'
+import { nextActionForRelay } from '@/lib/relay-next-action'
 import { FailedRunBanner } from '@/components/runs/failed-run-banner'
 import { ExportButton } from '@/components/runs/export-button'
 import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
@@ -236,6 +238,11 @@ export default async function BatchDetailPage({
   const canAct =
     batch.currentHolder === ctx.userDbId ||
     canOverrideHolder(ctx.role, ctx.platformOwner)
+  // Latest submitted client review session, reused by the review-sessions
+  // header link AND the next-action board's "View client feedback" deep link.
+  // Repo orders submittedAt desc, so the first submitted is the latest.
+  const latestSubmittedSession =
+    reviewSessions.find((s) => s.status === 'submitted') ?? null
   // Force step is admin role + platform owner only (stricter than canAct).
   // AMs are NOT included; to reverse a batch they use the normal Send Back path.
   const canForceStep = ctx.role === 'admin' || ctx.platformOwner === true
@@ -499,6 +506,24 @@ export default async function BatchDetailPage({
         </div>
       )}
 
+      {/* Role-aware "what to do next" board. Shown to ALL roles; the cost
+          breakdown above stays admin-only. */}
+      <div className="mt-8">
+        <NextActionBoard
+          action={nextActionForRelay({
+            step: batch.currentStep,
+            subState: batch.currentSubState,
+            viewerRole: ctx.role,
+            isHolder: canAct,
+            clientId: client.id,
+            batchId: batch.id,
+            hasSubmittedReviewSession: latestSubmittedSession !== null,
+            reviewSessionId: latestSubmittedSession?.id ?? null,
+            assetsFolderUrl: client.assetsFolderUrl,
+          })}
+        />
+      </div>
+
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6 lg:order-1">
           {batch.clientReviewEnabled && magicLinks.length > 0 && (
@@ -546,13 +571,10 @@ export default async function BatchDetailPage({
             <PageSection
               title={`Review Sessions (${reviewSessions.length})`}
               action={(() => {
-                const latestSubmitted = reviewSessions.find(
-                  (s) => s.status === 'submitted',
-                )
-                if (!latestSubmitted) return undefined
+                if (!latestSubmittedSession) return undefined
                 return (
                   <Link
-                    href={`/clients/${client.id}/batches/${batch.id}/review-sessions/${latestSubmitted.id}`}
+                    href={`/clients/${client.id}/batches/${batch.id}/review-sessions/${latestSubmittedSession.id}`}
                     className="text-[13px] text-foreground underline-offset-4 hover:underline"
                     data-testid="view-client-feedback-header"
                     aria-label="View client feedback"
