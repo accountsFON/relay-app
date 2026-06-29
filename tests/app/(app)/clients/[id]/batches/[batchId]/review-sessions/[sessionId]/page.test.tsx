@@ -55,14 +55,20 @@ vi.mock('@/server/actions/reviewSessions', () => ({
   acceptCaptionEditAction: vi.fn(),
   rejectCaptionEditAction: vi.fn(),
   startNextRoundAction: vi.fn(),
+  startInternalNextRoundAction: vi.fn(),
   markPostAddressedAction: vi.fn(),
   unmarkPostAddressedAction: vi.fn(),
+}))
+
+vi.mock('@/server/actions/relay', () => ({
+  markDesignRevisionsDoneAction: vi.fn(),
 }))
 
 vi.mock('@/db/client', () => ({
   db: {
     magicLink: { findUnique: vi.fn() },
     magicLinkReviewer: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn() },
     post: { findMany: vi.fn() },
   },
 }))
@@ -125,11 +131,15 @@ vi.mock(
       isSuperseded: boolean
       actions: { replyToFeedback?: unknown }
       startNextRoundSlot?: React.ReactNode
+      respondSlot?: React.ReactNode
     }) => (
       <div
         data-testid="review-feedback-shell-stub"
         data-has-reply-action={String(typeof props.actions?.replyToFeedback === 'function')}
       >
+        {props.respondSlot ? (
+          <div data-testid="respond-slot">{props.respondSlot}</div>
+        ) : null}
         {/* Rail zone */}
         <div data-testid="review-feedback-rail">
           {props.posts.map((p) => (
@@ -219,12 +229,17 @@ const mockBatch = {
   id: 'batch_1',
   clientId: 'client_1',
   label: 'May 2026',
+  currentStep: 'am_review_design' as const,
+  currentSubState: 'awaiting_design_revisions' as const,
 }
 
 const mockSession = {
   id: 'session_1',
+  kind: 'client' as const,
+  batchId: 'batch_1',
   magicLinkId: 'ml_1',
   reviewerId: 'reviewer_1',
+  reviewerUserId: null,
   status: 'submitted' as const,
   round: 1,
   startedAt: new Date('2026-05-15T10:00:00Z'),
@@ -288,6 +303,25 @@ const mockReviewer = {
   email: 'real@example.com',
 }
 
+// The AM (Clerk User) who reviewed an internal session.
+const mockReviewerUser = {
+  id: 'user_am_1',
+  name: 'Amy AM',
+  email: 'amy@fonmarketing.com',
+}
+
+// An internal-kind session: no magic link, reviewer is the AM (a Clerk user),
+// batch reached via the session's direct batchId.
+const mockInternalSession = {
+  ...mockSession,
+  id: 'session_int_1',
+  kind: 'internal' as const,
+  batchId: 'batch_1',
+  magicLinkId: null,
+  reviewerId: null,
+  reviewerUserId: 'user_am_1',
+}
+
 const mockPosts = [
   {
     id: 'post_a',
@@ -327,6 +361,7 @@ describe('ReviewSessionDetailPage', () => {
     vi.mocked(findSessionWithItems).mockResolvedValue(mockSession as never)
     vi.mocked(db.magicLink.findUnique).mockResolvedValue(mockMagicLink as never)
     vi.mocked(db.magicLinkReviewer.findUnique).mockResolvedValue(mockReviewer as never)
+    vi.mocked(db.user.findUnique).mockResolvedValue(mockReviewerUser as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)
     vi.mocked(listClientThreadsForBatch).mockResolvedValue(new Map())
     // Default both edit capabilities off; tests that need them opt in.
@@ -887,5 +922,220 @@ describe('ReviewSessionDetailPage', () => {
       expect(queryByTestId('rail-accept-post_c')).toBeNull()
       expect(queryByTestId('rail-reject-post_c')).toBeNull()
     })
+  })
+
+  describe('internal session read-back (designer view)', () => {
+    const designerCtx = { ...mockCtx, role: 'designer' as const }
+    // The assigned designer's user db id must match for view access.
+    const assignedDesignerCtx = {
+      ...mockCtx,
+      role: 'designer' as const,
+      userDbId: 'user_designer_1',
+    }
+    const clientWithDesigner = {
+      ...mockClient,
+      assignedDesignerId: 'user_designer_1',
+    }
+
+    beforeEach(() => {
+      vi.mocked(findSessionWithItems).mockResolvedValue(
+        mockInternalSession as never,
+      )
+    })
+
+    it('does NOT redirect on the missing magic link for an internal session', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      // The page rendered (no redirect): the shell is present.
+      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+      // The magic-link lookup must not have driven access for an internal session.
+      expect(db.magicLink.findUnique).not.toHaveBeenCalled()
+    })
+
+    it('resolves the reviewer name from the AM User, not a MagicLinkReviewer', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      // Reviewer resolved via db.user.findUnique on the reviewerUserId (the AM).
+      expect(db.user.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'user_am_1' } }),
+      )
+      // The header shows the AM's name.
+      expect(getByTestId('review-session-header').textContent).toContain('Amy AM')
+      // No magic-link reviewer lookup on the internal path.
+      expect(db.magicLinkReviewer.findUnique).not.toHaveBeenCalled()
+    })
+
+    it('grants the assigned designer view access to an internal session', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+    })
+
+    it('grants an AM view access to an internal session', async () => {
+      // mockCtx is account_manager by default.
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+    })
+
+    it('denies a designer who is NOT the assigned designer', async () => {
+      // designerCtx has userDbId 'user_db_1' but the assigned designer is
+      // 'user_designer_1'.
+      vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      await expect(
+        renderPage({
+          id: 'client_1',
+          batchId: 'batch_1',
+          sessionId: 'session_int_1',
+        }),
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
+    })
+
+    it('shows the Mark-revisions-done control to the assigned designer while awaiting revisions', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(getByTestId('respond-slot')).toBeTruthy()
+      expect(getByTestId('mark-revisions-done-button')).toBeTruthy()
+    })
+
+    it('hides the Mark-revisions-done control from the AM on an internal session', async () => {
+      // mockCtx is account_manager — they read the designer's read-back but do
+      // not get the designer respond control.
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(queryByTestId('respond-slot')).toBeNull()
+      expect(queryByTestId('mark-revisions-done-button')).toBeNull()
+    })
+
+    it('hides the Mark-revisions-done control when not awaiting design revisions', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+      // Batch is at am_review_design but the sub-state is cleared (the AM is
+      // re-reviewing, not waiting on revisions).
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentSubState: null,
+      } as never)
+
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(queryByTestId('mark-revisions-done-button')).toBeNull()
+    })
+  })
+
+  describe('internal session: AM start-next-round (close the loop)', () => {
+    const assignedDesignerCtx = {
+      ...mockCtx,
+      role: 'designer' as const,
+      userDbId: 'user_designer_1',
+    }
+    const clientWithDesigner = {
+      ...mockClient,
+      assignedDesignerId: 'user_designer_1',
+    }
+    // An all-approved internal session so the shell exposes the start-next-round
+    // slot (allAddressed). Sub-state cleared (the designer already marked done).
+    const allApprovedInternalSession = {
+      ...mockInternalSession,
+      items: mockInternalSession.items.map((it) => ({
+        ...it,
+        decision: 'approved' as const,
+      })),
+    }
+
+    beforeEach(() => {
+      vi.mocked(findSessionWithItems).mockResolvedValue(
+        allApprovedInternalSession as never,
+      )
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentSubState: null,
+      } as never)
+    })
+
+    it('shows the AM a start-next-round control on an all-addressed internal session', async () => {
+      // mockCtx is account_manager.
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(getByTestId('start-next-round-button-stub')).toBeTruthy()
+    })
+
+    it('hides the start-next-round control from the designer on an internal session', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
+      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
+
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      })
+
+      expect(queryByTestId('start-next-round-button-stub')).toBeNull()
+    })
+  })
+
+  it('client session never renders the designer respond control', async () => {
+    // Default client session + default batch (awaiting_design_revisions). The
+    // respond control is internal-only, so the client read-back must not show it.
+    const { queryByTestId } = await renderPage({
+      id: 'client_1',
+      batchId: 'batch_1',
+      sessionId: 'session_1',
+    })
+
+    expect(queryByTestId('respond-slot')).toBeNull()
+    expect(queryByTestId('mark-revisions-done-button')).toBeNull()
   })
 })

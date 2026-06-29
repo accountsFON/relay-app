@@ -116,6 +116,7 @@ import {
   finishBatch,
   forceStep,
   getNotifyTargetsForStep,
+  markDesignRevisionsDone,
   passBaton,
   requestDesignChanges,
   sendBackBaton,
@@ -475,6 +476,135 @@ describe('requestDesignChanges', () => {
     await expect(
       requestDesignChanges({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_1' }),
     ).resolves.toMatchObject({ subState: 'awaiting_design_revisions' })
+  })
+})
+
+describe('markDesignRevisionsDone', () => {
+  function mockBatchAt(
+    step: RelayStep,
+    subState: string | null,
+    amId: string | null = 'user_am',
+  ) {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: step,
+      currentSubState: subState,
+      label: '2026-05',
+      client: { organizationId: 'org_1', assignedAmId: amId },
+    })
+  }
+
+  it('throws if batch not found', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce(null)
+    await expect(
+      markDesignRevisionsDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(RelayServiceError)
+  })
+
+  it('throws on cross-tenant access (treated as not found)', async () => {
+    mockBatchAt(RelayStep.am_review_design, 'awaiting_design_revisions')
+    await expect(
+      markDesignRevisionsDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_OTHER',
+      }),
+    ).rejects.toThrow(/not found/i)
+  })
+
+  it('throws unless the batch is at am_review_design', async () => {
+    mockBatchAt(RelayStep.am_qa_pre_client, 'awaiting_design_revisions')
+    await expect(
+      markDesignRevisionsDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/Design Review/)
+  })
+
+  it('throws unless the sub-state is awaiting_design_revisions', async () => {
+    mockBatchAt(RelayStep.am_review_design, null)
+    await expect(
+      markDesignRevisionsDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/awaiting design revisions/i)
+  })
+
+  it('clears the sub-state to null without changing step or holder', async () => {
+    mockBatchAt(RelayStep.am_review_design, 'awaiting_design_revisions')
+    const result = await markDesignRevisionsDone({
+      batchId: 'b1',
+      actorId: 'user_designer',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.subState).toBeNull()
+    const update = currentTx.tx.batch.update.mock.calls[0][0]
+    expect(update.data).toEqual({ currentSubState: null })
+    expect(update.data).not.toHaveProperty('currentStep')
+    expect(update.data).not.toHaveProperty('currentHolder')
+  })
+
+  it('records an event mentioning the AM with internal_review payload (bell -> /preview)', async () => {
+    mockBatchAt(RelayStep.am_review_design, 'awaiting_design_revisions', 'user_am')
+    await markDesignRevisionsDone({
+      batchId: 'b1',
+      actorId: 'user_designer',
+      actorOrganizationId: 'org_1',
+    })
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.kind).toBe(ActivityKind.batch_revision_completed)
+    const payload = data.payload as { surface?: string; batchId?: string }
+    expect(payload.surface).toBe('internal_review')
+    expect(payload.batchId).toBe('b1')
+    // AM is mentioned (the inverse of requestDesignChanges' designer notify).
+    expect(data.mentions.create).toEqual([{ mentionedUserId: 'user_am' }])
+  })
+
+  it('no-ops the mention if no AM is assigned but still clears sub-state', async () => {
+    mockBatchAt(RelayStep.am_review_design, 'awaiting_design_revisions', null)
+    const result = await markDesignRevisionsDone({
+      batchId: 'b1',
+      actorId: 'user_designer',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.subState).toBeNull()
+    expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.kind).toBe(ActivityKind.batch_revision_completed)
+    expect(data.mentions).toBeUndefined()
+  })
+
+  it('does not self-mention the AM when the AM marks it done', async () => {
+    mockBatchAt(RelayStep.am_review_design, 'awaiting_design_revisions', 'user_am')
+    await markDesignRevisionsDone({
+      batchId: 'b1',
+      actorId: 'user_am',
+      actorOrganizationId: 'org_1',
+    })
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    // AM is the actor here, so no self-mention.
+    expect(data.mentions).toBeUndefined()
+  })
+
+  it('does not throw even if the activity write fails (recordActivity swallows)', async () => {
+    mockBatchAt(RelayStep.am_review_design, 'awaiting_design_revisions')
+    currentTx.tx.activityEvent.create.mockRejectedValueOnce(new Error('db down'))
+    await expect(
+      markDesignRevisionsDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).resolves.toMatchObject({ subState: null })
   })
 })
 

@@ -21,6 +21,7 @@ vi.mock('@/server/services/relay', () => ({
   finishBatch: vi.fn(),
   forceStep: vi.fn(),
   requestDesignChanges: vi.fn(),
+  markDesignRevisionsDone: vi.fn(),
 }))
 
 vi.mock('@/server/services/activity', () => ({
@@ -50,6 +51,7 @@ import {
   finishBatch,
   forceStep,
   requestDesignChanges,
+  markDesignRevisionsDone,
 } from '@/server/services/relay'
 import {
   passBatonAction,
@@ -57,6 +59,7 @@ import {
   finishBatchAction,
   forceStepAction,
   requestDesignChangesAction,
+  markDesignRevisionsDoneAction,
   tickChecklistItemAction,
   setBatchAutoAdvanceAction,
 } from '@/server/actions/relay'
@@ -102,6 +105,10 @@ beforeEach(() => {
   vi.mocked(requestDesignChanges).mockResolvedValue({
     batchId: 'b1',
     subState: 'awaiting_design_revisions',
+  })
+  vi.mocked(markDesignRevisionsDone).mockResolvedValue({
+    batchId: 'b1',
+    subState: null,
   })
 })
 
@@ -285,6 +292,76 @@ describe('requestDesignChangesAction holder gate', () => {
       /only the current holder, an AM, or an admin/i,
     )
     expect(requestDesignChanges).not.toHaveBeenCalled()
+  })
+})
+
+describe('markDesignRevisionsDoneAction gate', () => {
+  // The batch at am_review_design / awaiting_design_revisions is AM-held, so
+  // the assigned designer is NOT the holder. Unlike requestDesignChangesAction,
+  // the assigned designer must be allowed to mark their own revisions done.
+  function mockBatchWithDesigner(
+    designerId: string | null,
+    currentHolder = 'u_am',
+    organizationId = 'org_1',
+  ) {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      currentHolder,
+      clientId: 'c1',
+      client: { organizationId, assignedDesignerId: designerId },
+    } as never)
+  }
+
+  it('the assigned designer (not holder) can mark revisions done', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    mockBatchWithDesigner('u_actor') // actor is the assigned designer
+
+    await markDesignRevisionsDoneAction({ batchId: 'b1' })
+
+    expect(markDesignRevisionsDone).toHaveBeenCalledWith(
+      expect.objectContaining({
+        batchId: 'b1',
+        actorId: 'u_actor',
+        actorOrganizationId: 'org_1',
+      }),
+    )
+  })
+
+  it('an AM (not holder) can mark revisions done', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    mockBatchWithDesigner('u_other_designer', 'u_someone_else')
+
+    await markDesignRevisionsDoneAction({ batchId: 'b1' })
+
+    expect(markDesignRevisionsDone).toHaveBeenCalledOnce()
+  })
+
+  it('an admin can mark revisions done', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    mockBatchWithDesigner('u_other_designer', 'u_someone_else')
+
+    await markDesignRevisionsDoneAction({ batchId: 'b1' })
+
+    expect(markDesignRevisionsDone).toHaveBeenCalledOnce()
+  })
+
+  it('a different designer (not the assigned one) is rejected', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    mockBatchWithDesigner('u_other_designer', 'u_am')
+
+    await expect(
+      markDesignRevisionsDoneAction({ batchId: 'b1' }),
+    ).rejects.toThrow(/assigned designer, an AM, or an admin/i)
+    expect(markDesignRevisionsDone).not.toHaveBeenCalled()
+  })
+
+  it('cross-tenant lookup throws Relay not found', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    mockBatchWithDesigner('u_other_designer', 'u_someone_else', 'org_OTHER')
+
+    await expect(
+      markDesignRevisionsDoneAction({ batchId: 'b1' }),
+    ).rejects.toThrow(/relay not found/i)
+    expect(markDesignRevisionsDone).not.toHaveBeenCalled()
   })
 })
 

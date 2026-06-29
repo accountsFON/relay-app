@@ -950,6 +950,51 @@ export async function startNextRoundAction(input: {
     : { ok: true, newSessionId: newSession.id, newRound: newSession.round }
 }
 
+export interface StartInternalNextRoundActionResult {
+  ok: true
+  newSessionId: string
+  newRound: number
+}
+
+/**
+ * Internal review parity Phase 3: the AM opens round N+1 on an internal
+ * Design Review session.
+ *
+ * The client variant (`startNextRoundAction`) is keyed on `magicLinkId` and
+ * re-sends the reviewer's magic-link email. The internal variant is keyed on
+ * (batchId, reviewerUserId) and sends NO email, internal reviewers get the
+ * in-app bell. After the designer marks revisions done (clearing the
+ * sub-state), the AM calls this to carry approvals forward and re-review the
+ * fresh round on `/preview`.
+ *
+ * Auth: `resolveInternalReviewContext` (requireClientEditor + findClientForUser)
+ * scopes the batch to the AM's assignments, same gate as the other internal
+ * actions. The Phase-1-generalized `startNextRound` does the supersede +
+ * carry-forward + activity emit.
+ */
+export async function startInternalNextRoundAction(input: {
+  batchId: string
+}): Promise<StartInternalNextRoundActionResult> {
+  const { ctx, batchId, clientId } = await resolveInternalReviewContext(
+    input.batchId,
+  )
+
+  const newSession = await startNextRound({
+    kind: 'internal',
+    batchId,
+    reviewerUserId: ctx.userDbId,
+    by: ctx.userDbId,
+  })
+
+  // The AM opens and re-reviews the new round on `/preview`, not the batch
+  // detail page (M4, 2026-06-29). Revalidating only the detail page left the
+  // verdict surface (`/preview`) showing the prior round's stale state until a
+  // hard refresh. Revalidate both.
+  revalidatePath(`/clients/${clientId}/batches/${batchId}`)
+  revalidatePath(`/clients/${clientId}/batches/${batchId}/preview`)
+  return { ok: true, newSessionId: newSession.id, newRound: newSession.round }
+}
+
 // ---- Internal (Clerk-authed AM) review actions ----
 
 /**

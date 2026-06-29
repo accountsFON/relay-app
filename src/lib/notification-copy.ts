@@ -81,8 +81,19 @@ export function renderSummary(row: MentionInboxRow): string {
       const short = desc.length > 60 ? desc.slice(0, 57) + '…' : desc
       return `${prefix}${actor} asked you to revise ${itemType}: "${short}"`
     }
-    case 'batch_revision_completed':
+    case 'batch_revision_completed': {
+      // Internal-review parity (Phase 3): the designer marks their revisions
+      // done so the AM can re-review. The AM's only re-review signal is this
+      // notification, so name the batch and tell them what to do next. The
+      // legacy (non-internal_review) path keeps its flat copy.
+      const surface = (payload as { surface?: string }).surface
+      if (surface === 'internal_review') {
+        const batchLabel = payload.batchLabel as string | undefined
+        const relay = batchLabel ? `"${batchLabel}"` : 'a relay'
+        return `${prefix}${actor} finished revisions on ${relay} — ready to re-review.`
+      }
       return `${prefix}${actor} marked the revision complete.`
+    }
     case 'batch_step_advanced': {
       const batchLabel = payload.batchLabel as string | undefined
       const toSubState = payload.toSubState as string | undefined

@@ -23,6 +23,12 @@ export type ReviewFeedbackShellProps = {
   allAddressed: boolean
   isSuperseded: boolean
   startNextRoundSlot?: React.ReactNode
+  /**
+   * The designer's respond control ("Mark revisions done") on an internal
+   * review read-back. Rendered at the top of the rail. Null on the client
+   * read-back and when the viewer/batch is not eligible (gated by the page).
+   */
+  respondSlot?: React.ReactNode
   clientName: string
   clientAvatarUrl?: string | null
 }
@@ -35,6 +41,7 @@ export function ReviewFeedbackShell({
   allAddressed,
   isSuperseded,
   startNextRoundSlot,
+  respondSlot,
   clientName,
   clientAvatarUrl,
 }: ReviewFeedbackShellProps) {
@@ -78,6 +85,7 @@ export function ReviewFeedbackShell({
       {/* Column 1: feedback rail (fixed/sticky with its own scroll, so the
           per-pin accordion expands within the panel and the page doesn't jump). */}
       <div className="lg:order-1 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto">
+        {respondSlot}
         {allAddressed && !isSuperseded && startNextRoundSlot}
         <ReviewFeedbackRail
           posts={posts}

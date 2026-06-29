@@ -11,8 +11,7 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2 done, Phase 3 in plan):
-- [ ] **Internal review parity (Batch D) — Phase 3: designer respond surface.** The designer read-back of the AM's internal feedback + a `markDesignRevisionsDone` action (clears `awaiting_design_revisions`, notifies the AM) + AM start-next-internal-round, closing the round loop. Plan: `2026-06-29-internal-review-parity-phase3-plan.md`. Build on merged Phase 2.
+From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done — full internal review parity):
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
 - [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
@@ -26,6 +25,27 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2 done, Ph
 ---
 
 ## Shipped
+
+- [x] **2026-06-29 — Internal review parity, Phase 3: designer respond surface (closes Batch D)** (PR #TBD)
+  Closes the AM<->designer round loop, the internal review now flows like the client link end to end.
+  (1) `markDesignRevisionsDone` service + `markDesignRevisionsDoneAction`: the inverse of
+  `requestDesignChanges`, clears `awaiting_design_revisions` back to null on a batch at `am_review_design`
+  (no step/holder change), notifies the assigned AM (reuses `ActivityKind.batch_revision_completed` —
+  no new enum/schema — with `surface:'internal_review'`+batchId so the AM bell deep-links to `/preview`),
+  never throws on the activity write, cross-tenant scoped, allowed for the ASSIGNED DESIGNER or an
+  AM/admin (gate differs from request-changes since the batch is AM-held while awaiting revisions).
+  (2) The read-back page (`review-sessions/[sessionId]`) now branches on `session.kind`: internal
+  sessions skip the magic-link redirect, resolve the reviewer from the AM `User`, reach the batch via
+  the session's direct `batchId`, and grant the assigned designer (+ AM/admin) view access. Client path
+  byte-for-byte identical (negative test added). (3) Designer respond UI: a "Mark revisions done"
+  control (`MarkRevisionsDoneButton`) in the shell's new `respondSlot`, shown only to the assigned
+  designer while awaiting revisions; the designer reads the AM's verdicts/notes/pins via the existing
+  rail/canvas. (4) `startInternalNextRoundAction` (keyed on batch + AM, no email) wired into the
+  read-back's start-next-round control for the AM so they re-review on `/preview` after the designer
+  marks done. Decision: read-back page (the AM-feedback mirror), not inline `/preview`. 2109 unit tests
+  green, tsc clean, eslint clean on all touched files. NO schema change (Phase 1 owns the data layer);
+  `relay.ts` (services) is touched so the Trigger.dev deploy fires on merge. Plan:
+  `vault projects/relay-app/2026-06-29-internal-review-parity-phase3-plan.md`.
 
 - [x] **2026-06-29 — Internal review parity, Phase 2: AM /preview verdict surface** (PR #TBD)
   The visible parity: `/preview` is now a client-style review for the AM. Widened `ReviewPostCard` to

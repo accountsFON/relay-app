@@ -33,13 +33,17 @@ import {
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { buildMentionRoster } from '@/lib/mentions'
 import { db } from '@/db/client'
+import { RelayStep } from '@prisma/client'
 import { ReviewSessionHeader } from '@/components/review/review-session-header'
 import { type HydratedItemWithPost } from '@/components/review/review-item-row'
 import { StartNextRoundButton } from '@/components/review/start-next-round-button'
+import { MarkRevisionsDoneButton } from '@/components/review/mark-revisions-done-button'
+import { markDesignRevisionsDoneAction } from '@/server/actions/relay'
 import {
   acceptCaptionEditAction,
   rejectCaptionEditAction,
   startNextRoundAction,
+  startInternalNextRoundAction,
   markPostAddressedAction,
   unmarkPostAddressedAction,
 } from '@/server/actions/reviewSessions'
@@ -80,30 +84,66 @@ export default async function ReviewSessionDetailPage({
 
   const session = await findSessionWithItems({ reviewSessionId: sessionId })
   if (!session) redirectAccessDenied()
-  // This page renders the client (magic-link) review session. Internal
-  // sessions have no magic link and get their own surface in a later phase.
-  if (!session.magicLinkId) redirectAccessDenied()
 
-  const magicLink = await db.magicLink.findUnique({
-    where: { id: session.magicLinkId },
-    select: {
-      id: true,
-      batchId: true,
-      defaultReviewerName: true,
-      defaultReviewerEmail: true,
-    },
-  })
-  if (!magicLink || magicLink.batchId !== batch.id) redirectAccessDenied()
+  // Two read-back surfaces share this page, branched on session.kind:
+  //   - client (magic-link): the AM reads the client's submitted feedback.
+  //   - internal (Clerk-user / AM reviewer): the designer reads the AM's
+  //     submitted feedback (internal review parity Phase 3). The internal
+  //     session has NO magic link; the reviewer is the AM (a Clerk User), and
+  //     the batch is reached via the session's direct batchId.
+  let reviewerName: string
+  let reviewerEmail: string | null
+  let magicLinkId: string | null = null
 
-  const reviewer = session.reviewerId
-    ? await db.magicLinkReviewer.findUnique({
-        where: { id: session.reviewerId },
-        select: { id: true, name: true, email: true },
-      })
-    : null
+  if (session.kind === 'internal') {
+    // Internal session: batch is reached via the session's direct batchId.
+    // findBatch above already scoped the batch to the client; verify the
+    // session belongs to THIS batch.
+    if (session.batchId !== batch.id) redirectAccessDenied()
 
-  const reviewerName = reviewer?.name ?? magicLink.defaultReviewerName
-  const reviewerEmail = reviewer?.email ?? magicLink.defaultReviewerEmail ?? null
+    // View access: the ASSIGNED DESIGNER (the responder) or an AM / admin.
+    // Designers are otherwise scoped to the image-pin lane on the client path;
+    // here the whole internal review is theirs to read.
+    const isAssignedDesigner = ctx.userDbId === client.assignedDesignerId
+    const isAmOrAdmin =
+      ctx.role === 'account_manager' || ctx.role === 'admin' || ctx.platformOwner
+    if (!isAssignedDesigner && !isAmOrAdmin) redirectAccessDenied()
+
+    // Resolve the reviewer (the AM) from the User table, not a MagicLinkReviewer.
+    const reviewerUser = session.reviewerUserId
+      ? await db.user.findUnique({
+          where: { id: session.reviewerUserId },
+          select: { id: true, name: true, email: true },
+        })
+      : null
+    reviewerName = reviewerUser?.name ?? 'Internal reviewer'
+    reviewerEmail = reviewerUser?.email ?? null
+  } else {
+    // Client (magic-link) session — unchanged path.
+    if (!session.magicLinkId) redirectAccessDenied()
+
+    const magicLink = await db.magicLink.findUnique({
+      where: { id: session.magicLinkId },
+      select: {
+        id: true,
+        batchId: true,
+        defaultReviewerName: true,
+        defaultReviewerEmail: true,
+      },
+    })
+    if (!magicLink || magicLink.batchId !== batch.id) redirectAccessDenied()
+    magicLinkId = magicLink.id
+
+    const reviewer = session.reviewerId
+      ? await db.magicLinkReviewer.findUnique({
+          where: { id: session.reviewerId },
+          select: { id: true, name: true, email: true },
+        })
+      : null
+
+    reviewerName = reviewer?.name ?? magicLink.defaultReviewerName
+    reviewerEmail = reviewer?.email ?? magicLink.defaultReviewerEmail ?? null
+  }
 
   // Load activity events and mention roster for the internal revision chat.
   const [activityEvents, memberships] = await Promise.all([
@@ -293,9 +333,16 @@ export default async function ReviewSessionDetailPage({
     )
   }
 
+  const isInternalSession = session.kind === 'internal'
   const startNextRound = async () => {
     'use server'
-    await startNextRoundAction({ magicLinkId: magicLink.id })
+    // Client sessions key on the magic link; internal sessions key on the
+    // batch (the AM reviewer is resolved from the Clerk session).
+    if (isInternalSession) {
+      await startInternalNextRoundAction({ batchId: batchId_ })
+    } else if (magicLinkId) {
+      await startNextRoundAction({ magicLinkId })
+    }
   }
 
   const feedbackActions: FeedbackActions = {
@@ -354,6 +401,57 @@ export default async function ReviewSessionDetailPage({
           ? ('am' as const)
           : ('am' as const)
 
+  // Start-next-round control. Client sessions key on the magic link and
+  // re-send the reviewer's email; internal sessions key on the batch (AM
+  // reviewer from the Clerk session) and send no email. The AM uses this to
+  // open the next internal round and re-review on /preview after the designer
+  // marks revisions done. Hidden from the designer on an internal session
+  // (the designer's affordance is the Mark-revisions-done control above).
+  const isAmOrAdminViewer =
+    ctx.role === 'account_manager' || ctx.role === 'admin' || ctx.platformOwner
+  const startNextRoundSlot =
+    session.kind === 'internal' ? (
+      isAmOrAdminViewer ? (
+        <StartNextRoundButton
+          nextRound={sessionRound + 1}
+          onClick={async () => {
+            'use server'
+            await startInternalNextRoundAction({ batchId: batchId_ })
+          }}
+        />
+      ) : null
+    ) : magicLinkId !== null ? (
+      <StartNextRoundButton
+        magicLinkId={magicLinkId}
+        nextRound={sessionRound + 1}
+        onClick={async () => {
+          'use server'
+          await startNextRoundAction({ magicLinkId })
+        }}
+      />
+    ) : null
+
+  // Designer respond control (internal review parity Phase 3). Shown only on an
+  // internal read-back, to the ASSIGNED DESIGNER, while the batch is at Design
+  // Review awaiting their revisions. "Mark revisions done" clears the sub-state
+  // and notifies the AM to re-review. The guard mirrors the
+  // markDesignRevisionsDone service (am_review_design && awaiting_design_revisions).
+  const isAwaitingDesignRevisions =
+    batch.currentStep === RelayStep.am_review_design &&
+    batch.currentSubState === 'awaiting_design_revisions'
+  const canMarkRevisionsDone =
+    session.kind === 'internal' &&
+    ctx.userDbId === client.assignedDesignerId &&
+    isAwaitingDesignRevisions
+  const respondSlot = canMarkRevisionsDone ? (
+    <MarkRevisionsDoneButton
+      onClick={async () => {
+        'use server'
+        await markDesignRevisionsDoneAction({ batchId: batchId_ })
+      }}
+    />
+  ) : null
+
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
       <ReviewSessionHeader
@@ -393,16 +491,8 @@ export default async function ReviewSessionDetailPage({
           userDbId={shellUserDbId}
           clientName={client.name}
           clientAvatarUrl={null}
-          startNextRoundSlot={
-            <StartNextRoundButton
-              magicLinkId={magicLink.id}
-              nextRound={sessionRound + 1}
-              onClick={async () => {
-                'use server'
-                await startNextRoundAction({ magicLinkId: magicLink.id })
-              }}
-            />
-          }
+          startNextRoundSlot={startNextRoundSlot}
+          respondSlot={respondSlot}
         />
         {/* Internal chat is a toggle popup (floating button → slide-up panel)
             on every screen size, so the feedback rail + posts get the full

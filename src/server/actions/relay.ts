@@ -11,6 +11,7 @@ import { requireCan } from '@/server/middleware/permissions'
 import {
   finishBatch,
   forceStep,
+  markDesignRevisionsDone,
   passBaton,
   requestDesignChanges,
   sendBackBaton,
@@ -202,6 +203,66 @@ export async function requestDesignChangesAction(input: { batchId: string }) {
     actorOrganizationId: ctx.organizationDbId,
   })
   revalidateBatchSurfaces(holder.clientId, input.batchId)
+  return result
+}
+
+/**
+ * Internal review parity Phase 3: the designer marks their revisions done.
+ *
+ * Inverse of requestDesignChangesAction. Clears the
+ * `awaiting_design_revisions` sub-state on a batch at am_review_design and
+ * notifies the assigned AM so they can open the next round + re-review on
+ * `/preview`. The batch stays AM-held.
+ *
+ * Gate differs from requestDesignChangesAction: the batch is AM-held while
+ * awaiting revisions, so the ASSIGNED DESIGNER (not the holder) must be
+ * allowed to mark their own work done, alongside an AM / admin / platform
+ * owner. The service enforces the step + sub-state guard and the cross-tenant
+ * scope.
+ *
+ * Permission: `relay.pass` (NOT `relay.sendBack`). This action is FOR the
+ * assigned designer, but `SYSTEM_DEFAULTS.designer['relay.sendBack'] === false`,
+ * so gating on sendBack redirected the designer to /no-access before the
+ * in-body `isAssignedDesigner || isHolder || canOverrideHolder` check ever
+ * ran (C1 ship-blocker, 2026-06-29). `relay.pass` is true for designers, AMs,
+ * and admins but false for clients, so the pre-gate fails closed against
+ * clients while the body authorization still rejects an unassigned designer.
+ */
+export async function markDesignRevisionsDoneAction(input: { batchId: string }) {
+  const ctx = await requireCan('relay.pass')
+
+  // Load holder + assigned designer + org in one scoped read. Cross-tenant
+  // access throws the same "Relay not found" as the other gates.
+  const batch = await db.batch.findUnique({
+    where: { id: input.batchId },
+    select: {
+      currentHolder: true,
+      clientId: true,
+      client: { select: { organizationId: true, assignedDesignerId: true } },
+    },
+  })
+  if (!batch || batch.client.organizationId !== ctx.organizationDbId) {
+    throw new Error('Relay not found')
+  }
+
+  const isAssignedDesigner = ctx.userDbId === batch.client.assignedDesignerId
+  const isHolder = ctx.userDbId === batch.currentHolder
+  if (
+    !isAssignedDesigner &&
+    !isHolder &&
+    !canOverrideHolder(ctx.role, ctx.platformOwner)
+  ) {
+    throw new Error(
+      'Only the assigned designer, an AM, or an admin can mark revisions done.',
+    )
+  }
+
+  const result = await markDesignRevisionsDone({
+    batchId: input.batchId,
+    actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
+  })
+  revalidateBatchSurfaces(batch.clientId, input.batchId)
   return result
 }
 
