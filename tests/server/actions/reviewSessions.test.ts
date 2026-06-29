@@ -75,6 +75,7 @@ vi.mock('@/server/services/activity', async () => {
 
 vi.mock('@/server/services/relay', () => ({
   advanceFromClientReview: vi.fn(),
+  advanceFromDesignReview: vi.fn(),
 }))
 
 vi.mock('@/lib/resend', () => ({
@@ -91,7 +92,7 @@ vi.mock('@/db/client', () => ({
     magicLinkReviewer: { findUnique: vi.fn() },
     magicLink: { findUnique: vi.fn() },
     batch: { findUnique: vi.fn() },
-    post: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    post: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
     postThread: { findMany: vi.fn() },
     reviewItem: { findUnique: vi.fn(), update: vi.fn() },
     activityEvent: { findFirst: vi.fn() },
@@ -117,7 +118,7 @@ import { snapshotPostVersion } from '@/server/services/postVersions'
 import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
-import { advanceFromClientReview } from '@/server/services/relay'
+import { advanceFromClientReview, advanceFromDesignReview } from '@/server/services/relay'
 import { bulkResolveOnPost, bulkReopenOnPost } from '@/server/repositories/threads'
 import {
   acceptCaptionEditAction,
@@ -1727,6 +1728,12 @@ describe('submitInternalReviewAction', () => {
         totalPosts: 1,
       },
     } as never)
+    vi.mocked(db.post.count).mockResolvedValue(1 as never)
+    vi.mocked(advanceFromDesignReview).mockResolvedValue({
+      advanced: true,
+      toStep: 'am_qa_pre_client',
+      newHolderId: AM_USER_DB_ID,
+    } as never)
 
     const result = await submitInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
 
@@ -1744,6 +1751,131 @@ describe('submitInternalReviewAction', () => {
     expect(recordActivity).toHaveBeenCalled()
     const activityArg = vi.mocked(recordActivity).mock.calls[0][0]
     expect(activityArg.actorId).toBe(AM_USER_DB_ID)
+  })
+
+  it('all approved: calls advanceFromDesignReview with decision=approved and returns the advance', async () => {
+    primeInternalAmCtx()
+    vi.mocked(findActiveSession).mockResolvedValue({
+      id: INTERNAL_SESSION_ID,
+      kind: 'internal',
+      batchId: INTERNAL_BATCH_ID,
+      reviewerUserId: AM_USER_DB_ID,
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: INTERNAL_SESSION_ID,
+      magicLinkId: null,
+      reviewerId: null,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        {
+          id: 'ii_1',
+          postId: INTERNAL_POST_ID,
+          decision: 'approved',
+          comment: null,
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+        },
+      ],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: INTERNAL_SESSION_ID,
+      round: 1,
+      status: 'submitted',
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 1,
+        changesRequested: 0,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    // The batch has exactly 1 post and it was approved -> strict all-approved.
+    vi.mocked(db.post.count).mockResolvedValue(1 as never)
+    vi.mocked(advanceFromDesignReview).mockResolvedValue({
+      advanced: true,
+      toStep: 'am_qa_pre_client',
+      newHolderId: AM_USER_DB_ID,
+    } as never)
+
+    const result = await submitInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
+
+    expect(advanceFromDesignReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        batchId: INTERNAL_BATCH_ID,
+        decision: 'approved',
+        actorUserId: AM_USER_DB_ID,
+        actorOrganizationId: 'org_db_1',
+        reviewSessionId: INTERNAL_SESSION_ID,
+      }),
+    )
+    expect(result.advanced).toEqual({
+      toStep: 'am_qa_pre_client',
+      newHolderId: AM_USER_DB_ID,
+    })
+  })
+
+  it('any changes: calls advanceFromDesignReview with decision=changes (no step advance)', async () => {
+    primeInternalAmCtx()
+    vi.mocked(findActiveSession).mockResolvedValue({
+      id: INTERNAL_SESSION_ID,
+      kind: 'internal',
+      batchId: INTERNAL_BATCH_ID,
+      reviewerUserId: AM_USER_DB_ID,
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: INTERNAL_SESSION_ID,
+      magicLinkId: null,
+      reviewerId: null,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        {
+          id: 'ii_1',
+          postId: INTERNAL_POST_ID,
+          decision: 'changes_requested',
+          comment: 'fix it',
+          suggestedCaption: null,
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+        },
+      ],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: INTERNAL_SESSION_ID,
+      round: 1,
+      status: 'submitted',
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 0,
+        changesRequested: 1,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    vi.mocked(db.post.count).mockResolvedValue(1 as never)
+    vi.mocked(advanceFromDesignReview).mockResolvedValue({
+      advanced: false,
+      subState: 'awaiting_design_revisions',
+    } as never)
+
+    const result = await submitInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
+
+    expect(advanceFromDesignReview).toHaveBeenCalledWith(
+      expect.objectContaining({ decision: 'changes' }),
+    )
+    expect(result.advanced).toBeUndefined()
   })
 
   it('throws when there is no active internal session to submit', async () => {

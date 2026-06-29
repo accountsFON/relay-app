@@ -100,12 +100,19 @@ vi.mock('@/db/client', () => ({
     $transaction: vi.fn(async (fn: (tx: AnyMock) => Promise<unknown>) =>
       fn(currentTx.tx),
     ),
+    // advanceFromDesignReview does a guard read outside the transaction
+    // (so its 'changes' path can delegate to requestDesignChanges, which
+    // owns its own transaction). Route that read through the same tx mock.
+    batch: {
+      findUnique: vi.fn((args: unknown) => currentTx.tx.batch.findUnique(args)),
+    },
   },
 }))
 
 import {
   RelayServiceError,
   advanceFromClientReview,
+  advanceFromDesignReview,
   finishBatch,
   forceStep,
   getNotifyTargetsForStep,
@@ -1077,6 +1084,122 @@ describe('advanceFromClientReview', () => {
     // Only client_review_decided; no revision_images_requested.
     expect(calls).toHaveLength(1)
     expect(calls[0][0].data.kind).toBe(ActivityKind.client_review_decided)
+  })
+})
+
+describe('advanceFromDesignReview', () => {
+  it('no-ops when the batch is not at am_review_design', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.copy,
+      label: 'Foo May 2026',
+    })
+    const result = await advanceFromDesignReview({
+      batchId: 'b1',
+      decision: 'approved',
+      actorUserId: 'u_am',
+      actorOrganizationId: 'org_1',
+      reviewSessionId: 's1',
+    })
+    expect(result.advanced).toBe(false)
+    expect(result.reason).toBe('not_at_design_review')
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('no-ops when the batch does not exist', async () => {
+    const result = await advanceFromDesignReview({
+      batchId: 'missing',
+      decision: 'approved',
+      actorUserId: 'u_am',
+      actorOrganizationId: 'org_1',
+      reviewSessionId: 's1',
+    })
+    expect(result.advanced).toBe(false)
+    expect(result.reason).toBe('not_found')
+    expect(currentTx.tx.batch.update).not.toHaveBeenCalled()
+  })
+
+  it('all approved advances am_review_design -> am_qa_pre_client, attributed to the AM', async () => {
+    // First findUnique: the guard read. Second: inside the transaction.
+    currentTx.tx.batch.findUnique
+      .mockResolvedValueOnce({
+        id: 'b1',
+        clientId: 'c1',
+        currentStep: RelayStep.am_review_design,
+        label: 'Foo May 2026',
+      })
+      .mockResolvedValueOnce({
+        id: 'b1',
+        clientId: 'c1',
+        currentStep: RelayStep.am_review_design,
+        clientReviewEnabled: false,
+        label: 'Foo May 2026',
+      })
+    const result = await advanceFromDesignReview({
+      batchId: 'b1',
+      decision: 'approved',
+      actorUserId: 'u_am',
+      actorOrganizationId: 'org_1',
+      reviewSessionId: 's1',
+    })
+    expect(result.advanced).toBe(true)
+    expect(result.toStep).toBe(RelayStep.am_qa_pre_client)
+
+    expect(currentTx.tx.batch.update).toHaveBeenCalledOnce()
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.currentStep).toBe(RelayStep.am_qa_pre_client)
+    // Holder resolves to the assigned AM (makeTx client default).
+    expect(updateData.currentHolder).toBe('user_am')
+
+    // relayEvent is a pass_forward attributed to the acting AM.
+    expect(currentTx.tx.relayEvent.create).toHaveBeenCalledOnce()
+    const relayData = currentTx.tx.relayEvent.create.mock.calls[0][0].data
+    expect(relayData.type).toBe(RelayEventType.pass_forward)
+    expect(relayData.fromUser).toBe('u_am')
+    expect(relayData.fromStep).toBe(RelayStep.am_review_design)
+    expect(relayData.toStep).toBe(RelayStep.am_qa_pre_client)
+  })
+
+  it('any changes routes through requestDesignChanges (sub-state set, no step change)', async () => {
+    // First findUnique: the guard read in advanceFromDesignReview.
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      label: 'Foo May 2026',
+    })
+    // Second findUnique: the read inside requestDesignChanges (includes client).
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      label: 'Foo May 2026',
+      client: { organizationId: 'org_1', assignedDesignerId: 'user_designer' },
+    })
+
+    const result = await advanceFromDesignReview({
+      batchId: 'b1',
+      decision: 'changes',
+      actorUserId: 'u_am',
+      actorOrganizationId: 'org_1',
+      reviewSessionId: 's1',
+    })
+
+    expect(result.advanced).toBe(false)
+    expect(result.subState).toBe('awaiting_design_revisions')
+
+    // requestDesignChanges set the sub-state, did NOT change the step.
+    const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
+    expect(updateData.currentSubState).toBe('awaiting_design_revisions')
+    expect(updateData.currentStep).toBeUndefined()
+
+    // No pass_forward relay event on the changes path.
+    expect(currentTx.tx.relayEvent.create).not.toHaveBeenCalled()
+
+    // design_changes_requested activity notifies the designer.
+    const activityData = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(activityData.kind).toBe(ActivityKind.design_changes_requested)
   })
 })
 

@@ -15,7 +15,7 @@ import {
   submitSession,
 } from '@/server/repositories/reviewSessions'
 import { startNextRound } from '@/server/services/reviewRound'
-import { advanceFromClientReview } from '@/server/services/relay'
+import { advanceFromClientReview, advanceFromDesignReview } from '@/server/services/relay'
 import { mapReviewDecision } from '@/lib/relay-review-decision'
 import { snapshotPostVersion } from '@/server/services/postVersions'
 import { recordActivity } from '@/server/services/activity'
@@ -1146,8 +1146,41 @@ export async function submitInternalReviewAction(input: {
     },
   })
 
+  // Advance the Design Review step. all approved -> QA; any changes ->
+  // requestDesignChanges (sub-state flip + designer notify, no step change).
+  // The decision is strict over the batch's real post count, not the review
+  // summary's totalPosts (untouched posts would otherwise look approved).
+  let advanceError: string | undefined
+  let advanced: { toStep: RelayStep; newHolderId: string } | undefined
+  try {
+    const batchPostCount = await db.post.count({
+      where: { batchId, deletedAt: null },
+    })
+    const decision = mapReviewDecision(summary, batchPostCount)
+    const moved = await advanceFromDesignReview({
+      batchId,
+      decision,
+      actorUserId: ctx.userDbId,
+      actorOrganizationId: ctx.organizationDbId,
+      reviewSessionId: active.id,
+    })
+    if (moved.advanced && moved.toStep && moved.newHolderId) {
+      advanced = { toStep: moved.toStep, newHolderId: moved.newHolderId }
+    }
+  } catch (err) {
+    advanceError = err instanceof Error ? err.message : String(err)
+    console.error('[review] submitInternalReviewAction advance failed', {
+      reviewSessionId: active.id,
+      batchId,
+      err: advanceError,
+    })
+  }
+
   revalidatePath(`/clients/${clientId}/batches/${batchId}`)
-  return { ok: true, summary }
+  const result: SubmitInternalReviewActionResult = { ok: true, summary }
+  if (advanceError) result.advanceError = advanceError
+  if (advanced) result.advanced = advanced
+  return result
 }
 
 const REVIEW_PIN_RESOLVE_REASON = 'Addressed from review session'
