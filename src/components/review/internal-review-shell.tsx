@@ -16,6 +16,7 @@ import {
   // a server action, not a hook.
   useCommentImageAsPostMediaAction as applyCommentImageAsPostMediaAction,
 } from '@/server/actions/threads'
+import { toast } from 'sonner'
 import { updatePostAction } from '@/server/actions/posts'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
 import type { MentionTarget } from '@/lib/mentions'
@@ -250,8 +251,14 @@ export function InternalReviewShell({
                       onCaptionEditSave={
                         canEditCaption
                           ? async (draft) => {
-                              await updatePostAction(post.id, { caption: draft })
-                              startTransition(() => router.refresh())
+                              try {
+                                await updatePostAction(post.id, { caption: draft })
+                                startTransition(() => router.refresh())
+                              } catch {
+                                toast.error(
+                                  "Couldn't save your changes. You may not have permission to edit captions.",
+                                )
+                              }
                             }
                           : undefined
                       }
