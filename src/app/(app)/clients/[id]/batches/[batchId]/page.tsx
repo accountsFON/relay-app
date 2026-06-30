@@ -151,9 +151,17 @@ export default async function BatchDetailPage({
       },
     }),
     listMembershipsForOrg(ctx.organizationDbId),
+    // Only the single ACTIVE review link (not revoked, not expired), most
+    // recent first. The batch page shows one pill for it; expired + revoked
+    // links are hidden, so the active link is the only one that links outbound.
     db.magicLink.findMany({
-      where: { batchId: batch.id, revokedAt: null },
+      where: {
+        batchId: batch.id,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
       orderBy: { createdAt: 'desc' },
+      take: 1,
       select: {
         id: true,
         defaultReviewerName: true,
@@ -534,7 +542,7 @@ export default async function BatchDetailPage({
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6 lg:order-1">
           {batch.clientReviewEnabled && magicLinks.length > 0 && (
-            <PageSection title={`Review links (${magicLinks.length})`}>
+            <PageSection title="Review link">
               <div className="space-y-2">
                 {magicLinks.map((link) => {
                   // Pre-compute comment count + last-activity per link from
