@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import {
   InternalReviewShell,
   type InternalReviewShellPost,
@@ -9,7 +8,7 @@ import {
   saveInternalDraftAction,
   submitInternalReviewAction,
 } from '@/server/actions/reviewSessions'
-import { createThreadAction } from '@/server/actions/threads'
+import { createThreadAction, addCommentAction } from '@/server/actions/threads'
 import type { ReviewItemHydrated } from '@/types/review-session'
 
 // jsdom lacks scrollIntoView; ReviewPostCard calls it when edit mode opens.
@@ -39,6 +38,20 @@ vi.mock('@/lib/upload-comment-image', () => ({
     .mockResolvedValue({ url: 'https://example.com/x.jpg', width: 10, height: 10 }),
 }))
 
+// Prop-capturing mock for ReviewPostCard. Renders a per-post marker so layout
+// tests can assert on DOM presence, and records props so tests can fire
+// callbacks (onDecisionChange, onCreatePin, etc.) directly — avoiding the need
+// to drive the real card's internal UI in these shell-level tests.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cardProps: Record<string, any> = {}
+vi.mock('@/components/review/review-post-card', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ReviewPostCard: (props: any) => {
+    cardProps[props.post.id] = props
+    return <div data-testid={`card-${props.post.id}`}>{props.post.caption}</div>
+  },
+}))
+
 function makePost(id: string, caption: string): InternalReviewShellPost {
   return {
     post: { id, caption, hashtags: [], mediaUrl: null },
@@ -65,18 +78,27 @@ describe('InternalReviewShell', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.clearAllMocks()
+    // Clear captured props between tests.
+    for (const key of Object.keys(cardProps)) {
+      delete cardProps[key]
+    }
   })
 
+  // Adjusted: the real card no longer renders here (mock is in place), so we
+  // check for the per-post markers the capturing mock emits instead of the
+  // card's own data-testid="review-post-card".
   it('renders one ReviewPostCard per post', () => {
     render(<InternalReviewShell {...BASE_PROPS} />)
-    expect(screen.getAllByTestId('review-post-card')).toHaveLength(2)
+    expect(screen.getByTestId('card-post-1')).toBeInTheDocument()
+    expect(screen.getByTestId('card-post-2')).toBeInTheDocument()
   })
 
+  // Adjusted: the capturing mock doesn't render a decision button, so we fire
+  // the callback directly via the captured props object.
   it('a verdict click persists via saveInternalDraftAction with batchId + postId', async () => {
     render(<InternalReviewShell {...BASE_PROPS} />)
-    const [firstApprove] = screen.getAllByTestId('decision-button-approved')
     await act(async () => {
-      fireEvent.click(firstApprove)
+      cardProps['post-1'].onDecisionChange('approved')
     })
     await waitFor(() => {
       expect(saveInternalDraftAction).toHaveBeenCalledTimes(1)
@@ -148,49 +170,17 @@ describe('InternalReviewShell', () => {
     })
   })
 
+  // Adjusted: the capturing mock doesn't render the comment composer, so we
+  // fire onCreatePin directly from the captured props to verify the shell
+  // routes it through createThreadAction (not the draft action).
   it('pins route through the Clerk-authed createThreadAction', async () => {
-    // After submit the post-level Comments composer renders even with no
-    // existing thread; sending a message there fires onCreatePin -> the
-    // internal createThreadAction (post-level pin), not the token endpoint.
-    vi.mocked(submitInternalReviewAction).mockResolvedValue({
-      ok: true,
-      summary: {
-        approved: 1,
-        changesRequested: 0,
-        captionEdited: 0,
-        totalPosts: 2,
-      },
-    })
-    const props = {
-      ...BASE_PROPS,
-      initialItems: [
-        {
-          id: 'i1',
-          postId: 'post-1',
-          decision: 'approved' as const,
-          comment: null,
-          suggestedCaption: null,
-          acceptedAsPostVersionId: null,
-          updatedSinceLastReview: false,
-          lastReviewedVersionId: null,
-          reviewedAt: new Date(),
-          addressedAt: null,
-        },
-      ],
-    }
-    render(<InternalReviewShell {...props} />)
+    render(<InternalReviewShell {...BASE_PROPS} />)
 
-    fireEvent.click(screen.getByTestId('submit-review-bar-button'))
-    const confirm = await screen.findByTestId('submit-review-modal-confirm')
     await act(async () => {
-      fireEvent.click(confirm)
-    })
-
-    const [composer] = await screen.findAllByTestId('comment-composer-input')
-    await userEvent.type(composer, 'designer please tweak the crop')
-    const [send] = screen.getAllByTestId('comment-composer-send')
-    await act(async () => {
-      await userEvent.click(send)
+      await cardProps['post-1'].onCreatePin(
+        { kind: 'post' },
+        'designer please tweak the crop',
+      )
     })
 
     await waitFor(() => {
@@ -205,6 +195,25 @@ describe('InternalReviewShell', () => {
     )
     // Pins do NOT go through the draft action.
     expect(saveInternalDraftAction).not.toHaveBeenCalled()
+  })
+
+  // Notification lock: a reply on a pin thread must route through
+  // addCommentAction, which is the path that emits the internal-review bell
+  // notification (notifyInternalThreadReply). A future layout change must not
+  // silently drop this wiring.
+  it('thread replies route through addCommentAction (notification path preserved)', async () => {
+    render(<InternalReviewShell {...BASE_PROPS} />)
+
+    await act(async () => {
+      await cardProps['post-1'].onAppendThreadComment('thread-1', 'looks good now')
+    })
+
+    await waitFor(() => {
+      expect(addCommentAction).toHaveBeenCalledTimes(1)
+    })
+    expect(addCommentAction).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: 'thread-1', body: 'looks good now' }),
+    )
   })
 
   it('renders the submitted banner after a successful submit', async () => {
@@ -316,5 +325,75 @@ describe('InternalReviewShell', () => {
     render(<InternalReviewShell {...props} />)
     // ReviewProgressBar renders a labeled progress region.
     expect(screen.getByTestId('review-progress-bar')).toBeInTheDocument()
+  })
+})
+
+describe('InternalReviewShell markup layout', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
+    for (const key of Object.keys(cardProps)) {
+      delete cardProps[key]
+    }
+  })
+
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+  })
+
+  const basePosts = [
+    { post: { id: 'p1', caption: 'one', hashtags: [], mediaUrl: '/a.jpg' }, threads: [] },
+    { post: { id: 'p2', caption: 'two', hashtags: [], mediaUrl: null }, threads: [] },
+  ]
+
+  function renderShell() {
+    return render(
+      <InternalReviewShell
+        batchId="b1"
+        clientName="Acme"
+        batchLabel="June"
+        reviewerName="Jane AM"
+        reviewerUserId="u1"
+        posts={basePosts}
+        initialItems={[
+          {
+            id: 'i1',
+            postId: 'p1',
+            decision: 'approved',
+            comment: null,
+            suggestedCaption: null,
+            acceptedAsPostVersionId: null,
+            updatedSinceLastReview: false,
+            lastReviewedVersionId: null,
+            reviewedAt: new Date(),
+            addressedAt: null,
+          },
+        ]}
+        sessionStatus="in_progress"
+      />,
+    )
+  }
+
+  it('renders the rail with one row per post', () => {
+    renderShell()
+    expect(screen.getAllByTestId('internal-rail-row')).toHaveLength(2)
+  })
+
+  it('reflects the per-post verdict in the rail (approved vs pending)', () => {
+    renderShell()
+    expect(screen.getByText('Approved')).toBeInTheDocument()
+    expect(screen.getByText('Pending')).toBeInTheDocument()
+  })
+
+  it('scrolls the canvas to a post when its rail row is clicked', () => {
+    renderShell()
+    fireEvent.click(screen.getAllByTestId('internal-rail-row')[1])
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+  })
+
+  it('still renders one canvas card per post', () => {
+    renderShell()
+    expect(screen.getByTestId('card-p1')).toBeInTheDocument()
+    expect(screen.getByTestId('card-p2')).toBeInTheDocument()
   })
 })

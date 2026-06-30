@@ -26,6 +26,23 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-06-30 — Reshape internal /preview into the markup layout** (PR #284)
+  The AM internal review surface (`/preview`) was a client-style single-column verdict feed
+  (Phase 2); it is now the three-zone markup layout that matches the read-back page: a left
+  per-post rail (number, thumbnail, verdict status chip, pin count; click scrolls the canvas),
+  the existing center canvas (`ReviewPostCard mode="internal"` with droppable pins + verdict
+  toggle + inline caption edit), and a slide-in AM/designer chat popup (`MobileThreadFab`,
+  `showOnDesktop`). The Phase 1-3 verdict/submit engine is byte-for-byte unchanged (per-post
+  Approve/Request-changes -> `saveInternalDraftAction`; Submit -> `submitInternalReviewAction`
+  advances Design Review). New pins and new comments still notify (the explicit gate): pin-create
+  notifies the designer; replies route through `addCommentAction` -> `notifyInternalThreadReply`
+  (deep-links to `/preview`), both locked with regression tests. Round cadence unchanged (the
+  designer still responds on the read-back page). New `InternalReviewRail` component; the FAB is
+  lifted above the sticky Submit bar on narrow phones. NO schema change and no
+  `src/server/jobs|services|prompts` change, so the Trigger.dev deploy skips. 2144 unit tests pass,
+  tsc + eslint clean; whole-branch opus review READY_TO_MERGE. Spec + plan:
+  `vault projects/relay-app/2026-06-30-internal-review-markup-layout-{design,plan}.md`.
+
 - [x] **2026-06-29 — Collapse client review to one pill + feedback badge** (PR #TBD)
   The batch detail "Review Sessions" list now shows ONE client pill per batch (was one per
   ReviewSession, so re-opening the magic link or prior rounds stacked extra pills). Root cause:
