@@ -25,7 +25,6 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
-import { revalidatePath } from 'next/cache'
 
 vi.mock('@/lib/magic-link', () => ({
   verifyToken: vi.fn(),
@@ -107,11 +106,9 @@ import { cookies } from 'next/headers'
 import { verifyToken, verifySession } from '@/lib/magic-link'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 import {
-  findActiveSession,
   findActiveClientSessionForLink,
   findLatestClientSessionForLink,
   findSessionWithItems,
-  saveDraftItem,
   startSession,
   submitSession,
 } from '@/server/repositories/reviewSessions'

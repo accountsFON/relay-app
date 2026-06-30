@@ -8,7 +8,6 @@ import { signToken, verifySession, verifyToken, hashToken } from '@/lib/magic-li
 import { db } from '@/db/client'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 import {
-  findActiveSession,
   findActiveClientSessionForLink,
   findLatestClientSessionForLink,
   findSessionWithItems,
