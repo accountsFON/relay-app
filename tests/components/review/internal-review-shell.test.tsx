@@ -8,7 +8,7 @@ import {
   saveInternalDraftAction,
   submitInternalReviewAction,
 } from '@/server/actions/reviewSessions'
-import { createThreadAction } from '@/server/actions/threads'
+import { createThreadAction, addCommentAction } from '@/server/actions/threads'
 import type { ReviewItemHydrated } from '@/types/review-session'
 
 // jsdom lacks scrollIntoView; ReviewPostCard calls it when edit mode opens.
@@ -195,6 +195,25 @@ describe('InternalReviewShell', () => {
     )
     // Pins do NOT go through the draft action.
     expect(saveInternalDraftAction).not.toHaveBeenCalled()
+  })
+
+  // Notification lock: a reply on a pin thread must route through
+  // addCommentAction, which is the path that emits the internal-review bell
+  // notification (notifyInternalThreadReply). A future layout change must not
+  // silently drop this wiring.
+  it('thread replies route through addCommentAction (notification path preserved)', async () => {
+    render(<InternalReviewShell {...BASE_PROPS} />)
+
+    await act(async () => {
+      await cardProps['post-1'].onAppendThreadComment('thread-1', 'looks good now')
+    })
+
+    await waitFor(() => {
+      expect(addCommentAction).toHaveBeenCalledTimes(1)
+    })
+    expect(addCommentAction).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: 'thread-1', body: 'looks good now' }),
+    )
   })
 
   it('renders the submitted banner after a successful submit', async () => {
