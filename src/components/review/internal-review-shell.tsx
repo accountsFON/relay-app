@@ -9,6 +9,7 @@ import type { FeedPostProps, PinLocation } from '@/types/preview'
 import { HeroBand } from '@/components/hero-band'
 import { ReviewProgressBar } from '@/components/review/review-progress-bar'
 import { ReviewPostCard } from '@/components/review/review-post-card'
+import { InternalReviewRail, type InternalRailRow } from '@/components/review/internal-review-rail'
 import { SubmitReviewBar } from '@/components/review/submit-review-bar'
 import { SubmitReviewModal } from '@/components/review/submit-review-modal'
 import { ApproveAllButton } from '@/components/review/approve-all-button'
@@ -164,6 +165,38 @@ export function InternalReviewShell({
   const itemsReviewed =
     summary.approved + summary.changesRequested + summary.captionEdited
   const pendingCount = summary.totalPosts - itemsReviewed
+
+  // --- Markup-layout scroll sync ---
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const canvasRefs = useRef<Record<string, HTMLElement | null>>({})
+
+  const selectPost = useCallback((postId: string) => {
+    setSelectedPostId(postId)
+    canvasRefs.current[postId]?.scrollIntoView({ block: 'center' })
+  }, [])
+
+  const railRows: InternalRailRow[] = useMemo(
+    () =>
+      posts.map(({ post, threads }, idx) => {
+        const decision = itemsByPostId[post.id]?.decision
+        const verdict: InternalRailRow['verdict'] =
+          decision === 'approved'
+            ? 'approved'
+            : decision === 'changes_requested'
+              ? 'changes_requested'
+              : decision === 'caption_edited'
+                ? 'caption_edited'
+                : 'pending'
+        return {
+          postId: post.id,
+          postNumber: idx + 1,
+          thumbnailUrl: post.mediaUrl ?? null,
+          verdict,
+          pinCount: (threads ?? []).length,
+        }
+      }),
+    [posts, itemsByPostId],
+  )
 
   /**
    * Persist a per-item change through the internal draft action. Optimistic
@@ -514,50 +547,66 @@ export function InternalReviewShell({
         <div ref={stickySentinelRef} aria-hidden className="h-0" />
       </div>
 
-      <FeedShell platform={platform} onPlatformChange={setPlatform}>
-        {posts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-600">
-            No posts in this relay yet.
-          </div>
-        ) : (
-          posts.map(({ post, threads }) => {
-            const reviewItem = itemsByPostId[post.id]
-            return (
-              <ReviewPostCard
-                key={post.id}
-                post={post}
-                clientName={clientName}
-                clientAvatarUrl={clientAvatarUrl ?? null}
-                reviewItem={reviewItem}
-                threads={threads}
-                platform={platform}
-                mode="internal"
-                disabled={pending || submitting}
-                locked={locked}
-                onDecisionChange={(decision) =>
-                  handleDecisionChange(post.id, decision)
-                }
-                onCommentChange={(comment) =>
-                  handleCommentChange(post.id, comment)
-                }
-                onCaptionEditSave={(draft) =>
-                  handleCaptionEditSave(post.id, draft)
-                }
-                onCreatePin={(pin, body, image) =>
-                  handleCreatePin(post.id, pin, body, image)
-                }
-                onAppendThreadComment={handleAppendThreadComment}
-                onResolveThread={handleResolveThread}
-                onUseAsPostImage={(commentId) =>
-                  handleUseAsPostImage(post.id, commentId)
-                }
-                onUploadImage={handleUploadImage}
-                mentionRoster={mentionRoster}
-              />
-            )
-          })
-        )}
-      </FeedShell>
+      <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+        {/* Left rail: sticky with its own scroll */}
+        <div className="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto">
+          <InternalReviewRail rows={railRows} selectedPostId={selectedPostId} onSelectPost={selectPost} />
+        </div>
+
+        {/* Right column: the existing canvas, unchanged */}
+        <div className="min-w-0">
+          <FeedShell platform={platform} onPlatformChange={setPlatform}>
+            {posts.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-600">
+                No posts in this relay yet.
+              </div>
+            ) : (
+              posts.map(({ post, threads }) => {
+                const reviewItem = itemsByPostId[post.id]
+                return (
+                  <div
+                    key={post.id}
+                    ref={(el) => {
+                      canvasRefs.current[post.id] = el
+                    }}
+                  >
+                    <ReviewPostCard
+                      post={post}
+                      clientName={clientName}
+                      clientAvatarUrl={clientAvatarUrl ?? null}
+                      reviewItem={reviewItem}
+                      threads={threads}
+                      platform={platform}
+                      mode="internal"
+                      disabled={pending || submitting}
+                      locked={locked}
+                      onDecisionChange={(decision) =>
+                        handleDecisionChange(post.id, decision)
+                      }
+                      onCommentChange={(comment) =>
+                        handleCommentChange(post.id, comment)
+                      }
+                      onCaptionEditSave={(draft) =>
+                        handleCaptionEditSave(post.id, draft)
+                      }
+                      onCreatePin={(pin, body, image) =>
+                        handleCreatePin(post.id, pin, body, image)
+                      }
+                      onAppendThreadComment={handleAppendThreadComment}
+                      onResolveThread={handleResolveThread}
+                      onUseAsPostImage={(commentId) =>
+                        handleUseAsPostImage(post.id, commentId)
+                      }
+                      onUploadImage={handleUploadImage}
+                      mentionRoster={mentionRoster}
+                    />
+                  </div>
+                )
+              })
+            )}
+          </FeedShell>
+        </div>
+      </div>
 
       {!locked ? (
         <SubmitReviewBar
