@@ -51,6 +51,37 @@ describe('ReviewPostCard', () => {
     ).toBeInTheDocument()
   })
 
+  it('keeps the inline editor open (draft preserved) when the save callback fails', async () => {
+    const onCaptionEditSave = vi.fn().mockRejectedValue(new Error('Error 12345'))
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={onCaptionEditSave}
+      />,
+    )
+    fireEvent.click(screen.getByTestId('instagram-post-edit-copy'))
+    const textarea = screen.getByTestId('caption-edit-inline-textarea')
+    expect(textarea).toBeInTheDocument()
+    // The Save button is disabled until the draft differs from the original,
+    // so edit the caption before saving.
+    fireEvent.change(textarea, { target: { value: 'Edited caption draft' } })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('caption-edit-inline-save'))
+    })
+
+    expect(onCaptionEditSave).toHaveBeenCalled()
+    // The save threw, so exitEditMode must NOT run: the editor stays open with
+    // the draft intact rather than being discarded.
+    expect(screen.getByTestId('caption-edit-inline-textarea')).toBeInTheDocument()
+  })
+
   it('always renders the optional Notes field, for both verdicts', () => {
     const { rerender } = render(
       <ReviewPostCard

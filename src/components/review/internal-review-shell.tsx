@@ -254,10 +254,15 @@ export function InternalReviewShell({
                               try {
                                 await updatePostAction(post.id, { caption: draft })
                                 startTransition(() => router.refresh())
-                              } catch {
+                              } catch (e) {
+                                // Thrown server-action errors are masked as an
+                                // opaque digest in production; show a generic
+                                // friendly message. Re-throw so the card keeps
+                                // the editor open with the draft intact.
                                 toast.error(
                                   "Couldn't save your changes. You may not have permission to edit captions.",
                                 )
+                                throw e
                               }
                             }
                           : undefined

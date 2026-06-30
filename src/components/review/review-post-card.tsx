@@ -309,8 +309,14 @@ export function ReviewPostCard({
       exitEditMode()
       return
     }
-    await onCaptionEditSave(captionDraft)
-    exitEditMode()
+    try {
+      await onCaptionEditSave(captionDraft)
+      exitEditMode()
+    } catch {
+      // The save failed (the parent callback surfaces its own message). Keep
+      // the editor open so the draft is preserved for retry instead of being
+      // discarded by exitEditMode.
+    }
   }, [captionDraft, onCaptionEditSave, exitEditMode])
 
   const handleCaptionEditCancel = useCallback(() => {
