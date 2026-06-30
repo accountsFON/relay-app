@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
-import { HeroBand } from '@/components/hero-band'
 import { ReviewPostCard } from '@/components/review/review-post-card'
 import { InternalReviewRail, type InternalRailRow } from '@/components/review/internal-review-rail'
 import {
@@ -36,7 +35,6 @@ export type InternalReviewShellProps = {
   batchId: string
   clientName: string
   clientAvatarUrl?: string | null
-  batchLabel: string
   /** The AM's display name (shown in the "Reviewing as" line). */
   reviewerName: string
   /**
@@ -77,7 +75,6 @@ export function InternalReviewShell({
   batchId: _batchId,
   clientName,
   clientAvatarUrl,
-  batchLabel,
   reviewerName,
   reviewerUserId,
   mentionRoster = [],
@@ -201,19 +198,10 @@ export function InternalReviewShell({
     [reviewerUserId],
   )
 
-  const postsCountLabel = `${posts.length} ${posts.length === 1 ? 'post' : 'posts'}`
-  const heroTitle = batchLabel.toLowerCase().includes(clientName.toLowerCase())
-    ? batchLabel
-    : `${clientName} · ${batchLabel}`
-
   return (
     <div className="flex flex-col">
       <div className="mx-auto w-full max-w-[880px] px-4 pt-2 pb-4 sm:px-6 md:pt-4">
-        <HeroBand
-          title={heroTitle}
-          subtitle={`Reviewing ${postsCountLabel}.`}
-        />
-        <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-white px-4 py-4 ring-1 ring-neutral-200 sm:px-6">
+        <div className="flex flex-col gap-3 rounded-2xl bg-white px-4 py-4 ring-1 ring-neutral-200 sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-neutral-600">
               Reviewing as{' '}

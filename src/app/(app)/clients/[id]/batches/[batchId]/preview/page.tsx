@@ -183,7 +183,6 @@ export default async function BatchPreviewPage({
           <InternalReviewShell
             batchId={batch.id}
             clientName={client.name}
-            batchLabel={batch.label}
             reviewerName={reviewer?.name ?? 'You'}
             reviewerUserId={ctx.userDbId}
             mentionRoster={mentionRoster}
