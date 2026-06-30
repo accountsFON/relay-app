@@ -131,7 +131,6 @@ import {
   markPostAddressedAction,
   rejectCaptionEditAction,
   saveReviewDraftAction,
-  startInternalReviewAction,
   startNextRoundAction,
   startReviewSessionAction,
   submitSessionAction,
@@ -1595,85 +1594,3 @@ describe('unmarkPostAddressedAction', () => {
   })
 })
 
-// ---- Internal (Clerk-authed AM) review actions ----
-
-const INTERNAL_BATCH_ID = 'cuid_batch_internal'
-const INTERNAL_CLIENT_ID = 'cuid_client_internal'
-const INTERNAL_SESSION_ID = 'cuid_session_internal'
-const INTERNAL_POST_ID = 'cuid_post_internal'
-
-function primeInternalAmCtx(): void {
-  vi.mocked(requireClientEditor).mockResolvedValue({
-    userId: 'clerk_user_am',
-    orgId: 'clerk_org_1',
-    role: 'account_manager',
-    plan: 'smb',
-    organizationDbId: 'org_db_1',
-    userDbId: AM_USER_DB_ID,
-    platformOwner: false,
-    linkedClientId: null,
-    permissionOverrides: null,
-    roleDefaults: {},
-  } as never)
-  vi.mocked(findClientForUser).mockResolvedValue({
-    id: INTERNAL_CLIENT_ID,
-    name: 'Akkoo Coffee',
-  } as never)
-  vi.mocked(db.batch.findUnique).mockResolvedValue({
-    id: INTERNAL_BATCH_ID,
-    clientId: INTERNAL_CLIENT_ID,
-    deletedAt: null,
-  } as never)
-}
-
-describe('startInternalReviewAction', () => {
-  it('resolves the AM and creates a kind=internal session attributed to the AM', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue(null)
-    vi.mocked(startSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-      batchId: INTERNAL_BATCH_ID,
-      reviewerUserId: AM_USER_DB_ID,
-      magicLinkId: null,
-      round: 1,
-      status: 'in_progress',
-    } as never)
-
-    const result = await startInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
-
-    expect(result.reviewSessionId).toBe(INTERNAL_SESSION_ID)
-    expect(startSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'internal',
-        batchId: INTERNAL_BATCH_ID,
-        reviewerUserId: AM_USER_DB_ID,
-      }),
-    )
-  })
-
-  it('is idempotent: returns the existing active internal session id', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-    } as never)
-
-    const result = await startInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
-
-    expect(result.reviewSessionId).toBe(INTERNAL_SESSION_ID)
-    expect(startSession).not.toHaveBeenCalled()
-  })
-
-  it('rejects a non-editor (findClientForUser returns null)', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findClientForUser).mockResolvedValue(null as never)
-
-    await expect(
-      startInternalReviewAction({ batchId: INTERNAL_BATCH_ID }),
-    ).rejects.toThrow()
-    expect(startSession).not.toHaveBeenCalled()
-  })
-})
-
-// submitInternalReviewAction removed — internal submit loop dropped
