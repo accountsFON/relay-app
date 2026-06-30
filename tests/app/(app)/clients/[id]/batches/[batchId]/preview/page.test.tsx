@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
@@ -8,8 +8,6 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/server/auth/access', () => ({
-  // Real redirectAccessDenied() calls redirect(), which throws to halt the
-  // render. Mirror that so the page short-circuits like in production.
   redirectAccessDenied: vi.fn(() => {
     throw new Error('NEXT_REDIRECT:/dashboard?denied=1')
   }),
@@ -54,15 +52,12 @@ vi.mock('@/server/services/approval', () => ({
   derivePostApprovalForBatch: vi.fn(),
 }))
 
-// The internal review session loader (resume-or-create) lives in the repo.
+// Session functions are mocked as spies so tests can assert they are NOT called.
 vi.mock('@/server/repositories/reviewSessions', () => ({
   findActiveSession: vi.fn(),
   startSession: vi.fn(),
 }))
 
-// The page fetches the internal @-mention roster for the composers; stub it so
-// the page render doesn't reach into db.client (its own logic is unit-tested in
-// tests/server/lib/internalMentionRoster.test.ts).
 vi.mock('@/server/lib/internalMentionRoster', () => ({
   internalMentionRosterForClient: vi.fn().mockResolvedValue([]),
 }))
@@ -84,26 +79,14 @@ vi.mock('@/db/client', () => ({
   },
 }))
 
-// PreviewSubmitButton is a client component with hooks ('use client'). Stub it
-// so the server-side page render under jsdom doesn't try to mount the real
-// component (its action surface is covered by the integration tests).
-vi.mock('@/components/notifications/preview-submit-button', () => ({
-  PreviewSubmitButton: (props: {
-    batchId: string
-    designerName: string | null
-    initialCommentCount: number
-  }) => (
-    <div
-      data-testid="preview-submit-button-stub"
-      data-batch-id={props.batchId}
-      data-designer-name={props.designerName ?? ''}
-      data-initial-comment-count={String(props.initialCommentCount)}
-    />
-  ),
+// Stub server actions used in the control slots so the page can render.
+vi.mock('@/server/actions/relay', () => ({
+  markBatchReviewedAction: vi.fn(),
+  requestDesignChangesAction: vi.fn(),
+  markDesignRevisionsDoneAction: vi.fn(),
 }))
 
-// The read-only viewer feed (client component). Stubbed so the server-side
-// page render doesn't hydrate the real FeedShell tree.
+// The read-only viewer feed (client component).
 vi.mock(
   '@/app/(app)/clients/[id]/batches/[batchId]/preview/preview-page-shell',
   () => ({
@@ -113,7 +96,7 @@ vi.mock(
       canEdit: boolean
     }) => (
       <div
-        data-testid="preview-page-shell-stub"
+        data-testid="preview-page-shell"
         data-client-id={props.client.id}
         data-can-edit={String(props.canEdit)}
       >
@@ -125,37 +108,49 @@ vi.mock(
   }),
 )
 
-// The AM verdict surface (client component). Stubbed to expose the props the
-// page wires up: batchId, the session items, and one node per post.
+// InternalReviewShell stub — surfaces the new props: canEditCaption, allowPostPins.
+// No initialItems or sessionStatus (those are removed from the shell).
 vi.mock('@/components/review/internal-review-shell', () => ({
   InternalReviewShell: (props: {
     batchId: string
-    sessionStatus: string | null
     posts: ReadonlyArray<{ post: { id: string } }>
-    initialItems: ReadonlyArray<{ postId: string; decision: string }>
+    canEditCaption?: boolean
+    allowPostPins?: boolean
+    amControlsSlot?: React.ReactNode
+    designerControlsSlot?: React.ReactNode
   }) => (
-    <div
-      data-testid="internal-review-shell-stub"
-      data-batch-id={props.batchId}
-      data-session-status={props.sessionStatus ?? ''}
-      data-item-count={String(props.initialItems.length)}
-    >
+    <div data-testid="internal-review-shell" data-batch-id={props.batchId}>
+      <span data-testid="shell-canEditCaption">{String(props.canEditCaption ?? true)}</span>
+      <span data-testid="shell-allowPostPins">{String(props.allowPostPins ?? true)}</span>
+      {props.amControlsSlot && (
+        <div data-testid="shell-am-controls-slot">{props.amControlsSlot}</div>
+      )}
+      {props.designerControlsSlot && (
+        <div data-testid="shell-designer-controls-slot">{props.designerControlsSlot}</div>
+      )}
       {props.posts.map((p) => (
-        <div
-          key={p.post.id}
-          data-testid="internal-shell-post"
-          data-post-id={p.post.id}
-        />
-      ))}
-      {props.initialItems.map((it) => (
-        <div
-          key={it.postId}
-          data-testid="internal-shell-item"
-          data-post-id={it.postId}
-          data-decision={it.decision}
-        />
+        <div key={p.post.id} data-testid="internal-shell-post" data-post-id={p.post.id} />
       ))}
     </div>
+  ),
+}))
+
+// Stub client-component buttons so jsdom doesn't choke on 'use client' internals.
+vi.mock('@/components/preview/mark-batch-reviewed-button', () => ({
+  MarkBatchReviewedButton: () => (
+    <button data-testid="mark-batch-reviewed-button">Mark relay reviewed</button>
+  ),
+}))
+
+vi.mock('@/components/review/request-changes-button', () => ({
+  RequestChangesButton: () => (
+    <button data-testid="request-changes-button">Request changes</button>
+  ),
+}))
+
+vi.mock('@/components/review/mark-revisions-done-button', () => ({
+  MarkRevisionsDoneButton: () => (
+    <button data-testid="mark-revisions-done-button">Mark revisions done</button>
   ),
 }))
 
@@ -163,6 +158,7 @@ import BatchPreviewPage from '@/app/(app)/clients/[id]/batches/[batchId]/preview
 import {
   requireClientViewer,
   canEditClients,
+  canComment,
 } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -176,9 +172,11 @@ import { db } from '@/db/client'
 import { listActivityForClient } from '@/server/repositories/activityEvents'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { buildMentionRoster } from '@/lib/mentions'
-import { canComment } from '@/server/middleware/permissions'
+import { RelayStep } from '@prisma/client'
 
-const mockCtx = {
+// ---- shared fixtures ----
+
+const mockCtxAM = {
   userId: 'user_clerk_1',
   orgId: 'org_clerk_1',
   role: 'account_manager' as const,
@@ -192,16 +190,32 @@ const mockCtx = {
   roleDefaults: {},
 }
 
+const mockCtxDesigner = {
+  ...mockCtxAM,
+  role: 'designer' as const,
+  userDbId: 'designer_db_1',
+}
+
+// A client-role user: cannot edit, not the assigned designer (different userDbId).
+const mockCtxViewer = {
+  ...mockCtxAM,
+  role: 'client' as const,
+  userDbId: 'viewer_db_1',
+}
+
 const mockClient = {
   id: 'client_1',
   name: 'Demo Client',
   organizationId: 'org_db_1',
+  assignedDesignerId: 'designer_db_1',
 }
 
 const mockBatch = {
   id: 'batch_1',
   clientId: 'client_1',
   label: 'May 2026',
+  currentStep: RelayStep.am_review_design,
+  currentSubState: null,
 }
 
 const mockPosts = [
@@ -221,11 +235,6 @@ const mockPosts = [
   },
 ]
 
-const mockSession = {
-  id: 'session_1',
-  status: 'in_progress' as const,
-}
-
 async function renderPage(params: { id: string; batchId: string }) {
   const ui = await BatchPreviewPage({ params: Promise.resolve(params) })
   return render(ui)
@@ -234,121 +243,112 @@ async function renderPage(params: { id: string; batchId: string }) {
 describe('BatchPreviewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(requireClientViewer).mockResolvedValue(mockCtx)
+    // Default: AM editor context
+    vi.mocked(requireClientViewer).mockResolvedValue(mockCtxAM)
     vi.mocked(canEditClients).mockReturnValue(true)
+    vi.mocked(canComment).mockReturnValue(true)
     vi.mocked(findClientForUser).mockResolvedValue(mockClient as never)
     vi.mocked(findBatch).mockResolvedValue(mockBatch as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)
-    vi.mocked(db.postComment.count).mockResolvedValue(0 as never)
-    vi.mocked(db.user.findUnique).mockResolvedValue(null as never)
-    vi.mocked(db.reviewItem.findMany).mockResolvedValue([] as never)
+    vi.mocked(db.postComment?.count).mockResolvedValue(0 as never)
+    vi.mocked(db.user?.findUnique).mockResolvedValue(null as never)
+    vi.mocked(db.reviewItem?.findMany).mockResolvedValue([] as never)
     vi.mocked(listThreadsForBatch).mockResolvedValue(new Map())
-    vi.mocked(derivePostApprovalForBatch).mockResolvedValue({
-      ready: 2,
-      pending: 0,
-    })
-    vi.mocked(findActiveSession).mockResolvedValue(mockSession as never)
-    vi.mocked(startSession).mockResolvedValue(mockSession as never)
+    vi.mocked(derivePostApprovalForBatch).mockResolvedValue({ ready: 2, pending: 0 })
+    vi.mocked(findActiveSession).mockResolvedValue(null)
+    vi.mocked(startSession).mockResolvedValue({ id: 'session_1', status: 'in_progress' } as never)
     vi.mocked(listActivityForClient).mockResolvedValue([] as never)
     vi.mocked(listMembershipsForOrg).mockResolvedValue([] as never)
     vi.mocked(buildMentionRoster).mockReturnValue([])
-    vi.mocked(canComment).mockReturnValue(true)
   })
 
-  it('renders the AM verdict surface with one entry per post for an editor', async () => {
-    const { getAllByTestId, getByTestId } = await renderPage({
-      id: 'client_1',
-      batchId: 'batch_1',
-    })
+  // ---- session-free contract ----
 
-    const shell = getByTestId('internal-review-shell-stub')
-    expect(shell.dataset.batchId).toBe('batch_1')
-
-    const postNodes = getAllByTestId('internal-shell-post')
-    expect(postNodes.map((n) => n.dataset.postId)).toEqual([
-      'post_a',
-      'post_b',
-    ])
-  })
-
-  it('resumes the active internal session and passes its items to the shell', async () => {
-    vi.mocked(db.reviewItem.findMany).mockResolvedValue([
-      {
-        id: 'item_1',
-        postId: 'post_a',
-        decision: 'approved',
-        comment: null,
-        suggestedCaption: null,
-        acceptedAsPostVersionId: null,
-        updatedSinceLastReview: false,
-        lastReviewedVersionId: null,
-        reviewedAt: new Date('2026-05-02'),
-        addressedAt: null,
-      },
-    ] as never)
-
-    const { getByTestId, getAllByTestId } = await renderPage({
-      id: 'client_1',
-      batchId: 'batch_1',
-    })
-
-    expect(getByTestId('internal-review-shell-stub').dataset.itemCount).toBe('1')
-    // The active session was resumed, not freshly created.
-    expect(findActiveSession).toHaveBeenCalledWith({
-      kind: 'internal',
-      batchId: 'batch_1',
-      reviewerUserId: 'user_db_1',
-    })
-    expect(startSession).not.toHaveBeenCalled()
-
-    const item = getAllByTestId('internal-shell-item')[0]
-    expect(item.dataset.postId).toBe('post_a')
-    expect(item.dataset.decision).toBe('approved')
-  })
-
-  it('creates an internal session when none is active', async () => {
-    vi.mocked(findActiveSession).mockResolvedValue(null)
-
+  it('does not create or read an internal ReviewSession', async () => {
     await renderPage({ id: 'client_1', batchId: 'batch_1' })
-
-    expect(startSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'internal',
-        batchId: 'batch_1',
-        reviewerUserId: 'user_db_1',
-      }),
-    )
-  })
-
-  it('shows the read-only feed (not the verdict surface) for a non-editor viewer', async () => {
-    vi.mocked(canEditClients).mockReturnValue(false)
-
-    const { getByTestId, queryByTestId } = await renderPage({
-      id: 'client_1',
-      batchId: 'batch_1',
-    })
-
-    // Viewers keep the existing read-only PreviewPageShell.
-    expect(getByTestId('preview-page-shell-stub')).toBeInTheDocument()
-    expect(queryByTestId('internal-review-shell-stub')).not.toBeInTheDocument()
-    // No internal session is created for a viewer.
+    expect(findActiveSession).not.toHaveBeenCalled()
     expect(startSession).not.toHaveBeenCalled()
   })
+
+  // ---- AM branch ----
+
+  it('renders the markup shell for the AM with the Request-changes + Mark-relay-reviewed controls', async () => {
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.getByTestId('internal-review-shell')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /request changes/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /mark relay reviewed/i })).toBeInTheDocument()
+  })
+
+  it('passes canEditCaption=true and allowPostPins=true to the shell for an AM', async () => {
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.getByTestId('shell-canEditCaption')).toHaveTextContent('true')
+    expect(screen.getByTestId('shell-allowPostPins')).toHaveTextContent('true')
+  })
+
+  it('renders the AM/designer chat FAB for the AM editor', async () => {
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.getByTestId('internal-chat-fab')).toBeInTheDocument()
+  })
+
+  // ---- designer branch ----
+
+  it('gives the assigned designer the markup shell with canEditCaption=false and allowPostPins=false', async () => {
+    vi.mocked(requireClientViewer).mockResolvedValue(mockCtxDesigner)
+    vi.mocked(canEditClients).mockReturnValue(false)
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.getByTestId('internal-review-shell')).toBeInTheDocument()
+    expect(screen.getByTestId('shell-canEditCaption')).toHaveTextContent('false')
+    expect(screen.getByTestId('shell-allowPostPins')).toHaveTextContent('false')
+  })
+
+  it('shows Mark-revisions-done to the designer only when awaiting revisions', async () => {
+    vi.mocked(requireClientViewer).mockResolvedValue(mockCtxDesigner)
+    vi.mocked(canEditClients).mockReturnValue(false)
+    vi.mocked(findBatch).mockResolvedValue({
+      ...mockBatch,
+      currentStep: RelayStep.am_review_design,
+      currentSubState: 'awaiting_design_revisions',
+    } as never)
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.getByRole('button', { name: /mark revisions done/i })).toBeInTheDocument()
+  })
+
+  it('does NOT show Mark-revisions-done to the designer when not awaiting revisions', async () => {
+    vi.mocked(requireClientViewer).mockResolvedValue(mockCtxDesigner)
+    vi.mocked(canEditClients).mockReturnValue(false)
+    vi.mocked(findBatch).mockResolvedValue({
+      ...mockBatch,
+      currentStep: RelayStep.am_review_design,
+      currentSubState: null,
+    } as never)
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.queryByRole('button', { name: /mark revisions done/i })).not.toBeInTheDocument()
+  })
+
+  it('mounts the FAB for the designer too', async () => {
+    vi.mocked(requireClientViewer).mockResolvedValue(mockCtxDesigner)
+    vi.mocked(canEditClients).mockReturnValue(false)
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.getByTestId('internal-chat-fab')).toBeInTheDocument()
+  })
+
+  // ---- read-only viewer ----
+
+  it('falls back to the read-only PreviewPageShell for a non-AM non-designer viewer', async () => {
+    vi.mocked(requireClientViewer).mockResolvedValue(mockCtxViewer)
+    vi.mocked(canEditClients).mockReturnValue(false)
+    // viewer_db_1 !== designer_db_1 so not the assigned designer
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.queryByTestId('internal-review-shell')).not.toBeInTheDocument()
+    expect(screen.getByTestId('preview-page-shell')).toBeInTheDocument()
+  })
+
+  // ---- access guard ----
 
   it('redirects to access-denied when the user lacks access to the client', async () => {
     vi.mocked(findClientForUser).mockResolvedValue(null)
-
     await expect(
       renderPage({ id: 'client_1', batchId: 'batch_1' }),
     ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
-  })
-
-  it('mounts the AM/designer chat FAB for the editor', async () => {
-    const { getByTestId } = await renderPage({
-      id: 'client_1',
-      batchId: 'batch_1',
-    })
-
-    expect(getByTestId('internal-chat-fab')).toBeInTheDocument()
   })
 })

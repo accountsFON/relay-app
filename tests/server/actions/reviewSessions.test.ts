@@ -25,7 +25,6 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
-import { revalidatePath } from 'next/cache'
 
 vi.mock('@/lib/magic-link', () => ({
   verifyToken: vi.fn(),
@@ -79,7 +78,6 @@ vi.mock('@/server/services/activity', async () => {
 
 vi.mock('@/server/services/relay', () => ({
   advanceFromClientReview: vi.fn(),
-  advanceFromDesignReview: vi.fn(),
 }))
 
 vi.mock('@/lib/resend', () => ({
@@ -108,11 +106,9 @@ import { cookies } from 'next/headers'
 import { verifyToken, verifySession } from '@/lib/magic-link'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 import {
-  findActiveSession,
   findActiveClientSessionForLink,
   findLatestClientSessionForLink,
   findSessionWithItems,
-  saveDraftItem,
   startSession,
   submitSession,
 } from '@/server/repositories/reviewSessions'
@@ -124,20 +120,16 @@ import { snapshotPostVersion } from '@/server/services/postVersions'
 import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
-import { advanceFromClientReview, advanceFromDesignReview } from '@/server/services/relay'
+import { advanceFromClientReview } from '@/server/services/relay'
 import { bulkResolveOnPost, bulkReopenOnPost } from '@/server/repositories/threads'
 import {
   acceptCaptionEditAction,
   addressItemAction,
   markPostAddressedAction,
   rejectCaptionEditAction,
-  saveInternalDraftAction,
   saveReviewDraftAction,
-  startInternalNextRoundAction,
-  startInternalReviewAction,
   startNextRoundAction,
   startReviewSessionAction,
-  submitInternalReviewAction,
   submitSessionAction,
   unmarkPostAddressedAction,
 } from '@/server/actions/reviewSessions'
@@ -1432,54 +1424,6 @@ describe('startNextRoundAction', () => {
   })
 })
 
-describe('startInternalNextRoundAction', () => {
-  it('calls the generalized startNextRound for the internal session (no email)', async () => {
-    primeInternalAmCtx()
-    vi.mocked(startNextRound).mockResolvedValue({
-      id: 'internal_session_2',
-      round: 2,
-    } as never)
-
-    const result = await startInternalNextRoundAction({
-      batchId: INTERNAL_BATCH_ID,
-    })
-
-    expect(result.ok).toBe(true)
-    expect(result.newSessionId).toBe('internal_session_2')
-    expect(result.newRound).toBe(2)
-
-    // Internal variant: keyed on (batchId, reviewerUserId), attributed to the
-    // AM, NOT magicLinkId.
-    expect(startNextRound).toHaveBeenCalledWith({
-      kind: 'internal',
-      batchId: INTERNAL_BATCH_ID,
-      reviewerUserId: AM_USER_DB_ID,
-      by: AM_USER_DB_ID,
-    })
-    // Internal rounds never email (the in-app bell covers it).
-    expect(sendMagicLinkEmail).not.toHaveBeenCalled()
-
-    // M4: the AM re-reviews on `/preview`, so that surface must be revalidated
-    // (not just the batch detail page) or the verdict surface stays stale.
-    expect(revalidatePath).toHaveBeenCalledWith(
-      `/clients/${INTERNAL_CLIENT_ID}/batches/${INTERNAL_BATCH_ID}`,
-    )
-    expect(revalidatePath).toHaveBeenCalledWith(
-      `/clients/${INTERNAL_CLIENT_ID}/batches/${INTERNAL_BATCH_ID}/preview`,
-    )
-  })
-
-  it('rejects a non-editor (findClientForUser returns null)', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findClientForUser).mockResolvedValue(null as never)
-
-    await expect(
-      startInternalNextRoundAction({ batchId: INTERNAL_BATCH_ID }),
-    ).rejects.toThrow()
-    expect(startNextRound).not.toHaveBeenCalled()
-  })
-})
-
 // ---- unmarkPostAddressedAction ----
 
 const UNMARK_POST_ID = 'cuid_post_unmark'
@@ -1647,341 +1591,3 @@ describe('unmarkPostAddressedAction', () => {
   })
 })
 
-// ---- Internal (Clerk-authed AM) review actions ----
-
-const INTERNAL_BATCH_ID = 'cuid_batch_internal'
-const INTERNAL_CLIENT_ID = 'cuid_client_internal'
-const INTERNAL_SESSION_ID = 'cuid_session_internal'
-const INTERNAL_POST_ID = 'cuid_post_internal'
-
-function primeInternalAmCtx(): void {
-  vi.mocked(requireClientEditor).mockResolvedValue({
-    userId: 'clerk_user_am',
-    orgId: 'clerk_org_1',
-    role: 'account_manager',
-    plan: 'smb',
-    organizationDbId: 'org_db_1',
-    userDbId: AM_USER_DB_ID,
-    platformOwner: false,
-    linkedClientId: null,
-    permissionOverrides: null,
-    roleDefaults: {},
-  } as never)
-  vi.mocked(findClientForUser).mockResolvedValue({
-    id: INTERNAL_CLIENT_ID,
-    name: 'Akkoo Coffee',
-  } as never)
-  vi.mocked(db.batch.findUnique).mockResolvedValue({
-    id: INTERNAL_BATCH_ID,
-    clientId: INTERNAL_CLIENT_ID,
-    deletedAt: null,
-  } as never)
-}
-
-describe('startInternalReviewAction', () => {
-  it('resolves the AM and creates a kind=internal session attributed to the AM', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue(null)
-    vi.mocked(startSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-      batchId: INTERNAL_BATCH_ID,
-      reviewerUserId: AM_USER_DB_ID,
-      magicLinkId: null,
-      round: 1,
-      status: 'in_progress',
-    } as never)
-
-    const result = await startInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
-
-    expect(result.reviewSessionId).toBe(INTERNAL_SESSION_ID)
-    expect(startSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'internal',
-        batchId: INTERNAL_BATCH_ID,
-        reviewerUserId: AM_USER_DB_ID,
-      }),
-    )
-  })
-
-  it('is idempotent: returns the existing active internal session id', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-    } as never)
-
-    const result = await startInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
-
-    expect(result.reviewSessionId).toBe(INTERNAL_SESSION_ID)
-    expect(startSession).not.toHaveBeenCalled()
-  })
-
-  it('rejects a non-editor (findClientForUser returns null)', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findClientForUser).mockResolvedValue(null as never)
-
-    await expect(
-      startInternalReviewAction({ batchId: INTERNAL_BATCH_ID }),
-    ).rejects.toThrow()
-    expect(startSession).not.toHaveBeenCalled()
-  })
-})
-
-describe('saveInternalDraftAction', () => {
-  it('upserts a ReviewItem for the active internal session', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-    } as never)
-    vi.mocked(db.post.findUnique).mockResolvedValue({
-      id: INTERNAL_POST_ID,
-      batchId: INTERNAL_BATCH_ID,
-    } as never)
-    vi.mocked(saveDraftItem).mockResolvedValue({ id: 'internal_item_1' } as never)
-
-    const result = await saveInternalDraftAction({
-      batchId: INTERNAL_BATCH_ID,
-      postId: INTERNAL_POST_ID,
-      decision: 'changes_requested',
-      comment: 'fix the logo',
-    })
-
-    expect(result.reviewItemId).toBe('internal_item_1')
-    expect(saveDraftItem).toHaveBeenCalledWith(
-      expect.objectContaining({
-        reviewSessionId: INTERNAL_SESSION_ID,
-        postId: INTERNAL_POST_ID,
-        decision: 'changes_requested',
-        comment: 'fix the logo',
-      }),
-    )
-  })
-
-  it('rejects a post that does not belong to the batch', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-    } as never)
-    vi.mocked(db.post.findUnique).mockResolvedValue({
-      id: INTERNAL_POST_ID,
-      batchId: 'a-different-batch',
-    } as never)
-
-    await expect(
-      saveInternalDraftAction({
-        batchId: INTERNAL_BATCH_ID,
-        postId: INTERNAL_POST_ID,
-        decision: 'approved',
-      }),
-    ).rejects.toThrow(/does not belong/)
-    expect(saveDraftItem).not.toHaveBeenCalled()
-  })
-})
-
-describe('submitInternalReviewAction', () => {
-  it('flips the session to submitted, emits activity with a REAL actorId, returns the summary', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-      batchId: INTERNAL_BATCH_ID,
-      reviewerUserId: AM_USER_DB_ID,
-    } as never)
-    vi.mocked(findSessionWithItems).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      magicLinkId: null,
-      reviewerId: null,
-      status: 'in_progress',
-      round: 1,
-      startedAt: new Date(),
-      submittedAt: null,
-      submittedSummary: null,
-      items: [
-        {
-          id: 'ii_1',
-          postId: INTERNAL_POST_ID,
-          decision: 'approved',
-          comment: null,
-          suggestedCaption: null,
-          acceptedAsPostVersionId: null,
-          updatedSinceLastReview: false,
-          lastReviewedVersionId: null,
-          reviewedAt: new Date(),
-        },
-      ],
-    } as never)
-    vi.mocked(submitSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      round: 1,
-      status: 'submitted',
-      submittedAt: new Date(),
-      submittedSummary: {
-        approved: 1,
-        changesRequested: 0,
-        captionEdited: 0,
-        totalPosts: 1,
-      },
-    } as never)
-    vi.mocked(db.post.count).mockResolvedValue(1 as never)
-    vi.mocked(advanceFromDesignReview).mockResolvedValue({
-      advanced: true,
-      toStep: 'am_qa_pre_client',
-      newHolderId: AM_USER_DB_ID,
-    } as never)
-
-    const result = await submitInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
-
-    expect(result.ok).toBe(true)
-    expect(result.summary).toEqual({
-      approved: 1,
-      changesRequested: 0,
-      captionEdited: 0,
-      totalPosts: 1,
-    })
-    expect(submitSession).toHaveBeenCalledWith({ reviewSessionId: INTERNAL_SESSION_ID })
-
-    // The AM is a real Clerk user, so the activity event carries a real actorId
-    // (NOT null like the client submit path).
-    expect(recordActivity).toHaveBeenCalled()
-    const activityArg = vi.mocked(recordActivity).mock.calls[0][0]
-    expect(activityArg.actorId).toBe(AM_USER_DB_ID)
-  })
-
-  it('all approved: calls advanceFromDesignReview with decision=approved and returns the advance', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-      batchId: INTERNAL_BATCH_ID,
-      reviewerUserId: AM_USER_DB_ID,
-    } as never)
-    vi.mocked(findSessionWithItems).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      magicLinkId: null,
-      reviewerId: null,
-      status: 'in_progress',
-      round: 1,
-      startedAt: new Date(),
-      submittedAt: null,
-      submittedSummary: null,
-      items: [
-        {
-          id: 'ii_1',
-          postId: INTERNAL_POST_ID,
-          decision: 'approved',
-          comment: null,
-          suggestedCaption: null,
-          acceptedAsPostVersionId: null,
-          updatedSinceLastReview: false,
-          lastReviewedVersionId: null,
-          reviewedAt: new Date(),
-        },
-      ],
-    } as never)
-    vi.mocked(submitSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      round: 1,
-      status: 'submitted',
-      submittedAt: new Date(),
-      submittedSummary: {
-        approved: 1,
-        changesRequested: 0,
-        captionEdited: 0,
-        totalPosts: 1,
-      },
-    } as never)
-    // The batch has exactly 1 post and it was approved -> strict all-approved.
-    vi.mocked(db.post.count).mockResolvedValue(1 as never)
-    vi.mocked(advanceFromDesignReview).mockResolvedValue({
-      advanced: true,
-      toStep: 'am_qa_pre_client',
-      newHolderId: AM_USER_DB_ID,
-    } as never)
-
-    const result = await submitInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
-
-    expect(advanceFromDesignReview).toHaveBeenCalledWith(
-      expect.objectContaining({
-        batchId: INTERNAL_BATCH_ID,
-        decision: 'approved',
-        actorUserId: AM_USER_DB_ID,
-        actorOrganizationId: 'org_db_1',
-        reviewSessionId: INTERNAL_SESSION_ID,
-      }),
-    )
-    expect(result.advanced).toEqual({
-      toStep: 'am_qa_pre_client',
-      newHolderId: AM_USER_DB_ID,
-    })
-  })
-
-  it('any changes: calls advanceFromDesignReview with decision=changes (no step advance)', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      kind: 'internal',
-      batchId: INTERNAL_BATCH_ID,
-      reviewerUserId: AM_USER_DB_ID,
-    } as never)
-    vi.mocked(findSessionWithItems).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      magicLinkId: null,
-      reviewerId: null,
-      status: 'in_progress',
-      round: 1,
-      startedAt: new Date(),
-      submittedAt: null,
-      submittedSummary: null,
-      items: [
-        {
-          id: 'ii_1',
-          postId: INTERNAL_POST_ID,
-          decision: 'changes_requested',
-          comment: 'fix it',
-          suggestedCaption: null,
-          acceptedAsPostVersionId: null,
-          updatedSinceLastReview: false,
-          lastReviewedVersionId: null,
-          reviewedAt: new Date(),
-        },
-      ],
-    } as never)
-    vi.mocked(submitSession).mockResolvedValue({
-      id: INTERNAL_SESSION_ID,
-      round: 1,
-      status: 'submitted',
-      submittedAt: new Date(),
-      submittedSummary: {
-        approved: 0,
-        changesRequested: 1,
-        captionEdited: 0,
-        totalPosts: 1,
-      },
-    } as never)
-    vi.mocked(db.post.count).mockResolvedValue(1 as never)
-    vi.mocked(advanceFromDesignReview).mockResolvedValue({
-      advanced: false,
-      subState: 'awaiting_design_revisions',
-    } as never)
-
-    const result = await submitInternalReviewAction({ batchId: INTERNAL_BATCH_ID })
-
-    expect(advanceFromDesignReview).toHaveBeenCalledWith(
-      expect.objectContaining({ decision: 'changes' }),
-    )
-    expect(result.advanced).toBeUndefined()
-  })
-
-  it('throws when there is no active internal session to submit', async () => {
-    primeInternalAmCtx()
-    vi.mocked(findActiveSession).mockResolvedValue(null)
-
-    await expect(
-      submitInternalReviewAction({ batchId: INTERNAL_BATCH_ID }),
-    ).rejects.toThrow()
-    expect(submitSession).not.toHaveBeenCalled()
-  })
-})

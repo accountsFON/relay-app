@@ -5,10 +5,6 @@ import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { listThreadsForBatch } from '@/server/repositories/threads'
-import {
-  findActiveSession,
-  startSession,
-} from '@/server/repositories/reviewSessions'
 import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
 import { derivePostApprovalForBatch } from '@/server/services/approval'
 import {
@@ -20,31 +16,39 @@ import { buildMentionRoster } from '@/lib/mentions'
 import { db } from '@/db/client'
 import { HeroBand } from '@/components/hero-band'
 import { MarkBatchReviewedButton } from '@/components/preview/mark-batch-reviewed-button'
+import { RequestChangesButton } from '@/components/review/request-changes-button'
+import { MarkRevisionsDoneButton } from '@/components/review/mark-revisions-done-button'
 import { PreviewPageShell } from './preview-page-shell'
 import { InternalReviewShell } from '@/components/review/internal-review-shell'
 import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { EventAnchor } from '@/components/notifications/event-anchor'
 import { Button } from '@/components/ui/button'
-import type {
-  ReviewItemHydrated,
-  ReviewSessionStatusType,
-} from '@/types/review-session'
+import {
+  requestDesignChangesAction,
+  markDesignRevisionsDoneAction,
+} from '@/server/actions/relay'
+import { RelayStep } from '@prisma/client'
 
 /**
  * Internal batch preview page (`/preview`).
  *
- * For an AM/editor this is the Clerk-authed verdict surface (Phase 2): a
- * resume-or-create INTERNAL ReviewSession (Phase 1) rendered through
- * `InternalReviewShell` — per-post Approve / Request changes, Notes, inline
- * caption edit, image/caption pins, progress, Approve all, and Submit. Submit
- * routes through `submitInternalReviewAction`, which advances the Design Review
- * step only when the batch is at `am_review_design` (Phase 1 guard).
+ * Shared markup-only surface for the AM and the assigned designer. No internal
+ * ReviewSession is created or read here — the verdict/submit loop has been
+ * removed. Pins and thread replies route through the Clerk-authed thread
+ * actions, same as before.
  *
- * For a non-editor viewer the page keeps the existing read-only feed
- * (`PreviewPageShell`) so view-only access is unaffected.
+ * Tiers:
+ *   AM (canEditClients)        — InternalReviewShell, canEditCaption=true,
+ *                                allowPostPins=true, AM controls (Request
+ *                                changes + Mark relay reviewed).
+ *   Assigned designer           — InternalReviewShell, canEditCaption=false,
+ *                                allowPostPins=false (image pins + replies
+ *                                kept), designer controls (Mark revisions done
+ *                                when awaiting_design_revisions).
+ *   Everyone else               — read-only PreviewPageShell (unchanged).
  *
  * Auth: standard client.view gate via requireClientViewer + findClientForUser
- * scoping. The verdict surface itself is gated on `canEditClients`.
+ * scoping.
  */
 export default async function BatchPreviewPage({
   params,
@@ -60,8 +64,9 @@ export default async function BatchPreviewPage({
   const batch = await findBatch(batchId)
   if (!batch || batch.clientId !== client.id) redirectAccessDenied()
 
-  // canEdit gates the AM-only verdict surface + review controls.
   const canEdit = canEditClients(ctx)
+  const isAssignedDesigner =
+    !canEdit && ctx.userDbId === client.assignedDesignerId
 
   const posts = await db.post.findMany({
     where: { batchId: batch.id, deletedAt: null },
@@ -105,41 +110,8 @@ export default async function BatchPreviewPage({
     </Button>
   )
 
-  // ---- AM / editor: the internal verdict surface ----
-  if (canEdit) {
-    // Resume the AM's active internal session for this batch, or create one on
-    // open (mirrors the client opening the magic link). Idempotent: a fresh
-    // session is only created when none is in_progress for this AM.
-    let session = await findActiveSession({
-      kind: 'internal',
-      batchId: batch.id,
-      reviewerUserId: ctx.userDbId,
-    })
-    if (!session) {
-      session = await startSession({
-        kind: 'internal',
-        batchId: batch.id,
-        reviewerUserId: ctx.userDbId,
-        round: 1,
-      })
-    }
-
-    const itemRows = await db.reviewItem.findMany({
-      where: { reviewSessionId: session.id },
-    })
-    const initialItems: ReviewItemHydrated[] = itemRows.map((it) => ({
-      id: it.id,
-      postId: it.postId,
-      decision: it.decision as ReviewItemHydrated['decision'],
-      comment: it.comment,
-      suggestedCaption: it.suggestedCaption,
-      acceptedAsPostVersionId: it.acceptedAsPostVersionId,
-      updatedSinceLastReview: it.updatedSinceLastReview,
-      lastReviewedVersionId: it.lastReviewedVersionId,
-      reviewedAt: it.reviewedAt,
-      addressedAt: it.addressedAt,
-    }))
-
+  // ---- AM / editor: markup surface + AM controls ----
+  if (canEdit || isAssignedDesigner) {
     const feedPosts = posts.map((p) => ({
       post: {
         id: p.id,
@@ -150,13 +122,13 @@ export default async function BatchPreviewPage({
       threads: threadsByPost.get(p.id) ?? [],
     }))
 
-    // The AM's display name for the "Reviewing as" line.
+    // Reviewer display name for the "Reviewing as" line.
     const reviewer = await db.user.findUnique({
       where: { id: ctx.userDbId },
       select: { name: true },
     })
 
-    // Load activity events and mention roster for the internal AM/designer chat.
+    // Activity events + mention targets for the internal chat FAB.
     const [activityEvents, memberships] = await Promise.all([
       listActivityForClient(client.id, {
         limit: 30,
@@ -167,20 +139,45 @@ export default async function BatchPreviewPage({
     const mentionTargets = buildMentionRoster(memberships)
     const canPostComment = canComment(ctx)
 
+    // AM controls: Request changes (only when at am_review_design) + Mark relay reviewed.
+    const amControlsSlot = canEdit ? (
+      <>
+        {batch.currentStep === RelayStep.am_review_design && (
+          <RequestChangesButton
+            onClick={async () => {
+              'use server'
+              await requestDesignChangesAction({ batchId: batch.id })
+            }}
+          />
+        )}
+        <MarkBatchReviewedButton
+          batchId={batch.id}
+          openThreadCount={feedPosts.reduce(
+            (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
+            0,
+          )}
+        />
+      </>
+    ) : undefined
+
+    // Designer controls: Mark revisions done only when awaiting revisions.
+    const designerControlsSlot =
+      isAssignedDesigner &&
+      batch.currentStep === RelayStep.am_review_design &&
+      batch.currentSubState === 'awaiting_design_revisions' ? (
+        <MarkRevisionsDoneButton
+          onClick={async () => {
+            'use server'
+            await markDesignRevisionsDoneAction({ batchId: batch.id })
+          }}
+        />
+      ) : undefined
+
     return (
       <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
         <EventAnchor />
         {heroBand}
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <MarkBatchReviewedButton
-            batchId={batch.id}
-            openThreadCount={feedPosts.reduce(
-              (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
-              0,
-            )}
-          />
-          {backToRelay}
-        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-2">{backToRelay}</div>
 
         <div className="mt-8">
           <InternalReviewShell
@@ -191,8 +188,10 @@ export default async function BatchPreviewPage({
             reviewerUserId={ctx.userDbId}
             mentionRoster={mentionRoster}
             posts={feedPosts}
-            initialItems={initialItems}
-            sessionStatus={session.status as ReviewSessionStatusType}
+            canEditCaption={canEdit}
+            allowPostPins={canEdit}
+            amControlsSlot={amControlsSlot}
+            designerControlsSlot={designerControlsSlot}
           />
         </div>
         <MobileThreadFab
@@ -201,17 +200,12 @@ export default async function BatchPreviewPage({
           mentionTargets={mentionTargets}
           hideComposer={!canPostComment}
           showOnDesktop
-          // Lift the FAB above the sticky Submit bar so it doesn't overlap the
-          // full-width Submit CTA on narrow phones. Only while the bar is
-          // present (session not yet submitted); once submitted the bar is gone
-          // and the FAB returns to its default corner.
-          className={session.status !== 'submitted' ? 'bottom-[88px]' : undefined}
         />
       </div>
     )
   }
 
-  // ---- Non-editor viewer: the existing read-only feed ----
+  // ---- Non-editor, non-designer viewer: the existing read-only feed ----
   const hydratedPosts = posts.map((p) => ({
     id: p.id,
     caption: p.caption,

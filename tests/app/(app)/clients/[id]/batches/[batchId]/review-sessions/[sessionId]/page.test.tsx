@@ -55,7 +55,6 @@ vi.mock('@/server/actions/reviewSessions', () => ({
   acceptCaptionEditAction: vi.fn(),
   rejectCaptionEditAction: vi.fn(),
   startNextRoundAction: vi.fn(),
-  startInternalNextRoundAction: vi.fn(),
   markPostAddressedAction: vi.fn(),
   unmarkPostAddressedAction: vi.fn(),
 }))
@@ -924,9 +923,15 @@ describe('ReviewSessionDetailPage', () => {
     })
   })
 
-  describe('internal session read-back (designer view)', () => {
+  // ---------------------------------------------------------------------------
+  // RETIRED: internal session read-back. These tests document that the internal
+  // path is gone — every internal-kind session now hits redirectAccessDenied
+  // regardless of the viewer's role or designer assignment. The old per-role
+  // logic (assigned designer / AM / unassigned designer) is superseded by the
+  // blanket kind-guard added at the top of the page.
+  // ---------------------------------------------------------------------------
+  describe('internal session read-back (RETIRED — all roles now redirect)', () => {
     const designerCtx = { ...mockCtx, role: 'designer' as const }
-    // The assigned designer's user db id must match for view access.
     const assignedDesignerCtx = {
       ...mockCtx,
       role: 'designer' as const,
@@ -943,133 +948,35 @@ describe('ReviewSessionDetailPage', () => {
       )
     })
 
-    it('does NOT redirect on the missing magic link for an internal session', async () => {
+    it('[RETIRED] assigned designer is now redirected (internal read-back is gone)', async () => {
       vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
       vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
 
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      // The page rendered (no redirect): the shell is present.
-      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
-      // The magic-link lookup must not have driven access for an internal session.
-      expect(db.magicLink.findUnique).not.toHaveBeenCalled()
+      await expect(
+        renderPage({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_int_1' }),
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
     })
 
-    it('resolves the reviewer name from the AM User, not a MagicLinkReviewer', async () => {
-      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
-      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
-
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      // Reviewer resolved via db.user.findUnique on the reviewerUserId (the AM).
-      expect(db.user.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'user_am_1' } }),
-      )
-      // The header shows the AM's name.
-      expect(getByTestId('review-session-header').textContent).toContain('Amy AM')
-      // No magic-link reviewer lookup on the internal path.
-      expect(db.magicLinkReviewer.findUnique).not.toHaveBeenCalled()
-    })
-
-    it('grants the assigned designer view access to an internal session', async () => {
-      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
-      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
-
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
-    })
-
-    it('grants an AM view access to an internal session', async () => {
+    it('[RETIRED] AM is now redirected on an internal session (internal read-back is gone)', async () => {
       // mockCtx is account_manager by default.
       vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
 
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+      await expect(
+        renderPage({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_int_1' }),
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
     })
 
-    it('denies a designer who is NOT the assigned designer', async () => {
-      // designerCtx has userDbId 'user_db_1' but the assigned designer is
-      // 'user_designer_1'.
+    it('[RETIRED] unassigned designer is now redirected (was already denied, now denied earlier)', async () => {
       vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
       vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
 
       await expect(
-        renderPage({
-          id: 'client_1',
-          batchId: 'batch_1',
-          sessionId: 'session_int_1',
-        }),
+        renderPage({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_int_1' }),
       ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
-    })
-
-    it('shows the Mark-revisions-done control to the assigned designer while awaiting revisions', async () => {
-      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
-      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
-
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      expect(getByTestId('respond-slot')).toBeTruthy()
-      expect(getByTestId('mark-revisions-done-button')).toBeTruthy()
-    })
-
-    it('hides the Mark-revisions-done control from the AM on an internal session', async () => {
-      // mockCtx is account_manager — they read the designer's read-back but do
-      // not get the designer respond control.
-      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
-
-      const { queryByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      expect(queryByTestId('respond-slot')).toBeNull()
-      expect(queryByTestId('mark-revisions-done-button')).toBeNull()
-    })
-
-    it('hides the Mark-revisions-done control when not awaiting design revisions', async () => {
-      vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
-      vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
-      // Batch is at am_review_design but the sub-state is cleared (the AM is
-      // re-reviewing, not waiting on revisions).
-      vi.mocked(findBatch).mockResolvedValue({
-        ...mockBatch,
-        currentSubState: null,
-      } as never)
-
-      const { queryByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      expect(queryByTestId('mark-revisions-done-button')).toBeNull()
     })
   })
 
-  describe('internal session: AM start-next-round (close the loop)', () => {
+  describe('internal session: AM start-next-round (RETIRED — all roles now redirect)', () => {
     const assignedDesignerCtx = {
       ...mockCtx,
       role: 'designer' as const,
@@ -1079,8 +986,6 @@ describe('ReviewSessionDetailPage', () => {
       ...mockClient,
       assignedDesignerId: 'user_designer_1',
     }
-    // An all-approved internal session so the shell exposes the start-next-round
-    // slot (allAddressed). Sub-state cleared (the designer already marked done).
     const allApprovedInternalSession = {
       ...mockInternalSession,
       items: mockInternalSession.items.map((it) => ({
@@ -1099,30 +1004,21 @@ describe('ReviewSessionDetailPage', () => {
       } as never)
     })
 
-    it('shows the AM a start-next-round control on an all-addressed internal session', async () => {
-      // mockCtx is account_manager.
+    it('[RETIRED] AM on all-addressed internal session is now redirected (internal read-back is gone)', async () => {
       vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
 
-      const { getByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      expect(getByTestId('start-next-round-button-stub')).toBeTruthy()
+      await expect(
+        renderPage({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_int_1' }),
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
     })
 
-    it('hides the start-next-round control from the designer on an internal session', async () => {
+    it('[RETIRED] designer on internal session is now redirected (internal read-back is gone)', async () => {
       vi.mocked(requireClientViewer).mockResolvedValue(assignedDesignerCtx)
       vi.mocked(findClientForUser).mockResolvedValue(clientWithDesigner as never)
 
-      const { queryByTestId } = await renderPage({
-        id: 'client_1',
-        batchId: 'batch_1',
-        sessionId: 'session_int_1',
-      })
-
-      expect(queryByTestId('start-next-round-button-stub')).toBeNull()
+      await expect(
+        renderPage({ id: 'client_1', batchId: 'batch_1', sessionId: 'session_int_1' }),
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
     })
   })
 
@@ -1137,5 +1033,58 @@ describe('ReviewSessionDetailPage', () => {
 
     expect(queryByTestId('respond-slot')).toBeNull()
     expect(queryByTestId('mark-revisions-done-button')).toBeNull()
+  })
+
+  // ---------------------------------------------------------------------------
+  // REGRESSION LOCK: client read-back path must remain fully intact.
+  // This test locks the entire client (magic-link) flow end to end. If this
+  // test breaks after the internal branch is removed, something sacred was
+  // damaged. Do not remove or weaken this test.
+  // ---------------------------------------------------------------------------
+  it('[LOCK] client-kind session renders full read-back: header, shell, rail, accept/reject affordances', async () => {
+    // Default setup: client session, all posts present, caption_edited post with
+    // pending accept/reject buttons. Verifies the core AM-reads-client-feedback
+    // surface is completely intact after the internal branch is removed.
+    const { getByTestId, queryByTestId } = await renderPage({
+      id: 'client_1',
+      batchId: 'batch_1',
+      sessionId: 'session_1',
+    })
+
+    // Header and shell present.
+    expect(getByTestId('review-session-header')).toBeTruthy()
+    expect(getByTestId('review-feedback-shell-stub')).toBeTruthy()
+
+    // All three posts in the rail.
+    expect(getByTestId('rail-row-post_a')).toBeTruthy()
+    expect(getByTestId('rail-row-post_b')).toBeTruthy()
+    expect(getByTestId('rail-row-post_c')).toBeTruthy()
+
+    // Caption-edit accept/reject affordances appear for the pending caption post.
+    expect(getByTestId('rail-accept-post_c')).toBeTruthy()
+    expect(getByTestId('rail-reject-post_c')).toBeTruthy()
+
+    // The internal-only respond slot must not appear on a client session.
+    expect(queryByTestId('respond-slot')).toBeNull()
+  })
+
+  // ---------------------------------------------------------------------------
+  // RETIREMENT: internal read-back is retired — any internal-kind session must
+  // now hit redirectAccessDenied instead of rendering.
+  // ---------------------------------------------------------------------------
+  it('[RETIRED] internal-kind session hits redirectAccessDenied (internal read-back retired)', async () => {
+    // Set up an internal-kind session. Previously the page would render for the
+    // assigned designer or an AM; now it must always access-deny.
+    vi.mocked(findSessionWithItems).mockResolvedValue(mockInternalSession as never)
+    // Even an AM viewer should be denied now that the internal branch is gone.
+    // mockCtx is account_manager by default.
+
+    await expect(
+      renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_int_1',
+      }),
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
   })
 })
