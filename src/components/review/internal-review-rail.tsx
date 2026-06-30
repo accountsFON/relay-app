@@ -1,7 +1,19 @@
 'use client'
 
-import { CheckCircle2, MessageSquare, AlertCircle, Circle } from 'lucide-react'
+import {
+  CheckCircle2,
+  MessageSquare,
+  AlertCircle,
+  Circle,
+  type LucideIcon,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
+/**
+ * `pending` is the rail's display alias for the `not_reviewed` ReviewDecision:
+ * callers map `not_reviewed -> pending` so the rail reads as a review-progress
+ * state ("not done yet") rather than the data-layer enum.
+ */
 export type InternalRailVerdict = 'approved' | 'changes_requested' | 'caption_edited' | 'pending'
 
 export type InternalRailRow = {
@@ -13,9 +25,15 @@ export type InternalRailRow = {
   pinCount: number
 }
 
+export type InternalReviewRailProps = {
+  rows: ReadonlyArray<InternalRailRow>
+  selectedPostId: string | null
+  onSelectPost: (postId: string) => void
+}
+
 const VERDICT_META: Record<
   InternalRailVerdict,
-  { label: string; className: string; Icon: typeof CheckCircle2 }
+  { label: string; className: string; Icon: LucideIcon }
 > = {
   approved: { label: 'Approved', className: 'text-emerald-700', Icon: CheckCircle2 },
   changes_requested: { label: 'Changes', className: 'text-amber-700', Icon: AlertCircle },
@@ -27,11 +45,7 @@ export function InternalReviewRail({
   rows,
   selectedPostId,
   onSelectPost,
-}: {
-  rows: ReadonlyArray<InternalRailRow>
-  selectedPostId: string | null
-  onSelectPost: (postId: string) => void
-}) {
+}: InternalReviewRailProps) {
   return (
     <nav aria-label="Posts" className="flex flex-col gap-1">
       {rows.map((row) => {
@@ -42,11 +56,12 @@ export function InternalReviewRail({
             key={row.postId}
             type="button"
             data-testid="internal-rail-row"
-            aria-current={selected ? 'true' : undefined}
+            aria-current={selected || undefined}
             onClick={() => onSelectPost(row.postId)}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-left ring-1 transition ${
-              selected ? 'bg-neutral-50 ring-neutral-300' : 'ring-transparent hover:bg-neutral-50'
-            }`}
+            className={cn(
+              'flex items-center gap-3 rounded-xl px-3 py-2 text-left ring-1 transition-colors',
+              selected ? 'bg-neutral-50 ring-neutral-300' : 'ring-transparent hover:bg-neutral-50',
+            )}
           >
             <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-100 text-xs font-medium text-neutral-600">
               {row.thumbnailUrl ? (
@@ -64,7 +79,7 @@ export function InternalReviewRail({
                 </span>
               ) : null}
             </span>
-            <span className={`ml-auto flex items-center gap-1 text-xs font-medium ${meta.className}`}>
+            <span className={cn('ml-auto flex items-center gap-1 text-xs font-medium', meta.className)}>
               <meta.Icon aria-hidden className="size-3.5" />
               {meta.label}
             </span>

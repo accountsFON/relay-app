@@ -33,8 +33,11 @@ describe('InternalReviewRail', () => {
 
   it('marks the selected row aria-current', () => {
     render(<InternalReviewRail rows={rows} selectedPostId="p2" onSelectPost={vi.fn()} />)
-    const selected = screen.getAllByTestId('internal-rail-row')[1]
-    expect(selected).toHaveAttribute('aria-current', 'true')
+    const allRows = screen.getAllByTestId('internal-rail-row')
+    expect(allRows[1]).toHaveAttribute('aria-current', 'true')
+    allRows
+      .filter((_, i) => i !== 1)
+      .forEach((el) => expect(el).not.toHaveAttribute('aria-current'))
   })
 
   it('renders the "Edited" label for a caption_edited verdict', () => {
