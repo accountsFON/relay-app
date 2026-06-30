@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { toast } from 'sonner'
 import { PostCard } from '@/components/posts/post-card'
+import { updatePostAction } from '@/server/actions/posts'
 import {
   PostListCollapseProvider,
   PostListExpandAllToggle,
@@ -12,6 +14,10 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/server/actions/posts', () => ({
   updatePostAction: vi.fn(),
+}))
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }))
 
 vi.mock('@vercel/blob/client', () => ({
@@ -85,6 +91,30 @@ describe('PostCard collapsed state', () => {
     // it is the tooltip trigger.
     expect(copyButton.getAttribute('data-slot')).toBe('tooltip-trigger')
     expect(editButton.getAttribute('data-slot')).toBe('tooltip-trigger')
+  })
+})
+
+describe('PostCard Edit button permission gate', () => {
+  it('hides the Edit button when canEdit is false (e.g. designer)', () => {
+    render(<PostCard post={basePost} canEdit={false} />)
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('shows the Edit button when canEdit is true', () => {
+    render(<PostCard post={basePost} canEdit />)
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
+  it('shows a friendly toast and does not throw when saving a caption fails', async () => {
+    vi.mocked(updatePostAction).mockRejectedValueOnce(new Error('Error 12345'))
+    render(<PostCard post={basePost} canEdit />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+        "Couldn't save your changes. You may not have permission to edit captions.",
+      )
+    })
   })
 })
 

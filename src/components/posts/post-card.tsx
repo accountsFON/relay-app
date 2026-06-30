@@ -106,13 +106,22 @@ export function PostCard({
 
   const handleSave = () => {
     startTransition(async () => {
-      await updatePostAction(post.id, {
-        caption,
-        hashtags: hashtags.split(/\s+/).filter(Boolean),
-        graphicHook: graphicHook || null,
-        designerNotes: designerNotes || null,
-      })
-      setIsEditing(false)
+      try {
+        await updatePostAction(post.id, {
+          caption,
+          hashtags: hashtags.split(/\s+/).filter(Boolean),
+          graphicHook: graphicHook || null,
+          designerNotes: designerNotes || null,
+        })
+        setIsEditing(false)
+      } catch {
+        // A thrown server-action error is masked as an opaque digest in
+        // production, so we surface a generic friendly message rather than
+        // e.message (which would be the raw reference number).
+        toast.error(
+          "Couldn't save your changes. You may not have permission to edit captions.",
+        )
+      }
     })
   }
 
@@ -201,7 +210,7 @@ export function PostCard({
                   </Button>
                 </SimpleTooltip>
               )}
-              {!isEditing && !isArchived && (
+              {canEdit && !isEditing && !isArchived && (
                 <SimpleTooltip content="Edit this post">
                   <Button
                     variant="ghost"
