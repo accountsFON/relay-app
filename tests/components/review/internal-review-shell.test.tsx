@@ -60,7 +60,6 @@ const BASE_PROPS = {
   batchId: 'batch-1',
   clientName: 'Test Client',
   clientAvatarUrl: null,
-  batchLabel: 'Test Batch May 2026',
   reviewerName: 'Test AM',
   posts: POSTS,
 }
@@ -139,7 +138,6 @@ describe('InternalReviewShell markup layout', () => {
       <InternalReviewShell
         batchId="b1"
         clientName="Acme"
-        batchLabel="June"
         reviewerName="Jane AM"
         reviewerUserId="u1"
         posts={basePosts}
