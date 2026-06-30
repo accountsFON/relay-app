@@ -55,7 +55,6 @@ vi.mock('@/server/actions/reviewSessions', () => ({
   acceptCaptionEditAction: vi.fn(),
   rejectCaptionEditAction: vi.fn(),
   startNextRoundAction: vi.fn(),
-  startInternalNextRoundAction: vi.fn(),
   markPostAddressedAction: vi.fn(),
   unmarkPostAddressedAction: vi.fn(),
 }))
