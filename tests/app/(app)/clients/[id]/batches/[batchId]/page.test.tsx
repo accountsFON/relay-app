@@ -724,4 +724,42 @@ describe('BatchDetailPage', () => {
       expect(getByTestId('review-feedback-badge')).toHaveTextContent('1 Feedback')
     })
   })
+
+  // ---- Review link pill (single active magic link) ----
+
+  describe('Review link pill (single active link)', () => {
+    it('queries for only the active link: not revoked, not expired, take 1', async () => {
+      vi.mocked(db.magicLink.findMany).mockResolvedValue([] as never)
+
+      await renderPage({ id: 'client_1', batchId: 'batch_1' })
+
+      const args = vi.mocked(db.magicLink.findMany).mock.calls[0]?.[0] as {
+        where?: { revokedAt?: unknown; expiresAt?: { gt?: unknown } }
+        take?: number
+      }
+      expect(args?.where?.revokedAt).toBeNull()
+      expect(args?.where?.expiresAt?.gt).toBeInstanceOf(Date)
+      expect(args?.take).toBe(1)
+    })
+
+    it('renders one "Review link" pill for the active link', async () => {
+      vi.mocked(db.magicLink.findMany).mockResolvedValue([
+        {
+          id: 'ml_active',
+          defaultReviewerName: 'Jane',
+          defaultReviewerEmail: 'jane@co.com',
+          expiresAt: new Date('2030-01-01T00:00:00Z'),
+          lastVisitedAt: null,
+        },
+      ] as never)
+
+      const { getByText, getAllByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+
+      expect(getByText('Review link')).toBeInTheDocument()
+      expect(getAllByTestId(/^magic-link-row-/)).toHaveLength(1)
+    })
+  })
 })
