@@ -588,3 +588,66 @@ describe('ReviewPostCard -- new reply badge', () => {
     expect(screen.queryByTestId('new-reply-badge')).not.toBeInTheDocument()
   })
 })
+
+describe('ReviewPostCard -- allowPostPins gate', () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+  })
+
+  it('hides the post-pin composer when allowPostPins=false on a locked card with no thread', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem({ decision: 'approved' })}
+        threads={[]}
+        platform="instagram"
+        mode="review"
+        locked
+        allowPostPins={false}
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCreatePin={vi.fn()}
+      />,
+    )
+    // The post-level pin composer ("Start a discussion") must NOT render.
+    expect(screen.queryByTestId('post-comments-section')).not.toBeInTheDocument()
+  })
+
+  it('still shows the post-comments-section for existing threads even when allowPostPins=false', () => {
+    const firstComment = {
+      id: 'c1',
+      author: { kind: 'am' as const, userId: 'am-1', name: 'AM', avatarUrl: null },
+      body: 'Hello',
+      createdAt: new Date(),
+      imageUrl: null,
+      imageWidth: null,
+      imageHeight: null,
+    }
+    const thread: HydratedThread = {
+      id: 'thread-post-1',
+      status: 'open',
+      pin: { kind: 'post' },
+      firstComment,
+      comments: [firstComment],
+      commentCount: 1,
+    }
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem({ decision: 'approved' })}
+        threads={[thread]}
+        platform="instagram"
+        mode="review"
+        locked
+        allowPostPins={false}
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onAppendThreadComment={vi.fn()}
+      />,
+    )
+    // Existing thread is rendered regardless of allowPostPins.
+    expect(screen.getByTestId('post-comments-section')).toBeInTheDocument()
+  })
+})

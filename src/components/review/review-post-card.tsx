@@ -103,6 +103,13 @@ export type ReviewPostCardProps = {
    */
   canEditCaption?: boolean
   /**
+   * When false, the post-level pin composer (the "start a discussion" thread
+   * starter on a locked post with no existing thread) is hidden. Image-pin
+   * markup overlay and reply popovers are unaffected — designers keep those.
+   * Defaults to true so existing callers retain the current behaviour.
+   */
+  allowPostPins?: boolean
+  /**
    * Transient disable (e.g. an in-flight save) — greys the verdict row and the
    * Notes field. Pins/threads stay live.
    */
@@ -166,6 +173,7 @@ export function ReviewPostCard({
   platform,
   mode,
   canEditCaption = true,
+  allowPostPins = true,
   onDecisionChange,
   onCommentChange,
   onCaptionEditSave,
@@ -493,7 +501,7 @@ export function ReviewPostCard({
             readOnly={postThread.status === 'resolved'}
           />
         </div>
-      ) : locked ? (
+      ) : locked && allowPostPins ? (
         <div data-testid="post-comments-section">
           <p className="mb-1 text-[12px] font-medium text-muted-foreground">
             Comments

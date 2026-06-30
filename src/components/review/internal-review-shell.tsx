@@ -53,6 +53,12 @@ export type InternalReviewShellProps = {
   posts: ReadonlyArray<InternalReviewShellPost>
   /** When true (default), the AM can inline-edit post captions. */
   canEditCaption?: boolean
+  /**
+   * When false, the post-level pin composer is hidden on each card.
+   * Image-pin markup overlay and reply popovers are unaffected.
+   * Defaults to true. Pass false for the designer tier.
+   */
+  allowPostPins?: boolean
   /** Slot rendered in the top bar for AM-specific controls (e.g. request changes). */
   amControlsSlot?: React.ReactNode
   /** Slot rendered in the top bar for designer-specific controls. */
@@ -77,6 +83,7 @@ export function InternalReviewShell({
   mentionRoster = [],
   posts,
   canEditCaption = true,
+  allowPostPins = true,
   amControlsSlot,
   designerControlsSlot,
 }: InternalReviewShellProps) {
@@ -250,6 +257,7 @@ export function InternalReviewShell({
                       platform={platform}
                       mode="internal"
                       canEditCaption={canEditCaption}
+                      allowPostPins={allowPostPins}
                       onCommentChange={() => Promise.resolve(true)}
                       onCaptionEditSave={
                         canEditCaption
