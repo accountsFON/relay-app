@@ -27,14 +27,19 @@ export type ReviewPostCardProps = {
   threads?: FeedPostProps['threads']
   platform: Platform
   /**
-   * 'review' = magic-link client surface; 'internal' = Clerk-authed AM verdict
-   * surface on /preview. Both render the same verdict/Notes/edit-copy/pin
-   * chrome; the host shell wires the callbacks to the matching persistence
-   * layer (token draft endpoint vs Phase 1 internal server actions). Passed
-   * straight through to the embedded IG/FB chrome (`FeedPostProps.mode`).
+   * 'review' = magic-link client surface. Renders the full verdict row (Approve
+   * / Changes), Notes field, Edit-copy affordance (gated on verdictLocked), and
+   * pin chrome. The host shell wires callbacks to the token draft endpoint.
+   *
+   * 'internal' = Clerk-authed AM surface on /preview. Markup-only: renders pins
+   * and the Edit-copy affordance (gated on `canEditCaption`). The verdict row
+   * and Notes field are NOT rendered. The host shell is responsible for any
+   * internal persistence.
+   *
+   * Passed straight through to the embedded IG/FB chrome (`FeedPostProps.mode`).
    */
   mode: 'review' | 'internal'
-  onDecisionChange: (decision: ReviewDecisionType) => void
+  onDecisionChange?: (decision: ReviewDecisionType) => void
   onCommentChange: (comment: string) => Promise<boolean>
   /**
    * Persist a saved suggested caption. Called when the reviewer hits Save in
@@ -89,6 +94,14 @@ export type ReviewPostCardProps = {
    * autocomplete and is unchanged.
    */
   mentionRoster?: MentionTarget[]
+  /**
+   * AM-only (internal mode). When true, the inline "Edit copy" affordance is
+   * offered; when false, it is hidden. Only relevant in mode='internal'.
+   * Defaults to true so existing callers that do not pass it retain the
+   * current behaviour. Ignored in mode='review' (the client surface always
+   * gates Edit copy on `verdictLocked` only).
+   */
+  canEditCaption?: boolean
   /**
    * Transient disable (e.g. an in-flight save) — greys the verdict row and the
    * Notes field. Pins/threads stay live.
@@ -152,6 +165,7 @@ export function ReviewPostCard({
   threads,
   platform,
   mode,
+  canEditCaption = true,
   onDecisionChange,
   onCommentChange,
   onCaptionEditSave,
@@ -277,7 +291,7 @@ export function ReviewPostCard({
       if (isEditing) {
         exitEditMode()
       }
-      onDecisionChange(next)
+      onDecisionChange?.(next)
     },
     [isEditing, exitEditMode, onDecisionChange],
   )
@@ -375,77 +389,91 @@ export function ReviewPostCard({
         onCaptionEditSave={isEditing ? handleCaptionEditSave : undefined}
         onCaptionEditCancel={isEditing ? handleCaptionEditCancel : undefined}
         captionOverride={captionOverride}
-        onEditCaption={verdictLocked ? undefined : enterEditMode}
+        onEditCaption={
+          // 'review' mode: gate on verdictLocked (existing behaviour).
+          // 'internal' mode: gate on canEditCaption prop (AM=true, designer=false).
+          mode === 'review'
+            ? verdictLocked
+              ? undefined
+              : enterEditMode
+            : canEditCaption
+              ? enterEditMode
+              : undefined
+        }
       />
 
-      <DecisionButtonRow
-        value={decision}
-        onChange={handleDecisionChange}
-        disabled={verdictLocked}
-      />
+      {mode === 'review' && (
+        <>
+          <DecisionButtonRow
+            value={decision}
+            onChange={handleDecisionChange}
+            disabled={verdictLocked}
+          />
 
-      {decision === 'changes_requested' || decision === 'caption_edited' ? (
-        <p
-          data-testid="review-post-card-changes-hint"
-          className="text-[12px] text-muted-foreground"
-        >
-          Pin the parts of the image or caption that need changes, or use Notes
-          below for general comments.
-        </p>
-      ) : null}
+          {decision === 'changes_requested' || decision === 'caption_edited' ? (
+            <p
+              data-testid="review-post-card-changes-hint"
+              className="text-[12px] text-muted-foreground"
+            >
+              Pin the parts of the image or caption that need changes, or use Notes
+              below for general comments.
+            </p>
+          ) : null}
 
-      <div>
-        <div className="flex items-center justify-between gap-2">
-          <label
-            className="block text-[12px] font-medium text-muted-foreground"
-            htmlFor={`comment-${post.id}`}
-          >
-            <span data-testid="review-post-card-notes-label">Notes (optional)</span>
-          </label>
-          <span
-            data-testid="review-post-card-notes-status"
-            aria-live="polite"
-            className="text-[12px]"
-          >
-            {noteStatus === 'saving' && (
-              <span className="text-muted-foreground">Saving…</span>
-            )}
-            {noteStatus === 'saved' && (
-              <span className="text-muted-foreground">Saved ✓</span>
-            )}
-            {noteStatus === 'error' && (
-              <span className="text-destructive">
-                Couldn&apos;t save{' · '}
-                <button
-                  type="button"
-                  className="underline"
-                  onClick={() => void saveNote(comment)}
-                >
-                  Retry
-                </button>
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <label
+                className="block text-[12px] font-medium text-muted-foreground"
+                htmlFor={`comment-${post.id}`}
+              >
+                <span data-testid="review-post-card-notes-label">Notes (optional)</span>
+              </label>
+              <span
+                data-testid="review-post-card-notes-status"
+                aria-live="polite"
+                className="text-[12px]"
+              >
+                {noteStatus === 'saving' && (
+                  <span className="text-muted-foreground">Saving…</span>
+                )}
+                {noteStatus === 'saved' && (
+                  <span className="text-muted-foreground">Saved ✓</span>
+                )}
+                {noteStatus === 'error' && (
+                  <span className="text-destructive">
+                    Couldn&apos;t save{' · '}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => void saveNote(comment)}
+                    >
+                      Retry
+                    </button>
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-        </div>
-        <textarea
-          id={`comment-${post.id}`}
-          data-testid="review-post-card-comment"
-          value={comment}
-          onChange={(e) => handleNoteChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => {
-            setFocused(false)
-            flushNote()
-          }}
-          placeholder={commentPlaceholder}
-          rows={focused || comment.length > 0 ? 3 : 1}
-          readOnly={locked}
-          disabled={disabled}
-          className={cn(
-            'mt-1 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-[height,border-color] focus:border-primary disabled:cursor-not-allowed disabled:opacity-60',
-          )}
-        />
-      </div>
+            </div>
+            <textarea
+              id={`comment-${post.id}`}
+              data-testid="review-post-card-comment"
+              value={comment}
+              onChange={(e) => handleNoteChange(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => {
+                setFocused(false)
+                flushNote()
+              }}
+              placeholder={commentPlaceholder}
+              rows={focused || comment.length > 0 ? 3 : 1}
+              readOnly={locked}
+              disabled={disabled}
+              className={cn(
+                'mt-1 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-[height,border-color] focus:border-primary disabled:cursor-not-allowed disabled:opacity-60',
+              )}
+            />
+          </div>
+        </>
+      )}
 
       {/*
         Post-level Comments. When a post-level thread exists it always renders

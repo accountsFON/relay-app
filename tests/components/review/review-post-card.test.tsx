@@ -112,9 +112,10 @@ describe('ReviewPostCard', () => {
   })
 })
 
-describe('ReviewPostCard -- mode=internal', () => {
-  it('renders the verdict row, Notes, Edit-copy, and pins in internal mode', () => {
-    const onCreatePin = vi.fn().mockResolvedValue(undefined)
+describe('ReviewPostCard internal markup mode', () => {
+  // internal mode is now markup-only: pins + Edit-copy, no verdict/Notes.
+
+  it('does NOT render the Approve/Changes decision buttons in internal mode', () => {
     render(
       <ReviewPostCard
         post={POST}
@@ -124,28 +125,13 @@ describe('ReviewPostCard -- mode=internal', () => {
         mode="internal"
         onDecisionChange={() => {}}
         onCommentChange={vi.fn().mockResolvedValue(true)}
-        onCaptionEditSave={vi.fn()}
-        onCreatePin={onCreatePin}
       />,
     )
-
-    // Verdict row (both buttons).
-    expect(screen.getByTestId('decision-button-approved')).toBeInTheDocument()
-    expect(
-      screen.getByTestId('decision-button-changes_requested'),
-    ).toBeInTheDocument()
-    // Notes field.
-    expect(
-      screen.getByTestId('review-post-card-notes-label'),
-    ).toBeInTheDocument()
-    // Inline Edit copy affordance (pin/markup chrome is the same IG post).
-    expect(
-      screen.getByTestId('instagram-post-edit-copy'),
-    ).toBeInTheDocument()
+    expect(screen.queryByTestId('decision-button-approved')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('decision-button-changes_requested')).not.toBeInTheDocument()
   })
 
-  it('forwards a verdict click in internal mode', () => {
-    const onDecisionChange = vi.fn()
+  it('does NOT render the Notes field in internal mode', () => {
     render(
       <ReviewPostCard
         post={POST}
@@ -153,12 +139,81 @@ describe('ReviewPostCard -- mode=internal', () => {
         reviewItem={makeItem()}
         platform="instagram"
         mode="internal"
-        onDecisionChange={onDecisionChange}
+        onDecisionChange={() => {}}
         onCommentChange={vi.fn().mockResolvedValue(true)}
       />,
     )
-    fireEvent.click(screen.getByTestId('decision-button-approved'))
-    expect(onDecisionChange).toHaveBeenCalledWith('approved')
+    expect(screen.queryByTestId('review-post-card-notes-label')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('review-post-card-comment')).not.toBeInTheDocument()
+  })
+
+  it('renders Edit copy in internal mode when canEditCaption is true (default)', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="internal"
+        canEditCaption={true}
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('instagram-post-edit-copy')).toBeInTheDocument()
+  })
+
+  it('does NOT render Edit copy in internal mode when canEditCaption is false', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="internal"
+        canEditCaption={false}
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={vi.fn()}
+      />,
+    )
+    expect(screen.queryByTestId('instagram-post-edit-copy')).not.toBeInTheDocument()
+  })
+
+  it('still renders the IG post chrome (pin/markup surface) in internal mode', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="internal"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    // The review-post-card article wrapper is always present; the IG chrome
+    // renders inside it (markup-overlay is the pin surface).
+    expect(screen.getByTestId('review-post-card')).toBeInTheDocument()
+    expect(screen.getByTestId('markup-overlay')).toBeInTheDocument()
+  })
+
+  // REGRESSION: client mode='review' must be byte-for-byte unchanged.
+  it('(regression) still renders decision buttons in mode=review', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    expect(screen.getByTestId('decision-button-approved')).toBeInTheDocument()
+    expect(screen.getByTestId('decision-button-changes_requested')).toBeInTheDocument()
   })
 })
 
