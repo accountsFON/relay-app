@@ -18,6 +18,24 @@ vi.mock('@/server/auth/access', () => ({
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
   canEditClients: vi.fn(),
+  canComment: vi.fn(),
+}))
+
+vi.mock('@/server/repositories/activityEvents', () => ({
+  listActivityForClient: vi.fn(),
+  visibilityForViewer: vi.fn(),
+}))
+
+vi.mock('@/server/repositories/memberships', () => ({
+  listMembershipsForOrg: vi.fn(),
+}))
+
+vi.mock('@/lib/mentions', () => ({
+  buildMentionRoster: vi.fn(),
+}))
+
+vi.mock('@/components/activity/mobile-thread-fab', () => ({
+  MobileThreadFab: () => <div data-testid="internal-chat-fab" />,
 }))
 
 vi.mock('@/server/repositories/clients', () => ({
@@ -155,6 +173,10 @@ import {
   startSession,
 } from '@/server/repositories/reviewSessions'
 import { db } from '@/db/client'
+import { listActivityForClient } from '@/server/repositories/activityEvents'
+import { listMembershipsForOrg } from '@/server/repositories/memberships'
+import { buildMentionRoster } from '@/lib/mentions'
+import { canComment } from '@/server/middleware/permissions'
 
 const mockCtx = {
   userId: 'user_clerk_1',
@@ -227,6 +249,10 @@ describe('BatchPreviewPage', () => {
     })
     vi.mocked(findActiveSession).mockResolvedValue(mockSession as never)
     vi.mocked(startSession).mockResolvedValue(mockSession as never)
+    vi.mocked(listActivityForClient).mockResolvedValue([] as never)
+    vi.mocked(listMembershipsForOrg).mockResolvedValue([] as never)
+    vi.mocked(buildMentionRoster).mockReturnValue([])
+    vi.mocked(canComment).mockReturnValue(true)
   })
 
   it('renders the AM verdict surface with one entry per post for an editor', async () => {
@@ -315,5 +341,14 @@ describe('BatchPreviewPage', () => {
     await expect(
       renderPage({ id: 'client_1', batchId: 'batch_1' }),
     ).rejects.toThrow('NEXT_REDIRECT:/dashboard?denied=1')
+  })
+
+  it('mounts the AM/designer chat FAB for the editor', async () => {
+    const { getByTestId } = await renderPage({
+      id: 'client_1',
+      batchId: 'batch_1',
+    })
+
+    expect(getByTestId('internal-chat-fab')).toBeInTheDocument()
   })
 })

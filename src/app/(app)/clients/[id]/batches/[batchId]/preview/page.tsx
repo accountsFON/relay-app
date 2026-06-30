@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { requireClientViewer, canEditClients } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients, canComment } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -11,11 +11,18 @@ import {
 } from '@/server/repositories/reviewSessions'
 import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
 import { derivePostApprovalForBatch } from '@/server/services/approval'
+import {
+  listActivityForClient,
+  visibilityForViewer,
+} from '@/server/repositories/activityEvents'
+import { listMembershipsForOrg } from '@/server/repositories/memberships'
+import { buildMentionRoster } from '@/lib/mentions'
 import { db } from '@/db/client'
 import { HeroBand } from '@/components/hero-band'
 import { MarkBatchReviewedButton } from '@/components/preview/mark-batch-reviewed-button'
 import { PreviewPageShell } from './preview-page-shell'
 import { InternalReviewShell } from '@/components/review/internal-review-shell'
+import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { EventAnchor } from '@/components/notifications/event-anchor'
 import { Button } from '@/components/ui/button'
 import type {
@@ -149,6 +156,17 @@ export default async function BatchPreviewPage({
       select: { name: true },
     })
 
+    // Load activity events and mention roster for the internal AM/designer chat.
+    const [activityEvents, memberships] = await Promise.all([
+      listActivityForClient(client.id, {
+        limit: 30,
+        visibilityFilter: visibilityForViewer(ctx),
+      }),
+      listMembershipsForOrg(ctx.organizationDbId),
+    ])
+    const mentionTargets = buildMentionRoster(memberships)
+    const canPostComment = canComment(ctx)
+
     return (
       <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
         <EventAnchor />
@@ -177,6 +195,13 @@ export default async function BatchPreviewPage({
             sessionStatus={session.status as ReviewSessionStatusType}
           />
         </div>
+        <MobileThreadFab
+          clientId={client.id}
+          events={activityEvents}
+          mentionTargets={mentionTargets}
+          hideComposer={!canPostComment}
+          showOnDesktop
+        />
       </div>
     )
   }
