@@ -201,6 +201,11 @@ export default async function BatchPreviewPage({
           mentionTargets={mentionTargets}
           hideComposer={!canPostComment}
           showOnDesktop
+          // Lift the FAB above the sticky Submit bar so it doesn't overlap the
+          // full-width Submit CTA on narrow phones. Only while the bar is
+          // present (session not yet submitted); once submitted the bar is gone
+          // and the FAB returns to its default corner.
+          className={session.status !== 'submitted' ? 'bottom-[88px]' : undefined}
         />
       </div>
     )
