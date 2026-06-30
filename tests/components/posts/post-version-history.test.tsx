@@ -11,6 +11,11 @@ vi.mock('@/server/actions/posts', () => ({
   restorePostVersionAction: (id: string) => restoreMock(id),
 }))
 
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}))
+
+import { toast } from 'sonner'
 import { PostVersionHistory } from '@/components/posts/post-version-history'
 
 const versions = [
@@ -62,12 +67,42 @@ describe('PostVersionHistory', () => {
   })
 
   it('restores a version and refreshes the view', async () => {
-    render(<PostVersionHistory postId="p1" versions={versions} />)
+    render(<PostVersionHistory postId="p1" versions={versions} canEdit />)
     fireEvent.click(screen.getByRole('button', { name: /1 version/i }))
     fireEvent.click(
       screen.getByRole('button', { name: /restore version from/i }),
     )
     expect(restoreMock).toHaveBeenCalledWith('v1')
     await waitFor(() => expect(refreshMock).toHaveBeenCalled())
+  })
+
+  it('hides the Restore button when canEdit is false (e.g. designer)', () => {
+    render(<PostVersionHistory postId="p1" versions={versions} canEdit={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /1 version/i }))
+    expect(
+      screen.queryByRole('button', { name: /restore version from/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the Restore button when canEdit is true', () => {
+    render(<PostVersionHistory postId="p1" versions={versions} canEdit />)
+    fireEvent.click(screen.getByRole('button', { name: /1 version/i }))
+    expect(
+      screen.getByRole('button', { name: /restore version from/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows a friendly toast and does not throw when a restore fails', async () => {
+    restoreMock.mockRejectedValueOnce(new Error('Error 67890'))
+    render(<PostVersionHistory postId="p1" versions={versions} canEdit />)
+    fireEvent.click(screen.getByRole('button', { name: /1 version/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /restore version from/i }),
+    )
+    await waitFor(() => {
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+        "Couldn't restore that version. You may not have permission.",
+      )
+    })
   })
 })

@@ -26,6 +26,23 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-06-30 — Gate Edit/Restore on canEdit + kill the masked digest on save failures** (PR #287)
+  A designer hit the masked Next.js error digest (the long `ref:` number) trying to edit a post
+  on the batch detail page. Two affordances rendered without a permission check and their handlers
+  had no try/catch, so the thrown server-action error reached the `(app)/error.tsx` boundary. Fix
+  (layered): the PostCard **Edit** button and the PostVersionHistory **Restore** button are now
+  gated on the existing `canEdit` permission (designers no longer see them — version history stays
+  readable, only the Restore action is gated), and the save/restore handlers fail soft with a
+  friendly toast instead of crashing. The internal `/preview` caption save also fails soft and
+  preserves the draft on failure (re-throws after toasting so the shared `ReviewPostCard` keeps the
+  editor open). Toasts use a generic message, never `e.message` (prod masks thrown action errors as
+  the digest). Permission decision unchanged from the system default: designers can't edit captions
+  or restore versions but keep image upload (`post.media.edit`). Server gates (`requireClientEditor`)
+  untouched; client magic-link review path unaffected (its save never rejects). NO schema change;
+  no `src/server/jobs|services|prompts` change → Trigger.dev deploy skips. 2137 unit tests pass,
+  tsc + eslint clean; whole-branch opus review caught + fixed one draft-loss regression. Spec + plan:
+  `vault projects/relay-app/2026-06-30-designer-edit-gate-and-friendly-error-{design,plan}.md`.
+
 - [x] **2026-06-30 — Drop the internal submit/round loop; shared markup /preview** (PR #285)
   Follow-up to #284. The internal `/preview` "Submit Review" button was broken/redundant
   (`submitInternalReviewAction` only advanced to QA when EVERY post was explicitly approved; any
