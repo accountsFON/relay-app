@@ -36,4 +36,12 @@ describe('InternalReviewRail', () => {
     const selected = screen.getAllByTestId('internal-rail-row')[1]
     expect(selected).toHaveAttribute('aria-current', 'true')
   })
+
+  it('renders the "Edited" label for a caption_edited verdict', () => {
+    const editedRows: InternalRailRow[] = [
+      { postId: 'p4', postNumber: 4, thumbnailUrl: null, verdict: 'caption_edited', pinCount: 0 },
+    ]
+    render(<InternalReviewRail rows={editedRows} selectedPostId={null} onSelectPost={vi.fn()} />)
+    expect(screen.getByText('Edited')).toBeInTheDocument()
+  })
 })
