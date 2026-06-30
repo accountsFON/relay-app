@@ -661,7 +661,7 @@ export default async function BatchDetailPage({
                             mediaUrl={post.mediaUrls?.[0] ?? null}
                             canUploadMedia={canUploadMedia}
                           />
-                          <PostVersionHistory postId={post.id} versions={versionRows} />
+                          <PostVersionHistory postId={post.id} versions={versionRows} canEdit={canEdit} />
                         </div>
                       )
                     }),

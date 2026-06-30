@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { History, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { restorePostVersionAction } from '@/server/actions/posts'
@@ -21,9 +22,11 @@ export type PostVersionRow = {
 export function PostVersionHistory({
   postId,
   versions,
+  canEdit = false,
 }: {
   postId: string
   versions: PostVersionRow[]
+  canEdit?: boolean
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -34,13 +37,20 @@ export function PostVersionHistory({
   const handleRestore = (versionId: string) => {
     setPendingId(versionId)
     startTransition(async () => {
-      await restorePostVersionAction(versionId)
-      // Refresh so the restored body shows on the post immediately. The
-      // server action also revalidates, but an explicit refresh keeps this
-      // in parity with the redo flow and avoids any stale client view.
-      router.refresh()
-      setPendingId(null)
-      setOpen(false)
+      try {
+        await restorePostVersionAction(versionId)
+        // Refresh so the restored body shows on the post immediately. The
+        // server action also revalidates, but an explicit refresh keeps this
+        // in parity with the redo flow and avoids any stale client view.
+        router.refresh()
+        setOpen(false)
+      } catch {
+        // Thrown server-action errors are masked as an opaque digest in
+        // production; show a generic friendly message instead.
+        toast.error("Couldn't restore that version. You may not have permission.")
+      } finally {
+        setPendingId(null)
+      }
     })
   }
 
@@ -96,17 +106,19 @@ export function PostVersionHistory({
                         </p>
                       )}
                     </button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRestore(v.id)}
-                      disabled={pendingId === v.id}
-                      className="shrink-0"
-                      aria-label={`Restore version from ${formatRelative(v.createdAt)}`}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      {pendingId === v.id ? 'Restoring…' : 'Restore'}
-                    </Button>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRestore(v.id)}
+                        disabled={pendingId === v.id}
+                        className="shrink-0"
+                        aria-label={`Restore version from ${formatRelative(v.createdAt)}`}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        {pendingId === v.id ? 'Restoring…' : 'Restore'}
+                      </Button>
+                    )}
                   </div>
 
                   {isExpanded && (
