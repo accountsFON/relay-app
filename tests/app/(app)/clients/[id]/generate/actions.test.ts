@@ -118,6 +118,23 @@ describe('getRunStatus', () => {
 // a previously-attached batch loses ~$0.40 of AI spend with no recovery.
 // ---------------------------------------------------------------------------
 
+describe('triggerGeneration: onboarding gate (C1)', () => {
+  it('throws and does NOT create a run or call trigger when onboardingCompletedAt is null', async () => {
+    vi.mocked(findClientForUser).mockResolvedValue({
+      id: 'client_1',
+      autoCrawl: 'never',
+      crawledData: null,
+      onboardingCompletedAt: null,
+    } as never)
+
+    await expect(triggerGeneration('client_1', '2026-08')).rejects.toThrow(
+      /onboarding/i,
+    )
+
+    expect(createContentRun).not.toHaveBeenCalled()
+  })
+})
+
 describe('triggerGeneration: existing-run displacement (Phase 4)', () => {
   beforeEach(() => {
     // Default mocks for happy-path triggerGeneration calls.
@@ -125,6 +142,7 @@ describe('triggerGeneration: existing-run displacement (Phase 4)', () => {
       id: 'client_1',
       autoCrawl: 'never',
       crawledData: null,
+      onboardingCompletedAt: new Date('2026-01-01'),
     } as never)
     vi.mocked(createContentRun).mockResolvedValue({ id: 'run_new' } as never)
   })

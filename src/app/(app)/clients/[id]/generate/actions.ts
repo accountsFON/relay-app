@@ -21,6 +21,10 @@ export async function triggerGeneration(
   const client = await findClientForUser(ctx, clientId)
   if (!client) throw new Error('Client not found')
 
+  if (!client.onboardingCompletedAt) {
+    throw new Error('Complete onboarding for this client before generating content.')
+  }
+
   const existing = await findExistingRun(clientId, targetMonth)
   if (existing) {
     if (existing.status === 'running') {

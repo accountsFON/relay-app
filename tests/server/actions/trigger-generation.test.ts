@@ -31,7 +31,7 @@ describe('triggerGeneration -- persists the trigger handle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(requireClientEditor).mockResolvedValue({ userDbId: 'u1' } as never)
-    vi.mocked(findClientForUser).mockResolvedValue({ id: 'c1', autoCrawl: 'never', crawledData: null } as never)
+    vi.mocked(findClientForUser).mockResolvedValue({ id: 'c1', autoCrawl: 'never', crawledData: null, onboardingCompletedAt: new Date('2026-01-01') } as never)
     vi.mocked(findExistingRun).mockResolvedValue(null as never)
     vi.mocked(createContentRun).mockResolvedValue({ id: 'run-1' } as never)
   })
