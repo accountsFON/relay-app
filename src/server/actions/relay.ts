@@ -371,7 +371,7 @@ export async function markBatchReviewedAction(input: { batchId: string }) {
 
   // 2. Gate: refuse while any thread on any post in the batch is still open.
   const openThreadCount = await db.postThread.count({
-    where: { post: { batchId: batch.id }, status: 'open' },
+    where: { post: { batchId: batch.id, deletedAt: null }, status: 'open' },
   })
   if (openThreadCount > 0) {
     throw new Error(

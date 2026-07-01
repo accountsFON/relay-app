@@ -24,10 +24,6 @@ vi.mock('@/server/services/relay', () => ({
   markDesignRevisionsDone: vi.fn(),
 }))
 
-vi.mock('@/server/services/activity', () => ({
-  recordActivity: vi.fn(),
-}))
-
 vi.mock('@/server/repositories/threads', () => ({
   bulkResolveOnPost: vi.fn(),
 }))
@@ -717,7 +713,26 @@ describe('markBatchReviewedAction gated completion', () => {
     await markBatchReviewedAction({ batchId: 'b1' })
 
     expect(db.postThread.count).toHaveBeenCalledWith({
-      where: { post: { batchId: 'b1' }, status: 'open' },
+      where: { post: { batchId: 'b1', deletedAt: null }, status: 'open' },
     })
+  })
+
+  it('calls finishBatch when the forward step is completed', async () => {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.scheduling,
+      clientReviewEnabled: true,
+      client: { organizationId: 'org_1' },
+    } as never)
+    vi.mocked(db.postThread.count).mockResolvedValue(0)
+    vi.mocked(finishBatch).mockResolvedValue({ batchId: 'b1' } as never)
+
+    await markBatchReviewedAction({ batchId: 'b1' })
+
+    expect(finishBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ batchId: 'b1' }),
+    )
+    expect(passBaton).not.toHaveBeenCalled()
   })
 })
