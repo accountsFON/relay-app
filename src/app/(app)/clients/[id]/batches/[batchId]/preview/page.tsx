@@ -130,6 +130,14 @@ export default async function BatchPreviewPage({
       select: { name: true },
     })
 
+    // Assigned designer's display name for the "Request changes" confirmation.
+    const assignedDesigner = client.assignedDesignerId
+      ? await db.user.findUnique({
+          where: { id: client.assignedDesignerId },
+          select: { name: true },
+        })
+      : null
+
     // Activity events + mention targets for the internal chat FAB.
     const [activityEvents, memberships] = await Promise.all([
       listActivityForClient(client.id, {
@@ -146,6 +154,7 @@ export default async function BatchPreviewPage({
       <>
         {batch.currentStep === RelayStep.am_review_design && (
           <RequestChangesButton
+            designerName={assignedDesigner?.name ?? null}
             onClick={async () => {
               'use server'
               await requestDesignChangesAction({ batchId: batch.id })
