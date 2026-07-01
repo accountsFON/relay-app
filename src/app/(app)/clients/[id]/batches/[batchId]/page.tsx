@@ -64,6 +64,9 @@ import { MagicLinkRow } from '@/components/batch/magic-link-row'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
 import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
 import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
+import { RelayCompletedBanner } from '@/components/relay/relay-completed-banner'
+import { isRelayLocked } from '@/lib/relay-lock'
+import { cn } from '@/lib/utils'
 import { Palette, ExternalLink, Eye } from 'lucide-react'
 import Link from 'next/link'
 
@@ -263,6 +266,7 @@ export default async function BatchDetailPage({
   const canForceStep = ctx.role === 'admin' || ctx.platformOwner === true
   // Actions (generate content, export, archive) are unavailable on archived batches.
   const isLive = !batch.deletedAt
+  const isLocked = isRelayLocked(batch.currentStep)
 
   const run = await findRunForBatch(batch.id)
   const targetMonth = resolveBatchTargetMonth(batch, run)
@@ -391,6 +395,12 @@ export default async function BatchDetailPage({
         </div>
       )}
 
+      {!batch.deletedAt && isLocked && (
+        <div className="mb-6">
+          <RelayCompletedBanner completedAt={batch.completedAt ?? null} />
+        </div>
+      )}
+
       <HeroBand
         title={batch.label}
         subtitle={`${client.name} · ${relayStepLabel(batch.currentStep, batch.clientReviewEnabled)} · held by ${batch.holder.name}`}
@@ -402,7 +412,7 @@ export default async function BatchDetailPage({
       />
       {/* Mobile: one horizontal swipe bar so the actions never stack into
           several rows and eat vertical space. Desktop (sm+): wrap normally. */}
-      <div className="mt-5 flex items-center gap-2 overflow-x-auto pb-1 [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
+      <div className={cn("mt-5 flex items-center gap-2 overflow-x-auto pb-1 [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible sm:pb-0", isLocked && 'grayscale opacity-70')}>
         <Button
           variant="secondary"
           size="sm"
@@ -440,7 +450,7 @@ export default async function BatchDetailPage({
         )}
         {isLive && canAct && (
           <>
-            {batch.currentStep !== RelayStep.final_qa_schedule && (
+            {!isLocked && batch.currentStep !== RelayStep.final_qa_schedule && (
               <GenerateContentDialog
                 clientId={client.id}
                 targetMonth={targetMonth}
@@ -541,7 +551,7 @@ export default async function BatchDetailPage({
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="space-y-6 lg:order-1">
+        <div className={cn("space-y-6 lg:order-1", isLocked && 'grayscale opacity-70')}>
           {batch.clientReviewEnabled && magicLinks.length > 0 && (
             <PageSection title="Review link">
               <div className="space-y-2">
@@ -620,7 +630,7 @@ export default async function BatchDetailPage({
                 )
               ) : (
                 <>
-                  {canUploadMedia && isLive && (
+                  {canUploadMedia && isLive && !isLocked && (
                     <div className="mb-4">
                       <BulkMediaUploadPanel
                         batchId={batch.id}
@@ -660,8 +670,9 @@ export default async function BatchDetailPage({
                             postNumber={idx + 1}
                             mediaUrl={post.mediaUrls?.[0] ?? null}
                             canUploadMedia={canUploadMedia}
+                            locked={isLocked}
                           />
-                          <PostVersionHistory postId={post.id} versions={versionRows} canEdit={canEdit} />
+                          <PostVersionHistory postId={post.id} versions={versionRows} canEdit={canEdit} locked={isLocked} />
                         </div>
                       )
                     }),
@@ -681,7 +692,7 @@ export default async function BatchDetailPage({
         >
           {isClientDecisionView ? (
             <ClientDecisionPanel batch={batchSummary} />
-          ) : (
+          ) : isLocked ? null : (
             <>
               {isCopyPreApproved && (
                 <CopySubStatePanel
