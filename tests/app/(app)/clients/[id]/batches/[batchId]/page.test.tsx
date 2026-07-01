@@ -762,4 +762,24 @@ describe('BatchDetailPage', () => {
       expect(getAllByTestId(/^magic-link-row-/)).toHaveLength(1)
     })
   })
+
+  describe('toolbar Send review link button gating', () => {
+    it('shows the Send review link button on Pre-Client QA', async () => {
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'am_qa_pre_client',
+      } as never)
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('send-link-button-stub')).toBeInTheDocument()
+    })
+
+    it('hides the Send review link button on Design Review', async () => {
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'am_review_design',
+      } as never)
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('send-link-button-stub')).not.toBeInTheDocument()
+    })
+  })
 })

@@ -186,19 +186,29 @@ export function ChecklistPanel({
    * a copy override so the AM sees a destination-named label instead of the
    * internal step name "Pre-client QA".
    *
-   *   am_review_design + clientReviewEnabled  -> "Send to client review"
+   *   am_review_design + clientReviewEnabled  -> "Send to Pre-Client QA"
    *   am_review_design + no client review     -> "Send to final QA"
+   *   am_qa_pre_client + clientReviewEnabled  -> "Send to client review"
+   *   am_qa_pre_client + no client review     -> "Send to scheduling"
    *   anything else                           -> "Pass to ${STEP_LABEL[nextStep]}"
    *
-   * Server still validates the transition via LEGAL_TRANSITIONS in
-   * passBatonAction, so a stale UI cannot bypass the state machine.
+   * The client review link goes out ON Pre-Client QA (its checklist gate), so
+   * Design Review passes to QA (not straight to the client) and QA is the step
+   * that sends to client review. Server still validates the transition via
+   * LEGAL_TRANSITIONS in passBatonAction, so a stale UI cannot bypass the state
+   * machine.
    */
   function passButtonLabel(): string {
     if (!nextStep) return ''
     if (batch.currentStep === RelayStep.am_review_design) {
       return batch.clientReviewEnabled
-        ? 'Send to client review'
+        ? 'Send to Pre-Client QA'
         : 'Send to final QA'
+    }
+    if (batch.currentStep === RelayStep.am_qa_pre_client) {
+      return batch.clientReviewEnabled
+        ? 'Send to client review'
+        : 'Send to scheduling'
     }
     return `Pass to ${STEP_LABEL[nextStep]}`
   }

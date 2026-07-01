@@ -46,6 +46,8 @@ export interface NextActionInput {
   isHolder: boolean
   clientId: string
   batchId: string
+  /** Whether this client routes through client review (affects the QA CTA). */
+  clientReviewEnabled: boolean
   /** True when a client review session has been submitted (client_review). */
   hasSubmittedReviewSession: boolean
   /** The latest submitted review session id, for the feedback deep link. */
@@ -72,6 +74,7 @@ export function nextActionForRelay(input: NextActionInput): NextAction {
     viewerRole,
     clientId,
     batchId,
+    clientReviewEnabled,
     hasSubmittedReviewSession,
     reviewSessionId,
     assetsFolderUrl,
@@ -182,12 +185,19 @@ export function nextActionForRelay(input: NextActionInput): NextAction {
 
     case RelayStep.am_qa_pre_client:
       if (amViewer) {
-        return {
-          tone: 'action',
-          title: 'Run final QA',
-          detail: 'Check the relay before it goes to the client.',
-          button: { label: 'Open internal review', href: preview },
-        }
+        return clientReviewEnabled
+          ? {
+              tone: 'action',
+              title: 'Run final QA, then send the review link',
+              detail: 'Do the final internal check, then send the client the review link.',
+              button: { label: 'Open internal review', href: preview },
+            }
+          : {
+              tone: 'action',
+              title: 'Run final QA',
+              detail: 'Check the relay before it goes to scheduling.',
+              button: { label: 'Open internal review', href: preview },
+            }
       }
       return waiting('account manager')
 

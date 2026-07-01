@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { RelayStep, RelayRole } from '@prisma/client'
 import {
   HOLDER_ROLE,
   LEGAL_TRANSITIONS,
   LEGAL_TRANSITIONS_NO_REVIEW,
   checklistRowsForStep,
+  reseedChecklistForStep,
   holderRoleForStep,
   isChecklistComplete,
   legalNextSteps,
@@ -457,27 +458,75 @@ describe('implementing_revisions transitions (pipeline rework)', () => {
 })
 
 describe('checklistRowsForStep — send review link item', () => {
-  it('appends a required Send review link item on am_review_design when client review is on', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_review_design, true)
+  it('appends a required Send review link item on am_qa_pre_client when client review is on', () => {
+    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true)
     const sendItem = rows.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
     expect(sendItem).toEqual({
       batchId: 'batch-1',
-      step: RelayStep.am_review_design,
+      step: RelayStep.am_qa_pre_client,
       label: SEND_REVIEW_LINK_LABEL,
       required: true,
+      checked: false,
     })
-    expect(rows.length).toBe(6)
+    expect(rows.length).toBe(4)
   })
 
-  it('omits the Send review link item when client review is off', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_review_design, false)
+  it('marks the Send review link item checked when sendLinkChecked is true', () => {
+    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true, true)
+    const sendItem = rows.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
+    expect(sendItem?.checked).toBe(true)
+  })
+
+  it('omits the Send review link item on am_qa_pre_client when client review is off', () => {
+    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, false)
+    expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
+    expect(rows.length).toBe(3)
+  })
+
+  it('never adds the item on am_review_design, even when client review is on', () => {
+    const rows = checklistRowsForStep('batch-1', RelayStep.am_review_design, true)
     expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
     expect(rows.length).toBe(5)
   })
+})
 
-  it('never adds the item on other steps even when client review is on', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true)
-    expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
+describe('reseedChecklistForStep — send-link auto-check', () => {
+  function makeTx(activeLink: boolean) {
+    return {
+      checklistItem: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn().mockResolvedValue({}),
+      },
+      magicLink: {
+        findFirst: vi.fn().mockResolvedValue(activeLink ? { id: 'ml1' } : null),
+      },
+    }
+  }
+
+  function sentRow(tx: ReturnType<typeof makeTx>) {
+    const data = tx.checklistItem.createMany.mock.calls[0][0].data as {
+      label: string
+      checked: boolean
+    }[]
+    return data.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
+  }
+
+  it('checks the Send review link item on Pre-Client QA when an active link exists', async () => {
+    const tx = makeTx(true)
+    await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_qa_pre_client, true)
+    expect(sentRow(tx)?.checked).toBe(true)
+  })
+
+  it('leaves the Send review link item unchecked when no active link exists', async () => {
+    const tx = makeTx(false)
+    await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_qa_pre_client, true)
+    expect(sentRow(tx)?.checked).toBe(false)
+  })
+
+  it('does not query magic links for non-QA steps', async () => {
+    const tx = makeTx(false)
+    await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_review_design, true)
+    expect(tx.magicLink.findFirst).not.toHaveBeenCalled()
   })
 })
 
