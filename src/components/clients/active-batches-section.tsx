@@ -29,10 +29,12 @@ export async function ActiveBatchesSection({
   clientId,
   viewerUserId,
   canGenerate = false,
+  onboardingComplete = true,
 }: {
   clientId: string
   viewerUserId: string
   canGenerate?: boolean
+  onboardingComplete?: boolean
 }) {
   const batches = await listActiveBatchesForClient(clientId, viewerUserId)
 
@@ -51,6 +53,8 @@ export async function ActiveBatchesSection({
             <GenerateContentDialog
               clientId={clientId}
               targetMonth={nextMonthString()}
+              disabled={!onboardingComplete}
+              disabledReason="Complete onboarding first"
             />
           }
         />
