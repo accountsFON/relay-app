@@ -70,7 +70,7 @@ describe('ChecklistPanel CTA label (Phase 3 item 16)', () => {
     refreshMock.mockReset()
   })
 
-  it('shows "Send to client review" when AM review with client review enabled', () => {
+  it('shows "Send to Pre-Client QA" on Design Review with client review enabled', () => {
     render(
       <ChecklistPanel
         batch={makeBatch({ clientReviewEnabled: true })}
@@ -80,14 +80,14 @@ describe('ChecklistPanel CTA label (Phase 3 item 16)', () => {
       />,
     )
     expect(
-      screen.getByRole('button', { name: /send to client review/i }),
+      screen.getByRole('button', { name: /send to pre-client qa/i }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /pass to pre-client qa/i }),
+      screen.queryByRole('button', { name: /send to client review/i }),
     ).not.toBeInTheDocument()
   })
 
-  it('shows "Send to final QA" when AM review with client review disabled', () => {
+  it('shows "Send to final QA" on Design Review with client review disabled', () => {
     render(
       <ChecklistPanel
         batch={makeBatch({ clientReviewEnabled: false })}
@@ -98,6 +98,40 @@ describe('ChecklistPanel CTA label (Phase 3 item 16)', () => {
     )
     expect(
       screen.getByRole('button', { name: /send to final qa/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows "Send to client review" on Pre-Client QA with client review enabled', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({
+          currentStep: RelayStep.am_qa_pre_client,
+          clientReviewEnabled: true,
+        })}
+        items={makeItems()}
+        canAct
+        nextStep={RelayStep.client_review}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: /send to client review/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows "Send to scheduling" on Pre-Client QA with client review disabled', () => {
+    render(
+      <ChecklistPanel
+        batch={makeBatch({
+          currentStep: RelayStep.am_qa_pre_client,
+          clientReviewEnabled: false,
+        })}
+        items={makeItems()}
+        canAct
+        nextStep={RelayStep.scheduling}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: /send to scheduling/i }),
     ).toBeInTheDocument()
   })
 
@@ -350,11 +384,14 @@ describe('ChecklistPanel — send review link item', () => {
   })
 
   it('locks the pass until checked, unlocks once checked', () => {
-    const { rerender } = render(<ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: false })]} canAct
-      nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
+    // The send-link item now lives on Pre-Client QA, whose forward pass is
+    // "Send to client review".
+    const qaBatch = makeBatch({ currentStep: RelayStep.am_qa_pre_client })
+    const { rerender } = render(<ChecklistPanel batch={qaBatch} items={[makeSendItem({ checked: false })]} canAct
+      nextStep={RelayStep.client_review} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
     expect(screen.getByRole('button', { name: /send to client review/i })).toBeDisabled()
-    rerender(<ChecklistPanel batch={makeBatch()} items={[makeSendItem({ checked: true })]} canAct
-      nextStep={RelayStep.sent_to_client} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
+    rerender(<ChecklistPanel batch={qaBatch} items={[makeSendItem({ checked: true })]} canAct
+      nextStep={RelayStep.client_review} clientName="Akkoo Coffee" clientReviewEmail="jane@client.com" />)
     expect(screen.getByRole('button', { name: /send to client review/i })).toBeEnabled()
   })
 
@@ -485,7 +522,7 @@ describe('ChecklistPanel Request changes (merge design steps)', () => {
       />,
     )
     // Approve / pass forward CTA is still present alongside Request changes.
-    expect(screen.getByText(/send to client review|send to final qa|pass to/i)).toBeInTheDocument()
+    expect(screen.getByText(/send to pre-client qa|send to final qa|pass to/i)).toBeInTheDocument()
   })
 
   it('does NOT offer a send-back-to-Design-Revision option (empty send-back targets)', () => {
