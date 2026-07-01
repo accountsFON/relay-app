@@ -24,10 +24,6 @@ vi.mock('@/server/services/relay', () => ({
   markDesignRevisionsDone: vi.fn(),
 }))
 
-vi.mock('@/server/services/activity', () => ({
-  recordActivity: vi.fn(),
-}))
-
 vi.mock('@/server/repositories/threads', () => ({
   bulkResolveOnPost: vi.fn(),
 }))
@@ -36,6 +32,7 @@ vi.mock('@/db/client', () => ({
   db: {
     batch: { findUnique: vi.fn(), update: vi.fn() },
     checklistItem: { findUnique: vi.fn(), update: vi.fn() },
+    postThread: { count: vi.fn() },
   },
 }))
 
@@ -53,6 +50,7 @@ import {
   requestDesignChanges,
   markDesignRevisionsDone,
 } from '@/server/services/relay'
+import { bulkResolveOnPost } from '@/server/repositories/threads'
 import {
   passBatonAction,
   sendBackBatonAction,
@@ -60,6 +58,7 @@ import {
   forceStepAction,
   requestDesignChangesAction,
   markDesignRevisionsDoneAction,
+  markBatchReviewedAction,
   tickChecklistItemAction,
   setBatchAutoAdvanceAction,
 } from '@/server/actions/relay'
@@ -670,5 +669,70 @@ describe('setBatchAutoAdvanceAction', () => {
     await setBatchAutoAdvanceAction({ batchId: 'b1', clientId: 'c1', enabled: true })
 
     expect(revalidatePath).toHaveBeenCalledWith('/clients/c1/batches/b1')
+  })
+})
+
+describe('markBatchReviewedAction gated completion', () => {
+  beforeEach(() => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.am_review_design,
+      label: 'August 2026',
+      clientReviewEnabled: true,
+      client: { organizationId: 'org_1' },
+    } as never)
+    vi.mocked(passBaton).mockResolvedValue({ batchId: 'b1' } as never)
+  })
+
+  it('refuses to advance while any thread is open, and does not auto-resolve', async () => {
+    vi.mocked(db.postThread.count).mockResolvedValue(2)
+
+    await expect(markBatchReviewedAction({ batchId: 'b1' })).rejects.toThrow(
+      /resolve all open threads/i,
+    )
+    expect(passBaton).not.toHaveBeenCalled()
+    expect(bulkResolveOnPost).not.toHaveBeenCalled()
+  })
+
+  it('advances via passBaton when there are zero open threads', async () => {
+    vi.mocked(db.postThread.count).mockResolvedValue(0)
+
+    await markBatchReviewedAction({ batchId: 'b1' })
+
+    expect(bulkResolveOnPost).not.toHaveBeenCalled()
+    expect(passBaton).toHaveBeenCalledWith(
+      expect.objectContaining({ batchId: 'b1', toStep: RelayStep.am_qa_pre_client }),
+    )
+  })
+
+  it('counts only open threads on the batch', async () => {
+    vi.mocked(db.postThread.count).mockResolvedValue(0)
+
+    await markBatchReviewedAction({ batchId: 'b1' })
+
+    expect(db.postThread.count).toHaveBeenCalledWith({
+      where: { post: { batchId: 'b1', deletedAt: null }, status: 'open' },
+    })
+  })
+
+  it('calls finishBatch when the forward step is completed', async () => {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: RelayStep.scheduling,
+      clientReviewEnabled: true,
+      client: { organizationId: 'org_1' },
+    } as never)
+    vi.mocked(db.postThread.count).mockResolvedValue(0)
+    vi.mocked(finishBatch).mockResolvedValue({ batchId: 'b1' } as never)
+
+    await markBatchReviewedAction({ batchId: 'b1' })
+
+    expect(finishBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ batchId: 'b1' }),
+    )
+    expect(passBaton).not.toHaveBeenCalled()
   })
 })
