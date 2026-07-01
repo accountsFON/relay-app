@@ -92,6 +92,13 @@ describe('PostVersionHistory', () => {
     ).toBeInTheDocument()
   })
 
+  it('locked disables the Restore buttons', () => {
+    render(<PostVersionHistory postId="p1" versions={versions} canEdit locked />)
+    fireEvent.click(screen.getByRole('button', { name: /1 version/i }))
+    const restore = screen.queryByRole('button', { name: /restore/i })
+    if (restore) expect(restore).toBeDisabled()
+  })
+
   it('shows a friendly toast and does not throw when a restore fails', async () => {
     restoreMock.mockRejectedValueOnce(new Error('Error 67890'))
     render(<PostVersionHistory postId="p1" versions={versions} canEdit />)

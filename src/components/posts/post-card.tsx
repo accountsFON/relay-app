@@ -47,6 +47,7 @@ export function PostCard({
   onToggleCollapsed,
   mediaUrl = null,
   canUploadMedia = false,
+  locked = false,
 }: {
   post: Post
   canEdit?: boolean
@@ -62,6 +63,8 @@ export function PostCard({
   mediaUrl?: string | null
   /** Whether the viewer may upload/replace/remove this post's image (post.media.edit). */
   canUploadMedia?: boolean
+  /** When true, the relay is completed/locked: read-only, all edits hidden. */
+  locked?: boolean
 }) {
   const router = useRouter()
   const listCollapse = usePostListCollapse()
@@ -83,6 +86,7 @@ export function PostCard({
   const [localCollapsed, setLocalCollapsed] = useState(defaultCollapsed)
 
   const isArchived = Boolean(post.deletedAt)
+  const isReadOnly = isArchived || locked
 
   // Resolution order: explicit prop wins, then list context, then local state.
   const collapsed =
@@ -155,7 +159,7 @@ export function PostCard({
         data-post-id={post.id}
         data-archived={isArchived ? '1' : undefined}
         data-collapsed={collapsed ? '1' : undefined}
-        className={cn(isArchived && 'opacity-50 grayscale pointer-events-none')}
+        className={cn(isReadOnly && 'opacity-50 grayscale pointer-events-none')}
       >
         {/* Header strip: always rendered. Acts as the slim collapsed view
             when `collapsed` is true, and as the title row otherwise. */}
@@ -210,7 +214,7 @@ export function PostCard({
                   </Button>
                 </SimpleTooltip>
               )}
-              {canEdit && !isEditing && !isArchived && (
+              {canEdit && !isEditing && !isReadOnly && (
                 <SimpleTooltip content="Edit this post">
                   <Button
                     variant="ghost"
@@ -230,7 +234,7 @@ export function PostCard({
                   </Button>
                 </SimpleTooltip>
               )}
-              {canEdit && !isEditing && !isArchived && (
+              {canEdit && !isEditing && !isReadOnly && (
                 <SimpleTooltip content="Regenerate this post's caption with AI">
                   <Button
                     variant="ghost"
@@ -334,7 +338,7 @@ export function PostCard({
               </div>
             )}
 
-            {!isEditing && !isArchived && (canUploadMedia || mediaUrl) && (
+            {!isEditing && !isReadOnly && (canUploadMedia || mediaUrl) && (
               <div className="mt-4 space-y-2">
                 <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                   Image

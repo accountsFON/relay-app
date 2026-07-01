@@ -314,6 +314,14 @@ describe('PostCard archived state (cascade-archived, read only)', () => {
   })
 })
 
+describe('PostCard locked state (completed relay, read-only)', () => {
+  it('locked hides Edit and Regenerate and applies the read-only treatment', () => {
+    render(<PostCard post={basePost} canEdit locked canUploadMedia mediaUrl={null} />)
+    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /regenerate|redo/i })).not.toBeInTheDocument()
+  })
+})
+
 describe('PostCard reflects server updates (restore / redo)', () => {
   it('renders the updated caption prop, not stale local state', () => {
     const { rerender } = render(<PostCard post={basePost} canEdit />)

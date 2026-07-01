@@ -23,10 +23,12 @@ export function PostVersionHistory({
   postId,
   versions,
   canEdit = false,
+  locked = false,
 }: {
   postId: string
   versions: PostVersionRow[]
   canEdit?: boolean
+  locked?: boolean
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -111,7 +113,7 @@ export function PostVersionHistory({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRestore(v.id)}
-                        disabled={pendingId === v.id}
+                        disabled={pendingId === v.id || locked}
                         className="shrink-0"
                         aria-label={`Restore version from ${formatRelative(v.createdAt)}`}
                       >
