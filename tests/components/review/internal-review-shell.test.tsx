@@ -66,6 +66,7 @@ const BASE_PROPS = {
 
 function renderShell(overrides: Partial<typeof BASE_PROPS & {
   canEditCaption?: boolean
+  locked?: boolean
   amControlsSlot?: React.ReactNode
   designerControlsSlot?: React.ReactNode
 }> = {}) {
@@ -112,6 +113,44 @@ describe('InternalReviewShell', () => {
   it('renders the AM control slot when provided', () => {
     renderShell({ amControlsSlot: <button>Request changes</button> })
     expect(screen.getByRole('button', { name: 'Request changes' })).toBeInTheDocument()
+  })
+
+  describe('locked relay (completed step)', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+      vi.clearAllMocks()
+      for (const key of Object.keys(cardProps)) {
+        delete cardProps[key]
+      }
+    })
+
+    it('passes canEditCaption=false to every card when locked=true, even if canEditCaption prop is true', () => {
+      renderShell({ canEditCaption: true, locked: true })
+      for (const post of POSTS) {
+        expect(cardProps[post.post.id].canEditCaption).toBe(false)
+      }
+    })
+
+    it('passes onUploadImage=undefined to every card when locked=true, even if reviewerUserId is set', () => {
+      renderShell({ locked: true, ...{ reviewerUserId: 'user-1' } })
+      for (const post of POSTS) {
+        expect(cardProps[post.post.id].onUploadImage).toBeUndefined()
+      }
+    })
+
+    it('still passes onCreatePin to every card when locked (pins/markup stay open)', () => {
+      renderShell({ locked: true })
+      for (const post of POSTS) {
+        expect(cardProps[post.post.id].onCreatePin).toBeDefined()
+      }
+    })
+
+    it('still passes onAppendThreadComment when locked (comments stay open)', () => {
+      renderShell({ locked: true })
+      for (const post of POSTS) {
+        expect(cardProps[post.post.id].onAppendThreadComment).toBeDefined()
+      }
+    })
   })
 })
 

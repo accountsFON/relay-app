@@ -28,6 +28,7 @@ import {
   markDesignRevisionsDoneAction,
 } from '@/server/actions/relay'
 import { RelayStep } from '@prisma/client'
+import { isRelayLocked } from '@/lib/relay-lock'
 
 /**
  * Internal batch preview page (`/preview`).
@@ -67,6 +68,7 @@ export default async function BatchPreviewPage({
   const canEdit = canEditClients(ctx)
   const isAssignedDesigner =
     !canEdit && ctx.userDbId === client.assignedDesignerId
+  const isLocked = isRelayLocked(batch.currentStep)
 
   const posts = await db.post.findMany({
     where: { batchId: batch.id, deletedAt: null },
@@ -189,6 +191,7 @@ export default async function BatchPreviewPage({
             posts={feedPosts}
             canEditCaption={canEdit}
             allowPostPins={canEdit}
+            locked={isLocked}
             amControlsSlot={amControlsSlot}
             designerControlsSlot={designerControlsSlot}
           />
