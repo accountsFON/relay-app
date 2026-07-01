@@ -1016,7 +1016,12 @@ export async function markPostAddressedAction(input: {
       })
       await db.reviewItem.update({
         where: { id: item.id },
-        data: { addressedAt: new Date(), addressedBy: ctx.userDbId },
+        data: {
+          addressedAt: new Date(),
+          addressedBy: ctx.userDbId,
+          noteResolvedAt: new Date(),
+          noteResolvedBy: ctx.userDbId,
+        },
       })
     }
   }
@@ -1149,7 +1154,7 @@ export async function unmarkPostAddressedAction(input: {
     } else {
       await db.reviewItem.update({
         where: { id: item.id },
-        data: { addressedAt: null, addressedBy: null },
+        data: { addressedAt: null, addressedBy: null, noteResolvedAt: null, noteResolvedBy: null },
       })
     }
   }

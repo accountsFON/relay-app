@@ -1398,6 +1398,29 @@ describe('markPostAddressedAction — addressedAt persistence', () => {
 
     expect(db.reviewItem.update).not.toHaveBeenCalled()
   })
+
+  it('also stamps noteResolvedAt + noteResolvedBy when marking a changes_requested post addressed', async () => {
+    primeAmCtx()
+    primeMarkPost('changes_requested')
+
+    await markPostAddressedAction({
+      postId: MARK_POST_ID,
+      reviewItemId: MARK_ITEM_ID,
+      reviewSessionId: MARK_SESSION_ID,
+    })
+
+    expect(db.reviewItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: MARK_ITEM_ID },
+        data: expect.objectContaining({
+          addressedAt: expect.any(Date),
+          addressedBy: AM_USER_DB_ID,
+          noteResolvedAt: expect.any(Date),
+          noteResolvedBy: AM_USER_DB_ID,
+        }),
+      }),
+    )
+  })
 })
 
 describe('startNextRoundAction', () => {
@@ -1520,7 +1543,7 @@ describe('unmarkPostAddressedAction', () => {
     expect(result).toEqual({ ok: true, pinsReopened: 3 })
     expect(db.reviewItem.update).toHaveBeenCalledWith({
       where: { id: UNMARK_ITEM_ID },
-      data: { addressedAt: null, addressedBy: null },
+      data: { addressedAt: null, addressedBy: null, noteResolvedAt: null, noteResolvedBy: null },
     })
     expect(db.$transaction).not.toHaveBeenCalled()
     expect(recordActivity).toHaveBeenCalledTimes(1)
