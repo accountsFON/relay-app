@@ -26,6 +26,20 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-01 — Lock a completed relay (permanent read-only)** (PR #296)
+  Once a relay reaches the terminal `completed` step it locks: the page grays out with a
+  "This Relay is completed" banner and every post/relay edit is blocked in the UI AND
+  server-side. Permanent (no reopen for anyone — send-back AND admin force-step both removed
+  on completed), uniform (tied to the step, same for every viewer), chat stays open, archive
+  stays available (the only recourse for a mis-completion). Server guard `assertBatchEditable`
+  (throws `RelayCompletedError` when completed) covers every post-mutating path: updatePost /
+  redo / restore / useCommentImageAsPostMedia / media route (→409) / the two review-session
+  caption writers (acceptCaptionEdit, unmarkPostAddressed). Pure comment/thread actions left
+  open. Whole-branch opus review caught a Critical (the two review-session caption writes
+  bypassed the lock) — guarded with tests before merge. 2218 unit tests, tsc + eslint clean.
+  No schema change; Trigger.dev deploy skipped (actions/routes only). Spec + plan:
+  `vault projects/relay-app/2026-07-01-lock-completed-relay-{design,plan}.md`.
+
 - [x] **2026-07-01 — Gate bulk-generate on onboarding** (PR #295)
   Follow-up to #293/#294. The bulk-generate list let you select any active client, including
   not-onboarded ones, which the server then rejected per-row with no UI signal (silent "why didn't that
