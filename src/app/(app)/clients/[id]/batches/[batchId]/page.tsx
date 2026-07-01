@@ -435,7 +435,7 @@ export default async function BatchDetailPage({
           currentStep={batch.currentStep}
           assetsFolderUrl={client.assetsFolderUrl}
         />
-        {isLive && canEdit && batch.clientReviewEnabled && (
+        {isLive && canEdit && batch.clientReviewEnabled && batch.currentStep === RelayStep.am_qa_pre_client && (
           <SendLinkButton batchId={batch.id} clientName={client.name} clientReviewEmail={batch.client.clientReviewEmail} />
         )}
         {isLive && canAct && (
