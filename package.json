@@ -48,6 +48,7 @@
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.8",
     "@tanstack/react-query": "^5.99.0",
+    "@testing-library/dom": "^10.4.1",
     "@trigger.dev/sdk": "^4.4.4",
     "@types/diff": "^7.0.2",
     "@vercel/blob": "^2.3.3",
