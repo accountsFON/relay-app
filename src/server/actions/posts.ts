@@ -10,6 +10,7 @@ import {
   findVersion,
 } from '@/server/services/postVersions'
 import { redoPostCaption } from '@/server/services/redoPost'
+import { assertBatchEditable } from '@/server/lib/relay-lock-guard'
 
 export async function updatePostAction(
   postId: string,
@@ -27,6 +28,7 @@ export async function updatePostAction(
   // (404 semantics) to avoid leaking existence across org or client boundaries.
   const before = await findPostById(postId, ctx)
   if (!before) return
+  await assertBatchEditable(before.batchId)
 
   // Snapshot the prior body BEFORE the update so we can restore to it.
   await snapshotPostVersion({
@@ -88,6 +90,7 @@ export async function restorePostVersionAction(versionId: string) {
   // matching findClientForUser).
   const current = await findPostById(version.postId, ctx)
   if (!current) throw new Error('Post not found')
+  await assertBatchEditable(current.batchId)
 
   await snapshotPostVersion({
     postId: version.postId,
@@ -140,6 +143,7 @@ export async function redoPostAction(postId: string) {
 
   const before = await findPostById(postId, ctx)
   if (!before) throw new Error('Post not found')
+  await assertBatchEditable(before.batchId)
 
   const result = await redoPostCaption({
     postId,
