@@ -26,6 +26,18 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-01 — Grandfather existing clients as onboarded (hotfix for #293)** (PR #294)
+  Caught in live browser verification: #293's onboarding gate re-gated established clients whose
+  `onboardingCompletedAt` was never set — that field was only ever written by the admin Onboarding
+  queue, so clients set up + generated via the Generate flow (the common path) never had it, and
+  post-deploy active clients (e.g. Effect Med Spa, mid-relay with 14 posts) showed a fresh onboarding
+  checklist with Generate disabled + Re-run blocked. Data-only idempotent backfill:
+  `UPDATE clients SET onboardingCompletedAt = createdAt WHERE onboardingCompletedAt IS NULL`
+  (migration `20260701180000`), grandfathering all existing clients; new clients still onboard. No
+  schema/code change → Trigger.dev deploy skips. Re-verified live: Effect Med Spa now generates. Lesson:
+  a migration that only defaults new rows must also backfill existing rows — verify data-state
+  assumptions on prod, not just logic.
+
 - [x] **2026-07-01 — Move onboarding to the client page; relays start at Copy Review** (PR #293)
   Retired `onboarding_gate` from the visible pipeline (track arrays, both transition tables, dashboard
   `AM_TRACK_STEPS`, batch empty-state; enum value kept for history + idempotent backfill for any stray
