@@ -75,6 +75,7 @@ enum ActivityKind {
   client_profile_edited
   client_archived
   client_imported
+  client_onboarding_completed
 
   client_am_assigned
   client_am_unassigned
@@ -219,28 +220,28 @@ model User {
   /// dismissed (e.g. ["overview-v1"]). Drives the multi-tour registry;
   /// independent of the legacy onboardingTourSeenAt/launchPadDismissedAt
   /// columns which still gate the /welcome first-timer redirect.
-  seenTours String[] @default([])
+  seenTours            String[]  @default([])
 
-  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assignedClients   Client[]             @relation("AssignedAM")
-  designedClients   Client[]             @relation("AssignedDesigner")
-  linkedClient      Client?              @relation("LinkedClient", fields: [linkedClientId], references: [id])
-  triggeredRuns     ContentRun[]         @relation("TriggeredBy")
+  organization           Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedClients        Client[]             @relation("AssignedAM")
+  designedClients        Client[]             @relation("AssignedDesigner")
+  linkedClient           Client?              @relation("LinkedClient", fields: [linkedClientId], references: [id])
+  triggeredRuns          ContentRun[]         @relation("TriggeredBy")
   auditLogsAsActor       PermissionAuditLog[] @relation("AuditActor")
   auditLogsAsTarget      PermissionAuditLog[] @relation("AuditTarget")
   impersonationsAsActor  ImpersonationLog[]   @relation("ImpersonationActor")
   impersonationsAsTarget ImpersonationLog[]   @relation("ImpersonationTarget")
-  memberships       Membership[]
-  heldBatches       Batch[]              @relation("BatchHolder")
-  firedActivity     ActivityEvent[]      @relation("ActivityActor")
-  mentions          Mention[]
-  postVersions      PostVersion[]        @relation("PostVersionAuthor")
-  threadsResolved   PostThread[]         @relation("ThreadResolver")
-  threadsAuthored   PostThread[]         @relation("ThreadAuthor")
-  commentsAuthored  PostComment[]        @relation("CommentAuthor")
-  magicLinksCreated MagicLink[]          @relation("MagicLinkCreator")
-  feedback          Feedback[]           @relation("FeedbackSubmitter")
-  internalReviewSessions ReviewSession[] @relation("InternalReviewer")
+  memberships            Membership[]
+  heldBatches            Batch[]              @relation("BatchHolder")
+  firedActivity          ActivityEvent[]      @relation("ActivityActor")
+  mentions               Mention[]
+  postVersions           PostVersion[]        @relation("PostVersionAuthor")
+  threadsResolved        PostThread[]         @relation("ThreadResolver")
+  threadsAuthored        PostThread[]         @relation("ThreadAuthor")
+  commentsAuthored       PostComment[]        @relation("CommentAuthor")
+  magicLinksCreated      MagicLink[]          @relation("MagicLinkCreator")
+  feedback               Feedback[]           @relation("FeedbackSubmitter")
+  internalReviewSessions ReviewSession[]      @relation("InternalReviewer")
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -282,15 +283,18 @@ model Client {
   deletedAt           DateTime?
   deletedBy           String?
 
-  organization          Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assignedAm            User?           @relation("AssignedAM", fields: [assignedAmId], references: [id])
-  assignedDesigner      User?           @relation("AssignedDesigner", fields: [assignedDesignerId], references: [id])
-  linkedClientUsers     User[]          @relation("LinkedClient")
-  contentRuns           ContentRun[]
-  posts                 Post[]
-  batches               Batch[]
-  activityEvents        ActivityEvent[]
-  onboardingCompletedAt DateTime?
+  organization                Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedAm                  User?           @relation("AssignedAM", fields: [assignedAmId], references: [id])
+  assignedDesigner            User?           @relation("AssignedDesigner", fields: [assignedDesignerId], references: [id])
+  linkedClientUsers           User[]          @relation("LinkedClient")
+  contentRuns                 ContentRun[]
+  posts                       Post[]
+  batches                     Batch[]
+  activityEvents              ActivityEvent[]
+  onboardingCompletedAt       DateTime?
+  onboardingAccountFilledOut  Boolean         @default(false)
+  onboardingDesignFolderReady Boolean         @default(false)
+  onboardingAssetsReceived    Boolean         @default(false)
 
   @@index([organizationId])
   @@index([assignedAmId])
@@ -459,7 +463,7 @@ model ImpersonationLog {
   organizationId String
   realActorId    String
   targetUserId   String
-  action         String   // 'start' | 'stop'
+  action         String // 'start' | 'stop'
   createdAt      DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -491,14 +495,14 @@ model Membership {
 }
 
 model Batch {
-  id                  String    @id @default(cuid())
-  clientId            String
-  label               String
-  currentStep         RelayStep
-  currentSubState     String?
-  currentHolder       String
-  currentRole         RelayRole
-  scheduledAt         DateTime?
+  id                    String    @id @default(cuid())
+  clientId              String
+  label                 String
+  currentStep           RelayStep
+  currentSubState       String?
+  currentHolder         String
+  currentRole           RelayRole
+  scheduledAt           DateTime?
   clientReviewEnabled   Boolean   @default(false)
   autoAdvanceOnTimeout  Boolean   @default(true)
   clientReviewStartedAt DateTime?
@@ -724,7 +728,7 @@ model MagicLinkReviewer {
   tutorialSeenAt DateTime?
   /// Per-reviewer marker: last time this reviewer's review page rendered
   /// (marks AM replies as "seen"). Null = never seen.
-  repliesSeenAt DateTime?
+  repliesSeenAt  DateTime?
 
   magicLink      MagicLink       @relation(fields: [magicLinkId], references: [id], onDelete: Cascade)
   reviewSessions ReviewSession[]
@@ -747,13 +751,13 @@ model ReviewSession {
   /// Direct FK to the batch under review, populated for BOTH kinds (backfilled
   /// from magicLink.batchId for pre-existing client rows). Lets
   /// listSessionsForBatch match by batchId without the magic-link join.
-  batchId String
+  batchId        String
   /// Nullable since 2026-06-29: internal sessions have no magic link. Set for
   /// client sessions only.
-  magicLinkId String?
+  magicLinkId    String?
   /// Null until first-visit name confirm associates the session with a
   /// MagicLinkReviewer. Client sessions only.
-  reviewerId  String?
+  reviewerId     String?
   /// The Clerk User (AM) reviewing on an internal session. Internal sessions
   /// only; null for client sessions.
   reviewerUserId String?
