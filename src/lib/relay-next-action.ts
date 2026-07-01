@@ -184,8 +184,8 @@ export function nextActionForRelay(input: NextActionInput): NextAction {
       if (amViewer) {
         return {
           tone: 'action',
-          title: 'Run final QA',
-          detail: 'Check the relay before it goes to the client.',
+          title: 'Run final QA, then send the review link',
+          detail: 'Do the final internal check, then send the client the review link.',
           button: { label: 'Open internal review', href: preview },
         }
       }

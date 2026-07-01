@@ -146,6 +146,7 @@ describe('nextActionForRelay', () => {
       })
       expect(a.tone).toBe('action')
       expect(a.title).toMatch(/final qa/i)
+      expect(a.detail).toMatch(/review link/i)
       expect(a.button?.href).toBe(PREVIEW)
     })
   })
