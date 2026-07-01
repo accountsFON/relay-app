@@ -132,11 +132,13 @@ import {
   addressItemAction,
   markPostAddressedAction,
   rejectCaptionEditAction,
+  resolveNoteAction,
   saveReviewDraftAction,
   startNextRoundAction,
   startReviewSessionAction,
   submitSessionAction,
   unmarkPostAddressedAction,
+  unresolveNoteAction,
 } from '@/server/actions/reviewSessions'
 import { assertBatchEditable, RelayCompletedError } from '@/server/lib/relay-lock-guard'
 
@@ -1650,6 +1652,90 @@ describe('unmarkPostAddressedAction', () => {
     expect(snapshotPostVersion).not.toHaveBeenCalled()
     expect(db.$transaction).not.toHaveBeenCalled()
     expect(recordActivity).not.toHaveBeenCalled()
+  })
+})
+
+describe('resolveNoteAction / unresolveNoteAction', () => {
+  const NOTE_POST_ID = 'cuid_post_note'
+  const NOTE_ITEM_ID = 'cuid_item_note'
+  const NOTE_SESSION_ID = 'cuid_session_note'
+
+  function primeNote(): void {
+    primeAmCtx()
+    vi.mocked(db.post.findUnique).mockResolvedValue({
+      id: NOTE_POST_ID,
+      clientId: CLIENT_ID,
+      batchId: BATCH_ID,
+    } as never)
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      id: NOTE_ITEM_ID,
+      postId: NOTE_POST_ID,
+    } as never)
+  }
+
+  it('stamps noteResolvedAt + noteResolvedBy on the item', async () => {
+    primeNote()
+
+    await resolveNoteAction({
+      postId: NOTE_POST_ID,
+      reviewItemId: NOTE_ITEM_ID,
+      reviewSessionId: NOTE_SESSION_ID,
+    })
+
+    expect(db.reviewItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: NOTE_ITEM_ID },
+        data: { noteResolvedAt: expect.any(Date), noteResolvedBy: AM_USER_DB_ID },
+      }),
+    )
+  })
+
+  it('clears noteResolvedAt + noteResolvedBy on unresolve', async () => {
+    primeNote()
+
+    await unresolveNoteAction({
+      postId: NOTE_POST_ID,
+      reviewItemId: NOTE_ITEM_ID,
+      reviewSessionId: NOTE_SESSION_ID,
+    })
+
+    expect(db.reviewItem.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: NOTE_ITEM_ID },
+        data: { noteResolvedAt: null, noteResolvedBy: null },
+      }),
+    )
+  })
+
+  it('rejects when the item does not belong to the post', async () => {
+    primeNote()
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      id: NOTE_ITEM_ID,
+      postId: 'a-different-post',
+    } as never)
+
+    await expect(
+      resolveNoteAction({
+        postId: NOTE_POST_ID,
+        reviewItemId: NOTE_ITEM_ID,
+        reviewSessionId: NOTE_SESSION_ID,
+      }),
+    ).rejects.toThrow()
+    expect(db.reviewItem.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects cross-tenant (findClientForUser returns null)', async () => {
+    primeNote()
+    vi.mocked(findClientForUser).mockResolvedValue(null as never)
+
+    await expect(
+      resolveNoteAction({
+        postId: NOTE_POST_ID,
+        reviewItemId: NOTE_ITEM_ID,
+        reviewSessionId: NOTE_SESSION_ID,
+      }),
+    ).rejects.toThrow()
+    expect(db.reviewItem.update).not.toHaveBeenCalled()
   })
 })
 
