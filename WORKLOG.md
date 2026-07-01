@@ -26,6 +26,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-01 — Client quick-access row wraps so Assets/Canva don't bleed over** (PR #290)
+  On the client page, with many website links the quick-access Links block wrapped to multiple rows
+  but the top-level flex row (Links | Assets | Canva) could NOT wrap, so the Assets + Canva blocks
+  were squeezed onto one line, collided, and bled past the card edge, even at full width. Reproduced
+  live in the browser (row scrollWidth exceeded clientWidth ~50px). Fix: `sm:flex-wrap` on the row +
+  `min-w-0` -> `shrink-0` on the Assets/Canva blocks (co-dependent; the regression test locks both).
+  Verified live: overflow -> 0, Assets/Canva wrap to their own right-aligned line; few-links layout
+  unchanged; mobile inert. NO schema/jobs/services/prompts change -> Trigger.dev deploy skips. 2156
+  unit tests pass, tsc + eslint clean; whole-branch opus review READY_TO_MERGE. Spec:
+  `vault projects/relay-app/2026-07-01-client-quick-access-overflow-design.md`.
+
 - [x] **2026-07-01 — Bulk media tray auto-fills empty post slots (CSV "only one image" root cause)** (PR #289)
   Reported as "CSV export only includes the first post's image." The export is actually correct
   (Relay is single-image-per-post by design; the export maps every post's `mediaUrls[0]`). Real
