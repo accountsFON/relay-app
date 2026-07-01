@@ -14,10 +14,18 @@ const baseProps = {
 }
 
 describe('ReviewSessionReminderEmail', () => {
-  it('renders the reviewer first name in the greeting', async () => {
+  it('renders the full reviewer name in the greeting', async () => {
     const html = await render(<ReviewSessionReminderEmail {...baseProps} />)
-    // Greeting uses first token only.
-    expect(html).toContain('Hey Caleb')
+    // Greeting uses the full name (not first-token shortened).
+    expect(html).toContain('Hey Caleb Cody,')
+  })
+
+  it('greets a business/multi-word reviewer name in full (no first-token shortening)', async () => {
+    const html = await render(
+      <ReviewSessionReminderEmail {...baseProps} reviewerName="Old Plank" />,
+    )
+    expect(html).toContain('Hey Old Plank,')
+    expect(html).not.toContain('Hey Old,')
   })
 
   it('renders progress as N of M', async () => {

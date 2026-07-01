@@ -21,9 +21,10 @@ import {
   Section,
   Text,
 } from '@react-email/components'
+import { greetingName } from '@/lib/greeting'
 
 export interface AmReplyEmailProps {
-  /** Full reviewer name. Greeting uses the first token only. */
+  /** Full reviewer name. Greeting uses the full name (see greetingName). */
   reviewerName: string
   /** Client display name, e.g. "Acme Co". */
   clientName: string
@@ -31,12 +32,6 @@ export interface AmReplyEmailProps {
   amName: string
   /** Fully qualified URL the reviewer clicks to open the review. */
   reviewUrl: string
-}
-
-function firstName(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed) return 'there'
-  return trimmed.split(/\s+/)[0]
 }
 
 export function buildAmReplySubject(props: Pick<AmReplyEmailProps, 'clientName'>): string {
@@ -152,7 +147,7 @@ export function AmReplyEmail({
   amName,
   reviewUrl,
 }: AmReplyEmailProps): React.ReactElement {
-  const fname = firstName(reviewerName)
+  const greetName = greetingName(reviewerName)
 
   return (
     <Html>
@@ -166,7 +161,7 @@ export function AmReplyEmail({
           </Section>
 
           <Section style={bodySectionStyle}>
-            <Text style={h1Style}>{`Hey ${fname},`}</Text>
+            <Text style={h1Style}>{`Hey ${greetName},`}</Text>
             <Text style={paragraphStyle}>
               {`${amName} replied to your feedback on ${clientName}'s posts. Open your review to read the reply and respond.`}
             </Text>
