@@ -26,6 +26,21 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-01 — Bulk media tray auto-fills empty post slots (CSV "only one image" root cause)** (PR #289)
+  Reported as "CSV export only includes the first post's image." The export is actually correct
+  (Relay is single-image-per-post by design; the export maps every post's `mediaUrls[0]`). Real
+  cause: the bulk media tray only persisted files that auto-matched by filename (`MM-DD` / trailing
+  digit); arbitrarily-named files sat unassigned and were skipped on Apply, so only the matched
+  (often first) post got an image. Added a pure `fillEmptyPostSlots()` (src/lib/media-match.ts)
+  called after filename matching: leftover files fill the remaining empty post slots in order, so a
+  bulk drop lands on every post. Visible preview + manual drag-reassign remain as the safety net;
+  extra files still surface in the Unassigned zone. Export code unchanged (proven correct). NO
+  schema/jobs/services/prompts change → Trigger.dev deploy skips. 2155 unit tests pass, tsc + eslint
+  clean; whole-branch opus review READY_TO_MERGE. Spec:
+  `vault projects/relay-app/2026-07-01-bulk-media-autofill-design.md`.
+  Follow-ups (non-blocking): parked-file re-fill on a second drop; order-pairing UI hint for
+  arbitrary filenames; latent CSV multi-image drop (only `mediaUrls[0]` exported) when v2 carousels land.
+
 - [x] **2026-07-01 — Review emails greet with the full name, not a first-token shorten** (PR #288)
   The client review emails mangled a business recipient name: "Old Plank" became "Old"
   ("Hi Old," / "Hey Old,"). Cause: the send-link modal defaults the Recipient name to the
