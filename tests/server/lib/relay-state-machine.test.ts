@@ -261,7 +261,10 @@ describe('go back on every step', () => {
   it('every live RelayStep except onboarding_gate has at least one legal send-back target', () => {
     // Pipeline rework: retired steps kept for historical rows only (no live edges).
     const noEdgesSteps = new Set<RelayStep>([
+      // onboarding_gate retired from transitions 2026-07-01; copy is now the first live step.
       RelayStep.onboarding_gate,
+      // copy has no send-back target now that onboarding_gate is removed.
+      RelayStep.copy,
       RelayStep.designs_completed,
       RelayStep.revisions_complete,
       // Retired by pipeline rework (2026-06-22) — no live edges in either table:
@@ -291,10 +294,8 @@ describe('go back on every step', () => {
     }
   })
 
-  it('copy can go back to onboarding_gate', () => {
-    expect(legalSendBackTargets(RelayStep.copy, true)).toEqual([
-      RelayStep.onboarding_gate,
-    ])
+  it('copy has no send-back targets (onboarding_gate retired 2026-07-01, now first live step)', () => {
+    expect(legalSendBackTargets(RelayStep.copy, true)).toEqual([])
   })
 
   it('in_design can go back to copy', () => {
@@ -612,5 +613,21 @@ describe('pipeline rework: no-review transitions', () => {
   })
   it('scheduling completes', () => {
     expect(validateTransition(RelayStep.scheduling, RelayStep.completed, false).ok).toBe(true)
+  })
+})
+
+describe('onboarding_gate retired from transitions', () => {
+  it('copy has no send-back to onboarding_gate (both tables)', () => {
+    expect(legalSendBackTargets(RelayStep.copy, true)).not.toContain(RelayStep.onboarding_gate)
+    expect(legalSendBackTargets(RelayStep.copy, false)).not.toContain(RelayStep.onboarding_gate)
+  })
+  it('copy -> onboarding_gate is illegal in both tables', () => {
+    expect(validateTransition(RelayStep.copy, RelayStep.onboarding_gate, true).ok).toBe(false)
+    expect(validateTransition(RelayStep.copy, RelayStep.onboarding_gate, false).ok).toBe(false)
+  })
+  it('no transition edge references onboarding_gate at all', () => {
+    const touches = (t: { from: RelayStep; to: RelayStep }) => t.from === RelayStep.onboarding_gate || t.to === RelayStep.onboarding_gate
+    expect(LEGAL_TRANSITIONS.some(touches)).toBe(false)
+    expect(LEGAL_TRANSITIONS_NO_REVIEW.some(touches)).toBe(false)
   })
 })
