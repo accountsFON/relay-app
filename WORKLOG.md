@@ -16,6 +16,8 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
 - [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
 - [ ] **(follow-up) Refresh the admin force-step list** (`admin-force-step-section.tsx` `STEP_ORDER`) to the live step set — it predates the 2026-06-22 rework (omits `client_review`/`scheduling`, lists their retirees). `design_revisions` already removed.
+- [ ] **(feature) Review resolve-checklist — slices 3 & 4** — slice 1 (gated Mark relay reviewed, PR #297) + slice 2 (note-resolve server core, PR #298) shipped. Remaining: **slice 3** = per-item resolve checklist + changes filter/stepper on both AM surfaces (`/preview` internal review + review-session client-feedback) via a shared `ChangesNavigator` (build it with its first consumer); **slice 4** = client magic-link changes navigation (filter + item stepper, navigation-only). Spec: `2026-07-01-review-changes-checklist-design.md`.
+- [ ] **(follow-up) `MarkBatchReviewedButton` renders at every AM-held step** — `implementing_revisions` has two forward edges, so an enabled button there throws "multiple forward branches" as a soft error (pre-existing; PR #297 made it easier to reach). Gate the button's render/disabled to single-forward-edge steps.
 
 ## Notes / standing rules
 
@@ -25,6 +27,33 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 ---
 
 ## Shipped
+
+- [x] **2026-07-01 — Review note-resolve server core** (PR #298)
+  Slice 2 of the review resolve-checklist. Additive `ReviewItem.noteResolvedAt` / `noteResolvedBy`
+  (nullable, no backfill) so a client's general note (`ReviewItem.comment`) becomes resolvable.
+  `markPostAddressedAction` / `unmarkPostAddressedAction` now also resolve / clear the note (Mark
+  addressed resolves the whole post incl. its note; un-address reverses it symmetrically — no
+  "un-addressed but note-resolved" limbo). New `resolveNoteAction` / `unresolveNoteAction` for
+  per-note resolve, mirroring markPostAddressed's guard posture (requireClientEditor + org scope +
+  item-belongs-to-post + postId validation); unused until slice 3 wires the UI. Whole-branch opus
+  review READY_TO_MERGE (schema/migration drift-free, symmetry correct, guard not bypassable,
+  verifiably inert until slice 3). 2233 unit tests, tsc + scoped lint clean. Migration applies on
+  deploy; no `src/server/jobs/**` change → Trigger.dev deploy skips. Shared `ChangesNavigator` UI
+  deferred to slice 3 (build-with-first-consumer). Spec + plan: `vault
+  projects/relay-app/2026-07-01-review-changes-checklist-design.md` +
+  `2026-07-01-review-note-resolve-core-plan.md`.
+
+- [x] **2026-07-01 — Gate Mark relay reviewed on all-resolved; designer-notified Request changes** (PR #297)
+  Slice 1 of the review resolve-checklist. On `/preview`, "Mark relay reviewed" is now hard-gated
+  (disabled until every open thread on a live post is resolved, refuses server-side) — the old
+  force-advance override (auto-resolved threads with a canned reason, then advanced) is removed;
+  admin force-step stays as the emergency escape. "Request changes" now names the notified designer
+  and disables after send (no double-fire). Two bugs caught + fixed mid-build by the per-task
+  reviews: the gate first counted threads on soft-deleted posts (UI hides them) → would block
+  advance forever, fixed to `deletedAt: null` so page count + server gate agree on scope; and the
+  Request-changes double-fire. Whole-branch opus review READY_TO_MERGE. 2227 unit tests, tsc +
+  eslint clean; Trigger.dev deploy skipped. Spec + plan: `vault
+  projects/relay-app/2026-07-01-preview-mark-reviewed-gate-plan.md`.
 
 - [x] **2026-07-01 — Lock a completed relay (permanent read-only)** (PR #296)
   Once a relay reaches the terminal `completed` step it locks: the page grays out with a

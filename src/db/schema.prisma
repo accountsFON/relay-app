@@ -824,6 +824,13 @@ model ReviewItem {
   addressedAt DateTime?
   addressedBy String?
 
+  /// Set when an AM resolves this item's general note (ReviewItem.comment) on
+  /// the review-session resolve checklist, or via Mark addressed. Real state so
+  /// it is reversible (un-resolve / un-address clears it). Independent of
+  /// addressedAt; Mark addressed resolves both.
+  noteResolvedAt DateTime?
+  noteResolvedBy String?
+
   reviewSession ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
   post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
   acceptedAs    PostVersion?  @relation("ReviewItemAcceptedVersion", fields: [acceptedAsPostVersionId], references: [id], onDelete: SetNull)

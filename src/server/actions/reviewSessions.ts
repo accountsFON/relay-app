@@ -1016,7 +1016,12 @@ export async function markPostAddressedAction(input: {
       })
       await db.reviewItem.update({
         where: { id: item.id },
-        data: { addressedAt: new Date(), addressedBy: ctx.userDbId },
+        data: {
+          addressedAt: new Date(),
+          addressedBy: ctx.userDbId,
+          noteResolvedAt: new Date(),
+          noteResolvedBy: ctx.userDbId,
+        },
       })
     }
   }
@@ -1149,7 +1154,7 @@ export async function unmarkPostAddressedAction(input: {
     } else {
       await db.reviewItem.update({
         where: { id: item.id },
-        data: { addressedAt: null, addressedBy: null },
+        data: { addressedAt: null, addressedBy: null, noteResolvedAt: null, noteResolvedBy: null },
       })
     }
   }
@@ -1171,4 +1176,72 @@ export async function unmarkPostAddressedAction(input: {
 
   revalidateAmReviewPaths(post.clientId, post.batchId, input.reviewSessionId)
   return { ok: true, pinsReopened }
+}
+
+/**
+ * Resolve a post's general client note (ReviewItem.comment) on the review-
+ * session resolve checklist. Mirrors markPostAddressedAction's guard posture
+ * (requireClientEditor + findClientForUser org scope). Reversible via
+ * unresolveNoteAction. Does not gate on assertBatchEditable — resolving review
+ * state is not a post-content edit, matching markPostAddressedAction.
+ */
+export async function resolveNoteAction(input: {
+  postId: string
+  reviewItemId: string
+  reviewSessionId: string
+}): Promise<{ ok: true }> {
+  return setNoteResolved(input, true)
+}
+
+/** Inverse of resolveNoteAction: re-open the note. */
+export async function unresolveNoteAction(input: {
+  postId: string
+  reviewItemId: string
+  reviewSessionId: string
+}): Promise<{ ok: true }> {
+  return setNoteResolved(input, false)
+}
+
+async function setNoteResolved(
+  input: { postId: string; reviewItemId: string; reviewSessionId: string },
+  resolved: boolean,
+): Promise<{ ok: true }> {
+  const ctx = await requireClientEditor()
+
+  if (!input.postId || typeof input.postId !== 'string') {
+    throw new ReviewSessionActionError('postId required')
+  }
+
+  if (!input.reviewItemId || typeof input.reviewItemId !== 'string') {
+    throw new ReviewSessionActionError('reviewItemId required')
+  }
+
+  const post = await db.post.findUnique({
+    where: { id: input.postId },
+    select: { id: true, clientId: true, batchId: true },
+  })
+  if (!post || !post.batchId) {
+    throw new ReviewSessionActionError('Post not found')
+  }
+
+  const client = await findClientForUser(ctx, post.clientId)
+  if (!client) throw new ReviewSessionActionError('Post not found')
+
+  const item = await db.reviewItem.findUnique({
+    where: { id: input.reviewItemId },
+    select: { id: true, postId: true },
+  })
+  if (!item || item.postId !== input.postId) {
+    throw new ReviewSessionActionError('Review item does not belong to this post')
+  }
+
+  await db.reviewItem.update({
+    where: { id: item.id },
+    data: resolved
+      ? { noteResolvedAt: new Date(), noteResolvedBy: ctx.userDbId }
+      : { noteResolvedAt: null, noteResolvedBy: null },
+  })
+
+  revalidateAmReviewPaths(post.clientId, post.batchId, input.reviewSessionId)
+  return { ok: true }
 }
