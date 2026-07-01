@@ -28,6 +28,22 @@ describe('RequestChangesButton', () => {
     expect(success.textContent).toMatch(/no designer is assigned/i)
   })
 
+  it('disables the button after a successful send (no double-fire)', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn().mockResolvedValue(undefined)
+    render(<RequestChangesButton onClick={onClick} designerName="Mollie Huebner" />)
+
+    const button = screen.getByTestId('request-changes-button') as HTMLButtonElement
+    await user.click(button)
+
+    // Success rendered, and the button is now disabled so it can't be re-fired.
+    await screen.findByTestId('request-changes-success')
+    expect(button.disabled).toBe(true)
+
+    await user.click(button)
+    expect(onClick).toHaveBeenCalledOnce()
+  })
+
   it('surfaces an error and shows no success line when the action rejects', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn().mockRejectedValueOnce(new Error('nope'))

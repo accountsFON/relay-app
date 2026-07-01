@@ -47,7 +47,7 @@ export function RequestChangesButton({
         variant="outline"
         size="default"
         onClick={handleClick}
-        disabled={disabled || isPending}
+        disabled={disabled || isPending || sent}
         data-testid="request-changes-button"
       >
         {isPending ? 'Requesting...' : 'Request changes'}
