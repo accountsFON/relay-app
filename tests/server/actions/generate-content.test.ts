@@ -41,7 +41,11 @@ const TARGET_MONTH = '2026-05'
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireClientEditor).mockResolvedValue(mockCtx as never)
-  vi.mocked(findClientForUser).mockResolvedValue({ id: CLIENT_ID } as never)
+  // Default: onboarded client so existing tests continue to reach the batch/fire logic
+  vi.mocked(findClientForUser).mockResolvedValue({
+    id: CLIENT_ID,
+    onboardingCompletedAt: new Date('2026-01-01'),
+  } as never)
 })
 
 // ---------------------------------------------------------------------------
@@ -253,6 +257,46 @@ describe('generateContentAction — fire phase', () => {
       kind: 'drift',
       current: { batchId: 'batch_appeared', label: 'May 2026', postCount: 5 },
     })
+    expect(vi.mocked(triggerGeneration)).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Onboarding guard
+// ---------------------------------------------------------------------------
+
+describe('generateContentAction — onboarding guard', () => {
+  it('probe: returns error and does not call triggerGeneration when onboardingCompletedAt is null', async () => {
+    vi.mocked(findClientForUser).mockResolvedValue({
+      id: CLIENT_ID,
+      onboardingCompletedAt: null,
+    } as never)
+
+    const result = await generateContentAction({
+      kind: 'probe',
+      clientId: CLIENT_ID,
+      targetMonth: TARGET_MONTH,
+    })
+
+    expect(result).toEqual({ kind: 'error', message: expect.stringContaining('onboarding') })
+    expect(vi.mocked(triggerGeneration)).not.toHaveBeenCalled()
+  })
+
+  it('fire: returns error and does not call triggerGeneration when onboardingCompletedAt is null', async () => {
+    vi.mocked(findClientForUser).mockResolvedValue({
+      id: CLIENT_ID,
+      onboardingCompletedAt: null,
+    } as never)
+
+    const result = await generateContentAction({
+      kind: 'fire',
+      clientId: CLIENT_ID,
+      targetMonth: TARGET_MONTH,
+      targetBatchId: null,
+      recrawl: false,
+    })
+
+    expect(result).toEqual({ kind: 'error', message: expect.stringContaining('onboarding') })
     expect(vi.mocked(triggerGeneration)).not.toHaveBeenCalled()
   })
 })

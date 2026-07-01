@@ -34,6 +34,10 @@ export async function generateContentAction(
   const client = await findClientForUser(ctx, input.clientId)
   if (!client) return { kind: 'error', message: 'Client not found' }
 
+  if (!client.onboardingCompletedAt) {
+    return { kind: 'error', message: 'Complete onboarding for this client before generating content.' }
+  }
+
   // Re-validate the match on every call. This is the single source of truth.
   let match: Awaited<ReturnType<typeof findMatchingBatchForClientMonth>>
   try {

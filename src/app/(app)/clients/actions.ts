@@ -105,3 +105,57 @@ export async function deactivateClientAction(id: string) {
 
   revalidatePath('/clients')
 }
+
+export type OnboardingItem = 'account' | 'designFolder' | 'assets'
+
+const ONBOARDING_FIELD: Record<
+  OnboardingItem,
+  'onboardingAccountFilledOut' | 'onboardingDesignFolderReady' | 'onboardingAssetsReceived'
+> = {
+  account: 'onboardingAccountFilledOut',
+  designFolder: 'onboardingDesignFolderReady',
+  assets: 'onboardingAssetsReceived',
+}
+
+/** Tick/untick one onboarding checklist item. Inert once onboarding is complete. */
+export async function setClientOnboardingItemAction(
+  clientId: string,
+  item: OnboardingItem,
+  checked: boolean,
+) {
+  const ctx = await requireClientEditor()
+  const before = await findClientForUser(ctx, clientId)
+  if (!before) return
+  if (before.onboardingCompletedAt) return // one-time; no edits after completion
+  await db.client.update({
+    where: { id: clientId },
+    data: { [ONBOARDING_FIELD[item]]: checked },
+  })
+  revalidatePath(`/clients/${clientId}`)
+}
+
+/** Mark client onboarding complete. Requires all three items checked (server-enforced). */
+export async function completeClientOnboardingAction(clientId: string) {
+  const ctx = await requireClientEditor()
+  const before = await findClientForUser(ctx, clientId)
+  if (!before) return
+  if (before.onboardingCompletedAt) return // already complete; idempotent no-op
+  const allChecked =
+    before.onboardingAccountFilledOut &&
+    before.onboardingDesignFolderReady &&
+    before.onboardingAssetsReceived
+  if (!allChecked) {
+    throw new Error('Complete all onboarding items before finishing onboarding')
+  }
+  await db.client.update({
+    where: { id: clientId },
+    data: { onboardingCompletedAt: new Date() },
+  })
+  await recordActivity({
+    clientId,
+    actorId: ctx.userDbId,
+    kind: ActivityKind.client_onboarding_completed,
+    payload: {},
+  })
+  revalidatePath(`/clients/${clientId}`)
+}
