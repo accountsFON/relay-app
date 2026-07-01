@@ -16,8 +16,8 @@ describe('MagicLinkInviteEmail', () => {
   it('renders all dynamic fields in the output HTML', async () => {
     const html = await render(<MagicLinkInviteEmail {...baseProps} />)
 
-    // Recipient first name (greeting uses "Hi Sarah,")
-    expect(html).toContain('Sarah')
+    // Greeting uses the full recipient name (not first-token shortened).
+    expect(html).toContain('Hi Sarah Smith,')
     // Client name appears as the h1
     expect(html).toContain('My DUI Guy')
     // Month label appears in subtitle + body copy
@@ -26,6 +26,21 @@ describe('MagicLinkInviteEmail', () => {
     expect(html).toContain('May 31, 2026')
     // Sender name in the signature footer
     expect(html).toContain('Mollie Huebner')
+  })
+
+  it('greets a business/multi-word recipient name in full (no first-token shortening)', async () => {
+    const html = await render(
+      <MagicLinkInviteEmail {...baseProps} recipientName="Old Plank" />,
+    )
+    expect(html).toContain('Hi Old Plank,')
+    expect(html).not.toContain('Hi Old,')
+  })
+
+  it('falls back to "there" when the recipient name is empty', async () => {
+    const html = await render(
+      <MagicLinkInviteEmail {...baseProps} recipientName="" />,
+    )
+    expect(html).toContain('Hi there,')
   })
 
   it('renders the CTA URL as both a button href and a plain-text fallback link', async () => {

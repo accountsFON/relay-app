@@ -25,6 +25,7 @@ import {
   Section,
   Text,
 } from '@react-email/components'
+import { greetingName } from '@/lib/greeting'
 
 export interface MagicLinkInviteEmailProps {
   /** Full name of the recipient, e.g. "Sarah Smith". */
@@ -45,12 +46,6 @@ const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
-
-function firstName(full: string): string {
-  const trimmed = full.trim()
-  if (!trimmed) return 'there'
-  return trimmed.split(/\s+/)[0]
-}
 
 function formatExpiry(d: Date): string {
   // Avoid Intl variance across runtimes , render as "May 31, 2026".
@@ -200,7 +195,7 @@ export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.Re
     expiresAt,
   } = props
 
-  const fname = firstName(recipientName)
+  const greetName = greetingName(recipientName)
   const expires = formatExpiry(expiresAt)
   const previewText = `${clientName} ${monthLabel} posts are ready for your review`
 
@@ -223,7 +218,7 @@ export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.Re
           </Section>
 
           <Section style={bodySectionStyle}>
-            <Text style={paragraphStyle}>Hi {fname},</Text>
+            <Text style={paragraphStyle}>{`Hi ${greetName},`}</Text>
             <Text style={paragraphStyle}>
               The {monthLabel} posts are ready. Open the link below to see each post
               rendered as it will appear on Instagram and Facebook, leave any feedback

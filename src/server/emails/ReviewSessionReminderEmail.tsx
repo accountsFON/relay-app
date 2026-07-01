@@ -24,9 +24,10 @@ import {
   Section,
   Text,
 } from '@react-email/components'
+import { greetingName } from '@/lib/greeting'
 
 export interface ReviewSessionReminderEmailProps {
-  /// Full reviewer name. Greeting uses the first token only.
+  /// Full reviewer name. Greeting uses the full name (see greetingName).
   reviewerName: string
   /// Client display name, e.g. "My DUI Guy".
   clientName: string
@@ -42,12 +43,6 @@ export interface ReviewSessionReminderEmailProps {
   reviewUrl: string
   /// Which threshold triggered this send. Affects opening copy + preview text.
   threshold: '48h' | '96h'
-}
-
-function firstName(full: string): string {
-  const trimmed = full.trim()
-  if (!trimmed) return 'there'
-  return trimmed.split(/\s+/)[0]
 }
 
 // Style tokens mirror MagicLinkInviteEmail so the visual treatment stays
@@ -169,7 +164,7 @@ export function ReviewSessionReminderEmail(
     threshold,
   } = props
 
-  const fname = firstName(reviewerName)
+  const greetName = greetingName(reviewerName)
 
   // 48h vs 96h diverge in the opener and preview only; the rest of the
   // body, CTA, and signoff are shared.
@@ -195,7 +190,7 @@ export function ReviewSessionReminderEmail(
           </Section>
 
           <Section style={bodySectionStyle}>
-            <Text style={h1Style}>{`Hey ${fname},`}</Text>
+            <Text style={h1Style}>{`Hey ${greetName},`}</Text>
             <Text style={paragraphStyle}>{opener}</Text>
             <Text style={paragraphStyle}>
               The link is still good and your decisions are saved. Finish whenever

@@ -26,6 +26,20 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-01 — Review emails greet with the full name, not a first-token shorten** (PR #288)
+  The client review emails mangled a business recipient name: "Old Plank" became "Old"
+  ("Hi Old," / "Hey Old,"). Cause: the send-link modal defaults the Recipient name to the
+  client business name, and each of the three client-facing templates had its own local
+  `firstName()` that took only the first whitespace token. Extracted one shared
+  `src/lib/greeting.ts` `greetingName()` (full trimmed name, whitespace collapsed, "there"
+  fallback) and used it in `MagicLinkInviteEmail` ("Hi"), `ReviewSessionReminderEmail`
+  ("Hey"), and `AmReplyEmail` ("Hey"), removing the three duplicated helpers. Invite greeting
+  switched to a template literal so it renders contiguously (no React Email comment nodes).
+  AM-facing digest emails left unchanged (they greet a real internal user). NO schema change;
+  no jobs/services/prompts change → Trigger.dev deploy skips. 2148 unit tests pass, tsc +
+  eslint clean; whole-branch opus review READY_TO_MERGE. Spec:
+  `vault projects/relay-app/2026-07-01-review-email-greeting-fix-design.md`.
+
 - [x] **2026-06-30 — Gate Edit/Restore on canEdit + kill the masked digest on save failures** (PR #287)
   A designer hit the masked Next.js error digest (the long `ref:` number) trying to edit a post
   on the batch detail page. Two affordances rendered without a permission check and their handlers
