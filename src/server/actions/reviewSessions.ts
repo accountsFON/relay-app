@@ -1208,6 +1208,10 @@ async function setNoteResolved(
 ): Promise<{ ok: true }> {
   const ctx = await requireClientEditor()
 
+  if (!input.postId || typeof input.postId !== 'string') {
+    throw new ReviewSessionActionError('postId required')
+  }
+
   if (!input.reviewItemId || typeof input.reviewItemId !== 'string') {
     throw new ReviewSessionActionError('reviewItemId required')
   }

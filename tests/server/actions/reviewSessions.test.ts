@@ -1737,5 +1737,19 @@ describe('resolveNoteAction / unresolveNoteAction', () => {
     ).rejects.toThrow()
     expect(db.reviewItem.update).not.toHaveBeenCalled()
   })
+
+  it('rejects when postId is missing (before any query)', async () => {
+    primeNote()
+
+    await expect(
+      resolveNoteAction({
+        postId: '',
+        reviewItemId: NOTE_ITEM_ID,
+        reviewSessionId: NOTE_SESSION_ID,
+      }),
+    ).rejects.toThrow(/postId required/i)
+    expect(db.post.findUnique).not.toHaveBeenCalled()
+    expect(db.reviewItem.update).not.toHaveBeenCalled()
+  })
 })
 
