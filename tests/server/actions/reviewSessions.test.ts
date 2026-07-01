@@ -102,6 +102,11 @@ vi.mock('@/db/client', () => ({
   },
 }))
 
+vi.mock('@/server/lib/relay-lock-guard', async (orig) => {
+  const actual = await orig<typeof import('@/server/lib/relay-lock-guard')>()
+  return { ...actual, assertBatchEditable: vi.fn() }
+})
+
 import { cookies } from 'next/headers'
 import { verifyToken, verifySession } from '@/lib/magic-link'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
@@ -133,6 +138,7 @@ import {
   submitSessionAction,
   unmarkPostAddressedAction,
 } from '@/server/actions/reviewSessions'
+import { assertBatchEditable, RelayCompletedError } from '@/server/lib/relay-lock-guard'
 
 const TOKEN = 'raw-token-abc'
 const MAGIC_LINK_ID = 'cuid_link_1'
@@ -181,6 +187,8 @@ beforeEach(() => {
     advanced: false,
     reason: 'not_at_client_step',
   })
+  // Default: batch is editable. Tests that check the lock override per-test.
+  vi.mocked(assertBatchEditable).mockResolvedValue(undefined)
 })
 
 describe('startReviewSessionAction — by-link resume', () => {
@@ -1199,6 +1207,20 @@ describe('acceptCaptionEditAction', () => {
     expect(db.$transaction).not.toHaveBeenCalled()
     expect(recordActivity).not.toHaveBeenCalled()
   })
+
+  it('rejects with RelayCompletedError and does not call db.post.update when the batch is completed', async () => {
+    primeAmCtx()
+    primeAmReviewItem({ decision: 'caption_edited', suggestedCaption: 'New caption' })
+    vi.mocked(assertBatchEditable).mockRejectedValueOnce(new RelayCompletedError())
+
+    await expect(
+      acceptCaptionEditAction({ reviewItemId: REVIEW_ITEM_ID }),
+    ).rejects.toThrow(RelayCompletedError)
+
+    expect(snapshotPostVersion).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
+    expect(recordActivity).not.toHaveBeenCalled()
+  })
 })
 
 describe('rejectCaptionEditAction', () => {
@@ -1587,6 +1609,23 @@ describe('unmarkPostAddressedAction', () => {
     ).rejects.toThrow(/does not belong/)
 
     expect(db.reviewItem.update).not.toHaveBeenCalled()
+    expect(recordActivity).not.toHaveBeenCalled()
+  })
+
+  it('rejects with RelayCompletedError and does not write the caption when the batch is completed', async () => {
+    primeAmCtx()
+    primeUnmarkPost()
+    vi.mocked(assertBatchEditable).mockRejectedValueOnce(new RelayCompletedError())
+
+    await expect(
+      unmarkPostAddressedAction({
+        postId: UNMARK_POST_ID,
+        reviewSessionId: UNMARK_SESSION_ID,
+      }),
+    ).rejects.toThrow(RelayCompletedError)
+
+    expect(snapshotPostVersion).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
     expect(recordActivity).not.toHaveBeenCalled()
   })
 })

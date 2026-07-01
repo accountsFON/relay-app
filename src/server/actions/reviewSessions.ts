@@ -36,6 +36,7 @@ import type {
   ReviewDecisionType,
   ReviewSessionSummary,
 } from '@/types/review-session'
+import { assertBatchEditable } from '@/server/lib/relay-lock-guard'
 
 /**
  * Server actions wrapping `src/server/repositories/reviewSessions.ts`.
@@ -698,6 +699,7 @@ export async function acceptCaptionEditAction(input: {
   reviewItemId: string
 }): Promise<{ ok: true; postVersionId: string }> {
   const { ctx, item } = await resolveReviewItemForAm(input.reviewItemId)
+  await assertBatchEditable(item.batchId)
 
   if (item.decision !== 'caption_edited') {
     throw new ReviewSessionActionError(
@@ -1067,6 +1069,8 @@ export async function unmarkPostAddressedAction(input: {
 
   const client = await findClientForUser(ctx, post.clientId)
   if (!client) throw new ReviewSessionActionError('Post not found')
+
+  await assertBatchEditable(post.batchId)
 
   // Re-open the pins half: ALL resolved client pins on the post, regardless of
   // how they were resolved. A post becomes "handled" when its client pins are

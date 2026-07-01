@@ -821,6 +821,9 @@ describe('BatchDetailPage', () => {
 
       // Chat must remain
       expect(queryByTestId('activity-thread-stub')).not.toBeNull()
+
+      // Archive is the only recourse — button must still be present
+      expect(queryByTestId('archive-batch-button-stub')).not.toBeNull()
     })
   })
 })
