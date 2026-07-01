@@ -147,6 +147,15 @@ vi.mock('@/components/relay/restore-batch-button', () => ({
   RestoreBatchBanner: () => <div data-testid="restore-batch-banner-stub" />,
 }))
 
+vi.mock('@/components/relay/relay-completed-banner', () => ({
+  RelayCompletedBanner: ({ completedAt }: { completedAt: Date | null }) => (
+    <div data-testid="relay-completed-banner-stub">
+      This relay is completed
+      {completedAt && <time dateTime={completedAt.toISOString()} />}
+    </div>
+  ),
+}))
+
 vi.mock('@/components/relay/batch-completion-lap', () => ({
   BatchCompletionLap: () => <div data-testid="batch-completion-lap-stub" />,
 }))
@@ -780,6 +789,41 @@ describe('BatchDetailPage', () => {
       } as never)
       const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
       expect(queryByTestId('send-link-button-stub')).not.toBeInTheDocument()
+    })
+  })
+
+  // ---- Completed relay lock ----
+
+  describe('completed lock', () => {
+    const completedBatch = {
+      ...mockBatch,
+      currentStep: 'completed',
+      deletedAt: null,
+      completedAt: new Date('2026-07-01'),
+    }
+
+    beforeEach(() => {
+      vi.mocked(findBatch).mockResolvedValue(completedBatch as never)
+    })
+
+    it('shows the completed banner and hides GenerateContentDialog + ChecklistPanel while keeping ActivityThread', async () => {
+      const { queryByTestId, getByText } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+
+      // Banner must appear with the "completed" text
+      expect(getByText('This relay is completed')).toBeInTheDocument()
+
+      // Edit surfaces must be hidden
+      expect(queryByTestId('generate-content-dialog-stub')).toBeNull()
+      expect(queryByTestId('checklist-panel-stub')).toBeNull()
+
+      // Chat must remain
+      expect(queryByTestId('activity-thread-stub')).not.toBeNull()
+
+      // Archive is the only recourse — button must still be present
+      expect(queryByTestId('archive-batch-button-stub')).not.toBeNull()
     })
   })
 })

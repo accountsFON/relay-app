@@ -58,6 +58,12 @@ export type InternalReviewShellProps = {
    * Defaults to true. Pass false for the designer tier.
    */
   allowPostPins?: boolean
+  /**
+   * When true, the relay is completed and locked. Caption editing and image
+   * uploads are suppressed. Pins, threads, and comments remain open.
+   * Defaults to false.
+   */
+  locked?: boolean
   /** Slot rendered in the top bar for AM-specific controls (e.g. request changes). */
   amControlsSlot?: React.ReactNode
   /** Slot rendered in the top bar for designer-specific controls. */
@@ -82,6 +88,7 @@ export function InternalReviewShell({
   posts,
   canEditCaption = true,
   allowPostPins = true,
+  locked = false,
   amControlsSlot,
   designerControlsSlot,
 }: InternalReviewShellProps) {
@@ -245,11 +252,11 @@ export function InternalReviewShell({
                       threads={threads}
                       platform={platform}
                       mode="internal"
-                      canEditCaption={canEditCaption}
+                      canEditCaption={canEditCaption && !locked}
                       allowPostPins={allowPostPins}
                       onCommentChange={() => Promise.resolve(true)}
                       onCaptionEditSave={
-                        canEditCaption
+                        canEditCaption && !locked
                           ? async (draft) => {
                               try {
                                 await updatePostAction(post.id, { caption: draft })
@@ -275,7 +282,7 @@ export function InternalReviewShell({
                       onUseAsPostImage={(commentId) =>
                         handleUseAsPostImage(post.id, commentId)
                       }
-                      onUploadImage={handleUploadImage}
+                      onUploadImage={locked ? undefined : handleUploadImage}
                       mentionRoster={mentionRoster}
                     />
                   </div>

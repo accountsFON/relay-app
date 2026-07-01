@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { findPostById } from '@/server/repositories/posts'
 import { requirePostMediaEditor } from '@/server/middleware/permissions'
 import { attachMediaToPost } from '@/lib/media'
+import { assertBatchEditable, RelayCompletedError } from '@/server/lib/relay-lock-guard'
 
 /**
  * POST /api/posts/[id]/media
@@ -44,6 +45,15 @@ export async function POST(
   const existing = await findPostById(postId, ctx)
   if (!existing) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  }
+
+  try {
+    await assertBatchEditable(existing.batchId)
+  } catch (e) {
+    if (e instanceof RelayCompletedError) {
+      return NextResponse.json({ error: e.message }, { status: 409 })
+    }
+    throw e
   }
 
   const updated = await attachMediaToPost({ postId, url })

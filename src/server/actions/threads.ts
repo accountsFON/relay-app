@@ -24,6 +24,7 @@ import { notifyClientOfAmReply } from '@/server/lib/notifyClientOfAmReply'
 import { notifyInternalThreadReply } from '@/server/lib/notifyInternalThreadReply'
 import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
 import { resolveMentionedUserIds } from '@/lib/mentions'
+import { assertBatchEditable } from '@/server/lib/relay-lock-guard'
 
 type CommentImage = { url: string; width?: number; height?: number }
 
@@ -318,6 +319,7 @@ export async function useCommentImageAsPostMediaAction(input: {
             select: {
               id: true,
               clientId: true,
+              batchId: true,
               client: { select: { organizationId: true } },
             },
           },
@@ -339,6 +341,7 @@ export async function useCommentImageAsPostMediaAction(input: {
     throw new Error('Comment has no usable image')
   }
 
+  await assertBatchEditable(post.batchId)
   await attachMediaToPost({ postId: input.postId, url: comment.imageUrl })
   await revalidatePathForPost(input.postId)
 }
