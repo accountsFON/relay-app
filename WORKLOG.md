@@ -26,6 +26,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-01 — Gate bulk-generate on onboarding** (PR #295)
+  Follow-up to #293/#294. The bulk-generate list let you select any active client, including
+  not-onboarded ones, which the server then rejected per-row with no UI signal (silent "why didn't that
+  client generate?"). Not-onboarded active clients now stay visible but are unselectable (no checkbox)
+  and show a "Needs onboarding" badge, with their row still linking to the client page where the
+  onboarding checklist lives. After #294's backfill this only affects brand-new clients mid-setup.
+  4 new tests, full suite 2192 pass, tsc + eslint clean. No schema/jobs/services change → Trigger.dev
+  deploy skips.
+
 - [x] **2026-07-01 — Grandfather existing clients as onboarded (hotfix for #293)** (PR #294)
   Caught in live browser verification: #293's onboarding gate re-gated established clients whose
   `onboardingCompletedAt` was never set — that field was only ever written by the admin Onboarding
