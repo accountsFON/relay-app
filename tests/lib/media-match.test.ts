@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { matchFilenameToPost, type MatchablePost } from '@/lib/media-match'
+import {
+  matchFilenameToPost,
+  fillEmptyPostSlots,
+  type MatchablePost,
+} from '@/lib/media-match'
 
 const posts: MatchablePost[] = [
   { id: 'p1', postDate: new Date(Date.UTC(2026, 4, 3)) }, // May 3
@@ -71,5 +75,63 @@ describe('matchFilenameToPost', () => {
   it('returns null for non-matching patterns', () => {
     expect(matchFilenameToPost('hero.jpg', posts)).toBeNull()
     expect(matchFilenameToPost('random_name.png', posts)).toBeNull()
+  })
+})
+
+describe('fillEmptyPostSlots', () => {
+  const orderedPostIds = ['p1', 'p2', 'p3', 'p4']
+
+  it('assigns unassigned files to empty slots in order', () => {
+    const files = [
+      { fileId: 'a', assignedPostId: null },
+      { fileId: 'b', assignedPostId: null },
+    ]
+    const result = fillEmptyPostSlots(files, orderedPostIds)
+    expect(result.map((f) => f.assignedPostId)).toEqual(['p1', 'p2'])
+  })
+
+  it('preserves pre-assigned files and fills only the remaining empty slots', () => {
+    // 'a' already matched to p2 (e.g. via filename); the unassigned files fill
+    // the empty slots (p1, p3, p4) in order, skipping the claimed p2.
+    const files = [
+      { fileId: 'a', assignedPostId: 'p2' },
+      { fileId: 'b', assignedPostId: null },
+      { fileId: 'c', assignedPostId: null },
+    ]
+    const result = fillEmptyPostSlots(files, orderedPostIds)
+    const byId = Object.fromEntries(result.map((f) => [f.fileId, f.assignedPostId]))
+    expect(byId).toEqual({ a: 'p2', b: 'p1', c: 'p3' })
+  })
+
+  it('leaves extra files unassigned when there are more files than empty slots', () => {
+    const files = [
+      { fileId: 'a', assignedPostId: null },
+      { fileId: 'b', assignedPostId: null },
+    ]
+    const result = fillEmptyPostSlots(files, ['p1'])
+    expect(result.map((f) => f.assignedPostId)).toEqual(['p1', null])
+  })
+
+  it('is a no-op when every slot is already claimed', () => {
+    const files = [
+      { fileId: 'a', assignedPostId: 'p1' },
+      { fileId: 'b', assignedPostId: null },
+    ]
+    const result = fillEmptyPostSlots(files, ['p1'])
+    expect(result.map((f) => f.assignedPostId)).toEqual(['p1', null])
+  })
+
+  it('does not mutate the input array or its items', () => {
+    const files = [{ fileId: 'a', assignedPostId: null }]
+    const snapshot = structuredClone(files)
+    fillEmptyPostSlots(files, orderedPostIds)
+    expect(files).toEqual(snapshot)
+  })
+
+  it('handles empty inputs', () => {
+    expect(fillEmptyPostSlots([], orderedPostIds)).toEqual([])
+    expect(
+      fillEmptyPostSlots([{ fileId: 'a', assignedPostId: null }], []),
+    ).toEqual([{ fileId: 'a', assignedPostId: null }])
   })
 })

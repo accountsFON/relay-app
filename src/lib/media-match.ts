@@ -67,3 +67,44 @@ export function matchFilenameToPost(
 
   return null
 }
+
+export type AssignableFile = {
+  /** Post id this file is assigned to, or null if still unassigned. */
+  assignedPostId: string | null
+}
+
+/**
+ * Fallback assignment for the bulk media tray, run AFTER filename auto-matching.
+ *
+ * Assigns each still-unassigned file to the next still-empty post slot, pairing
+ * unassigned files (in their given order) to empty slots (in the given post
+ * order) one-to-one until either list runs out. Files with no empty slot left
+ * stay unassigned; already-assigned files and already-claimed slots are left
+ * untouched.
+ *
+ * This makes a bulk drop of arbitrarily-named files (which `matchFilenameToPost`
+ * can't place) still land on posts, instead of silently sitting unassigned and
+ * being skipped on Apply, the cause of "only the first post got an image".
+ *
+ * Pure: returns a new array; the input array and its items are not mutated.
+ */
+export function fillEmptyPostSlots<T extends AssignableFile>(
+  files: ReadonlyArray<T>,
+  orderedPostIds: ReadonlyArray<string>,
+): T[] {
+  const claimed = new Set(
+    files
+      .map((f) => f.assignedPostId)
+      .filter((id): id is string => id !== null),
+  )
+  const emptySlots = orderedPostIds.filter((id) => !claimed.has(id))
+
+  let slotIdx = 0
+  return files.map((f) => {
+    if (f.assignedPostId !== null) return f
+    if (slotIdx >= emptySlots.length) return f
+    const assignedPostId = emptySlots[slotIdx]
+    slotIdx += 1
+    return { ...f, assignedPostId }
+  })
+}

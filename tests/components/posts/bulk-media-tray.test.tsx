@@ -89,7 +89,41 @@ describe('BulkMediaTray', () => {
     })
   })
 
-  it('manual drag-assign works for unmatched files', async () => {
+  it('auto-fills empty post slots with unmatched files (core fix)', async () => {
+    const onApplied = vi.fn()
+    render(
+      <BulkMediaTray batchId="b1" posts={posts} onApplied={onApplied} />,
+    )
+
+    // Three arbitrarily-named files that DON'T match any filename pattern.
+    // Before the fix these all sat unassigned; now each fills an empty slot in
+    // order so a bulk drop lands on every post.
+    const f1 = new File(['x'], 'hero.jpg', { type: 'image/jpeg' })
+    const f2 = new File(['x'], 'beach.png', { type: 'image/png' })
+    const f3 = new File(['x'], 'final_v2.jpg', { type: 'image/jpeg' })
+    const dropZone = screen.getByTestId('bulk-media-dropzone')
+
+    fireEvent.drop(dropZone, {
+      dataTransfer: dataTransferWithFiles([f1, f2, f3]),
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('bulk-media-slot-assigned-p-may10'),
+      ).toBeInTheDocument()
+    })
+    // Every post now has an assignment; nothing left unassigned.
+    for (const p of posts) {
+      expect(
+        screen.getByTestId(`bulk-media-slot-assigned-${p.id}`),
+      ).toBeInTheDocument()
+    }
+    expect(screen.getByTestId('bulk-media-unassigned').textContent).toContain(
+      'Unassigned (0)',
+    )
+  })
+
+  it('manual drag-assign still works (reassign an auto-filled file)', async () => {
     const onApplied = vi.fn()
     render(
       <BulkMediaTray batchId="b1" posts={posts} onApplied={onApplied} />,
@@ -102,68 +136,73 @@ describe('BulkMediaTray', () => {
       dataTransfer: dataTransferWithFiles([file]),
     })
 
-    // Lands in unassigned first.
+    // Auto-fill lands it on the first empty slot (p-may10).
     await waitFor(() => {
       expect(
-        screen.getByTestId('bulk-media-unassigned-item-random.jpg'),
+        screen.getByTestId('bulk-media-slot-assigned-p-may10'),
       ).toBeInTheDocument()
     })
 
-    // Now manually drag it to the May 15 slot. We simulate by firing a drop
-    // on the slot with a DataTransfer that returns the unassigned file's id.
-    const item = screen.getByTestId('bulk-media-unassigned-item-random.jpg')
-    // The component sets the file id in onDragStart via setData. We don't
-    // actually call setData here (jsdom limit); instead we read the
-    // component's internal id by triggering dragstart and capturing the
-    // setData call through a fake DataTransfer.
+    // Drag the assigned chip from p-may10 to p-may15 to verify manual
+    // reassignment is unaffected. Capture the file id from the dragstart.
+    const chip = screen.getByTestId('bulk-media-slot-assigned-p-may10')
     let capturedFileId: string | null = null
-    const dragStartDT = {
-      setData: (type: string, value: string) => {
-        if (type === 'text/plain') capturedFileId = value
+    fireEvent.dragStart(chip, {
+      dataTransfer: {
+        setData: (type: string, value: string) => {
+          if (type === 'text/plain') capturedFileId = value
+        },
+        effectAllowed: '',
       },
-      effectAllowed: '',
-    }
-    fireEvent.dragStart(item, { dataTransfer: dragStartDT })
+    })
     expect(capturedFileId).toBeTruthy()
 
     const slot = screen.getByTestId('bulk-media-slot-p-may15')
-    const dropDT = {
-      types: ['text/plain'],
-      getData: (type: string) =>
-        type === 'text/plain' ? capturedFileId ?? '' : '',
-    }
-    fireEvent.drop(slot, { dataTransfer: dropDT })
+    fireEvent.drop(slot, {
+      dataTransfer: {
+        types: ['text/plain'],
+        getData: (type: string) =>
+          type === 'text/plain' ? capturedFileId ?? '' : '',
+      },
+    })
 
     await waitFor(() => {
       expect(
         screen.getByTestId('bulk-media-slot-assigned-p-may15'),
       ).toBeInTheDocument()
     })
+    // Moving it off p-may10 leaves that slot empty again.
+    expect(
+      screen.queryByTestId('bulk-media-slot-assigned-p-may10'),
+    ).toBeNull()
   })
 
-  it('unmatched files surface in the unassigned zone', async () => {
+  it('files beyond the post count surface in the unassigned zone', async () => {
     const onApplied = vi.fn()
     render(
       <BulkMediaTray batchId="b1" posts={posts} onApplied={onApplied} />,
     )
 
-    const file = new File(['x'], 'mystery.png', { type: 'image/png' })
+    // 4 unmatched files, 3 posts: 3 fill slots, the 4th stays unassigned
+    // (surfaced, not silently dropped).
+    const files = ['a.png', 'b.png', 'c.png', 'd.png'].map(
+      (n) => new File(['x'], n, { type: 'image/png' }),
+    )
     const dropZone = screen.getByTestId('bulk-media-dropzone')
 
     fireEvent.drop(dropZone, {
-      dataTransfer: dataTransferWithFiles([file]),
+      dataTransfer: dataTransferWithFiles(files),
     })
 
     await waitFor(() => {
-      const zone = screen.getByTestId('bulk-media-unassigned')
-      expect(zone).toBeInTheDocument()
-      expect(zone.textContent).toContain('mystery.png')
+      expect(screen.getByTestId('bulk-media-unassigned').textContent).toContain(
+        'Unassigned (1)',
+      )
     })
-    // No slot should have an assignment yet.
     for (const p of posts) {
       expect(
-        screen.queryByTestId(`bulk-media-slot-assigned-${p.id}`),
-      ).toBeNull()
+        screen.getByTestId(`bulk-media-slot-assigned-${p.id}`),
+      ).toBeInTheDocument()
     }
   })
 
