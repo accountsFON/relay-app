@@ -44,4 +44,29 @@ describe('ClientQuickAccess', () => {
     expect(screen.getByRole('link', { name: /open folder/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /open in canva/i })).toBeInTheDocument()
   })
+
+  it('lets the Assets/Canva blocks wrap instead of colliding when links overflow (regression)', () => {
+    // With many links the Links block wraps to multiple rows; the top-level
+    // row must wrap so the Assets + Canva blocks drop to a new line instead
+    // of being squeezed together and bleeding past the card edge.
+    const { container } = render(
+      <ClientQuickAccess
+        urls={['https://example.com']}
+        assetsFolderUrl="https://drive.google.com/folder/X"
+        canvaUrl="https://www.canva.com/design/ABC"
+      />,
+    )
+    const row = container.querySelector('.sm\\:flex-row') as HTMLElement | null
+    expect(row).not.toBeNull()
+    // The row wraps (so blocks reflow instead of overflowing).
+    expect(row?.className).toContain('flex-wrap')
+    // The Assets block must not be squeezed below its content.
+    const assetsBlock = container.querySelector('.sm\\:ml-auto') as HTMLElement | null
+    expect(assetsBlock?.className).toContain('shrink-0')
+    expect(assetsBlock?.className).not.toContain('min-w-0')
+    // The Canva block (last child of the row) must not be squeezed either.
+    const canvaBlock = row?.lastElementChild as HTMLElement | null
+    expect(canvaBlock?.className).toContain('shrink-0')
+    expect(canvaBlock?.className).not.toContain('min-w-0')
+  })
 })
