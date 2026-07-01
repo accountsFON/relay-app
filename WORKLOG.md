@@ -26,6 +26,21 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-01 — Send the client review link on Pre-Client QA, not Design Review** (PR #291)
+  Caleb's "biggest one": the required "Send review link" checklist item was seeded on Design Review
+  (step 4), forcing the link out BEFORE the final internal QA (step 5). Transitions were already
+  correct; only the checklist gate was on the wrong step. Moved the required send-link item to
+  am_qa_pre_client, so the AM runs final QA + sends the link on step 5 then passes to Client Review
+  with the link already out. Plus: the QA send-link item auto-checks when a live magic link already
+  exists (no double-prompt on reseed/migration/loop-back); pass labels fixed (Design Review -> "Send
+  to Pre-Client QA", QA -> "Send to client review"); toolbar Send button gated to step 5 (Copy/Resend
+  row still shows during Client Review); QA next-action card prompts sending the link (only when
+  client review is on). Backfill migration relocates the item for in-flight relays (idempotent).
+  No schema/jobs/services/prompts change → Trigger.dev deploy skips; data migration applies on deploy.
+  2165 unit tests pass, tsc + eslint clean; whole-branch opus review READY_TO_MERGE (its one Important
+  no-review-copy finding fixed in-PR). Spec + plan:
+  `vault projects/relay-app/2026-07-01-send-link-on-pre-client-qa-{design,plan}.md`.
+
 - [x] **2026-07-01 — Client quick-access row wraps so Assets/Canva don't bleed over** (PR #290)
   On the client page, with many website links the quick-access Links block wrapped to multiple rows
   but the top-level flex row (Links | Assets | Canva) could NOT wrap, so the Assets + Canva blocks
