@@ -26,6 +26,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-01 — Drop the empty media box from the review tutorial welcome card** (PR #292)
+  The magic-link review tutorial teaches via the anchored tooltip + highlight tour (since #256), but
+  the welcome card still rendered a 180px media panel with an `<img>` pointing at a missing SVG that
+  onError-hid to an empty gray box ("the video"). Removed the media box + img; kept the welcome copy,
+  buttons, and the tour. Extended the tutorial test to assert no `<img>`. Pure UI deletion, no
+  schema/services change → Trigger.dev deploy skips. Full suite + tsc + eslint clean. Spec:
+  `vault projects/relay-app/2026-07-01-review-tutorial-remove-media-box-design.md`.
+
 - [x] **2026-07-01 — Send the client review link on Pre-Client QA, not Design Review** (PR #291)
   Caleb's "biggest one": the required "Send review link" checklist item was seeded on Design Review
   (step 4), forcing the link out BEFORE the final internal QA (step 5). Transitions were already
