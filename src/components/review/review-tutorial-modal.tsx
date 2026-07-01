@@ -113,19 +113,9 @@ export function ReviewTutorialModal({ className }: ReviewTutorialModalProps) {
         </button>
 
         <div data-testid="review-tutorial-modal-welcome">
-          <div className="flex h-[180px] w-full items-center justify-center overflow-hidden rounded-xl bg-neutral-100">
-            <img
-              src="/brand/review-tutorial-welcome.svg"
-              alt=""
-              className="max-h-full max-w-full"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
-          </div>
           <h2
             id="review-tutorial-title"
-            className="mt-4 text-lg font-semibold text-foreground"
+            className="text-lg font-semibold text-foreground"
           >
             Here&apos;s how this works.
           </h2>

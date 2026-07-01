@@ -3,15 +3,17 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { ReviewTutorialModal } from '@/components/review/review-tutorial-modal'
 
 describe('ReviewTutorialModal', () => {
-  it('renders the welcome step on mount, with no video element', () => {
+  it('renders the welcome step on mount, with no video or media box', () => {
     const { container } = render(<ReviewTutorialModal />)
 
     expect(screen.getByTestId('review-tutorial-modal')).toBeInTheDocument()
     expect(
       screen.getByTestId('review-tutorial-modal-welcome'),
     ).toBeInTheDocument()
-    // The broken placeholder video is gone for good.
+    // The broken placeholder video and its media box are gone for good; the
+    // tutorial teaches via the anchored tooltip tour, not an image/video.
     expect(container.querySelector('video')).toBeNull()
+    expect(container.querySelector('img')).toBeNull()
     expect(screen.queryByTestId('tour-popover')).not.toBeInTheDocument()
   })
 
