@@ -2,12 +2,9 @@
 
 /**
  * RequestChangesButton: the AM's in-step control on the /preview surface.
- * Sets the batch sub-state to `awaiting_design_revisions` and notifies the
- * assigned designer; the batch stays at am_review_design, AM-held.
- *
- * Rendered only for the AM while the batch is at am_review_design (gated by
- * the page). Mirrors MarkRevisionsDoneButton: a thin client wrapper that runs
- * the passed server action inside a transition and surfaces a soft error.
+ * Runs the passed server action (sets awaiting_design_revisions + notifies the
+ * assigned designer; the batch stays at am_review_design, AM-held), then shows
+ * a clear confirmation that the designer was notified.
  */
 
 import { useState, useTransition } from 'react'
@@ -16,21 +13,26 @@ import { Button } from '@/components/ui/button'
 export interface RequestChangesButtonProps {
   /** Server action that sets awaiting_design_revisions + notifies designer. */
   onClick: () => Promise<void>
+  /** Assigned designer's display name, for the "notified" confirmation. */
+  designerName?: string | null
   disabled?: boolean
 }
 
 export function RequestChangesButton({
   onClick,
+  designerName,
   disabled,
 }: RequestChangesButtonProps) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
 
   function handleClick() {
     setError(null)
     startTransition(async () => {
       try {
         await onClick()
+        setSent(true)
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Failed to request changes',
@@ -40,7 +42,7 @@ export function RequestChangesButton({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col items-end gap-1">
       <Button
         variant="outline"
         size="default"
@@ -48,8 +50,18 @@ export function RequestChangesButton({
         disabled={disabled || isPending}
         data-testid="request-changes-button"
       >
-        {isPending ? 'Requesting…' : 'Request changes'}
+        {isPending ? 'Requesting...' : 'Request changes'}
       </Button>
+      {sent && (
+        <p
+          data-testid="request-changes-success"
+          className="text-[11px] text-muted-foreground"
+        >
+          {designerName
+            ? `Sent to ${designerName}. They've been notified.`
+            : 'Changes requested. No designer is assigned to notify.'}
+        </p>
+      )}
       {error && (
         <p
           role="alert"
