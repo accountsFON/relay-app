@@ -532,6 +532,7 @@ export default async function BatchDetailPage({
             isHolder: canAct,
             clientId: client.id,
             batchId: batch.id,
+            clientReviewEnabled: batch.clientReviewEnabled,
             hasSubmittedReviewSession: latestSubmittedSession !== null,
             reviewSessionId: latestSubmittedSession?.id ?? null,
             assetsFolderUrl: client.assetsFolderUrl,

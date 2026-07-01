@@ -6,6 +6,7 @@ import { NECTR_CRM_URL } from '@/lib/nectr'
 const BASE = {
   clientId: 'client_1',
   batchId: 'batch_1',
+  clientReviewEnabled: true,
   hasSubmittedReviewSession: false,
   reviewSessionId: null as string | null,
   assetsFolderUrl: null as string | null,
@@ -148,6 +149,21 @@ describe('nextActionForRelay', () => {
       expect(a.title).toMatch(/final qa/i)
       expect(a.detail).toMatch(/review link/i)
       expect(a.button?.href).toBe(PREVIEW)
+    })
+
+    it('AM QA card does NOT mention the review link when client review is off', () => {
+      const a = nextActionForRelay({
+        ...BASE,
+        step: RelayStep.am_qa_pre_client,
+        subState: null,
+        viewerRole: 'account_manager',
+        isHolder: true,
+        clientReviewEnabled: false,
+      })
+      expect(a.tone).toBe('action')
+      expect(a.title).toMatch(/final qa/i)
+      expect(a.title).not.toMatch(/review link/i)
+      expect(a.detail).not.toMatch(/review link/i)
     })
   })
 
