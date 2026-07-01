@@ -35,6 +35,7 @@ import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 import { ArchiveClientButton } from '@/components/relay/archive-client-button'
 import { RestoreClientBanner } from '@/components/relay/restore-client-banner'
 import { InFlightBanner } from '@/components/relay/in-flight-banner'
+import { ClientOnboardingChecklist } from '@/components/clients/client-onboarding-checklist'
 
 export default async function ClientDetailPage({
   params,
@@ -103,6 +104,7 @@ export default async function ClientDetailPage({
   )
   // Actions (generate content, archive) are unavailable on archived clients.
   const isLive = !client.deletedAt
+  const onboardingComplete = client.onboardingCompletedAt != null
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
@@ -138,6 +140,8 @@ export default async function ClientDetailPage({
                 <GenerateContentDialog
                   clientId={client.id}
                   targetMonth={getNextMonth()}
+                  disabled={!onboardingComplete}
+                  disabledReason="Complete onboarding first"
                 />
                 <ArchiveClientButton clientId={client.id} clientName={client.name} />
               </>
@@ -188,11 +192,22 @@ export default async function ClientDetailPage({
       <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-10 lg:order-1">
           <div className="space-y-10">
+            {canEdit && isLive && !onboardingComplete && (
+              <ClientOnboardingChecklist
+                clientId={client.id}
+                initial={{
+                  account: client.onboardingAccountFilledOut,
+                  designFolder: client.onboardingDesignFolderReady,
+                  assets: client.onboardingAssetsReceived,
+                }}
+              />
+            )}
             <InFlightBanner clientId={client.id} />
             <ActiveBatchesSection
               clientId={client.id}
               viewerUserId={ctx.userDbId}
               canGenerate={canEdit && isLive}
+              onboardingComplete={onboardingComplete}
             />
           </div>
 

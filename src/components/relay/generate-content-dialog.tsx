@@ -31,15 +31,20 @@ export function GenerateContentDialog({
   clientId,
   targetMonth,
   lockMonth = false,
+  disabled = false,
+  disabledReason,
 }: {
   clientId: string
   targetMonth: string
   lockMonth?: boolean
+  disabled?: boolean
+  disabledReason?: string
 }) {
   const { refresh } = useInFlightRuns()
   const [open, setOpen] = useState(false)
   const [pickedMonth, setPickedMonth] = useState(targetMonth)
   const [reCrawl, setReCrawl] = useState(false)
+  const [monthlyConfirmed, setMonthlyConfirmed] = useState(false)
   const [lastCrawled, setLastCrawled] = useState<string | null>(null)
   const [view, setView] = useState<View>({ kind: 'picker' })
   const generationRef = useRef(0)
@@ -48,6 +53,7 @@ export function GenerateContentDialog({
     if (!next) {
       generationRef.current += 1  // invalidate any in-flight calls
       setView({ kind: 'picker' })
+      setMonthlyConfirmed(false)
     }
     setOpen(next)
   }
@@ -156,6 +162,19 @@ export function GenerateContentDialog({
     return 'Generate content'
   })()
 
+  if (disabled) {
+    return (
+      <Button
+        variant="accent"
+        disabled
+        title={disabledReason ?? 'Generate content'}
+        data-tour-anchor="generate-content"
+      >
+        Generate content
+      </Button>
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
@@ -218,9 +237,20 @@ export function GenerateContentDialog({
                 )}
               </div>
             </div>
+            <div className="flex items-start gap-3">
+              <BrandCheckbox
+                id="monthly-confirm"
+                checked={monthlyConfirmed}
+                onChange={(e) => setMonthlyConfirmed(e.target.checked)}
+                className="mt-1"
+              />
+              <Label htmlFor="monthly-confirm">
+                I confirm all content and client info is updated for this client this month.
+              </Label>
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={runProbe}>Start generation</Button>
+              <Button onClick={runProbe} disabled={!monthlyConfirmed}>Start generation</Button>
             </DialogFooter>
           </div>
         )}

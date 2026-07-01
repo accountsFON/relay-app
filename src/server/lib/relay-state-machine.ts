@@ -53,10 +53,9 @@ export interface LegalTransition {
 }
 
 export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
-  { from: RelayStep.onboarding_gate, to: RelayStep.copy, direction: 'forward' },
-
+  // Copy Review is the first live step (onboarding_gate retired 2026-07-01):
+  // no send-back target.
   { from: RelayStep.copy, to: RelayStep.in_design, direction: 'forward' },
-  { from: RelayStep.copy, to: RelayStep.onboarding_gate, direction: 'send_back' },
 
   { from: RelayStep.in_design, to: RelayStep.am_review_design, direction: 'forward' },
   { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },
@@ -93,10 +92,9 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
 ] as const
 
 export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
-  { from: RelayStep.onboarding_gate, to: RelayStep.copy, direction: 'forward' },
-
+  // Copy Review is the first live step (onboarding_gate retired 2026-07-01):
+  // no send-back target.
   { from: RelayStep.copy, to: RelayStep.in_design, direction: 'forward' },
-  { from: RelayStep.copy, to: RelayStep.onboarding_gate, direction: 'send_back' },
 
   { from: RelayStep.in_design, to: RelayStep.am_review_design, direction: 'forward' },
   { from: RelayStep.in_design, to: RelayStep.copy, direction: 'send_back' },

@@ -20,8 +20,11 @@ import { RelayStep } from '@prisma/client'
 // Merge design steps (2026-06-26): `design_revisions` is retired. Design Review
 // (`am_review_design`) is one AM-held step; "Request changes" is an in-step
 // action, not a separate timeline node.
+// Onboarding move (2026-07-01): `onboarding_gate` is retired from the visible
+// pipeline — relays start at Copy Review. Onboarding is now a one-time
+// client-page checklist keyed on Client.onboardingCompletedAt. The enum value
+// is kept for historical rows only.
 export const FULL_TRACK: RelayStep[] = [
-  RelayStep.onboarding_gate,
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,
@@ -32,7 +35,6 @@ export const FULL_TRACK: RelayStep[] = [
 ]
 
 export const NO_REVIEW_TRACK: RelayStep[] = [
-  RelayStep.onboarding_gate,
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,

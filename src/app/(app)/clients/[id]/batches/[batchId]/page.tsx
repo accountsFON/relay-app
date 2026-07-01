@@ -605,7 +605,6 @@ export default async function BatchDetailPage({
               action={posts.length > 0 ? <PostListExpandAllToggle /> : undefined}
             >
               {posts.length === 0 ? (
-                batchSummary.currentStep === 'onboarding_gate' ||
                 batchSummary.currentStep === 'copy' ? (
                   <EmptyState
                     title="No posts yet"

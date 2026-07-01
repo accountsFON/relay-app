@@ -3,19 +3,21 @@ import { RelayStep } from '@prisma/client'
 import { FULL_TRACK, NO_REVIEW_TRACK, relayTrackFor } from '@/lib/relay-track-shape'
 
 describe('relay-track-shape', () => {
-  it('FULL_TRACK has 8 live nodes (merge design steps drops design_revisions)', () => {
+  it('FULL_TRACK has 7 live nodes (onboarding_gate retired 2026-07-01, design_revisions retired 2026-06-26)', () => {
     // 2026-06-22 rework merged the client + schedule steps. Merge design steps
     // (2026-06-26) retires design_revisions: Design Review is now one AM-held
-    // step. The retired steps must NOT be in the track or relay-track.tsx's
-    // indexOf(currentStep) returns -1 and the timeline blanks.
-    expect(FULL_TRACK).toHaveLength(8)
-    expect(FULL_TRACK[0]).toBe(RelayStep.onboarding_gate)
+    // step. Onboarding move (2026-07-01) retires onboarding_gate: relays now
+    // start at Copy Review. The retired steps must NOT be in the track or
+    // relay-track.tsx's indexOf(currentStep) returns -1 and the timeline blanks.
+    expect(FULL_TRACK).toHaveLength(7)
+    expect(FULL_TRACK[0]).toBe(RelayStep.copy)
     expect(FULL_TRACK).toContain(RelayStep.in_design)
     expect(FULL_TRACK).toContain(RelayStep.am_review_design)
     expect(FULL_TRACK).toContain(RelayStep.client_review)
     expect(FULL_TRACK).toContain(RelayStep.implementing_revisions)
     expect(FULL_TRACK[FULL_TRACK.length - 1]).toBe(RelayStep.scheduling)
     // Retired steps stay out of the live track.
+    expect(FULL_TRACK).not.toContain(RelayStep.onboarding_gate)
     expect(FULL_TRACK).not.toContain(RelayStep.design_revisions)
     expect(FULL_TRACK).not.toContain(RelayStep.sent_to_client)
     expect(FULL_TRACK).not.toContain(RelayStep.client_decision)
@@ -25,9 +27,9 @@ describe('relay-track-shape', () => {
     expect(FULL_TRACK).not.toContain(RelayStep.designs_completed)
   })
 
-  it('NO_REVIEW_TRACK has 6 live nodes and drops the client steps + design_revisions', () => {
-    expect(NO_REVIEW_TRACK).toHaveLength(6)
-    expect(NO_REVIEW_TRACK[0]).toBe(RelayStep.onboarding_gate)
+  it('NO_REVIEW_TRACK has 5 live nodes and drops the client steps + retired steps', () => {
+    expect(NO_REVIEW_TRACK).toHaveLength(5)
+    expect(NO_REVIEW_TRACK[0]).toBe(RelayStep.copy)
     expect(NO_REVIEW_TRACK).toContain(RelayStep.in_design)
     expect(NO_REVIEW_TRACK).toContain(RelayStep.am_review_design)
     expect(NO_REVIEW_TRACK[NO_REVIEW_TRACK.length - 1]).toBe(RelayStep.scheduling)
@@ -35,6 +37,7 @@ describe('relay-track-shape', () => {
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.client_review)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.implementing_revisions)
     // Retired steps stay out.
+    expect(NO_REVIEW_TRACK).not.toContain(RelayStep.onboarding_gate)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.design_revisions)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.sent_to_client)
     expect(NO_REVIEW_TRACK).not.toContain(RelayStep.client_decision)
@@ -53,6 +56,23 @@ describe('relay-track-shape', () => {
   })
 
   it('relayTrackFor picks the right array', () => {
+    expect(relayTrackFor(true)).toBe(FULL_TRACK)
+    expect(relayTrackFor(false)).toBe(NO_REVIEW_TRACK)
+  })
+})
+
+describe('relay track shape — onboarding_gate retired', () => {
+  it('FULL_TRACK starts at copy and omits onboarding_gate', () => {
+    expect(FULL_TRACK).not.toContain(RelayStep.onboarding_gate)
+    expect(FULL_TRACK[0]).toBe(RelayStep.copy)
+    expect(FULL_TRACK).toHaveLength(7)
+  })
+  it('NO_REVIEW_TRACK starts at copy and omits onboarding_gate', () => {
+    expect(NO_REVIEW_TRACK).not.toContain(RelayStep.onboarding_gate)
+    expect(NO_REVIEW_TRACK[0]).toBe(RelayStep.copy)
+    expect(NO_REVIEW_TRACK).toHaveLength(5)
+  })
+  it('relayTrackFor still switches on clientReviewEnabled', () => {
     expect(relayTrackFor(true)).toBe(FULL_TRACK)
     expect(relayTrackFor(false)).toBe(NO_REVIEW_TRACK)
   })

@@ -48,6 +48,10 @@ export async function regenerateContentRun(
   const client = await findClientForUser(ctx, clientId)
   if (!client) throw new Error('Client not found')
 
+  if (!client.onboardingCompletedAt) {
+    throw new Error('Complete onboarding for this client before generating content.')
+  }
+
   const existing = await db.contentRun.findMany({
     where: { clientId, targetMonth },
   })
@@ -106,6 +110,11 @@ export async function bulkGenerateContent(
     const client = await findClientForUser(ctx, clientId)
     if (!client) {
       results.push({ clientId, clientName: 'Unknown', error: 'Client not found' })
+      continue
+    }
+
+    if (!client.onboardingCompletedAt) {
+      results.push({ clientId, clientName: client.name, error: 'Onboarding incomplete' })
       continue
     }
 

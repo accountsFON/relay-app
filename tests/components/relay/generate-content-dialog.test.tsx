@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
 
 vi.mock('@/server/actions/generate-content', () => ({
@@ -17,15 +17,20 @@ const mockAction = generateContentAction as unknown as ReturnType<typeof vi.fn>
 
 beforeEach(() => mockAction.mockReset())
 
+/** Open the dialog AND tick the monthly-confirm box so Start generation is enabled. */
 async function openDialog() {
   render(<GenerateContentDialog clientId="c1" targetMonth="2026-05" />)
   fireEvent.click(screen.getByRole('button', { name: /generate content/i }))
+  // tick monthly-confirm so the Start generation button is enabled
+  await act(async () => {
+    fireEvent.click(screen.getByLabelText(/updated for this client this month/i))
+  })
 }
 
 describe('GenerateContentDialog', () => {
   it('renders the picker view on open', async () => {
     await openDialog()
-    expect(await screen.findByLabelText(/month/i)).toBeInTheDocument()
+    expect(await screen.findByLabelText(/^month$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/recrawl/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /start generation/i })).toBeInTheDocument()
   })
@@ -66,8 +71,8 @@ describe('GenerateContentDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
     await screen.findByRole('button', { name: /^replace$/i })
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
-    expect(await screen.findByLabelText(/month/i)).toBeInTheDocument()
-    expect(screen.getByLabelText<HTMLInputElement>(/month/i).value).toBe('2026-05')
+    expect(await screen.findByLabelText(/^month$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText<HTMLInputElement>(/^month$/i).value).toBe('2026-05')
   })
 
   it('confirm Replace calls fire with targetBatchId set', async () => {
@@ -100,5 +105,29 @@ describe('GenerateContentDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
     expect(await screen.findByText(/network down/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
+  })
+})
+
+describe('GenerateContentDialog — onboarding gate', () => {
+  it('renders a disabled button with the reason and does not open the dialog', () => {
+    render(<GenerateContentDialog clientId="c1" targetMonth="2026-08" disabled disabledReason="Complete onboarding first" />)
+    const btn = screen.getByRole('button', { name: /generate content/i })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveAttribute('title', 'Complete onboarding first')
+    fireEvent.click(btn)
+    expect(screen.queryByText(/start generation/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('GenerateContentDialog — monthly confirmation', () => {
+  it('disables Start generation until the monthly-confirm box is ticked', async () => {
+    render(<GenerateContentDialog clientId="c1" targetMonth="2026-08" />)
+    fireEvent.click(screen.getByRole('button', { name: /generate content/i }))
+    const start = screen.getByRole('button', { name: /start generation/i })
+    expect(start).toBeDisabled()
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText(/updated for this client this month/i))
+    })
+    expect(screen.getByRole('button', { name: /start generation/i })).toBeEnabled()
   })
 })

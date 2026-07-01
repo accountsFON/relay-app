@@ -30,12 +30,11 @@ import { parseDateScope, dateScopeLabel } from '@/lib/date-scope'
 import { DashboardSelectMode } from '@/components/relay/dashboard-select-mode'
 
 /**
- * Full relay track, left to right. The dashboard surfaces every step so the
- * race reads as one sweep from onboarding through final QA. Designer view
- * is a filtered subset of this same ordering.
+ * Full relay track, left to right, starting at Copy Review. The dashboard
+ * surfaces every step so the race reads as one sweep through final QA.
+ * Designer view is a filtered subset of this same ordering.
  */
 const AM_TRACK_STEPS: RelayStep[] = [
-  RelayStep.onboarding_gate,
   RelayStep.copy,
   RelayStep.in_design,
   // `designs_completed` removed per Phase 3 item 15 PR1. Enum value
