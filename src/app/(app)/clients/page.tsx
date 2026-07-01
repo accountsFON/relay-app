@@ -94,6 +94,7 @@ export default async function ClientsPage({
               industry: c.industry,
               location: c.location,
               isArchived: Boolean(c.deletedAt),
+              onboardingComplete: c.onboardingCompletedAt != null,
             }))}
           />
         )}

@@ -19,6 +19,7 @@ type Client = {
   industry: string | null
   location: string | null
   isArchived?: boolean
+  onboardingComplete: boolean
 }
 
 function getNextMonth(): string {
@@ -34,7 +35,7 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
   const [isPending, startTransition] = useTransition()
   const { runs, refresh } = useInFlightRuns()
 
-  const activeClients = clients.filter((c) => c.status === 'active' && !c.isArchived)
+  const activeClients = clients.filter((c) => c.status === 'active' && !c.isArchived && c.onboardingComplete)
 
   const toggleClient = (id: string) => {
     setSelected((prev) => {
@@ -165,7 +166,8 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
         {clients.map((client, index) => {
           const subtitle = [client.industry, client.location].filter(Boolean).join(' · ') || 'No details set'
           const isArchived = Boolean(client.isArchived)
-          const isSelectable = client.status === 'active' && !isArchived
+          const isSelectable = client.status === 'active' && !isArchived && client.onboardingComplete
+          const needsOnboarding = client.status === 'active' && !isArchived && !client.onboardingComplete
           const isSelected = selected.has(client.id)
           const selection = selected.get(client.id)
 
@@ -213,6 +215,8 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
                 </div>
                 {isArchived ? (
                   <Badge variant="secondary">archived</Badge>
+                ) : needsOnboarding ? (
+                  <Badge variant="secondary">Needs onboarding</Badge>
                 ) : !isSelectable ? (
                   <Badge variant="secondary">{client.status}</Badge>
                 ) : null}
