@@ -62,6 +62,15 @@ vi.mock('@/lib/media', () => ({
   attachMediaToPost: vi.fn(),
 }))
 
+// --- mock relay-lock-guard (spy so RelayCompletedError is real) ---
+vi.mock('@/server/lib/relay-lock-guard', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('@/server/lib/relay-lock-guard')>()
+  return {
+    ...orig,
+    assertBatchEditable: vi.fn(),
+  }
+})
+
 // --- mock promotePostFeedbackToThread (Task 3) ---
 vi.mock('@/server/lib/promotePostFeedback', () => ({
   promotePostFeedbackToThread: vi.fn(),
@@ -84,6 +93,7 @@ import { promotePostFeedbackToThread } from '@/server/lib/promotePostFeedback'
 import { notifyClientOfAmReply } from '@/server/lib/notifyClientOfAmReply'
 import { notifyInternalThreadReply } from '@/server/lib/notifyInternalThreadReply'
 import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
+import { assertBatchEditable, RelayCompletedError } from '@/server/lib/relay-lock-guard'
 import {
   createThreadAction,
   addCommentAction,
@@ -497,6 +507,50 @@ describe('useCommentImageAsPostMediaAction', () => {
     await useCommentImageAsPostMediaAction({ postId: 'post_1', commentId: 'comment_1' })
 
     expect(resolveThread).not.toHaveBeenCalled()
+  })
+
+  it('rejects and does NOT call attachMediaToPost when relay is completed', async () => {
+    vi.mocked(db.postComment.findUnique).mockResolvedValue({
+      imageUrl: VALID_IMAGE_URL,
+      thread: {
+        post: {
+          id: 'post_1',
+          clientId: 'client_1',
+          batchId: 'b1',
+          client: { organizationId: 'org_1' },
+        },
+      },
+    } as never)
+    vi.mocked(assertBatchEditable).mockRejectedValueOnce(new RelayCompletedError())
+
+    await expect(
+      useCommentImageAsPostMediaAction({ postId: 'post_1', commentId: 'comment_1' }),
+    ).rejects.toThrow(RelayCompletedError)
+
+    expect(attachMediaToPost).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// relay-lock guard: pure comment actions stay open on completed relay
+// ---------------------------------------------------------------------------
+
+describe('addCommentAction relay-lock guard (chat stays open)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue(null)
+    vi.mocked(getOrgContext).mockResolvedValue(AM_CTX as never)
+    vi.mocked(addComment).mockResolvedValue(COMMENT_RESULT)
+    vi.mocked(db.postThread.findUnique).mockResolvedValue({
+      postId: 'post_1',
+      post: { clientId: 'client_1' },
+    } as never)
+    vi.mocked(internalMentionRosterForClient).mockResolvedValue([])
+  })
+
+  it('does NOT call assertBatchEditable (comments are open on completed relays)', async () => {
+    await addCommentAction({ threadId: 'thread_1', body: 'Just a comment' })
+    expect(assertBatchEditable).not.toHaveBeenCalled()
   })
 })
 
