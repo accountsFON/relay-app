@@ -4,7 +4,11 @@ import { useMemo, useRef, useState, useTransition } from 'react'
 import { upload } from '@vercel/blob/client'
 import { Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { matchFilenameToPost, type MatchablePost } from '@/lib/media-match'
+import {
+  matchFilenameToPost,
+  fillEmptyPostSlots,
+  type MatchablePost,
+} from '@/lib/media-match'
 import { cn } from '@/lib/utils'
 
 /**
@@ -113,8 +117,13 @@ export function BulkMediaTray({
         }),
       )
 
-      // Run auto-match. Conflict resolution: first file to claim a slot
-      // wins; later conflicts stay unassigned.
+      // Run auto-match first (filename -> post). Conflict resolution: first
+      // file to claim a slot wins; later conflicts stay unassigned. Then
+      // fillEmptyPostSlots assigns any leftover unmatched files to the still-
+      // empty slots in order, so a bulk drop of arbitrarily-named files still
+      // lands on every post instead of silently sitting unassigned (and being
+      // skipped on Apply). The AM can drag to reassign any mispairing before
+      // applying.
       setFiles((prev) => {
         const next = [...prev]
         const claimedPostIds = new Set(
@@ -134,7 +143,10 @@ export function BulkMediaTray({
             assignedPostId,
           })
         }
-        return next
+        return fillEmptyPostSlots(
+          next,
+          sortedPosts.map((p) => p.id),
+        )
       })
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
