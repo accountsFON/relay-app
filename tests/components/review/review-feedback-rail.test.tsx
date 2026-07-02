@@ -104,6 +104,7 @@ describe('ReviewFeedbackRail — row rendering', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-row-post-1')).toBeTruthy()
@@ -126,6 +127,7 @@ describe('ReviewFeedbackRail — row rendering', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     const cleanRow = screen.getByTestId('rail-row-post-clean').closest('[data-collapsed]')
@@ -147,6 +149,7 @@ describe('ReviewFeedbackRail — row rendering', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     const row = screen.getByTestId('rail-row-post-a').closest('[data-collapsed]')
@@ -170,6 +173,7 @@ describe('ReviewFeedbackRail — row rendering', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-thread-t1')).toBeTruthy()
@@ -190,6 +194,7 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     const row = screen.getByTestId('pin-comment-row-t1')
@@ -208,6 +213,7 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     const row = screen.getByTestId('pin-comment-row-t1')
@@ -227,6 +233,7 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onToggleThread={onToggleThread}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     fireEvent.click(screen.getByTestId('pin-comment-row-t1'))
@@ -255,6 +262,7 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onToggleThread={vi.fn()}
         onSelectPost={onSelectPost}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     fireEvent.click(screen.getByTestId('rail-row-post-ce'))
@@ -278,6 +286,7 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
@@ -298,6 +307,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.queryByTestId('rail-mark-addressed-post-1')).toBeNull()
@@ -315,6 +325,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toBeTruthy()
@@ -338,6 +349,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.queryByTestId('rail-accept-post-1')).toBeNull()
@@ -362,6 +374,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-accept-post-1')).toBeTruthy()
@@ -380,6 +393,7 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.queryByTestId('pin-comment-resolve-t1')).toBeNull()
@@ -406,6 +420,7 @@ describe('ReviewFeedbackRail — caption_edited diff view', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.getByTestId('caption-diff-view')).toBeTruthy()
@@ -432,6 +447,7 @@ describe('ReviewFeedbackRail — caption_edited diff view', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.queryByTestId('caption-diff-view')).toBeNull()
@@ -450,6 +466,7 @@ describe('ReviewFeedbackRail — caption-edited block (anchor + accepted state)'
         onToggleThread={vi.fn()}
         onSelectPost={onSelectPost}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     return { onSelectPost }
@@ -533,6 +550,7 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toHaveTextContent('Mark addressed')
@@ -550,6 +568,7 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toHaveTextContent('Move back')
@@ -568,6 +587,7 @@ describe('ReviewFeedbackRail — Fix with AI (per post)', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
   }
@@ -603,6 +623,7 @@ describe('ReviewFeedbackRail — general feedback reply (post-level)', () => {
         onToggleThread={vi.fn()}
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
       />,
     )
   }
@@ -818,5 +839,56 @@ describe('ReviewFeedbackRail — Changes only filter', () => {
     expect(screen.queryByTestId('rail-row-post-approved')).toBeNull()
     // Changes row stays
     expect(screen.getByTestId('rail-row-post-changes')).toBeInTheDocument()
+  })
+
+  it('toggling the filter shrinks the navigator counter total (stepper only walks visible posts)', () => {
+    // approved post with a RESOLVED thread: needsChanges=false (no open threads,
+    // no changes verdict, no unresolved note) but contributes 1 navItem when
+    // visiblePosts is unfiltered.  After Fix 1, the navItems list is built from
+    // visiblePosts, so this post's navItem disappears when the filter is on.
+    const resolvedThread: HydratedThread = {
+      id: 't-resolved',
+      status: 'resolved' as const,
+      pin: { kind: 'image' as const, x: 5, y: 5 },
+      firstComment: {
+        id: 't-resolved-c1',
+        body: 'old comment',
+        author: { kind: 'client' as const, reviewerName: 'Jane' },
+        imageUrl: null,
+        imageWidth: null,
+        imageHeight: null,
+        createdAt: new Date(),
+      },
+      comments: [],
+      commentCount: 1,
+    }
+    const posts = [
+      vm({
+        postId: 'post-approved-resolved',
+        verdict: 'approved',
+        threads: [resolvedThread],
+        comment: null,
+        addressed: false,
+      }),
+      vm({
+        postId: 'post-changes-open',
+        postNumber: 2,
+        verdict: 'changes_requested',
+        threads: [makeThread('t-open')],
+        comment: null,
+        addressed: false,
+      }),
+    ]
+    renderRailNew(posts)
+
+    // Before filter: 2 navItems (1 resolved thread + 1 open thread)
+    // counter = "1 of 2 resolved"
+    expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('1 of 2 resolved')
+
+    fireEvent.click(screen.getByTestId('changes-navigator-filter'))
+
+    // After filter: approved post filtered out, only the open thread remains
+    // counter = "0 of 1 resolved"
+    expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('0 of 1 resolved')
   })
 })

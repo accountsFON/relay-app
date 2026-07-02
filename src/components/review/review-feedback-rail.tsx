@@ -26,7 +26,7 @@ export type ReviewFeedbackRailProps = {
   onSelectPost: (postId: string) => void
   registerThreadRef: (threadId: string, el: HTMLElement | null) => void
   /** Scroll the canvas/rail to the given anchor key (threadId or postId). */
-  onScrollToAnchor?: (anchorKey: string) => void
+  onScrollToAnchor: (anchorKey: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -118,7 +118,7 @@ function FeedbackRow({
     )
     const noteDone = !post.comment || post.noteResolved || kind === 'note'
     const capDone =
-      post.verdict !== 'caption_edited' || post.captionAccepted || post.addressed
+      post.verdict !== 'caption_edited' || post.captionAccepted
 
     if (pinsDone && noteDone && capDone && !post.addressed) {
       await actions.markAddressed(post.postId, post.reviewItemId)
@@ -429,7 +429,7 @@ export function ReviewFeedbackRail({
 
   const visiblePosts = filterOn ? posts.filter(needsChanges) : posts
 
-  const navItems: NavItem[] = posts.flatMap((p) => {
+  const navItems: NavItem[] = visiblePosts.flatMap((p) => {
     const out: NavItem[] = []
     p.threads.forEach((t) =>
       out.push({ id: t.id, anchorKey: t.id, resolved: t.status === 'resolved' }),
@@ -461,7 +461,7 @@ export function ReviewFeedbackRail({
           items={navItems}
           filterOn={filterOn}
           onToggleFilter={() => setFilterOn((v) => !v)}
-          onNavigate={onScrollToAnchor ?? (() => {})}
+          onNavigate={onScrollToAnchor}
         />
       </div>
       {visiblePosts.map((post) => (
