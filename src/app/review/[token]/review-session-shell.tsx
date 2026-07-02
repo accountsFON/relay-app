@@ -15,6 +15,7 @@ import { ReturningReviewerBanner } from '@/components/review/returning-reviewer-
 import { ReviewTutorialModal } from '@/components/review/review-tutorial-modal'
 import { ApproveAllButton } from '@/components/review/approve-all-button'
 import { ReviewStickyBar } from '@/components/review/review-sticky-bar'
+import { ChangesNavigator, type NavItem } from '@/components/review/changes-navigator'
 import { submitSessionAction } from '@/server/actions/reviewSessions'
 import {
   addCommentAsReviewer,
@@ -121,6 +122,7 @@ export function ReviewSessionShell({
   const [approvingAll, setApprovingAll] = useState(false)
 
   const stickySentinelRef = useRef<HTMLDivElement | null>(null)
+  const postsContainerRef = useRef<HTMLDivElement | null>(null)
   const [pinned, setPinned] = useState(false)
 
   // Visible failure surfaces (never swallow). `saveError` flags a failed
@@ -160,6 +162,21 @@ export function ReviewSessionShell({
       totalPosts: postIds.length,
     }
   }, [postIds, itemsByPostId])
+
+  // Nav items for the ChangesNavigator: one entry per thread + note per
+  // Changes post, collapsed to one per post if no threads are present.
+  // threads is optional on ReviewSessionShellPost; falls back to [] when absent.
+  const changesNavItems = useMemo<NavItem[]>(() =>
+    posts.flatMap(({ post, threads }) => {
+      const d = itemsByPostId[post.id]?.decision
+      if (d !== 'changes_requested' && d !== 'caption_edited') return []
+      const out: NavItem[] = []
+      ;(threads ?? []).forEach((t) => out.push({ id: t.id, anchorKey: post.id, resolved: false }))
+      if (itemsByPostId[post.id]?.comment) out.push({ id: `note-${post.id}`, anchorKey: post.id, resolved: false })
+      if (out.length === 0) out.push({ id: `post-${post.id}`, anchorKey: post.id, resolved: false })
+      return out
+    }),
+  [posts, itemsByPostId])
 
   const itemsReviewed =
     summary.approved + summary.changesRequested + summary.captionEdited
@@ -231,6 +248,18 @@ export function ReviewSessionShell({
   // success, raise on failure. Keeps the optimistic-but-unsaved state honest.
   const reflectSave = useCallback((ok: boolean) => {
     setSaveError(!ok)
+  }, [])
+
+  // Scroll the feed to the article whose data-post-id matches postId.
+  // Falls back to a document-level query when the container ref hasn't mounted
+  // yet (shouldn't happen in practice, but keeps SSR safe).
+  const scrollToPost = useCallback((postId: string) => {
+    const el =
+      postsContainerRef.current?.querySelector<HTMLElement>(`[data-post-id="${postId}"]`) ??
+      (typeof document !== 'undefined'
+        ? document.querySelector<HTMLElement>(`[data-post-id="${postId}"]`)
+        : null)
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [])
 
   const handleDecisionChange = useCallback(
@@ -474,7 +503,17 @@ export function ReviewSessionShell({
           <ReviewProgressBar
             postIds={postIds}
             itemsByPostId={itemsByPostId}
+            onSegmentClick={(idx) => scrollToPost(postIds[idx])}
           />
+          {!locked && changesNavItems.length > 0 ? (
+            <ChangesNavigator
+              items={changesNavItems}
+              filterOn={false}
+              onToggleFilter={() => {}}
+              onNavigate={scrollToPost}
+              mode="navigate"
+            />
+          ) : null}
           {!locked ? (
             <ApproveAllButton
               totalPosts={summary.totalPosts}
@@ -489,46 +528,48 @@ export function ReviewSessionShell({
         <div ref={stickySentinelRef} aria-hidden className="h-0" />
       </div>
 
-      <FeedShell platform={platform} onPlatformChange={setPlatform}>
-        {posts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-600">
-            No posts in this relay yet.
-          </div>
-        ) : (
-          posts.map(({ post, threads, hasNewReply }) => {
-            const reviewItem = itemsByPostId[post.id]
-            return (
-              <ReviewPostCard
-                key={post.id}
-                post={post}
-                clientName={clientName}
-                clientAvatarUrl={clientAvatarUrl ?? null}
-                reviewItem={reviewItem}
-                threads={threads}
-                hasNewReply={hasNewReply}
-                platform={platform}
-                mode="review"
-                disabled={pending || submitting}
-                locked={locked}
-                onDecisionChange={(decision) =>
-                  handleDecisionChange(post.id, decision)
-                }
-                onCommentChange={(comment) =>
-                  handleCommentChange(post.id, comment)
-                }
-                onCaptionEditSave={(draft) =>
-                  handleCaptionEditSave(post.id, draft)
-                }
-                onCreatePin={(pin, body, image) =>
-                  handleCreatePin(post.id, pin, body, image)
-                }
-                onAppendThreadComment={handleAppendThreadComment}
-                onUploadImage={handleUploadImage}
-              />
-            )
-          })
-        )}
-      </FeedShell>
+      <div ref={postsContainerRef}>
+        <FeedShell platform={platform} onPlatformChange={setPlatform}>
+          {posts.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-600">
+              No posts in this relay yet.
+            </div>
+          ) : (
+            posts.map(({ post, threads, hasNewReply }) => {
+              const reviewItem = itemsByPostId[post.id]
+              return (
+                <ReviewPostCard
+                  key={post.id}
+                  post={post}
+                  clientName={clientName}
+                  clientAvatarUrl={clientAvatarUrl ?? null}
+                  reviewItem={reviewItem}
+                  threads={threads}
+                  hasNewReply={hasNewReply}
+                  platform={platform}
+                  mode="review"
+                  disabled={pending || submitting}
+                  locked={locked}
+                  onDecisionChange={(decision) =>
+                    handleDecisionChange(post.id, decision)
+                  }
+                  onCommentChange={(comment) =>
+                    handleCommentChange(post.id, comment)
+                  }
+                  onCaptionEditSave={(draft) =>
+                    handleCaptionEditSave(post.id, draft)
+                  }
+                  onCreatePin={(pin, body, image) =>
+                    handleCreatePin(post.id, pin, body, image)
+                  }
+                  onAppendThreadComment={handleAppendThreadComment}
+                  onUploadImage={handleUploadImage}
+                />
+              )
+            })
+          )}
+        </FeedShell>
+      </div>
 
       {!locked ? (
         <SubmitReviewBar

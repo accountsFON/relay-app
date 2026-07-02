@@ -16,58 +16,77 @@ export interface ChangesNavigatorProps {
   filterOn: boolean
   onToggleFilter: () => void
   onNavigate: (anchorKey: string) => void
+  mode?: 'resolve' | 'navigate'
+  showFilter?: boolean
 }
 
 /**
  * Presentational changes navigator: a "Changes only" filter toggle + an
- * item-level Prev/Next stepper that walks UNRESOLVED items in order (stop at
- * ends) + a resolved counter. Side-effect-free beyond the injected callbacks.
+ * item-level Prev/Next stepper + a counter.
+ *
+ * resolve mode (default): walks UNRESOLVED items only; counter shows
+ *   "{resolvedCount} of {total} resolved"; filter toggle visible.
+ * navigate mode: walks ALL items in order; counter shows
+ *   "{position} of {total}"; filter toggle hidden.
+ *
+ * Side-effect-free beyond the injected callbacks.
  */
 export function ChangesNavigator({
   items,
   filterOn,
   onToggleFilter,
   onNavigate,
+  mode = 'resolve',
+  showFilter,
 }: ChangesNavigatorProps) {
+  const navigate = mode === 'navigate'
   const [cursor, setCursor] = useState(-1)
   const resolvedCount = items.filter((i) => i.resolved).length
-  const unresolvedIdx = items
-    .map((i, idx) => (i.resolved ? -1 : idx))
-    .filter((idx) => idx >= 0)
+  const walkableIdx = navigate
+    ? items.map((_, idx) => idx)
+    : items.map((i, idx) => (i.resolved ? -1 : idx)).filter((idx) => idx >= 0)
 
-  const hasNext = unresolvedIdx.some((idx) => idx > cursor)
-  const hasPrev = cursor > 0 && unresolvedIdx.some((idx) => idx < cursor)
+  const hasNext = walkableIdx.some((idx) => idx > cursor)
+  const hasPrev = cursor > 0 && walkableIdx.some((idx) => idx < cursor)
 
   function step(dir: 1 | -1) {
     const candidates =
       dir === 1
-        ? unresolvedIdx.filter((idx) => idx > cursor)
-        : unresolvedIdx.filter((idx) => idx < cursor)
+        ? walkableIdx.filter((idx) => idx > cursor)
+        : walkableIdx.filter((idx) => idx < cursor)
     const target = dir === 1 ? candidates[0] : candidates[candidates.length - 1]
     if (target === undefined) return
     setCursor(target)
     onNavigate(items[target].anchorKey)
   }
 
+  const counterText = navigate
+    ? `${cursor < 0 ? 0 : cursor + 1} of ${items.length}`
+    : `${resolvedCount} of ${items.length} resolved`
+
+  const filterVisible = showFilter ?? !navigate
+
   return (
     <div
       data-testid="changes-navigator"
       className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-2 py-1.5"
     >
-      <button
-        type="button"
-        data-testid="changes-navigator-filter"
-        onClick={onToggleFilter}
-        aria-pressed={filterOn}
-        className={cn(
-          'rounded-full px-2 py-0.5 text-[11px] font-medium',
-          filterOn ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground',
-        )}
-      >
-        Changes only
-      </button>
+      {filterVisible && (
+        <button
+          type="button"
+          data-testid="changes-navigator-filter"
+          onClick={onToggleFilter}
+          aria-pressed={filterOn}
+          className={cn(
+            'rounded-full px-2 py-0.5 text-[11px] font-medium',
+            filterOn ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground',
+          )}
+        >
+          Changes only
+        </button>
+      )}
       <span data-testid="changes-navigator-counter" className="text-[11px] tabular-nums text-muted-foreground">
-        {resolvedCount} of {items.length} resolved
+        {counterText}
       </span>
       <div className="flex items-center gap-1">
         <button
@@ -75,7 +94,7 @@ export function ChangesNavigator({
           data-testid="changes-navigator-prev"
           onClick={() => step(-1)}
           disabled={!hasPrev}
-          aria-label="Previous unresolved item"
+          aria-label={navigate ? 'Previous item' : 'Previous unresolved item'}
           className="rounded p-1 text-muted-foreground disabled:opacity-40"
         >
           <ChevronLeft className="size-4" />
@@ -85,7 +104,7 @@ export function ChangesNavigator({
           data-testid="changes-navigator-next"
           onClick={() => step(1)}
           disabled={!hasNext}
-          aria-label="Next unresolved item"
+          aria-label={navigate ? 'Next item' : 'Next unresolved item'}
           className="rounded p-1 text-muted-foreground disabled:opacity-40"
         >
           <ChevronRight className="size-4" />

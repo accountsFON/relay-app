@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ReviewProgressBar } from '@/components/review/review-progress-bar'
 import type { ReviewItemHydrated } from '@/types/review-session'
 
@@ -57,5 +58,25 @@ describe('ReviewProgressBar', () => {
     expect(screen.getByTestId('review-progress-counter').textContent).toBe(
       '2/4 reviewed',
     )
+  })
+
+  it('calls onSegmentClick with the post index when a segment is clicked', async () => {
+    const user = userEvent.setup()
+    const onSegmentClick = vi.fn()
+    render(
+      <ReviewProgressBar
+        postIds={['post-1', 'post-2', 'post-3']}
+        itemsByPostId={{}}
+        onSegmentClick={onSegmentClick}
+      />,
+    )
+    const segments = screen.getAllByTestId('review-progress-segment')
+    await user.click(segments[1])
+    expect(onSegmentClick).toHaveBeenCalledWith(1)
+  })
+
+  it('segments are non-interactive spans when onSegmentClick is absent', () => {
+    render(<ReviewProgressBar postIds={['post-1']} itemsByPostId={{}} />)
+    expect(screen.getByTestId('review-progress-segment').tagName).toBe('SPAN')
   })
 })
