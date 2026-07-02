@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { ReviewFeedbackRail } from '@/components/review/review-feedback-rail'
 import type { FeedbackPostVM, FeedbackActions } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 import type { HydratedThread } from '@/server/repositories/threads'
@@ -63,6 +63,7 @@ function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     reviewItemId: 'ri-1',
     addressed: false,
     captionAccepted: false,
+    noteResolved: false,
     threads: [makeThread('t1')],
     ...over,
   }
@@ -76,6 +77,8 @@ const noopActions: FeedbackActions = {
   rejectCaption: vi.fn(() => Promise.resolve()),
   markAddressed: vi.fn(() => Promise.resolve()),
   unmarkAddressed: vi.fn(() => Promise.resolve()),
+  resolveNote: vi.fn(() => Promise.resolve()),
+  unresolveNote: vi.fn(() => Promise.resolve()),
   replyToFeedback: vi.fn(() => Promise.resolve()),
   startNextRound: vi.fn(() => Promise.resolve()),
 }
@@ -688,5 +691,132 @@ describe('ReviewFeedbackRail — general feedback reply (post-level)', () => {
     expect(screen.queryByText('3')).toBeNull()
     // Post-level thread renders in its own subsection, not numbered
     expect(screen.getByTestId('rail-postthread-pt1')).toBeInTheDocument()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// New: ChangesNavigator + ResolveCheckbox + auto-address roll-up
+// ---------------------------------------------------------------------------
+
+function renderRailNew(
+  posts: ReadonlyArray<FeedbackPostVM>,
+  actionsOverride: Partial<FeedbackActions> = {},
+  opts: { isDesigner?: boolean; selectedThreadId?: string | null } = {},
+) {
+  const actions = { ...noopActions, ...actionsOverride }
+  render(
+    <ReviewFeedbackRail
+      posts={posts}
+      actions={actions}
+      isDesigner={opts.isDesigner ?? false}
+      selectedPostId={null}
+      selectedThreadId={opts.selectedThreadId ?? null}
+      onToggleThread={vi.fn()}
+      onSelectPost={vi.fn()}
+      registerThreadRef={vi.fn()}
+      onScrollToAnchor={vi.fn()}
+    />,
+  )
+  return { actions }
+}
+
+describe('ReviewFeedbackRail — ChangesNavigator', () => {
+  it('renders the changes-navigator counter', () => {
+    renderRailNew([vm()])
+    expect(screen.getByTestId('changes-navigator-counter')).toBeInTheDocument()
+  })
+})
+
+describe('ReviewFeedbackRail — note ResolveCheckbox', () => {
+  it('renders the note checkbox when post has comment + reviewItemId (no post-level thread)', () => {
+    renderRailNew([
+      vm({ comment: 'please soften', reviewItemId: 'ri-1', threads: [makeThread('t1')] }),
+    ])
+    expect(screen.getByTestId('rail-note-resolve-post-1')).toBeInTheDocument()
+  })
+
+  it('clicking the note checkbox calls resolveNote(postId, reviewItemId)', async () => {
+    const resolveNote = vi.fn(() => Promise.resolve())
+    renderRailNew(
+      [vm({ comment: 'please soften', reviewItemId: 'ri-1', threads: [makeThread('t1')], noteResolved: false })],
+      { resolveNote },
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('rail-note-resolve-post-1'))
+    })
+    expect(resolveNote).toHaveBeenCalledWith('post-1', 'ri-1')
+  })
+})
+
+describe('ReviewFeedbackRail — auto-address roll-up', () => {
+  it('resolving the last open pin fires markAddressed', async () => {
+    const resolve = vi.fn(() => Promise.resolve())
+    const markAddressed = vi.fn(() => Promise.resolve())
+    // ONE open pin, no comment, changes_requested
+    const post = vm({ comment: null, threads: [makeThread('t1')], addressed: false })
+    renderRailNew([post], { resolve, markAddressed }, { selectedThreadId: 't1' })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pin-comment-resolve-t1'))
+    })
+    expect(resolve).toHaveBeenCalledWith('t1')
+    expect(markAddressed).toHaveBeenCalledWith('post-1', 'ri-1')
+  })
+
+  it('resolving one of two open pins does NOT fire markAddressed', async () => {
+    const resolve = vi.fn(() => Promise.resolve())
+    const markAddressed = vi.fn(() => Promise.resolve())
+    const post = vm({ comment: null, threads: [makeThread('t1'), makeThread('t2')], addressed: false })
+    renderRailNew([post], { resolve, markAddressed }, { selectedThreadId: 't1' })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pin-comment-resolve-t1'))
+    })
+    expect(resolve).toHaveBeenCalledWith('t1')
+    expect(markAddressed).not.toHaveBeenCalled()
+  })
+
+  it('ticking the note when it is the last unresolved item fires resolveNote then markAddressed', async () => {
+    const resolveNote = vi.fn(() => Promise.resolve())
+    const markAddressed = vi.fn(() => Promise.resolve())
+    // Zero open threads, unresolved comment → note is the ONLY remaining item
+    const post = vm({
+      comment: 'please soften',
+      reviewItemId: 'ri-1',
+      threads: [],
+      noteResolved: false,
+      addressed: false,
+      verdict: 'changes_requested',
+    })
+    renderRailNew([post], { resolveNote, markAddressed })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('rail-note-resolve-post-1'))
+    })
+    expect(resolveNote).toHaveBeenCalledWith('post-1', 'ri-1')
+    expect(markAddressed).toHaveBeenCalledWith('post-1', 'ri-1')
+  })
+})
+
+describe('ReviewFeedbackRail — Changes only filter', () => {
+  it('toggling the filter hides posts that need no changes', () => {
+    const posts = [
+      // approved-clean: no threads, no comment → needsChanges = false
+      vm({ postId: 'post-approved', verdict: 'approved', threads: [], comment: null, addressed: false }),
+      // changes_requested with open thread → needsChanges = true
+      vm({ postId: 'post-changes', postNumber: 2, verdict: 'changes_requested', threads: [makeThread('t1')], addressed: false }),
+    ]
+    renderRailNew(posts)
+
+    // Both rows visible before filter
+    expect(screen.getByTestId('rail-row-post-approved')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-row-post-changes')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('changes-navigator-filter'))
+
+    // Approved-clean row is removed
+    expect(screen.queryByTestId('rail-row-post-approved')).toBeNull()
+    // Changes row stays
+    expect(screen.getByTestId('rail-row-post-changes')).toBeInTheDocument()
   })
 })

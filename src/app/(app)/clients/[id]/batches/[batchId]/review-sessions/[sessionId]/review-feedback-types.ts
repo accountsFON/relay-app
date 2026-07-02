@@ -27,6 +27,9 @@ export type FeedbackPostVM = {
    *  (ReviewItem.acceptedAsPostVersionId is set). Drives the greyed success
    *  state on the caption-suggestion block. */
   captionAccepted: boolean
+  /** True when the AM has resolved the client's general note
+   *  (ReviewItem.noteResolvedAt is set). */
+  noteResolved: boolean
   /** All client threads (pins/comments) on this post, open + resolved. */
   threads: ReadonlyArray<HydratedThread>
 }
@@ -48,6 +51,8 @@ export type FeedbackActions = {
   rejectCaption: (reviewItemId: string) => Promise<void>
   markAddressed: (postId: string, reviewItemId: string | null) => Promise<void>
   unmarkAddressed: (postId: string, reviewItemId: string | null) => Promise<void>
+  resolveNote: (postId: string, reviewItemId: string) => Promise<void>
+  unresolveNote: (postId: string, reviewItemId: string) => Promise<void>
   /** AM-only: reply to a post's general (non-pin) feedback. Promotes the
    *  client's Notes into a reviewer post-level thread and appends the reply. */
   replyToFeedback: (

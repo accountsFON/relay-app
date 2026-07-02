@@ -139,6 +139,7 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
       updatedSinceLastReview: false,
       lastReviewedVersionId: null,
       reviewedAt: new Date(),
+      noteResolvedAt: null,
     }
 
     render(<ReviewSessionShell {...BASE_PROPS} initialItems={[initialItem]} />)
@@ -164,6 +165,7 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
       updatedSinceLastReview: false,
       lastReviewedVersionId: null,
       reviewedAt: new Date(),
+      noteResolvedAt: null,
     }
 
     render(<ReviewSessionShell {...BASE_PROPS} initialItems={[initialItem]} />)
@@ -243,6 +245,7 @@ describe('ReviewSessionShell -- approve all', () => {
       updatedSinceLastReview: false,
       lastReviewedVersionId: null,
       reviewedAt: new Date(),
+      noteResolvedAt: null,
     }
   }
 

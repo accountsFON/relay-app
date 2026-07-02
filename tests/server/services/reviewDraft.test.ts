@@ -124,6 +124,7 @@ function happyPathHydratedItem(
     suggestedCaption: null,
     acceptedAsPostVersionId: null,
     addressedAt: null,
+    noteResolvedAt: null,
     updatedSinceLastReview: false,
     lastReviewedVersionId: null,
     reviewedAt: new Date('2026-05-17T10:00:00Z'),

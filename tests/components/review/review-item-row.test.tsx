@@ -14,6 +14,7 @@ function baseItem(overrides: Partial<HydratedItemWithPost> = {}): HydratedItemWi
     suggestedCaption: null,
     acceptedAsPostVersionId: null,
     addressedAt: null,
+    noteResolvedAt: null,
     updatedSinceLastReview: false,
     lastReviewedVersionId: null,
     reviewedAt: new Date('2026-05-15T11:00:00Z'),

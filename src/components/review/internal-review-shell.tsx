@@ -6,11 +6,12 @@ import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
 import { ReviewPostCard } from '@/components/review/review-post-card'
-import { InternalReviewRail, type InternalRailRow } from '@/components/review/internal-review-rail'
+import { InternalReviewRail, type InternalRailRow, type InternalRailThread } from '@/components/review/internal-review-rail'
 import {
   createThreadAction,
   addCommentAction,
   resolveThreadAction,
+  reopenThreadAction,
   // Aliased: the source export starts with `use`, which trips the
   // react-hooks/rules-of-hooks linter when called inside a useCallback. It is
   // a server action, not a hook.
@@ -20,6 +21,23 @@ import { toast } from 'sonner'
 import { updatePostAction } from '@/server/actions/posts'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
 import type { MentionTarget } from '@/lib/mentions'
+type HydratedThread = FeedPostProps['threads'][number]
+
+/**
+ * Derive a short human-readable label for a thread to show in the resolve
+ * checklist. Uses the first comment body (truncated to 60 chars) when
+ * available, then falls back to a label based on the pin kind.
+ */
+function threadLabelFor(thread: HydratedThread): string {
+  const body = thread.firstComment?.body?.trim()
+  if (body) {
+    return body.length > 60 ? body.slice(0, 60) + '...' : body
+  }
+  const { kind } = thread.pin
+  if (kind === 'image') return 'Image pin'
+  if (kind === 'caption') return 'Caption note'
+  return 'Post comment'
+}
 
 export type InternalReviewShellPost = {
   post: FeedPostProps['post']
@@ -112,12 +130,18 @@ export function InternalReviewShell({
         const openCount = list.filter((t) => t.status === 'open').length
         const pinStatus: InternalRailRow['pinStatus'] =
           openCount > 0 ? 'open' : list.length > 0 ? 'resolved' : 'none'
+        const railThreads: InternalRailThread[] = list.map((t) => ({
+          id: t.id,
+          label: threadLabelFor(t),
+          status: t.status,
+        }))
         return {
           postId: post.id,
           postNumber: idx + 1,
           thumbnailUrl: post.mediaUrl ?? null,
           pinStatus,
           openCount,
+          threads: railThreads,
         }
       }),
     [posts],
@@ -178,6 +202,22 @@ export function InternalReviewShell({
   )
 
   /**
+   * Reopen a resolved thread from the rail checklist, via the Clerk-authed
+   * `reopenThreadAction`, then refresh so the open state hydrates back.
+   */
+  const handleUnresolveThread = useCallback(
+    async (threadId: string) => {
+      try {
+        await reopenThreadAction({ threadId })
+        startTransition(() => router.refresh())
+      } catch (err) {
+        console.error('[internal-review-shell] reopenThreadAction failed', err)
+      }
+    },
+    [router, startTransition],
+  )
+
+  /**
    * Promote a comment's attached image to the post media.
    */
   const handleUseAsPostImage = useCallback(
@@ -226,7 +266,14 @@ export function InternalReviewShell({
       <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         {/* Left rail: sticky with its own scroll */}
         <div className="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto">
-          <InternalReviewRail rows={railRows} selectedPostId={selectedPostId} onSelectPost={selectPost} />
+          <InternalReviewRail
+            rows={railRows}
+            selectedPostId={selectedPostId}
+            onSelectPost={selectPost}
+            onResolveThread={handleResolveThread}
+            onUnresolveThread={handleUnresolveThread}
+            onScrollToPost={selectPost}
+          />
         </div>
 
         {/* Right column: the canvas */}

@@ -54,6 +54,7 @@ function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     reviewItemId: 'ri-1',
     addressed: false,
     captionAccepted: false,
+    noteResolved: false,
     threads: [makeThread('t1')],
     ...over,
   }
@@ -67,6 +68,8 @@ const noopActions: FeedbackActions = {
   rejectCaption: vi.fn(() => Promise.resolve()),
   markAddressed: vi.fn(() => Promise.resolve()),
   unmarkAddressed: vi.fn(() => Promise.resolve()),
+  resolveNote: vi.fn(() => Promise.resolve()),
+  unresolveNote: vi.fn(() => Promise.resolve()),
   replyToFeedback: vi.fn(() => Promise.resolve()),
   startNextRound: vi.fn(() => Promise.resolve()),
 }

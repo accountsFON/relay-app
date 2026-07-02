@@ -164,6 +164,7 @@ export default async function ReviewPage({
       lastReviewedVersionId: it.lastReviewedVersionId,
       reviewedAt: it.reviewedAt,
       addressedAt: it.addressedAt,
+      noteResolvedAt: it.noteResolvedAt,
     }))
   } else {
     // No active session: check for a prior submitted one to render the
@@ -192,6 +193,7 @@ export default async function ReviewPage({
         lastReviewedVersionId: it.lastReviewedVersionId,
         reviewedAt: it.reviewedAt,
         addressedAt: it.addressedAt,
+        noteResolvedAt: it.noteResolvedAt,
       }))
     }
   }

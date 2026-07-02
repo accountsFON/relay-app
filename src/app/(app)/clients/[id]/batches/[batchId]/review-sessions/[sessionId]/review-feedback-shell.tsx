@@ -99,6 +99,13 @@ export function ReviewFeedbackShell({
           registerThreadRef={(id, el) => {
             threadRefs.current[id] = el
           }}
+          onScrollToAnchor={(key) => {
+            if (threadRefs.current[key]) {
+              threadRefs.current[key]?.scrollIntoView({ block: 'center' })
+            } else {
+              canvasRefs.current[key]?.scrollIntoView({ block: 'center' })
+            }
+          }}
         />
       </div>
 

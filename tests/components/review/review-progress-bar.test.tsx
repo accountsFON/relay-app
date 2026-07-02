@@ -15,6 +15,7 @@ function makeItem(
     suggestedCaption: null,
     acceptedAsPostVersionId: null,
     addressedAt: null,
+    noteResolvedAt: null,
     updatedSinceLastReview: false,
     lastReviewedVersionId: null,
     reviewedAt: new Date(),
