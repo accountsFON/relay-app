@@ -58,6 +58,7 @@ export function ChangesNavigator({
         type="button"
         data-testid="changes-navigator-filter"
         onClick={onToggleFilter}
+        aria-pressed={filterOn}
         className={cn(
           'rounded-full px-2 py-0.5 text-[11px] font-medium',
           filterOn ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground',

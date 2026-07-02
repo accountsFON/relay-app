@@ -39,6 +39,25 @@ describe('ChangesNavigator', () => {
     expect(onToggleFilter).toHaveBeenCalledOnce()
   })
 
+  it('Next disables after stepping to the last unresolved item', async () => {
+    const user = userEvent.setup()
+    render(<ChangesNavigator items={items} filterOn={false} onToggleFilter={vi.fn()} onNavigate={vi.fn()} />)
+    const next = screen.getByTestId('changes-navigator-next') as HTMLButtonElement
+    await user.click(next) // -> post-1 (idx 0)
+    await user.click(next) // -> post-2 (idx 2), the last unresolved
+    expect(next.disabled).toBe(true)
+  })
+
+  it('all-resolved list: Next disabled immediately + counter shows all resolved', () => {
+    const allResolved: NavItem[] = [
+      { id: 'x', anchorKey: 'post-x', resolved: true },
+      { id: 'y', anchorKey: 'post-y', resolved: true },
+    ]
+    render(<ChangesNavigator items={allResolved} filterOn={false} onToggleFilter={vi.fn()} onNavigate={vi.fn()} />)
+    expect((screen.getByTestId('changes-navigator-next') as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByTestId('changes-navigator-counter').textContent).toMatch(/2 of 2 resolved/i)
+  })
+
   it('empty state: 0 of 0, Next disabled', () => {
     render(<ChangesNavigator items={[]} filterOn={false} onToggleFilter={vi.fn()} onNavigate={vi.fn()} />)
     expect(screen.getByTestId('changes-navigator-counter').textContent).toMatch(/0 of 0/i)
