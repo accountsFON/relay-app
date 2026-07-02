@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import { cn } from '@/lib/utils'
 import { PinCommentRow } from '@/components/review/pin-comment-row'
 import { CaptionDiffView } from '@/components/preview/caption-diff-view'
+import { ChangesNavigator, type NavItem } from '@/components/review/changes-navigator'
+import { ResolveCheckbox } from '@/components/review/resolve-checkbox'
 import { diffText } from '@/lib/text-diff'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
@@ -23,6 +25,8 @@ export type ReviewFeedbackRailProps = {
    *  copy-change posts (and any post) scroll the canvas the way pins do. */
   onSelectPost: (postId: string) => void
   registerThreadRef: (threadId: string, el: HTMLElement | null) => void
+  /** Scroll the canvas/rail to the given anchor key (threadId or postId). */
+  onScrollToAnchor?: (anchorKey: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +95,35 @@ function FeedbackRow({
 }: FeedbackRowProps) {
   const [pending, startTransition] = useTransition()
   const [generalDraft, setGeneralDraft] = useState('')
+
+  // ---------------------------------------------------------------------------
+  // Auto-address roll-up
+  // Resolves the given item (pin thread or note) and, if it is the last unresolved
+  // item on this post (using the pre-revalidation snapshot), fires markAddressed.
+  // The check treats the just-resolved item as done so we don't need a re-render.
+  // ---------------------------------------------------------------------------
+  async function resolveThenMaybeAddress(
+    kind: 'note' | 'pin',
+    threadId?: string,
+  ): Promise<void> {
+    if (kind === 'note') {
+      await actions.resolveNote(post.postId, post.reviewItemId!)
+    } else {
+      await actions.resolve(threadId!)
+    }
+
+    // Would the post now be fully resolved? Treat the just-resolved item as done.
+    const pinsDone = post.threads.every(
+      (t) => t.status === 'resolved' || (kind === 'pin' && t.id === threadId),
+    )
+    const noteDone = !post.comment || post.noteResolved || kind === 'note'
+    const capDone =
+      post.verdict !== 'caption_edited' || post.captionAccepted || post.addressed
+
+    if (pinsDone && noteDone && capDone && !post.addressed) {
+      await actions.markAddressed(post.postId, post.reviewItemId)
+    }
+  }
 
   // Coordinate pins (image/caption) carry numbered badges and stay aligned with
   // the center canvas, which numbers only those. Post-level threads have no
@@ -246,7 +279,9 @@ function FeedbackRow({
                 expanded={selectedThreadId === thread.id}
                 onToggle={() => onToggleThread(thread.id)}
                 onComment={(tid, body, image) => actions.comment(tid, body, image)}
-                onResolve={isDesigner ? undefined : (tid) => actions.resolve(tid)}
+                onResolve={
+                  isDesigner ? undefined : (tid) => resolveThenMaybeAddress('pin', tid)
+                }
                 onUseAsPostImage={
                   isDesigner ? undefined : (cid) => actions.useAsPostImage(post.postId, cid)
                 }
@@ -270,7 +305,9 @@ function FeedbackRow({
                 expanded={selectedThreadId === thread.id}
                 onToggle={() => onToggleThread(thread.id)}
                 onComment={(tid, body, image) => actions.comment(tid, body, image)}
-                onResolve={isDesigner ? undefined : (tid) => actions.resolve(tid)}
+                onResolve={
+                  isDesigner ? undefined : (tid) => resolveThenMaybeAddress('pin', tid)
+                }
                 onUseAsPostImage={
                   isDesigner ? undefined : (cid) => actions.useAsPostImage(post.postId, cid)
                 }
@@ -279,10 +316,12 @@ function FeedbackRow({
             </div>
           ))}
 
-          {/* Notes opener + reply composer (AM only). Shown only when the
-              client left general Notes and no post-level thread exists yet.
-              Sending promotes the Notes into a post-level thread (server side),
-              after which the postThreads row above replaces this block. */}
+          {/* Notes opener + resolve checkbox + reply composer (AM only). Shown
+              only when the client left general Notes and no post-level thread
+              exists yet. Sending promotes the Notes into a post-level thread
+              (server side), after which the postThreads row above replaces this
+              block. The checkbox lets the AM tick the note as resolved without
+              needing to reply first. */}
           {!isDesigner &&
             post.comment &&
             post.comment.trim().length > 0 &&
@@ -295,9 +334,16 @@ function FeedbackRow({
                 <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   General feedback
                 </p>
-                <p className="mb-2 whitespace-pre-wrap break-words text-foreground">
-                  {post.comment}
-                </p>
+                <div className="mb-2">
+                  <ResolveCheckbox
+                    label={post.comment}
+                    resolved={post.noteResolved}
+                    onResolve={() => resolveThenMaybeAddress('note')}
+                    onUnresolve={() => actions.unresolveNote(post.postId, post.reviewItemId!)}
+                    disabled={isDesigner}
+                    testId={`rail-note-resolve-${post.postId}`}
+                  />
+                </div>
                 <div className="flex items-end gap-2">
                   <textarea
                     data-testid={`rail-general-feedback-input-${post.postId}`}
@@ -357,6 +403,16 @@ function FeedbackRow({
 // Main component
 // ---------------------------------------------------------------------------
 
+function needsChanges(p: FeedbackPostVM): boolean {
+  return (
+    !p.addressed &&
+    (p.verdict === 'changes_requested' ||
+      p.verdict === 'caption_edited' ||
+      p.threads.some((t) => t.status === 'open') ||
+      (Boolean(p.comment) && !p.noteResolved))
+  )
+}
+
 export function ReviewFeedbackRail({
   posts,
   actions,
@@ -367,13 +423,48 @@ export function ReviewFeedbackRail({
   onToggleThread,
   onSelectPost,
   registerThreadRef,
+  onScrollToAnchor,
 }: ReviewFeedbackRailProps) {
+  const [filterOn, setFilterOn] = useState(false)
+
+  const visiblePosts = filterOn ? posts.filter(needsChanges) : posts
+
+  const navItems: NavItem[] = posts.flatMap((p) => {
+    const out: NavItem[] = []
+    p.threads.forEach((t) =>
+      out.push({ id: t.id, anchorKey: t.id, resolved: t.status === 'resolved' }),
+    )
+    if (p.comment && p.reviewItemId) {
+      out.push({
+        id: `note-${p.reviewItemId}`,
+        anchorKey: p.postId,
+        resolved: p.noteResolved,
+      })
+    }
+    if (p.verdict === 'caption_edited' && p.suggestedCaption && p.reviewItemId) {
+      out.push({
+        id: `cap-${p.reviewItemId}`,
+        anchorKey: p.postId,
+        resolved: p.captionAccepted || p.addressed,
+      })
+    }
+    return out
+  })
+
   return (
     <div
       data-testid="review-feedback-rail"
       className="flex flex-col"
     >
-      {posts.map((post) => (
+      <div className="px-3 py-2">
+        <ChangesNavigator
+          items={navItems}
+          filterOn={filterOn}
+          onToggleFilter={() => setFilterOn((v) => !v)}
+          onNavigate={onScrollToAnchor ?? (() => {})}
+        />
+      </div>
+      {visiblePosts.map((post) => (
         <FeedbackRow
           key={post.postId}
           post={post}
