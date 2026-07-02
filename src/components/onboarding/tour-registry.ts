@@ -180,7 +180,7 @@ const CLIENTS_STOPS: TourStop[] = [
     id: 'clients-add',
     anchorSelector: '[data-tour-anchor="__concept__"]',
     title: 'Adding a brand',
-    body: 'Admins and account managers can add a brand with New client; Relay can then start drafting its content.',
+    body: 'Agency admins can add a brand with New client; Relay can then start drafting its content.',
   },
 ]
 

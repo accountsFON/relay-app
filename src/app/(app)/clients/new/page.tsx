@@ -1,9 +1,11 @@
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireCan } from '@/server/middleware/permissions'
 import { CreateClientForm } from './create-form'
 import { HeroBand } from '@/components/hero-band'
 
 export default async function NewClientPage() {
-  await requireClientEditor()
+  // Client creation is agency-admin-only by default (client.create), unlike
+  // editing existing clients (client.edit).
+  await requireCan('client.create')
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-3xl">

@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import {
-  requireClientViewer,
-  canEditClients,
-} from '@/server/middleware/permissions'
+import { requireClientViewer } from '@/server/middleware/permissions'
+import { can } from '@/server/auth/permissions'
 import { listClientsForUser } from '@/server/repositories/clients'
 import { db } from '@/db/client'
 import { BulkGenerateList } from './bulk-generate'
@@ -40,7 +38,9 @@ export default async function ClientsPage({
       ? sortClientsForAm(clientsUnsorted)
       : clientsUnsorted
 
-  const canCreate = canEditClients(ctx)
+  // Creating / importing clients is agency-admin-only by default (client.create),
+  // separate from client.edit which AMs keep for editing existing clients.
+  const canCreate = can(ctx, 'client.create')
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientEditor: vi.fn(),
+  requireCan: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/clients', () => ({
@@ -30,7 +31,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, requireCan } from '@/server/middleware/permissions'
 import {
   createClient,
   updateClient,
@@ -62,6 +63,9 @@ const mockCtx = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireClientEditor).mockResolvedValue(mockCtx)
+  // createClientAction gates on client.create (admin-only by default) via
+  // requireCan; update/deactivate stay on client.edit via requireClientEditor.
+  vi.mocked(requireCan).mockResolvedValue(mockCtx)
   // Phase 9: updateClientAction + deactivateClientAction now call
   // findClientForUser to enforce within-org AM-assignment scope. Default
   // to "in scope" so existing happy-path tests still pass.
@@ -86,7 +90,7 @@ describe('createClientAction', () => {
       clientReviewEnabled: false,
     })
 
-    expect(requireClientEditor).toHaveBeenCalled()
+    expect(requireCan).toHaveBeenCalledWith('client.create')
     expect(createClient).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: 'cuid_org_1',

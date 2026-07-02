@@ -85,7 +85,10 @@ export const SYSTEM_DEFAULTS: PermissionMatrix = {
   account_manager: {
     'client.view': true,
     'client.edit': true,
-    'client.create': true,
+    // Client creation is agency-admin-only by default. AMs keep client.edit
+    // (edit existing clients, onboarding) but cannot create/import new clients;
+    // an admin can still re-grant this per-user via the permissions editor.
+    'client.create': false,
     'client.comment': true,
     'post.view': true,
     'post.edit': true,
