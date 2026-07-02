@@ -71,7 +71,7 @@ export function MarkBatchReviewedButton({
         >
           {gatedByThreads
             ? `Resolve ${openThreadCount} open thread${openThreadCount === 1 ? '' : 's'} to mark reviewed`
-            : 'This step has more than one next step. Advance it from the relay page.'}
+            : "This step can't auto-advance. Advance it from the relay page."}
         </p>
       )}
       {error && (

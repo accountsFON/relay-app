@@ -66,7 +66,7 @@ describe('MarkBatchReviewedButton', () => {
     render(<MarkBatchReviewedButton batchId="batch-1" openThreadCount={0} canAdvance={false} />)
     const button = screen.getByTestId('mark-batch-reviewed-button') as HTMLButtonElement
     expect(button.disabled).toBe(true)
-    expect(screen.getByTestId('mark-batch-reviewed-hint').textContent).toMatch(/more than one next step/i)
+    expect(screen.getByTestId('mark-batch-reviewed-hint').textContent).toMatch(/can.t auto-advance/i)
   })
 
   it('is enabled when canAdvance is true (default) and no open threads', () => {

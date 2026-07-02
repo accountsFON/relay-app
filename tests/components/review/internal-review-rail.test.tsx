@@ -187,7 +187,7 @@ describe('InternalReviewRail', () => {
     // Filter off: both threads in counter (1 resolved of 2 total)
     expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('1 of 2 resolved')
 
-    // Toggle "Changes only" on — only the open row remains visible
+    // Toggle "Changes only" on: only the open row remains visible
     fireEvent.click(screen.getByTestId('changes-navigator-filter'))
 
     // Filter on: only open row's thread counted (0 resolved of 1 total)
