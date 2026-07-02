@@ -156,6 +156,44 @@ describe('InternalReviewRail', () => {
     expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('1 of 2 resolved')
   })
 
+  // New: navigator counter respects the Changes-only filter
+  it('navigator counter only counts threads on visibleRows when Changes-only filter is on', () => {
+    const mixedRowsForCounter: InternalRailRow[] = [
+      {
+        postId: 'p1',
+        postNumber: 1,
+        thumbnailUrl: null,
+        pinStatus: 'open',
+        openCount: 1,
+        threads: [{ id: 't1', label: 'Open thread', status: 'open' }],
+      },
+      {
+        postId: 'p2',
+        postNumber: 2,
+        thumbnailUrl: null,
+        pinStatus: 'resolved',
+        openCount: 0,
+        threads: [{ id: 't2', label: 'Done thread', status: 'resolved' }],
+      },
+    ]
+    render(
+      <InternalReviewRail
+        rows={mixedRowsForCounter}
+        selectedPostId={null}
+        onSelectPost={vi.fn()}
+        {...defaultProps}
+      />,
+    )
+    // Filter off: both threads in counter (1 resolved of 2 total)
+    expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('1 of 2 resolved')
+
+    // Toggle "Changes only" on: only the open row remains visible
+    fireEvent.click(screen.getByTestId('changes-navigator-filter'))
+
+    // Filter on: only open row's thread counted (0 resolved of 1 total)
+    expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('0 of 1 resolved')
+  })
+
   // New: "Changes only" filter hides non-open rows
   it('hides non-open rows when Changes only filter is toggled on', () => {
     const mixedRows: InternalRailRow[] = [

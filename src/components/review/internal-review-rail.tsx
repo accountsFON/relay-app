@@ -40,11 +40,11 @@ export function InternalReviewRail({
 }: InternalReviewRailProps) {
   const [filterOn, setFilterOn] = useState(false)
 
-  const navItems: NavItem[] = rows.flatMap((r) =>
+  const visibleRows = filterOn ? rows.filter((r) => r.pinStatus === 'open') : rows
+
+  const navItems: NavItem[] = visibleRows.flatMap((r) =>
     r.threads.map((t) => ({ id: t.id, anchorKey: r.postId, resolved: t.status === 'resolved' })),
   )
-
-  const visibleRows = filterOn ? rows.filter((r) => r.pinStatus === 'open') : rows
 
   return (
     <nav aria-label="Posts" className="flex flex-col gap-2">

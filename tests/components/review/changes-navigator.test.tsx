@@ -63,6 +63,30 @@ describe('ChangesNavigator', () => {
     expect(screen.getByTestId('changes-navigator-counter').textContent).toMatch(/0 of 0/i)
     expect((screen.getByTestId('changes-navigator-next') as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it('resets the cursor when the items set changes (post-refresh)', async () => {
+    const user = userEvent.setup()
+    const onNavigate = vi.fn()
+    const { rerender } = render(
+      <ChangesNavigator items={items} filterOn={false} onToggleFilter={vi.fn()} onNavigate={onNavigate} />,
+    )
+    // Advance to the last walkable item (cursor → idx 2). The walkable range of
+    // `items` is [0, 2] (idx 1 is resolved/skipped).
+    await user.click(screen.getByTestId('changes-navigator-next')) // idx 0 → 'post-1'
+    await user.click(screen.getByTestId('changes-navigator-next')) // idx 2 → 'post-2'
+    // Simulate a server refresh: a smaller array where the only walkable item is
+    // at index 1. Without a cursor reset, cursor=2 means no walkable item satisfies
+    // idx > 2 in the new set → Next stays disabled and onNavigate is NOT called again.
+    // With the reset, cursor=-1 → Next finds idx 1 → navigates to 'post-REFRESHED'.
+    const refreshed: NavItem[] = [
+      { id: 'a', anchorKey: 'post-1', resolved: true },
+      { id: 'b', anchorKey: 'post-REFRESHED', resolved: false },
+    ]
+    rerender(<ChangesNavigator items={refreshed} filterOn={false} onToggleFilter={vi.fn()} onNavigate={onNavigate} />)
+    // Cursor reset → Next now goes to the first walkable item of the new set.
+    await user.click(screen.getByTestId('changes-navigator-next'))
+    expect(onNavigate).toHaveBeenLastCalledWith('post-REFRESHED')
+  })
 })
 
 describe('ChangesNavigator navigate mode', () => {
