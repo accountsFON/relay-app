@@ -540,3 +540,51 @@ describe('ReviewSessionShell -- new reply badge', () => {
     expect(screen.getAllByTestId('new-reply-badge')).toHaveLength(1)
   })
 })
+
+describe('ReviewSessionShell -- changes navigation', () => {
+  function item(
+    postId: string,
+    decision: ReviewItemHydrated['decision'],
+  ): ReviewItemHydrated {
+    return {
+      id: `item-${postId}`,
+      postId,
+      decision,
+      comment: null,
+      suggestedCaption: null,
+      acceptedAsPostVersionId: null,
+      addressedAt: null,
+      updatedSinceLastReview: false,
+      lastReviewedVersionId: null,
+      reviewedAt: new Date(),
+      noteResolvedAt: null,
+    }
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, status: 200 } as Response)),
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('renders the changes navigator (navigate mode) when a post is marked changes', () => {
+    render(<ReviewSessionShell {...BASE_PROPS} initialItems={[item('post-1', 'changes_requested')]} />)
+    expect(screen.getByTestId('changes-navigator')).toBeInTheDocument()
+    expect(screen.queryByTestId('changes-navigator-filter')).not.toBeInTheDocument() // navigate mode hides filter
+  })
+
+  it('does NOT render the changes navigator when no post is marked changes', () => {
+    render(<ReviewSessionShell {...BASE_PROPS} initialItems={[item('post-1', 'approved')]} />)
+    expect(screen.queryByTestId('changes-navigator')).not.toBeInTheDocument()
+  })
+
+  it('progress-bar segments are clickable buttons on the client', () => {
+    render(<ReviewSessionShell {...BASE_PROPS} initialItems={[item('post-1', 'changes_requested')]} />)
+    expect(screen.getAllByTestId('review-progress-segment')[0].tagName).toBe('BUTTON')
+  })
+})
