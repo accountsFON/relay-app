@@ -94,7 +94,7 @@ export function ChangesNavigator({
           data-testid="changes-navigator-prev"
           onClick={() => step(-1)}
           disabled={!hasPrev}
-          aria-label="Previous unresolved item"
+          aria-label={navigate ? 'Previous item' : 'Previous unresolved item'}
           className="rounded p-1 text-muted-foreground disabled:opacity-40"
         >
           <ChevronLeft className="size-4" />
@@ -104,7 +104,7 @@ export function ChangesNavigator({
           data-testid="changes-navigator-next"
           onClick={() => step(1)}
           disabled={!hasNext}
-          aria-label="Next unresolved item"
+          aria-label={navigate ? 'Next item' : 'Next unresolved item'}
           className="rounded p-1 text-muted-foreground disabled:opacity-40"
         >
           <ChevronRight className="size-4" />

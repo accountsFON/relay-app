@@ -587,4 +587,15 @@ describe('ReviewSessionShell -- changes navigation', () => {
     render(<ReviewSessionShell {...BASE_PROPS} initialItems={[item('post-1', 'changes_requested')]} />)
     expect(screen.getAllByTestId('review-progress-segment')[0].tagName).toBe('BUTTON')
   })
+
+  it('navigator is absent when locked even with a changes post', () => {
+    render(
+      <ReviewSessionShell
+        {...BASE_PROPS}
+        sessionStatus="submitted"
+        initialItems={[item('post-1', 'changes_requested')]}
+      />,
+    )
+    expect(screen.queryByTestId('changes-navigator')).not.toBeInTheDocument()
+  })
 })
