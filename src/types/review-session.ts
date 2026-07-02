@@ -64,4 +64,5 @@ export interface ReviewItemHydrated {
   lastReviewedVersionId: string | null
   reviewedAt: Date | null
   addressedAt: Date | null
+  noteResolvedAt: Date | null
 }

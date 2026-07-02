@@ -56,6 +56,7 @@ function makeItem(overrides: Partial<DigestReviewItem> & { id: string; postNumbe
     suggestedCaption: null,
     acceptedAsPostVersionId: null,
     addressedAt: null,
+    noteResolvedAt: null,
     updatedSinceLastReview: false,
     lastReviewedVersionId: null,
     reviewedAt: null,

@@ -69,6 +69,7 @@ function vm(overrides: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     reviewItemId: null,
     addressed: false,
     captionAccepted: false,
+    noteResolved: false,
     threads: [imageThread('t1')],
     ...overrides,
   }

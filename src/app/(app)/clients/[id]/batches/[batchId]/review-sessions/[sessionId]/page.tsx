@@ -42,6 +42,8 @@ import {
   startNextRoundAction,
   markPostAddressedAction,
   unmarkPostAddressedAction,
+  resolveNoteAction,
+  unresolveNoteAction,
 } from '@/server/actions/reviewSessions'
 import {
   resolveThreadAction,
@@ -302,6 +304,22 @@ export default async function ReviewSessionDetailPage({
     )
   }
 
+  const resolveNote = async (postId: string, reviewItemId: string) => {
+    'use server'
+    await resolveNoteAction({ postId, reviewItemId, reviewSessionId: sessionId_ })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
+  const unresolveNote = async (postId: string, reviewItemId: string) => {
+    'use server'
+    await unresolveNoteAction({ postId, reviewItemId, reviewSessionId: sessionId_ })
+    revalidatePath(
+      `/clients/${clientId_}/batches/${batchId_}/review-sessions/${sessionId_}`,
+    )
+  }
+
   const startNextRound = async () => {
     'use server'
     // Client sessions key on the magic link — re-sends the reviewer's email.
@@ -318,6 +336,8 @@ export default async function ReviewSessionDetailPage({
     rejectCaption,
     markAddressed,
     unmarkAddressed,
+    resolveNote,
+    unresolveNote,
     replyToFeedback,
     startNextRound,
   }
@@ -348,6 +368,7 @@ export default async function ReviewSessionDetailPage({
     reviewItemId: ap.item?.id ?? null,
     addressed: ap.handled,
     captionAccepted: Boolean(ap.item?.acceptedAsPostVersionId),
+    noteResolved: Boolean(ap.item?.noteResolvedAt),
     threads: ap.clientThreads,
   }))
 
