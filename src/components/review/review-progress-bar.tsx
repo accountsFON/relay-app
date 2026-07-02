@@ -10,6 +10,8 @@ export type ReviewProgressBarProps = {
   itemsByPostId: Record<string, ReviewItemHydrated>
   /** Optional: index of the post currently in view (for emphasis). */
   currentPostIndex?: number
+  /** Optional: when provided, each segment renders as a clickable button. */
+  onSegmentClick?: (postIndex: number) => void
   className?: string
 }
 
@@ -55,6 +57,7 @@ export function ReviewProgressBar({
   postIds,
   itemsByPostId,
   currentPostIndex,
+  onSegmentClick,
   className,
 }: ReviewProgressBarProps) {
   const total = postIds.length
@@ -71,18 +74,30 @@ export function ReviewProgressBar({
         {postIds.map((postId, idx) => {
           const decision = getDecision(postId, itemsByPostId)
           const isCurrent = idx === currentPostIndex
-          return (
+          const cls = cn(
+            'flex-1 rounded-full transition-colors',
+            'h-[3px]',
+            SEGMENT_COLOR[decision],
+            isCurrent && 'ring-1 ring-foreground/40',
+          )
+          return onSegmentClick ? (
+            <button
+              key={postId}
+              type="button"
+              data-testid="review-progress-segment"
+              data-decision={decision}
+              data-current={isCurrent ? 'true' : 'false'}
+              onClick={() => onSegmentClick(idx)}
+              aria-label={`Go to post ${idx + 1}`}
+              className={cls}
+            />
+          ) : (
             <span
               key={postId}
               data-testid="review-progress-segment"
               data-decision={decision}
               data-current={isCurrent ? 'true' : 'false'}
-              className={cn(
-                'flex-1 rounded-full transition-colors',
-                'h-[3px]',
-                SEGMENT_COLOR[decision],
-                isCurrent && 'ring-1 ring-foreground/40',
-              )}
+              className={cls}
             />
           )
         })}
