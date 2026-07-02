@@ -64,3 +64,49 @@ describe('ChangesNavigator', () => {
     expect((screen.getByTestId('changes-navigator-next') as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('ChangesNavigator navigate mode', () => {
+  const navItems: NavItem[] = [
+    { id: 'p1', anchorKey: 'post-1', resolved: false },
+    { id: 'p2', anchorKey: 'post-2', resolved: true },
+    { id: 'p3', anchorKey: 'post-3', resolved: false },
+  ]
+
+  it('hides the filter toggle in navigate mode', () => {
+    render(<ChangesNavigator items={navItems} filterOn={false} onToggleFilter={vi.fn()} onNavigate={vi.fn()} mode="navigate" />)
+    expect(screen.queryByTestId('changes-navigator-filter')).not.toBeInTheDocument()
+  })
+
+  it('counter reads "X of Y" and Next walks ALL items in order (ignores resolved)', async () => {
+    const user = userEvent.setup()
+    const onNavigate = vi.fn()
+    render(<ChangesNavigator items={navItems} filterOn={false} onToggleFilter={vi.fn()} onNavigate={onNavigate} mode="navigate" />)
+    const next = screen.getByTestId('changes-navigator-next')
+    await user.click(next)
+    expect(onNavigate).toHaveBeenLastCalledWith('post-1')
+    expect(screen.getByTestId('changes-navigator-counter').textContent).toMatch(/1 of 3/i)
+    await user.click(next)
+    expect(onNavigate).toHaveBeenLastCalledWith('post-2') // walks the resolved one too
+    expect(screen.getByTestId('changes-navigator-counter').textContent).toMatch(/2 of 3/i)
+  })
+
+  it('Next disables at the last item in navigate mode', async () => {
+    const user = userEvent.setup()
+    render(<ChangesNavigator items={navItems} filterOn={false} onToggleFilter={vi.fn()} onNavigate={vi.fn()} mode="navigate" />)
+    const next = screen.getByTestId('changes-navigator-next') as HTMLButtonElement
+    await user.click(next); await user.click(next); await user.click(next)
+    expect(next.disabled).toBe(true)
+  })
+
+  it('REGRESSION: resolve mode is unchanged (default) — counter says "resolved", Next skips resolved', async () => {
+    const user = userEvent.setup()
+    const onNavigate = vi.fn()
+    render(<ChangesNavigator items={navItems} filterOn={false} onToggleFilter={vi.fn()} onNavigate={onNavigate} />)
+    expect(screen.getByTestId('changes-navigator-counter').textContent).toMatch(/1 of 3 resolved/i)
+    expect(screen.getByTestId('changes-navigator-filter')).toBeInTheDocument()
+    await user.click(screen.getByTestId('changes-navigator-next'))
+    expect(onNavigate).toHaveBeenLastCalledWith('post-1')
+    await user.click(screen.getByTestId('changes-navigator-next'))
+    expect(onNavigate).toHaveBeenLastCalledWith('post-3') // skips resolved p2
+  })
+})
