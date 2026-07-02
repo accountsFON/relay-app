@@ -9,6 +9,8 @@ export interface MarkBatchReviewedButtonProps {
   batchId: string
   /** Open-thread count across all posts in the batch. Gates the button. */
   openThreadCount: number
+  /** False when the current step has ≠1 forward edge (can't auto-advance). Default true. */
+  canAdvance?: boolean
   className?: string
 }
 
@@ -19,16 +21,22 @@ export interface MarkBatchReviewedButtonProps {
  * explains why. Once everything is resolved it advances the relay forward via
  * `markBatchReviewedAction` (which re-checks the gate server-side). No reason,
  * no force-advance -- the admin force-step is the emergency escape hatch.
+ *
+ * Also disabled when the current step has more than one forward edge, since
+ * auto-advance requires exactly one path forward.
  */
 export function MarkBatchReviewedButton({
   batchId,
   openThreadCount,
+  canAdvance = true,
   className,
 }: MarkBatchReviewedButtonProps) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const blocked = openThreadCount > 0
+  const gatedByThreads = openThreadCount > 0
+  const gatedByBranch = canAdvance === false
+  const blocked = gatedByThreads || gatedByBranch
 
   function handleClick() {
     if (blocked) return
@@ -61,8 +69,9 @@ export function MarkBatchReviewedButton({
           data-testid="mark-batch-reviewed-hint"
           className="text-[11px] text-muted-foreground"
         >
-          Resolve {openThreadCount} open thread{openThreadCount === 1 ? '' : 's'}{' '}
-          to mark reviewed
+          {gatedByThreads
+            ? `Resolve ${openThreadCount} open thread${openThreadCount === 1 ? '' : 's'} to mark reviewed`
+            : 'This step has more than one next step. Advance it from the relay page.'}
         </p>
       )}
       {error && (

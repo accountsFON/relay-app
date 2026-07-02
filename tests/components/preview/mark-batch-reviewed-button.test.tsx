@@ -61,4 +61,21 @@ describe('MarkBatchReviewedButton', () => {
       (await screen.findByTestId('mark-batch-reviewed-error')).textContent,
     ).toMatch(/relay not found/i)
   })
+
+  it('is disabled with a branch hint when canAdvance is false', () => {
+    render(<MarkBatchReviewedButton batchId="batch-1" openThreadCount={0} canAdvance={false} />)
+    const button = screen.getByTestId('mark-batch-reviewed-button') as HTMLButtonElement
+    expect(button.disabled).toBe(true)
+    expect(screen.getByTestId('mark-batch-reviewed-hint').textContent).toMatch(/more than one next step/i)
+  })
+
+  it('is enabled when canAdvance is true (default) and no open threads', () => {
+    render(<MarkBatchReviewedButton batchId="batch-1" openThreadCount={0} />)
+    expect((screen.getByTestId('mark-batch-reviewed-button') as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('thread gate takes priority in the hint when both gates apply', () => {
+    render(<MarkBatchReviewedButton batchId="batch-1" openThreadCount={2} canAdvance={false} />)
+    expect(screen.getByTestId('mark-batch-reviewed-hint').textContent).toMatch(/2 open thread/i)
+  })
 })

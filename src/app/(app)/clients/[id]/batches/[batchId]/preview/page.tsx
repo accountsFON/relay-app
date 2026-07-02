@@ -29,6 +29,7 @@ import {
 } from '@/server/actions/relay'
 import { RelayStep } from '@prisma/client'
 import { isRelayLocked } from '@/lib/relay-lock'
+import { legalNextSteps } from '@/server/lib/relay-state-machine'
 
 /**
  * Internal batch preview page (`/preview`).
@@ -150,6 +151,11 @@ export default async function BatchPreviewPage({
     const canPostComment = canComment(ctx)
 
     // AM controls: Request changes (only when at am_review_design) + Mark relay reviewed.
+    const forwardStepCount = legalNextSteps(
+      batch.currentStep,
+      batch.clientReviewEnabled,
+    ).filter((t) => t.direction === 'forward').length
+
     const amControlsSlot = canEdit ? (
       <>
         {batch.currentStep === RelayStep.am_review_design && (
@@ -167,6 +173,7 @@ export default async function BatchPreviewPage({
             (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
             0,
           )}
+          canAdvance={forwardStepCount === 1}
         />
       </>
     ) : undefined
