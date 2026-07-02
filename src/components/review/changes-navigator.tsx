@@ -41,6 +41,15 @@ export function ChangesNavigator({
 }: ChangesNavigatorProps) {
   const navigate = mode === 'navigate'
   const [cursor, setCursor] = useState(-1)
+  // Reset the stepper when the item set changes (e.g. after a resolve + server
+  // refresh) so the cursor never points at a stale/removed item. "Adjust state
+  // during render when a prop changes" pattern — costs nothing on ordinary renders.
+  const itemsSignature = items.map((i) => `${i.id}:${i.resolved ? 1 : 0}`).join('|')
+  const [seededSignature, setSeededSignature] = useState(itemsSignature)
+  if (itemsSignature !== seededSignature) {
+    setCursor(-1)
+    setSeededSignature(itemsSignature)
+  }
   const resolvedCount = items.filter((i) => i.resolved).length
   const walkableIdx = navigate
     ? items.map((_, idx) => idx)
