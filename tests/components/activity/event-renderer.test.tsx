@@ -532,6 +532,24 @@ describe('design_changes_requested', () => {
   })
 })
 
+describe('feedback_sent_to_designer', () => {
+  it('renders with "sent N feedback items to designer on <relay>" message', () => {
+    const event = makeEvent(
+      'feedback_sent_to_designer' as ActivityKind,
+      {
+        batchId: 'b1',
+        batchLabel: 'August 2026',
+        surface: 'client_review',
+        count: 3,
+      },
+    )
+    render(<EventRenderer event={event} />)
+    expect(
+      screen.getByText(/sent 3 feedback items to designer on "August 2026"/),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('batch_force_stepped', () => {
   it('renders the force moved message with human step labels', () => {
     const event = makeEvent(ActivityKind.batch_force_stepped, {

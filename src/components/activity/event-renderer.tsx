@@ -509,6 +509,16 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         message: `requested design changes on ${relay} — designer notified`,
       }
     }
+    case 'feedback_sent_to_designer': {
+      if (p.kind !== 'feedback_sent_to_designer') break
+      const relay = p.batchLabel ? `"${p.batchLabel}"` : 'this relay'
+      const n = p.count
+      return {
+        icon: MessageSquarePlus,
+        tone: 'default',
+        message: `sent ${n} feedback ${n === 1 ? 'item' : 'items'} to designer on ${relay}`,
+      }
+    }
   }
   // Fallback for not-yet-modeled kinds.
   return {

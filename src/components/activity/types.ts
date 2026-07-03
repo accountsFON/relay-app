@@ -222,6 +222,13 @@ export type ModeledActivityPayload =
       batchLabel: string
       surface: 'internal_review'
     }
+  | {
+      kind: 'feedback_sent_to_designer'
+      batchId: string
+      batchLabel: string
+      surface: 'client_review'
+      count: number
+    }
 
 type ModeledKind = ModeledActivityPayload['kind']
 type UnmodeledKind = Exclude<ActivityKind, ModeledKind>
