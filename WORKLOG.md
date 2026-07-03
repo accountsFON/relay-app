@@ -28,6 +28,21 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-03 — Review author names + wrapping + persistent crossed-out checklist items** (PR #304, `f9c2acb`)
+  Three consistency fixes across all review surfaces (review-session feedback rail, `/preview` internal
+  rail, pin popover). (1) Every message / pin / checklist item now shows WHO it came from, account name
+  for agency users, the magic-link name for clients, filling the gaps (internal-rail labels were text
+  only; the general post note + designer flagged-task rows had no byline). Consolidated to one shared
+  `authorName` helper so all surfaces show identical names (deleted the popover's duplicate
+  `authorLabel`); added an optional `byline` prop to `ResolveCheckbox`. (2) Long names/words wrap
+  instead of truncating, removed a 60-char label truncation on the internal rail; `break-words` +
+  `min-w-0` on name spans everywhere. (3) Resolved checklist items STAY visible, crossed out, instead
+  of vanishing, the "Changes only" filter now hides only posts that never had feedback (`hadFeedback`
+  on the feedback rail; `pinStatus !== 'none'` on the internal rail), anything that ever had feedback
+  stays struck-through after resolve; the Prev/Next stepper is unchanged. UI only, no schema/server/auth
+  change → Trigger.dev deploy skipped. 2375 unit/component tests, tsc + eslint clean, `next build`
+  clean; per-commit reviews + whole-branch adversarial review (READY_TO_MERGE).
+
 - [x] **2026-07-03 — Route feedback to the designer** (PR #303, `54424b6`)
   The AM triages client feedback once and hands the designer a clean, curated task list instead of
   re-commenting; designers also get direct read-only visibility into client reviews. On the
