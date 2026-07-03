@@ -1323,7 +1323,7 @@ describe('advanceFromClientReview', () => {
     expect(result.reason).toBe('not_at_client_step')
   })
 
-  it('notifies the assigned designer when a changes round has image pins', async () => {
+  it('does NOT auto-ping the designer when a changes round has image pins (AM curates first)', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
@@ -1331,7 +1331,7 @@ describe('advanceFromClientReview', () => {
       clientReviewEnabled: true,
       label: 'Foo May 2026',
     })
-    // open image-pin count > 0
+    // open image-pin count > 0 — designer ping must NOT fire regardless
     currentTx.tx.postThread.count.mockResolvedValueOnce(3)
     await advanceFromClientReview({
       batchId: 'b1',
@@ -1340,23 +1340,12 @@ describe('advanceFromClientReview', () => {
       fallbackUserId: 'user_creator',
       reviewSessionId: 's1',
     })
-    // Two activity events: client_review_decided, then revision_images_requested.
+    // Only one activity: client_review_decided. revision_images_requested must NOT appear.
     const calls = currentTx.tx.activityEvent.create.mock.calls
-    expect(calls).toHaveLength(2)
-    const designerEvent = calls[1][0].data
-    expect(designerEvent.kind).toBe(ActivityKind.revision_images_requested)
-    expect(designerEvent.actorId).toBeNull()
-    expect(designerEvent.payload.reviewSessionId).toBe('s1')
-    expect(designerEvent.payload.batchId).toBe('b1')
-    expect(designerEvent.mentions.create).toEqual([
-      { mentionedUserId: 'user_designer' },
-    ])
-    // The count query scopes to open image pins (imageX not null) on this batch.
-    const countArgs = currentTx.tx.postThread.count.mock.calls[0][0]
-    expect(countArgs.where.imageX).toEqual({ not: null })
-    expect(countArgs.where.status).toBe('open')
-    // Must exclude AM-side pins (reviewerToken null = internal pin); only client pins count.
-    expect(countArgs.where.reviewerToken).toEqual({ not: null })
+    expect(calls).toHaveLength(1)
+    expect(calls[0][0].data.kind).toBe(ActivityKind.client_review_decided)
+    const kinds = calls.map((c: [{ data: { kind: string } }]) => c[0].data.kind)
+    expect(kinds).not.toContain(ActivityKind.revision_images_requested)
   })
 
   it('does not notify a designer when the round has no image pins', async () => {
