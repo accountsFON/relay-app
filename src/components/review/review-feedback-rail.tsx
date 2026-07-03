@@ -396,8 +396,13 @@ function FeedbackRow({
             )}
 
           {/* AM-only: route this post's note/verdict to the designer. Only when
-              the post carries a review item worth flagging (verdict !== 'none'). */}
-          {!isDesigner && post.reviewItemId && post.verdict !== 'none' && (
+              the post carries a review item worth flagging. Caption edits are
+              excluded: the AM handles that copy inline (accept/reject), it is
+              not designer work. */}
+          {!isDesigner &&
+            post.reviewItemId &&
+            post.verdict !== 'none' &&
+            post.verdict !== 'caption_edited' && (
             <DesignerFlagToggle
               flag={post.flags.find((f) => f.reviewItemId === post.reviewItemId) ?? null}
               onFlag={(note) =>

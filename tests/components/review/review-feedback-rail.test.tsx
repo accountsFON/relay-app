@@ -1140,5 +1140,9 @@ describe('ReviewFeedbackRail — designer flags (AM triage)', () => {
     ])
     const block = screen.getByTestId('rail-copy-edited-anchor-post-1')
     expect(within(block).queryByText(/flag for designer/i)).toBeNull()
+    // And no note-level flag toggle renders anywhere for a caption_edited post
+    // (the caption edit is AM inline copy, not designer work).
+    expect(screen.queryByTestId('rail-flag-note-post-1-flag')).toBeNull()
+    expect(screen.queryByText(/flag for designer/i)).toBeNull()
   })
 })
