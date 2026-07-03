@@ -1146,3 +1146,189 @@ describe('ReviewFeedbackRail — designer flags (AM triage)', () => {
     expect(screen.queryByText(/flag for designer/i)).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Designer read-only view + flagged task checklist + mark revisions done
+// ---------------------------------------------------------------------------
+
+function renderDesignerRail(
+  posts: ReadonlyArray<FeedbackPostVM>,
+  opts: {
+    actions?: Partial<FeedbackActions>
+    isDesigner?: boolean
+    flagTotal?: number
+    flagOpen?: number
+    subStateAwaitingDesigner?: boolean
+    selectedThreadId?: string | null
+  } = {},
+) {
+  const actions = { ...noopActions, ...(opts.actions ?? {}) }
+  render(
+    <ReviewFeedbackRail
+      posts={posts}
+      actions={actions}
+      isDesigner={opts.isDesigner ?? true}
+      selectedPostId={null}
+      selectedThreadId={opts.selectedThreadId ?? null}
+      onToggleThread={vi.fn()}
+      onSelectPost={vi.fn()}
+      registerThreadRef={vi.fn()}
+      onScrollToAnchor={vi.fn()}
+      flagTotal={opts.flagTotal ?? 0}
+      flagOpen={opts.flagOpen ?? 0}
+      isImplementingRevisions={false}
+      subStateAwaitingDesigner={opts.subStateAwaitingDesigner ?? false}
+    />,
+  )
+  return { actions }
+}
+
+describe('ReviewFeedbackRail — designer read-only view', () => {
+  it('does not render the comment composer inside an expanded pin row', () => {
+    renderDesignerRail([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      selectedThreadId: 't1',
+    })
+    // The pin row itself (client feedback) stays visible for context...
+    expect(screen.getByTestId('pin-comment-row-t1')).toBeInTheDocument()
+    // ...but there is no composer to reply with.
+    expect(screen.queryByTestId('pin-comment-input-t1')).toBeNull()
+    expect(screen.queryByTestId('pin-comment-send-t1')).toBeNull()
+  })
+
+  it('does not render thread-resolve controls', () => {
+    renderDesignerRail([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      selectedThreadId: 't1',
+    })
+    expect(screen.queryByTestId('pin-comment-resolve-t1')).toBeNull()
+  })
+
+  it('does not render accept/reject, mark-addressed, or the note reply composer', () => {
+    renderDesignerRail([
+      vm({
+        postId: 'post-1',
+        verdict: 'caption_edited',
+        caption: 'old text',
+        suggestedCaption: 'new text',
+        comment: 'please soften',
+        reviewItemId: 'ri-1',
+        threads: [makeThread('t1')],
+      }),
+    ])
+    expect(screen.queryByTestId('rail-accept-post-1')).toBeNull()
+    expect(screen.queryByTestId('rail-reject-post-1')).toBeNull()
+    expect(screen.queryByTestId('rail-mark-addressed-post-1')).toBeNull()
+    expect(screen.queryByTestId('rail-general-feedback-post-1')).toBeNull()
+  })
+
+  it('still shows posts and pin threads for context (read-only)', () => {
+    renderDesignerRail([vm({ postId: 'post-1', threads: [makeThread('t1')] })])
+    expect(screen.getByTestId('rail-row-post-1')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-thread-t1')).toBeInTheDocument()
+  })
+})
+
+describe('ReviewFeedbackRail — designer flagged task checklist', () => {
+  it('renders a done checkbox for a flagged thread and calls setFlagDone on tick', async () => {
+    const setFlagDone = vi.fn(() => Promise.resolve())
+    renderDesignerRail(
+      [
+        vm({
+          postId: 'post-1',
+          threads: [makeThread('t1')],
+          flags: [{ id: 'flag-1', threadId: 't1', reviewItemId: null, note: 'tighten spacing', done: false }],
+        }),
+      ],
+      { actions: { setFlagDone } },
+    )
+    const cb = screen.getByTestId('designer-flag-flag-1')
+    expect(cb).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(cb)
+    })
+    expect(setFlagDone).toHaveBeenCalledWith('flag-1')
+  })
+
+  it('renders a done checkbox for a flagged note and calls unsetFlagDone when already done', async () => {
+    const unsetFlagDone = vi.fn(() => Promise.resolve())
+    renderDesignerRail(
+      [
+        vm({
+          postId: 'post-1',
+          verdict: 'changes_requested',
+          reviewItemId: 'ri-1',
+          threads: [],
+          flags: [{ id: 'flag-note', threadId: null, reviewItemId: 'ri-1', note: 'redo layout', done: true }],
+        }),
+      ],
+      { actions: { unsetFlagDone } },
+    )
+    const cb = screen.getByTestId('designer-flag-flag-note')
+    expect(cb).toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(cb)
+    })
+    expect(unsetFlagDone).toHaveBeenCalledWith('flag-note')
+  })
+
+  it('does not render a done checkbox for a non-flagged thread', () => {
+    renderDesignerRail([vm({ postId: 'post-1', threads: [makeThread('t1')], flags: [] })])
+    expect(screen.queryByTestId('designer-flag-flag-1')).toBeNull()
+  })
+
+  it('does not render the designer task checkbox in the AM branch', () => {
+    renderDesignerRail(
+      [
+        vm({
+          postId: 'post-1',
+          threads: [makeThread('t1')],
+          flags: [{ id: 'flag-1', threadId: 't1', reviewItemId: null, note: 'tighten spacing', done: false }],
+        }),
+      ],
+      { isDesigner: false },
+    )
+    expect(screen.queryByTestId('designer-flag-flag-1')).toBeNull()
+  })
+})
+
+describe('ReviewFeedbackRail — designer mark revisions done', () => {
+  it('is hidden when subStateAwaitingDesigner is false', () => {
+    renderDesignerRail([vm()], { flagTotal: 1, flagOpen: 0, subStateAwaitingDesigner: false })
+    expect(screen.queryByTestId('rail-mark-revisions-done')).toBeNull()
+  })
+
+  it('is visible but disabled when flags are still open', () => {
+    renderDesignerRail([vm()], { flagTotal: 2, flagOpen: 1, subStateAwaitingDesigner: true })
+    expect(screen.getByTestId('rail-mark-revisions-done')).toBeDisabled()
+  })
+
+  it('is disabled when there are no flags at all', () => {
+    renderDesignerRail([vm()], { flagTotal: 0, flagOpen: 0, subStateAwaitingDesigner: true })
+    expect(screen.getByTestId('rail-mark-revisions-done')).toBeDisabled()
+  })
+
+  it('is enabled and fires markRevisionsDone when every flag is done', async () => {
+    const markRevisionsDone = vi.fn(() => Promise.resolve())
+    renderDesignerRail([vm()], {
+      actions: { markRevisionsDone },
+      flagTotal: 2,
+      flagOpen: 0,
+      subStateAwaitingDesigner: true,
+    })
+    const btn = screen.getByTestId('rail-mark-revisions-done')
+    expect(btn).not.toBeDisabled()
+    await act(async () => {
+      fireEvent.click(btn)
+    })
+    expect(markRevisionsDone).toHaveBeenCalledOnce()
+  })
+
+  it('never renders in the AM branch even while awaiting the designer', () => {
+    renderDesignerRail([vm()], {
+      isDesigner: false,
+      flagTotal: 2,
+      flagOpen: 0,
+      subStateAwaitingDesigner: true,
+    })
+    expect(screen.queryByTestId('rail-mark-revisions-done')).toBeNull()
+  })
+})
