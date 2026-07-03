@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, within } from '@testing-library/react'
 import { ReviewFeedbackRail } from '@/components/review/review-feedback-rail'
 import type { FeedbackPostVM, FeedbackActions } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 import type { HydratedThread } from '@/server/repositories/threads'
@@ -985,5 +985,160 @@ describe('ReviewFeedbackRail — Changes only filter', () => {
     // After filter: approved post filtered out, only the open thread remains
     // counter = "0 of 1 resolved"
     expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('0 of 1 resolved')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Designer flags — AM triage (flag toggles + send to designer)
+// ---------------------------------------------------------------------------
+
+describe('ReviewFeedbackRail — designer flags (AM triage)', () => {
+  function renderFlags(
+    posts: ReadonlyArray<FeedbackPostVM>,
+    opts: {
+      actions?: Partial<FeedbackActions>
+      isDesigner?: boolean
+      flagTotal?: number
+      flagOpen?: number
+      isImplementingRevisions?: boolean
+      subStateAwaitingDesigner?: boolean
+    } = {},
+  ) {
+    const actions = { ...noopActions, ...(opts.actions ?? {}) }
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={actions}
+        isDesigner={opts.isDesigner ?? false}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
+        registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
+        flagTotal={opts.flagTotal ?? 0}
+        flagOpen={opts.flagOpen ?? 0}
+        isImplementingRevisions={opts.isImplementingRevisions ?? false}
+        subStateAwaitingDesigner={opts.subStateAwaitingDesigner ?? false}
+      />,
+    )
+    return { actions }
+  }
+
+  it('AM sees a flag toggle per client thread and on the post note', () => {
+    renderFlags([
+      vm({
+        postId: 'post-1',
+        verdict: 'changes_requested',
+        comment: 'please soften',
+        reviewItemId: 'ri-1',
+        threads: [makeThread('t1'), makeThread('t2')],
+      }),
+    ])
+    expect(screen.getByTestId('rail-flag-thread-t1-flag')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-flag-thread-t2-flag')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-flag-note-post-1-flag')).toBeInTheDocument()
+  })
+
+  it('the designer branch does not render the flag toggles or the send bar', () => {
+    renderFlags(
+      [
+        vm({
+          postId: 'post-1',
+          verdict: 'changes_requested',
+          comment: 'please soften',
+          reviewItemId: 'ri-1',
+          threads: [makeThread('t1')],
+        }),
+      ],
+      { isDesigner: true },
+    )
+    expect(screen.queryByTestId('rail-flag-thread-t1-flag')).toBeNull()
+    expect(screen.queryByTestId('rail-flag-note-post-1-flag')).toBeNull()
+    expect(screen.queryByTestId('rail-send-to-designer')).toBeNull()
+    expect(screen.queryByTestId('rail-flag-count')).toBeNull()
+  })
+
+  it('flagging a client thread calls flagForDesigner with { threadId }', () => {
+    const flagForDesigner = vi.fn(() => Promise.resolve())
+    renderFlags([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      actions: { flagForDesigner },
+    })
+    fireEvent.click(screen.getByTestId('rail-flag-thread-t1-flag'))
+    expect(flagForDesigner).toHaveBeenCalledWith('post-1', { threadId: 't1' }, undefined)
+  })
+
+  it('an already-flagged thread shows the note input and unflag control', () => {
+    renderFlags([
+      vm({
+        postId: 'post-1',
+        threads: [makeThread('t1')],
+        flags: [{ id: 'f1', threadId: 't1', reviewItemId: null, note: 'tighten it', done: false }],
+      }),
+    ])
+    const note = screen.getByTestId('rail-flag-thread-t1-note') as HTMLInputElement
+    expect(note.value).toBe('tighten it')
+    expect(screen.getByTestId('rail-flag-thread-t1-unflag')).toBeInTheDocument()
+  })
+
+  it('send-to-designer is disabled when isImplementingRevisions=false', () => {
+    renderFlags([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isImplementingRevisions: false,
+      flagTotal: 2,
+    })
+    expect(screen.getByTestId('rail-send-to-designer')).toBeDisabled()
+  })
+
+  it('send-to-designer is disabled when flagTotal=0', () => {
+    renderFlags([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isImplementingRevisions: true,
+      flagTotal: 0,
+    })
+    expect(screen.getByTestId('rail-send-to-designer')).toBeDisabled()
+    expect(screen.getByTestId('rail-flag-count')).toHaveTextContent(
+      'No items flagged for designer',
+    )
+  })
+
+  it('send-to-designer is enabled and fires sendToDesigner when the gate is met', () => {
+    const sendToDesigner = vi.fn(() => Promise.resolve())
+    renderFlags([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      actions: { sendToDesigner },
+      isImplementingRevisions: true,
+      flagTotal: 2,
+      flagOpen: 2,
+      subStateAwaitingDesigner: false,
+    })
+    const btn = screen.getByTestId('rail-send-to-designer')
+    expect(btn).not.toBeDisabled()
+    expect(screen.getByTestId('rail-flag-count')).toHaveTextContent('2 flagged for designer')
+    fireEvent.click(btn)
+    expect(sendToDesigner).toHaveBeenCalledOnce()
+  })
+
+  it('send-to-designer is disabled with a waiting hint when already awaiting the designer', () => {
+    renderFlags([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isImplementingRevisions: true,
+      flagTotal: 2,
+      subStateAwaitingDesigner: true,
+    })
+    const btn = screen.getByTestId('rail-send-to-designer')
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveTextContent('Sent, waiting on designer')
+  })
+
+  it('the caption-edit affordance does not get a flag toggle', () => {
+    renderFlags([
+      vm({
+        postId: 'post-1',
+        verdict: 'caption_edited',
+        caption: 'old text',
+        suggestedCaption: 'new text',
+        reviewItemId: 'ri-1',
+        threads: [],
+      }),
+    ])
+    const block = screen.getByTestId('rail-copy-edited-anchor-post-1')
+    expect(within(block).queryByText(/flag for designer/i)).toBeNull()
   })
 })

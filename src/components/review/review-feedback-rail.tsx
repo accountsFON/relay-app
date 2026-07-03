@@ -6,6 +6,7 @@ import { PinCommentRow } from '@/components/review/pin-comment-row'
 import { CaptionDiffView } from '@/components/preview/caption-diff-view'
 import { ChangesNavigator, type NavItem } from '@/components/review/changes-navigator'
 import { ResolveCheckbox } from '@/components/review/resolve-checkbox'
+import { DesignerFlagToggle } from '@/components/review/designer-flag-toggle'
 import { diffText } from '@/lib/text-diff'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
@@ -295,6 +296,19 @@ function FeedbackRow({
                 }
                 onUploadImage={uploadImage}
               />
+              {/* AM-only: route this client pin to the designer. */}
+              {!isDesigner && (
+                <div className="mt-1">
+                  <DesignerFlagToggle
+                    flag={post.flags.find((f) => f.threadId === thread.id) ?? null}
+                    onFlag={(note) =>
+                      actions.flagForDesigner(post.postId, { threadId: thread.id }, note)
+                    }
+                    onUnflag={actions.unflagForDesigner}
+                    testId={`rail-flag-thread-${thread.id}`}
+                  />
+                </div>
+              )}
             </div>
           ))}
 
@@ -381,6 +395,19 @@ function FeedbackRow({
               </div>
             )}
 
+          {/* AM-only: route this post's note/verdict to the designer. Only when
+              the post carries a review item worth flagging (verdict !== 'none'). */}
+          {!isDesigner && post.reviewItemId && post.verdict !== 'none' && (
+            <DesignerFlagToggle
+              flag={post.flags.find((f) => f.reviewItemId === post.reviewItemId) ?? null}
+              onFlag={(note) =>
+                actions.flagForDesigner(post.postId, { reviewItemId: post.reviewItemId! }, note)
+              }
+              onUnflag={actions.unflagForDesigner}
+              testId={`rail-flag-note-${post.postId}`}
+            />
+          )}
+
           {/* Mark addressed / Move back (AM only) */}
           {!isDesigner && (
             <button
@@ -425,6 +452,10 @@ export function ReviewFeedbackRail({
   posts,
   actions,
   isDesigner,
+  flagTotal,
+  flagOpen,
+  isImplementingRevisions,
+  subStateAwaitingDesigner,
   uploadImage,
   selectedPostId,
   selectedThreadId,
@@ -434,6 +465,26 @@ export function ReviewFeedbackRail({
   onScrollToAnchor,
 }: ReviewFeedbackRailProps) {
   const [filterOn, setFilterOn] = useState(false)
+  const [sending, setSending] = useState(false)
+
+  // "Send to designer" is available only once the batch is implementing
+  // revisions, at least one item is flagged, and we haven't already sent.
+  const canSend =
+    isImplementingRevisions && flagTotal >= 1 && !subStateAwaitingDesigner && !sending
+
+  function handleSendToDesigner() {
+    if (!canSend) return
+    setSending(true)
+    void actions.sendToDesigner().catch(() => setSending(false))
+  }
+
+  const sendHint = subStateAwaitingDesigner
+    ? 'Sent, waiting on designer'
+    : !isImplementingRevisions
+      ? 'Available once revisions start'
+      : flagTotal < 1
+        ? 'Flag at least one item first'
+        : undefined
 
   const visiblePosts = filterOn ? posts.filter(needsChanges) : posts
 
@@ -472,6 +523,34 @@ export function ReviewFeedbackRail({
           onNavigate={onScrollToAnchor}
         />
       </div>
+
+      {/* AM triage bar: how many items are flagged + send them to the designer.
+          Hidden entirely in the designer branch. */}
+      {!isDesigner && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <span
+            data-testid="rail-flag-count"
+            className="text-[12px] text-muted-foreground"
+          >
+            {flagTotal === 0
+              ? 'No items flagged for designer'
+              : `${flagTotal} flagged for designer${
+                  flagOpen !== flagTotal ? ` · ${flagOpen} open` : ''
+                }`}
+          </span>
+          <button
+            type="button"
+            data-testid="rail-send-to-designer"
+            onClick={handleSendToDesigner}
+            disabled={!canSend}
+            title={sendHint}
+            className="rounded-md bg-primary px-3 py-1 text-[12px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {subStateAwaitingDesigner ? 'Sent, waiting on designer' : 'Send to designer'}
+          </button>
+        </div>
+      )}
+
       {visiblePosts.map((post) => (
         <FeedbackRow
           key={post.postId}
