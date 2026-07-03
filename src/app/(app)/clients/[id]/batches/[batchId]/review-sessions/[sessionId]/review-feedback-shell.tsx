@@ -31,6 +31,14 @@ export type ReviewFeedbackShellProps = {
   respondSlot?: React.ReactNode
   clientName: string
   clientAvatarUrl?: string | null
+  /** Total designer flags on this batch. */
+  flagTotal: number
+  /** Designer flags still open (not marked done). */
+  flagOpen: number
+  /** Batch is in the `implementing_revisions` step. */
+  isImplementingRevisions: boolean
+  /** Batch sub-state is `awaiting_design_revisions`. */
+  subStateAwaitingDesigner: boolean
 }
 
 export function ReviewFeedbackShell({
@@ -44,6 +52,10 @@ export function ReviewFeedbackShell({
   respondSlot,
   clientName,
   clientAvatarUrl,
+  flagTotal,
+  flagOpen,
+  isImplementingRevisions,
+  subStateAwaitingDesigner,
 }: ReviewFeedbackShellProps) {
   const uploadImage = userDbId
     ? (file: File) => uploadCommentImage(file, { mode: 'internal', userDbId })
@@ -91,6 +103,10 @@ export function ReviewFeedbackShell({
           posts={posts}
           actions={actions}
           isDesigner={isDesigner}
+          flagTotal={flagTotal}
+          flagOpen={flagOpen}
+          isImplementingRevisions={isImplementingRevisions}
+          subStateAwaitingDesigner={subStateAwaitingDesigner}
           uploadImage={uploadImage}
           selectedPostId={selectedPostId}
           selectedThreadId={selectedThreadId}

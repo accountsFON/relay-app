@@ -71,6 +71,7 @@ function vm(overrides: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     captionAccepted: false,
     noteResolved: false,
     threads: [imageThread('t1')],
+    flags: [],
     ...overrides,
   }
 }

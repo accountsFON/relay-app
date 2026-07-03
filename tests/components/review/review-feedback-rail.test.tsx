@@ -65,6 +65,7 @@ function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     captionAccepted: false,
     noteResolved: false,
     threads: [makeThread('t1')],
+    flags: [],
     ...over,
   }
 }
@@ -81,6 +82,12 @@ const noopActions: FeedbackActions = {
   unresolveNote: vi.fn(() => Promise.resolve()),
   replyToFeedback: vi.fn(() => Promise.resolve()),
   startNextRound: vi.fn(() => Promise.resolve()),
+  flagForDesigner: vi.fn(() => Promise.resolve()),
+  unflagForDesigner: vi.fn(() => Promise.resolve()),
+  sendToDesigner: vi.fn(() => Promise.resolve()),
+  setFlagDone: vi.fn(() => Promise.resolve()),
+  unsetFlagDone: vi.fn(() => Promise.resolve()),
+  markRevisionsDone: vi.fn(() => Promise.resolve()),
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +112,10 @@ describe('ReviewFeedbackRail — row rendering', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.getByTestId('rail-row-post-1')).toBeTruthy()
@@ -128,6 +139,10 @@ describe('ReviewFeedbackRail — row rendering', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     const cleanRow = screen.getByTestId('rail-row-post-clean').closest('[data-collapsed]')
@@ -150,6 +165,10 @@ describe('ReviewFeedbackRail — row rendering', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     const row = screen.getByTestId('rail-row-post-a').closest('[data-collapsed]')
@@ -174,6 +193,10 @@ describe('ReviewFeedbackRail — row rendering', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.getByTestId('rail-thread-t1')).toBeTruthy()
@@ -195,6 +218,10 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     const row = screen.getByTestId('pin-comment-row-t1')
@@ -214,6 +241,10 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     const row = screen.getByTestId('pin-comment-row-t1')
@@ -234,6 +265,10 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     fireEvent.click(screen.getByTestId('pin-comment-row-t1'))
@@ -263,6 +298,10 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onSelectPost={onSelectPost}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     fireEvent.click(screen.getByTestId('rail-row-post-ce'))
@@ -287,6 +326,10 @@ describe('ReviewFeedbackRail — pin row expansion', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('true')
@@ -308,6 +351,10 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.queryByTestId('rail-mark-addressed-post-1')).toBeNull()
@@ -326,6 +373,10 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toBeTruthy()
@@ -350,6 +401,10 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.queryByTestId('rail-accept-post-1')).toBeNull()
@@ -375,6 +430,10 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.getByTestId('rail-accept-post-1')).toBeTruthy()
@@ -394,6 +453,10 @@ describe('ReviewFeedbackRail — isDesigner hides AM-only controls', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.queryByTestId('pin-comment-resolve-t1')).toBeNull()
@@ -421,6 +484,10 @@ describe('ReviewFeedbackRail — caption_edited diff view', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.getByTestId('caption-diff-view')).toBeTruthy()
@@ -448,6 +515,10 @@ describe('ReviewFeedbackRail — caption_edited diff view', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.queryByTestId('caption-diff-view')).toBeNull()
@@ -467,6 +538,10 @@ describe('ReviewFeedbackRail — caption-edited block (anchor + accepted state)'
         onSelectPost={onSelectPost}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     return { onSelectPost }
@@ -551,6 +626,10 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toHaveTextContent('Mark addressed')
@@ -569,6 +648,10 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
     expect(screen.getByTestId('rail-mark-addressed-post-1')).toHaveTextContent('Move back')
@@ -588,6 +671,10 @@ describe('ReviewFeedbackRail — Fix with AI (per post)', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
   }
@@ -624,6 +711,10 @@ describe('ReviewFeedbackRail — general feedback reply (post-level)', () => {
         onSelectPost={vi.fn()}
         registerThreadRef={vi.fn()}
         onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
       />,
     )
   }
@@ -736,6 +827,10 @@ function renderRailNew(
       onSelectPost={vi.fn()}
       registerThreadRef={vi.fn()}
       onScrollToAnchor={vi.fn()}
+      flagTotal={0}
+      flagOpen={0}
+      isImplementingRevisions={false}
+      subStateAwaitingDesigner={false}
     />,
   )
   return { actions }

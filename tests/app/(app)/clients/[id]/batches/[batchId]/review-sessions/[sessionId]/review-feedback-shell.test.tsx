@@ -56,6 +56,7 @@ function vm(over: Partial<FeedbackPostVM> = {}): FeedbackPostVM {
     captionAccepted: false,
     noteResolved: false,
     threads: [makeThread('t1')],
+    flags: [],
     ...over,
   }
 }
@@ -72,6 +73,12 @@ const noopActions: FeedbackActions = {
   unresolveNote: vi.fn(() => Promise.resolve()),
   replyToFeedback: vi.fn(() => Promise.resolve()),
   startNextRound: vi.fn(() => Promise.resolve()),
+  flagForDesigner: vi.fn(() => Promise.resolve()),
+  unflagForDesigner: vi.fn(() => Promise.resolve()),
+  sendToDesigner: vi.fn(() => Promise.resolve()),
+  setFlagDone: vi.fn(() => Promise.resolve()),
+  unsetFlagDone: vi.fn(() => Promise.resolve()),
+  markRevisionsDone: vi.fn(() => Promise.resolve()),
 }
 
 /** Required props for every shell render. clientName is now required. */
@@ -84,6 +91,10 @@ const baseProps = {
   isSuperseded: false,
   clientName: 'Acme Corp',
   clientAvatarUrl: null,
+  flagTotal: 0,
+  flagOpen: 0,
+  isImplementingRevisions: false,
+  subStateAwaitingDesigner: false,
 }
 
 // ---------------------------------------------------------------------------

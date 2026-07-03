@@ -17,6 +17,14 @@ export type ReviewFeedbackRailProps = {
   posts: ReadonlyArray<FeedbackPostVM>
   actions: FeedbackActions
   isDesigner: boolean
+  /** Total designer flags on this batch (rendered by a later task). */
+  flagTotal: number
+  /** Designer flags still open (rendered by a later task). */
+  flagOpen: number
+  /** Batch is in the `implementing_revisions` step (rendered by a later task). */
+  isImplementingRevisions: boolean
+  /** Batch sub-state is `awaiting_design_revisions` (rendered by a later task). */
+  subStateAwaitingDesigner: boolean
   uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   selectedThreadId: string | null
   selectedPostId: string | null

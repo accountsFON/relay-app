@@ -51,10 +51,23 @@ import {
   replyToPostFeedbackAction,
   useCommentImageAsPostMediaAction as commentImageAsPostMediaAction,
 } from '@/server/actions/threads'
+import {
+  flagFeedbackForDesignerAction,
+  unflagFeedbackForDesignerAction,
+  sendFlaggedFeedbackToDesignerAction,
+  setDesignerFlagDoneAction,
+  unsetDesignerFlagDoneAction,
+  markClientRevisionDesignDoneAction,
+} from '@/server/actions/designerFlags'
+import { listDesignerFlagsForBatch } from '@/server/repositories/designerFlags'
 import { revalidatePath } from 'next/cache'
 import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { ReviewFeedbackShell } from './review-feedback-shell'
-import type { FeedbackPostVM, FeedbackActions } from './review-feedback-types'
+import type {
+  FeedbackPostVM,
+  FeedbackActions,
+  DesignerFlagVM,
+} from './review-feedback-types'
 import type { ReviewSessionSummary } from '@/types/review-session'
 
 type AttentionPost = {
@@ -162,6 +175,24 @@ export default async function ReviewSessionDetailPage({
     includeResolved: true,
   })
 
+  // Designer flags for the batch, grouped per post. Each flag points at either
+  // a client pin thread or a review-item note. Drives the (later) flag toggles
+  // and the designer task checklist.
+  const designerFlags = await listDesignerFlagsForBatch(batch.id)
+  const flagsByPost = new Map<string, DesignerFlagVM[]>()
+  for (const flag of designerFlags) {
+    const vm: DesignerFlagVM = {
+      id: flag.id,
+      threadId: flag.threadId,
+      reviewItemId: flag.reviewItemId,
+      note: flag.note,
+      done: flag.doneAt != null,
+    }
+    const list = flagsByPost.get(flag.postId)
+    if (list) list.push(vm)
+    else flagsByPost.set(flag.postId, [vm])
+  }
+
   // Build the full post list from every post in the batch in canonical order.
   const allPosts: AttentionPost[] = batchPosts.map((p) => {
     const item = itemByPostId.get(p.id) ?? null
@@ -186,13 +217,10 @@ export default async function ReviewSessionDetailPage({
     }
   })
 
-  // Designer lane: designers see ONLY posts that carry at least one IMAGE pin.
-  // AM/admin see every post in the batch.
   const isDesigner = ctx.role === 'designer'
-  function hasImagePin(ap: AttentionPost): boolean {
-    return ap.clientThreads.some((t) => t.pin.kind === 'image')
-  }
-  const visiblePosts = isDesigner ? allPosts.filter(hasImagePin) : allPosts
+  // Designers now see the full client review (read-only) + their flagged tasks;
+  // the old image-pin-only filter is removed (route-feedback-to-designer).
+  const visiblePosts = allPosts
 
   const summary: ReviewSessionSummary =
     session.submittedSummary ?? {
@@ -328,6 +356,51 @@ export default async function ReviewSessionDetailPage({
     }
   }
 
+  // Designer-flag actions. The underlying server actions revalidate the review
+  // paths internally, so these thin wrappers only bind the session/batch ids.
+  const flagForDesigner = async (
+    postId: string,
+    ref: { threadId?: string; reviewItemId?: string },
+    note?: string,
+  ) => {
+    'use server'
+    await flagFeedbackForDesignerAction({
+      postId,
+      reviewSessionId: sessionId_,
+      threadId: ref.threadId,
+      reviewItemId: ref.reviewItemId,
+      note,
+    })
+  }
+
+  const unflagForDesigner = async (flagId: string) => {
+    'use server'
+    await unflagFeedbackForDesignerAction({ flagId, reviewSessionId: sessionId_ })
+  }
+
+  const sendToDesigner = async () => {
+    'use server'
+    await sendFlaggedFeedbackToDesignerAction({
+      batchId: batchId_,
+      reviewSessionId: sessionId_,
+    })
+  }
+
+  const setFlagDone = async (flagId: string) => {
+    'use server'
+    await setDesignerFlagDoneAction({ flagId, reviewSessionId: sessionId_ })
+  }
+
+  const unsetFlagDone = async (flagId: string) => {
+    'use server'
+    await unsetDesignerFlagDoneAction({ flagId, reviewSessionId: sessionId_ })
+  }
+
+  const markRevisionsDone = async () => {
+    'use server'
+    await markClientRevisionDesignDoneAction({ batchId: batchId_ })
+  }
+
   const feedbackActions: FeedbackActions = {
     comment,
     resolve,
@@ -340,6 +413,12 @@ export default async function ReviewSessionDetailPage({
     unresolveNote,
     replyToFeedback,
     startNextRound,
+    flagForDesigner,
+    unflagForDesigner,
+    sendToDesigner,
+    setFlagDone,
+    unsetFlagDone,
+    markRevisionsDone,
   }
 
   // ---------------------------------------------------------------------------
@@ -370,7 +449,16 @@ export default async function ReviewSessionDetailPage({
     captionAccepted: Boolean(ap.item?.acceptedAsPostVersionId),
     noteResolved: Boolean(ap.item?.noteResolvedAt),
     threads: ap.clientThreads,
+    flags: flagsByPost.get(ap.postId) ?? [],
   }))
+
+  // Batch-level designer-flag state (drives the send-to-designer control and
+  // the designer's "revisions done" step, wired into the rail by a later task).
+  const flagTotal = designerFlags.length
+  const flagOpen = designerFlags.filter((f) => f.doneAt == null).length
+  const isImplementingRevisions = batch.currentStep === 'implementing_revisions'
+  const subStateAwaitingDesigner =
+    batch.currentSubState === 'awaiting_design_revisions'
 
   // Map ctx.role to the shell's role union. Image attach in the rail dialogue
   // is built inside the (client) shell from the AM's userDbId, since a server
@@ -441,6 +529,10 @@ export default async function ReviewSessionDetailPage({
           clientName={client.name}
           clientAvatarUrl={null}
           startNextRoundSlot={startNextRoundSlot}
+          flagTotal={flagTotal}
+          flagOpen={flagOpen}
+          isImplementingRevisions={isImplementingRevisions}
+          subStateAwaitingDesigner={subStateAwaitingDesigner}
         />
         {/* Internal chat is a toggle popup (floating button → slide-up panel)
             on every screen size, so the feedback rail + posts get the full
