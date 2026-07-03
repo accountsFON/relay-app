@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, requireCan } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { db } from '@/db/client'
 import {
@@ -9,8 +9,10 @@ import {
   updateDesignerFlagNote,
   deleteDesignerFlag,
   findDesignerFlagForAuth,
+  setDesignerFlagDone,
 } from '@/server/repositories/designerFlags'
 import { sendFlaggedFeedbackToDesigner } from '@/server/services/relay'
+import { canOverrideHolder } from '@/lib/relay-holder-override'
 
 export class DesignerFlagActionError extends Error {
   constructor(message: string) {
@@ -140,4 +142,54 @@ export async function sendFlaggedFeedbackToDesignerAction(input: {
   revalidatePath('/dashboard')
   revalidatePath('/inbox')
   return { ok: true, count: result.count }
+}
+
+async function toggleFlagDone(
+  input: { flagId: string; reviewSessionId: string },
+  done: boolean,
+): Promise<{ ok: true }> {
+  const ctx = await requireCan('relay.pass')
+  const flag = await db.designerFlag.findUnique({
+    where: { id: input.flagId },
+    select: {
+      id: true,
+      batchId: true,
+      post: {
+        select: {
+          clientId: true,
+          client: {
+            select: { organizationId: true, assignedDesignerId: true },
+          },
+        },
+      },
+      batch: { select: { currentHolder: true } },
+    },
+  })
+  if (!flag || flag.post.client.organizationId !== ctx.organizationDbId) {
+    throw new DesignerFlagActionError('Flag not found')
+  }
+  const isDesigner = ctx.userDbId === flag.post.client.assignedDesignerId
+  const isHolder = ctx.userDbId === flag.batch.currentHolder
+  if (!isDesigner && !isHolder && !canOverrideHolder(ctx.role, ctx.platformOwner)) {
+    throw new DesignerFlagActionError(
+      'Only the assigned designer, an AM, or an admin can update this task.',
+    )
+  }
+  await setDesignerFlagDone(flag.id, ctx.userDbId, done)
+  revalidateReviewPaths(flag.post.clientId, flag.batchId, input.reviewSessionId)
+  return { ok: true }
+}
+
+export async function setDesignerFlagDoneAction(input: {
+  flagId: string
+  reviewSessionId: string
+}) {
+  return toggleFlagDone(input, true)
+}
+
+export async function unsetDesignerFlagDoneAction(input: {
+  flagId: string
+  reviewSessionId: string
+}) {
+  return toggleFlagDone(input, false)
 }

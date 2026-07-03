@@ -7,6 +7,11 @@ vi.mock('next/cache', () => ({
 
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientEditor: vi.fn(),
+  requireCan: vi.fn(),
+}))
+
+vi.mock('@/lib/relay-holder-override', () => ({
+  canOverrideHolder: vi.fn(() => false),
 }))
 
 vi.mock('@/server/repositories/clients', () => ({
@@ -18,6 +23,7 @@ vi.mock('@/server/repositories/designerFlags', () => ({
   updateDesignerFlagNote: vi.fn(),
   deleteDesignerFlag: vi.fn(),
   findDesignerFlagForAuth: vi.fn(),
+  setDesignerFlagDone: vi.fn(),
 }))
 
 vi.mock('@/db/client', () => ({
@@ -25,7 +31,7 @@ vi.mock('@/db/client', () => ({
     post: { findUnique: vi.fn() },
     postThread: { findUnique: vi.fn() },
     reviewItem: { findUnique: vi.fn() },
-    designerFlag: { findFirst: vi.fn() },
+    designerFlag: { findFirst: vi.fn(), findUnique: vi.fn() },
     batch: { findUnique: vi.fn() },
   },
 }))
@@ -35,19 +41,23 @@ vi.mock('@/server/services/relay', () => ({
 }))
 
 import { revalidatePath } from 'next/cache'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, requireCan } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import {
   createDesignerFlag,
   updateDesignerFlagNote,
   deleteDesignerFlag,
   findDesignerFlagForAuth,
+  setDesignerFlagDone,
 } from '@/server/repositories/designerFlags'
+import { canOverrideHolder } from '@/lib/relay-holder-override'
 import { db } from '@/db/client'
 import {
   flagFeedbackForDesignerAction,
   unflagFeedbackForDesignerAction,
   sendFlaggedFeedbackToDesignerAction,
+  setDesignerFlagDoneAction,
+  unsetDesignerFlagDoneAction,
 } from '@/server/actions/designerFlags'
 import { sendFlaggedFeedbackToDesigner } from '@/server/services/relay'
 
@@ -60,6 +70,8 @@ const THREAD_ID = 'cuid_thread_1'
 const REVIEW_ITEM_ID = 'cuid_item_1'
 const REVIEW_SESSION_ID = 'cuid_session_1'
 const FLAG_ID = 'cuid_flag_1'
+const DESIGNER_USER_DB_ID = 'user_designer_1'
+const HOLDER_USER_DB_ID = 'user_holder_1'
 
 function primeAmCtx(): void {
   vi.mocked(requireClientEditor).mockResolvedValue({
@@ -108,7 +120,54 @@ beforeEach(() => {
   vi.mocked(createDesignerFlag).mockResolvedValue({ id: FLAG_ID })
   vi.mocked(updateDesignerFlagNote).mockResolvedValue(undefined)
   vi.mocked(deleteDesignerFlag).mockResolvedValue(undefined)
+  vi.mocked(setDesignerFlagDone).mockResolvedValue(undefined)
+  vi.mocked(canOverrideHolder).mockReturnValue(false)
 })
+
+function primeDesignerCtx(userDbId = DESIGNER_USER_DB_ID): void {
+  vi.mocked(requireCan).mockResolvedValue({
+    userId: 'clerk_designer',
+    orgId: 'clerk_org_1',
+    role: 'designer',
+    plan: 'smb',
+    organizationDbId: AM_ORG_DB_ID,
+    userDbId,
+    platformOwner: false,
+    linkedClientId: null,
+    permissionOverrides: null,
+    roleDefaults: {},
+  } as never)
+}
+
+function primeHolderCtx(): void {
+  vi.mocked(requireCan).mockResolvedValue({
+    userId: 'clerk_holder',
+    orgId: 'clerk_org_1',
+    role: 'account_manager',
+    plan: 'smb',
+    organizationDbId: AM_ORG_DB_ID,
+    userDbId: HOLDER_USER_DB_ID,
+    platformOwner: false,
+    linkedClientId: null,
+    permissionOverrides: null,
+    roleDefaults: {},
+  } as never)
+}
+
+function primeFlagLookup(overrides: { organizationId?: string; assignedDesignerId?: string; currentHolder?: string } = {}): void {
+  vi.mocked(db.designerFlag.findUnique).mockResolvedValue({
+    id: FLAG_ID,
+    batchId: BATCH_ID,
+    post: {
+      clientId: CLIENT_ID,
+      client: {
+        organizationId: overrides.organizationId ?? AM_ORG_DB_ID,
+        assignedDesignerId: overrides.assignedDesignerId ?? DESIGNER_USER_DB_ID,
+      },
+    },
+    batch: { currentHolder: overrides.currentHolder ?? HOLDER_USER_DB_ID },
+  } as never)
+}
 
 // ---- flagFeedbackForDesignerAction ----
 
@@ -387,5 +446,99 @@ describe('sendFlaggedFeedbackToDesignerAction — cross-org guard', () => {
     ).rejects.toThrow('Relay not found')
 
     expect(sendFlaggedFeedbackToDesigner).not.toHaveBeenCalled()
+  })
+})
+
+// ---- setDesignerFlagDoneAction / unsetDesignerFlagDoneAction ----
+
+describe('setDesignerFlagDoneAction — guard: requireCan relay.pass', () => {
+  it('calls requireCan with relay.pass before any other work', async () => {
+    primeDesignerCtx()
+    primeFlagLookup()
+
+    await setDesignerFlagDoneAction({ flagId: FLAG_ID, reviewSessionId: REVIEW_SESSION_ID })
+
+    expect(requireCan).toHaveBeenCalledWith('relay.pass')
+  })
+})
+
+describe('setDesignerFlagDoneAction — happy path: assigned designer', () => {
+  it('calls setDesignerFlagDone with done=true when caller is the assigned designer', async () => {
+    primeDesignerCtx(DESIGNER_USER_DB_ID)
+    primeFlagLookup({ assignedDesignerId: DESIGNER_USER_DB_ID })
+
+    const result = await setDesignerFlagDoneAction({ flagId: FLAG_ID, reviewSessionId: REVIEW_SESSION_ID })
+
+    expect(result).toEqual({ ok: true })
+    expect(setDesignerFlagDone).toHaveBeenCalledWith(FLAG_ID, DESIGNER_USER_DB_ID, true)
+    expect(revalidatePath).toHaveBeenCalled()
+  })
+})
+
+describe('unsetDesignerFlagDoneAction — happy path: assigned designer', () => {
+  it('calls setDesignerFlagDone with done=false when caller is the assigned designer', async () => {
+    primeDesignerCtx(DESIGNER_USER_DB_ID)
+    primeFlagLookup({ assignedDesignerId: DESIGNER_USER_DB_ID })
+
+    const result = await unsetDesignerFlagDoneAction({ flagId: FLAG_ID, reviewSessionId: REVIEW_SESSION_ID })
+
+    expect(result).toEqual({ ok: true })
+    expect(setDesignerFlagDone).toHaveBeenCalledWith(FLAG_ID, DESIGNER_USER_DB_ID, false)
+  })
+})
+
+describe('setDesignerFlagDoneAction — happy path: current holder', () => {
+  it('calls setDesignerFlagDone with done=true when caller is the current batch holder', async () => {
+    primeHolderCtx()
+    primeFlagLookup({
+      assignedDesignerId: DESIGNER_USER_DB_ID,
+      currentHolder: HOLDER_USER_DB_ID,
+    })
+
+    const result = await setDesignerFlagDoneAction({ flagId: FLAG_ID, reviewSessionId: REVIEW_SESSION_ID })
+
+    expect(result).toEqual({ ok: true })
+    expect(setDesignerFlagDone).toHaveBeenCalledWith(FLAG_ID, HOLDER_USER_DB_ID, true)
+  })
+})
+
+describe('setDesignerFlagDoneAction — authz: denied when neither designer nor holder nor override', () => {
+  it('throws the guard message when caller is unrelated', async () => {
+    primeDesignerCtx('user_unrelated')
+    primeFlagLookup({
+      assignedDesignerId: DESIGNER_USER_DB_ID,
+      currentHolder: HOLDER_USER_DB_ID,
+    })
+    vi.mocked(canOverrideHolder).mockReturnValue(false)
+
+    await expect(
+      setDesignerFlagDoneAction({ flagId: FLAG_ID, reviewSessionId: REVIEW_SESSION_ID }),
+    ).rejects.toThrow('Only the assigned designer, an AM, or an admin can update this task.')
+
+    expect(setDesignerFlagDone).not.toHaveBeenCalled()
+  })
+})
+
+describe('setDesignerFlagDoneAction — cross-org guard', () => {
+  it('throws Flag not found when the flag belongs to a different org', async () => {
+    primeDesignerCtx()
+    primeFlagLookup({ organizationId: 'other_org_id' })
+
+    await expect(
+      setDesignerFlagDoneAction({ flagId: FLAG_ID, reviewSessionId: REVIEW_SESSION_ID }),
+    ).rejects.toThrow('Flag not found')
+
+    expect(setDesignerFlagDone).not.toHaveBeenCalled()
+  })
+
+  it('throws Flag not found when designerFlag.findUnique returns null', async () => {
+    primeDesignerCtx()
+    vi.mocked(db.designerFlag.findUnique).mockResolvedValue(null)
+
+    await expect(
+      setDesignerFlagDoneAction({ flagId: FLAG_ID, reviewSessionId: REVIEW_SESSION_ID }),
+    ).rejects.toThrow('Flag not found')
+
+    expect(setDesignerFlagDone).not.toHaveBeenCalled()
   })
 })
