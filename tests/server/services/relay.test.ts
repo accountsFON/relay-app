@@ -121,6 +121,7 @@ import {
   finishBatch,
   forceStep,
   getNotifyTargetsForStep,
+  markClientRevisionDesignDone,
   markDesignRevisionsDone,
   passBaton,
   requestDesignChanges,
@@ -606,6 +607,164 @@ describe('markDesignRevisionsDone', () => {
     currentTx.tx.activityEvent.create.mockRejectedValueOnce(new Error('db down'))
     await expect(
       markDesignRevisionsDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).resolves.toMatchObject({ subState: null })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// markClientRevisionDesignDone
+// ---------------------------------------------------------------------------
+
+describe('markClientRevisionDesignDone', () => {
+  function mockBatch(
+    step: RelayStep,
+    subState: string | null,
+    amId: string | null = 'user_am',
+  ) {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: step,
+      currentSubState: subState,
+      label: '2026-05',
+      client: { organizationId: 'org_1', assignedAmId: amId },
+    })
+  }
+
+  it('throws RelayServiceError if batch not found', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce(null)
+    await expect(
+      markClientRevisionDesignDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(RelayServiceError)
+  })
+
+  it('throws on cross-tenant access (treated as not found)', async () => {
+    mockBatch(RelayStep.implementing_revisions, 'awaiting_design_revisions')
+    await expect(
+      markClientRevisionDesignDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_OTHER',
+      }),
+    ).rejects.toThrow(/not found/i)
+  })
+
+  it('throws unless the batch is at implementing_revisions', async () => {
+    mockBatch(RelayStep.am_review_design, 'awaiting_design_revisions')
+    await expect(
+      markClientRevisionDesignDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/Post Revision/i)
+  })
+
+  it('throws unless the sub-state is awaiting_design_revisions', async () => {
+    mockBatch(RelayStep.implementing_revisions, null)
+    await expect(
+      markClientRevisionDesignDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/awaiting design revisions/i)
+  })
+
+  it('throws when any designer flag is still open', async () => {
+    mockBatch(RelayStep.implementing_revisions, 'awaiting_design_revisions')
+    // designerFlag.count default is 1 (open flag); no need to override
+    await expect(
+      markClientRevisionDesignDone({
+        batchId: 'b1',
+        actorId: 'user_designer',
+        actorOrganizationId: 'org_1',
+      }),
+    ).rejects.toThrow(/flagged task/i)
+  })
+
+  it('clears the sub-state to null without changing step or holder', async () => {
+    mockBatch(RelayStep.implementing_revisions, 'awaiting_design_revisions')
+    currentTx.tx.designerFlag.count.mockResolvedValueOnce(0)
+    const result = await markClientRevisionDesignDone({
+      batchId: 'b1',
+      actorId: 'user_designer',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.subState).toBeNull()
+    const update = currentTx.tx.batch.update.mock.calls[0][0]
+    expect(update.data).toEqual({ currentSubState: null })
+    expect(update.data).not.toHaveProperty('currentStep')
+    expect(update.data).not.toHaveProperty('currentHolder')
+  })
+
+  it('records batch_revision_completed with surface: client_review mentioning the AM', async () => {
+    mockBatch(RelayStep.implementing_revisions, 'awaiting_design_revisions', 'user_am')
+    currentTx.tx.designerFlag.count.mockResolvedValueOnce(0)
+    await markClientRevisionDesignDone({
+      batchId: 'b1',
+      actorId: 'user_designer',
+      actorOrganizationId: 'org_1',
+    })
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.kind).toBe(ActivityKind.batch_revision_completed)
+    const payload = data.payload as { surface?: string; batchId?: string }
+    expect(payload.surface).toBe('client_review')
+    expect(payload.batchId).toBe('b1')
+    expect(data.mentions.create).toEqual([{ mentionedUserId: 'user_am' }])
+  })
+
+  it('returns { batchId, subState: null } on success', async () => {
+    mockBatch(RelayStep.implementing_revisions, 'awaiting_design_revisions')
+    currentTx.tx.designerFlag.count.mockResolvedValueOnce(0)
+    const result = await markClientRevisionDesignDone({
+      batchId: 'b1',
+      actorId: 'user_designer',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result).toEqual({ batchId: 'b1', subState: null })
+  })
+
+  it('no-ops the mention if no AM is assigned but still clears sub-state', async () => {
+    mockBatch(RelayStep.implementing_revisions, 'awaiting_design_revisions', null)
+    currentTx.tx.designerFlag.count.mockResolvedValueOnce(0)
+    const result = await markClientRevisionDesignDone({
+      batchId: 'b1',
+      actorId: 'user_designer',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.subState).toBeNull()
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.kind).toBe(ActivityKind.batch_revision_completed)
+    expect(data.mentions).toBeUndefined()
+  })
+
+  it('does not self-mention the AM when the AM marks it done', async () => {
+    mockBatch(RelayStep.implementing_revisions, 'awaiting_design_revisions', 'user_am')
+    currentTx.tx.designerFlag.count.mockResolvedValueOnce(0)
+    await markClientRevisionDesignDone({
+      batchId: 'b1',
+      actorId: 'user_am',
+      actorOrganizationId: 'org_1',
+    })
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.mentions).toBeUndefined()
+  })
+
+  it('does not throw even if the activity write fails (recordActivity swallows)', async () => {
+    mockBatch(RelayStep.implementing_revisions, 'awaiting_design_revisions')
+    currentTx.tx.designerFlag.count.mockResolvedValueOnce(0)
+    currentTx.tx.activityEvent.create.mockRejectedValueOnce(new Error('db down'))
+    await expect(
+      markClientRevisionDesignDone({
         batchId: 'b1',
         actorId: 'user_designer',
         actorOrganizationId: 'org_1',

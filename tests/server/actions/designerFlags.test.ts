@@ -38,6 +38,7 @@ vi.mock('@/db/client', () => ({
 
 vi.mock('@/server/services/relay', () => ({
   sendFlaggedFeedbackToDesigner: vi.fn(),
+  markClientRevisionDesignDone: vi.fn(),
 }))
 
 import { revalidatePath } from 'next/cache'
@@ -54,12 +55,13 @@ import { canOverrideHolder } from '@/lib/relay-holder-override'
 import { db } from '@/db/client'
 import {
   flagFeedbackForDesignerAction,
+  markClientRevisionDesignDoneAction,
   unflagFeedbackForDesignerAction,
   sendFlaggedFeedbackToDesignerAction,
   setDesignerFlagDoneAction,
   unsetDesignerFlagDoneAction,
 } from '@/server/actions/designerFlags'
-import { sendFlaggedFeedbackToDesigner } from '@/server/services/relay'
+import { sendFlaggedFeedbackToDesigner, markClientRevisionDesignDone } from '@/server/services/relay'
 
 const AM_USER_DB_ID = 'user_am_1'
 const AM_ORG_DB_ID = 'org_db_1'
@@ -540,5 +542,113 @@ describe('setDesignerFlagDoneAction — cross-org guard', () => {
     ).rejects.toThrow('Flag not found')
 
     expect(setDesignerFlagDone).not.toHaveBeenCalled()
+  })
+})
+
+// ---- markClientRevisionDesignDoneAction ----
+
+function primeBatchForRevisionDone(overrides: {
+  organizationId?: string
+  assignedDesignerId?: string
+  currentHolder?: string
+} = {}): void {
+  vi.mocked(db.batch.findUnique).mockResolvedValue({
+    currentHolder: overrides.currentHolder ?? HOLDER_USER_DB_ID,
+    clientId: CLIENT_ID,
+    client: {
+      organizationId: overrides.organizationId ?? AM_ORG_DB_ID,
+      assignedDesignerId: overrides.assignedDesignerId ?? DESIGNER_USER_DB_ID,
+    },
+  } as never)
+}
+
+describe('markClientRevisionDesignDoneAction — guard: requireCan relay.pass', () => {
+  it('calls requireCan with relay.pass before any other work', async () => {
+    primeDesignerCtx()
+    primeBatchForRevisionDone()
+    vi.mocked(markClientRevisionDesignDone).mockResolvedValue({ batchId: BATCH_ID, subState: null })
+
+    await markClientRevisionDesignDoneAction({ batchId: BATCH_ID })
+
+    expect(requireCan).toHaveBeenCalledWith('relay.pass')
+  })
+})
+
+describe('markClientRevisionDesignDoneAction — happy path: assigned designer', () => {
+  it('delegates to markClientRevisionDesignDone and revalidates', async () => {
+    primeDesignerCtx(DESIGNER_USER_DB_ID)
+    primeBatchForRevisionDone({ assignedDesignerId: DESIGNER_USER_DB_ID })
+    vi.mocked(markClientRevisionDesignDone).mockResolvedValue({ batchId: BATCH_ID, subState: null })
+
+    const result = await markClientRevisionDesignDoneAction({ batchId: BATCH_ID })
+
+    expect(result).toEqual({ batchId: BATCH_ID, subState: null })
+    expect(markClientRevisionDesignDone).toHaveBeenCalledWith({
+      batchId: BATCH_ID,
+      actorId: DESIGNER_USER_DB_ID,
+      actorOrganizationId: AM_ORG_DB_ID,
+    })
+    expect(revalidatePath).toHaveBeenCalled()
+  })
+})
+
+describe('markClientRevisionDesignDoneAction — happy path: current holder', () => {
+  it('allows the current holder (AM) to mark revisions done', async () => {
+    primeHolderCtx()
+    primeBatchForRevisionDone({
+      assignedDesignerId: DESIGNER_USER_DB_ID,
+      currentHolder: HOLDER_USER_DB_ID,
+    })
+    vi.mocked(markClientRevisionDesignDone).mockResolvedValue({ batchId: BATCH_ID, subState: null })
+
+    const result = await markClientRevisionDesignDoneAction({ batchId: BATCH_ID })
+
+    expect(result).toEqual({ batchId: BATCH_ID, subState: null })
+    expect(markClientRevisionDesignDone).toHaveBeenCalledWith({
+      batchId: BATCH_ID,
+      actorId: HOLDER_USER_DB_ID,
+      actorOrganizationId: AM_ORG_DB_ID,
+    })
+  })
+})
+
+describe('markClientRevisionDesignDoneAction — authz: denied when neither designer nor holder nor override', () => {
+  it('throws when caller is an unrelated user', async () => {
+    primeDesignerCtx('user_unrelated')
+    primeBatchForRevisionDone({
+      assignedDesignerId: DESIGNER_USER_DB_ID,
+      currentHolder: HOLDER_USER_DB_ID,
+    })
+    vi.mocked(canOverrideHolder).mockReturnValue(false)
+
+    await expect(
+      markClientRevisionDesignDoneAction({ batchId: BATCH_ID }),
+    ).rejects.toThrow(/Only the assigned designer/)
+
+    expect(markClientRevisionDesignDone).not.toHaveBeenCalled()
+  })
+})
+
+describe('markClientRevisionDesignDoneAction — cross-org guard', () => {
+  it('throws Relay not found when batch belongs to a different org', async () => {
+    primeDesignerCtx()
+    primeBatchForRevisionDone({ organizationId: 'other_org_id' })
+
+    await expect(
+      markClientRevisionDesignDoneAction({ batchId: BATCH_ID }),
+    ).rejects.toThrow('Relay not found')
+
+    expect(markClientRevisionDesignDone).not.toHaveBeenCalled()
+  })
+
+  it('throws Relay not found when batch is null', async () => {
+    primeDesignerCtx()
+    vi.mocked(db.batch.findUnique).mockResolvedValue(null)
+
+    await expect(
+      markClientRevisionDesignDoneAction({ batchId: BATCH_ID }),
+    ).rejects.toThrow('Relay not found')
+
+    expect(markClientRevisionDesignDone).not.toHaveBeenCalled()
   })
 })

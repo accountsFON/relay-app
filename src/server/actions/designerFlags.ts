@@ -11,7 +11,7 @@ import {
   findDesignerFlagForAuth,
   setDesignerFlagDone,
 } from '@/server/repositories/designerFlags'
-import { sendFlaggedFeedbackToDesigner } from '@/server/services/relay'
+import { sendFlaggedFeedbackToDesigner, markClientRevisionDesignDone } from '@/server/services/relay'
 import { canOverrideHolder } from '@/lib/relay-holder-override'
 
 export class DesignerFlagActionError extends Error {
@@ -192,4 +192,53 @@ export async function unsetDesignerFlagDoneAction(input: {
   reviewSessionId: string
 }) {
   return toggleFlagDone(input, false)
+}
+
+/**
+ * Designer-held in-step action: the designer has finished every flagged task
+ * during `implementing_revisions` and returns the relay to the AM.
+ *
+ * Permission gate: `relay.pass` (designer, AM, admin). Body authorization
+ * narrows to the assigned designer OR current holder OR holder-override.
+ * Mirror of `markDesignRevisionsDoneAction` (relay.ts) with step guard
+ * changed to `implementing_revisions`.
+ */
+export async function markClientRevisionDesignDoneAction(input: { batchId: string }) {
+  const ctx = await requireCan('relay.pass')
+
+  const batch = await db.batch.findUnique({
+    where: { id: input.batchId },
+    select: {
+      currentHolder: true,
+      clientId: true,
+      client: { select: { organizationId: true, assignedDesignerId: true } },
+    },
+  })
+  if (!batch || batch.client.organizationId !== ctx.organizationDbId) {
+    throw new Error('Relay not found')
+  }
+
+  const isAssignedDesigner = ctx.userDbId === batch.client.assignedDesignerId
+  const isHolder = ctx.userDbId === batch.currentHolder
+  if (
+    !isAssignedDesigner &&
+    !isHolder &&
+    !canOverrideHolder(ctx.role, ctx.platformOwner)
+  ) {
+    throw new Error(
+      'Only the assigned designer, an AM, or an admin can mark revisions done.',
+    )
+  }
+
+  const result = await markClientRevisionDesignDone({
+    batchId: input.batchId,
+    actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
+  })
+
+  revalidatePath(`/clients/${batch.clientId}/batches/${input.batchId}`)
+  revalidatePath('/dashboard')
+  revalidatePath('/inbox')
+
+  return result
 }

@@ -87,6 +87,12 @@ export interface MarkDesignRevisionsDoneInput {
   actorOrganizationId: string
 }
 
+export interface MarkClientRevisionDesignDoneInput {
+  batchId: string
+  actorId: string
+  actorOrganizationId: string
+}
+
 export interface SendFlaggedFeedbackToDesignerInput {
   batchId: string
   actorId: string
@@ -918,6 +924,86 @@ export async function markDesignRevisionsDone(input: MarkDesignRevisionsDoneInpu
           batchId: batch.id,
           batchLabel: batch.label,
           surface: 'internal_review',
+        },
+        mentionedUserIds: amId
+          ? mentionsExcludingActor([amId], input.actorId)
+          : [],
+      },
+      tx,
+    )
+
+    return { batchId: batch.id, subState: null }
+  })
+}
+
+/**
+ * Designer-held in-step action at `implementing_revisions`: the designer has
+ * finished every flagged task and returns the relay to the AM.
+ *
+ * Close analog to `markDesignRevisionsDone` (which operates at
+ * `am_review_design`). This one operates at `implementing_revisions` with
+ * sub-state `awaiting_design_revisions`.
+ *
+ * - Guard: batch must be at `implementing_revisions` AND in the
+ *   `awaiting_design_revisions` sub-state AND have zero open DesignerFlag rows.
+ * - Clears `currentSubState` to null; no step or holder change (the AM already
+ *   holds at this step).
+ * - Notifies the assigned AM with `surface: 'client_review'` so the
+ *   notification routes to the implementing_revisions page.
+ */
+export async function markClientRevisionDesignDone(
+  input: MarkClientRevisionDesignDoneInput,
+) {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({
+      where: { id: input.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        currentSubState: true,
+        label: true,
+        client: { select: { organizationId: true, assignedAmId: true } },
+      },
+    })
+    if (!batch) throw new RelayServiceError('Relay not found')
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
+    if (batch.currentStep !== RelayStep.implementing_revisions) {
+      throw new RelayServiceError(
+        'Mark revisions done is only valid during Post Revision',
+      )
+    }
+    if (batch.currentSubState !== 'awaiting_design_revisions') {
+      throw new RelayServiceError(
+        'Mark revisions done is only valid while awaiting design revisions',
+      )
+    }
+    const open = await tx.designerFlag.count({
+      where: { batchId: batch.id, doneAt: null },
+    })
+    if (open > 0) {
+      throw new RelayServiceError('Finish every flagged task first')
+    }
+
+    const amId = batch.client.assignedAmId
+
+    await tx.batch.update({
+      where: { id: batch.id },
+      data: { currentSubState: null },
+    })
+
+    await recordActivity(
+      {
+        clientId: batch.clientId,
+        actorId: input.actorId,
+        kind: ActivityKind.batch_revision_completed,
+        visibility: EventVisibility.internal,
+        payload: {
+          batchId: batch.id,
+          batchLabel: batch.label,
+          surface: 'client_review',
         },
         mentionedUserIds: amId
           ? mentionsExcludingActor([amId], input.actorId)

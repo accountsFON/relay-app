@@ -241,7 +241,9 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: Check,
         tone: 'success',
-        message: `completed ${p.itemType} revision: "${truncate(p.itemDescription, 50)}"`,
+        message: p.itemType
+          ? `completed ${p.itemType} revision: "${truncate(p.itemDescription ?? '', 50)}"`
+          : 'marked revisions done',
       }
     case 'batch_completed':
       if (p.kind !== 'batch_completed') break
