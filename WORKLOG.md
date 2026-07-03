@@ -16,6 +16,8 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
 - [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
 - [ ] **(follow-up) Refresh the admin force-step list** (`admin-force-step-section.tsx` `STEP_ORDER`) to the live step set — it predates the 2026-06-22 rework (omits `client_review`/`scheduling`, lists their retirees). `design_revisions` already removed.
+- [ ] **(follow-up, designer flags) DB unique constraint on `DesignerFlag(postId, threadId, reviewItemId)`** to harden the flag find-then-create against a same-instant duplicate. Idempotent today (note gets updated); a partial unique index would make it airtight.
+- [ ] **(cleanup, designer flags) Stale JSDoc on `AdvanceFromClientReviewInput.reviewSessionId`** still references the removed designer deep-link rationale (the auto `revision_images_requested` ping was deleted in #303). Tidy the comment.
 
 ## Notes / standing rules
 
@@ -25,6 +27,30 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 ---
 
 ## Shipped
+
+- [x] **2026-07-03 — Route feedback to the designer** (PR #303, `54424b6`)
+  The AM triages client feedback once and hands the designer a clean, curated task list instead of
+  re-commenting; designers also get direct read-only visibility into client reviews. On the
+  review-session page (runs at `implementing_revisions`): each client pin or post-note gets a "Flag
+  for designer" toggle with an optional note (caption-edit suggestions are not flaggable); one **Send
+  to designer** flips the shared `awaiting_design_revisions` sub-state (no step/holder change, the AM
+  keeps the step) and pings the assigned designer via a new `feedback_sent_to_designer` activity. The
+  **designer view is read-only** for client feedback (no comment/resolve/accept), with their flagged
+  items shown as a per-item done checklist, a compact per-post **"Upload revised image"** control
+  (reuses the existing `/api/media/upload` → `/api/posts/[id]/media` flow, gated to the designer at
+  `implementing_revisions`), and **Mark revisions done** (all flags done) to return the relay to the
+  AM. The AM still owns final resolution via the existing addressed / note-resolve / thread-resolve
+  paths. Also removed the premature auto `revision_images_requested` ping in `advanceFromClientReview`
+  (it fired before the AM triaged; the enum value is kept for historical rows). New additive
+  `DesignerFlag` model (references one pin OR one note) + two migrations; no data backfill. TDD
+  throughout (16 commits, per-task spec + code-quality review + a whole-branch adversarial review);
+  2362 unit/component tests, tsc + eslint clean, `next build` clean, integration at parity with main.
+  Two build-gate bugs caught after the per-task reviews (tsc + vitest miss both): a repo call missing
+  `organizationId` (added `designerFlags.ts` to the org-filter-lint ALLOWLIST, since the actions
+  enforce org scope) and a `'use server'` module exporting a class (`next build` only — made
+  `DesignerFlagActionError` module-private). Schema touched → prod deploy + migration ran on merge;
+  `detect-pipeline-changes` + Trigger.dev deploy skipped (no `src/server/jobs/**` change). Spec + plan:
+  `vault projects/relay-app/2026-07-02-route-feedback-to-designer-design.md` + `-plan.md`.
 
 - [x] **2026-07-02 — Restrict client creation to agency admins** (PR #302)
   Removed the create-a-client capability from account managers; it is now agency-admin-only by
