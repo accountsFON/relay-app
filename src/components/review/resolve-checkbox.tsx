@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 
 export interface ResolveCheckboxProps {
   label: string
+  /** Optional author byline shown above the label (who created the pin). */
+  byline?: string
   resolved: boolean
   onResolve: () => Promise<void>
   onUnresolve: () => Promise<void>
@@ -21,6 +23,7 @@ export interface ResolveCheckboxProps {
  */
 export function ResolveCheckbox({
   label,
+  byline,
   resolved,
   onResolve,
   onUnresolve,
@@ -62,14 +65,24 @@ export function ResolveCheckbox({
       >
         {checked && <Check className="size-3" />}
       </button>
-      <span
-        data-testid={testId ? `${testId}-label` : undefined}
-        className={cn(
-          'text-[13px] leading-tight',
-          checked ? 'text-muted-foreground line-through' : 'text-foreground',
+      <span className="flex min-w-0 flex-col">
+        {byline && (
+          <span
+            data-testid={testId ? `${testId}-byline` : undefined}
+            className="text-[12px] font-semibold break-words text-muted-foreground"
+          >
+            {byline}
+          </span>
         )}
-      >
-        {label}
+        <span
+          data-testid={testId ? `${testId}-label` : undefined}
+          className={cn(
+            'text-[13px] leading-tight break-words',
+            checked ? 'text-muted-foreground line-through' : 'text-foreground',
+          )}
+        >
+          {label}
+        </span>
       </span>
     </div>
   )

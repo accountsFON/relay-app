@@ -29,7 +29,7 @@ export type PinCommentRowProps = {
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
 }
 
-function authorName(a: ThreadAuthor): string {
+export function authorName(a: ThreadAuthor): string {
   return a.kind === 'am' ? a.name : a.reviewerName
 }
 
