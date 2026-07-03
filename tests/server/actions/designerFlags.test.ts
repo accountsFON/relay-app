@@ -26,7 +26,12 @@ vi.mock('@/db/client', () => ({
     postThread: { findUnique: vi.fn() },
     reviewItem: { findUnique: vi.fn() },
     designerFlag: { findFirst: vi.fn() },
+    batch: { findUnique: vi.fn() },
   },
+}))
+
+vi.mock('@/server/services/relay', () => ({
+  sendFlaggedFeedbackToDesigner: vi.fn(),
 }))
 
 import { revalidatePath } from 'next/cache'
@@ -42,7 +47,9 @@ import { db } from '@/db/client'
 import {
   flagFeedbackForDesignerAction,
   unflagFeedbackForDesignerAction,
+  sendFlaggedFeedbackToDesignerAction,
 } from '@/server/actions/designerFlags'
+import { sendFlaggedFeedbackToDesigner } from '@/server/services/relay'
 
 const AM_USER_DB_ID = 'user_am_1'
 const AM_ORG_DB_ID = 'org_db_1'
@@ -317,5 +324,68 @@ describe('unflagFeedbackForDesignerAction — cross-org guard', () => {
     ).rejects.toThrow('Flag not found')
 
     expect(deleteDesignerFlag).not.toHaveBeenCalled()
+  })
+})
+
+// ---- sendFlaggedFeedbackToDesignerAction ----
+
+describe('sendFlaggedFeedbackToDesignerAction — happy path', () => {
+  it('calls sendFlaggedFeedbackToDesigner and revalidates on success', async () => {
+    primeAmCtx()
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      clientId: CLIENT_ID,
+      client: { organizationId: AM_ORG_DB_ID },
+    } as never)
+    vi.mocked(sendFlaggedFeedbackToDesigner).mockResolvedValue({
+      batchId: BATCH_ID,
+      subState: 'awaiting_design_revisions',
+      count: 3,
+    })
+
+    const result = await sendFlaggedFeedbackToDesignerAction({
+      batchId: BATCH_ID,
+      reviewSessionId: REVIEW_SESSION_ID,
+    })
+
+    expect(result).toEqual({ ok: true, count: 3 })
+    expect(sendFlaggedFeedbackToDesigner).toHaveBeenCalledWith({
+      batchId: BATCH_ID,
+      actorId: AM_USER_DB_ID,
+      actorOrganizationId: AM_ORG_DB_ID,
+    })
+    expect(revalidatePath).toHaveBeenCalled()
+  })
+})
+
+describe('sendFlaggedFeedbackToDesignerAction — cross-org guard', () => {
+  it('throws Relay not found when batch belongs to a different org', async () => {
+    primeAmCtx()
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      clientId: CLIENT_ID,
+      client: { organizationId: 'other_org_id' },
+    } as never)
+
+    await expect(
+      sendFlaggedFeedbackToDesignerAction({
+        batchId: BATCH_ID,
+        reviewSessionId: REVIEW_SESSION_ID,
+      }),
+    ).rejects.toThrow('Relay not found')
+
+    expect(sendFlaggedFeedbackToDesigner).not.toHaveBeenCalled()
+  })
+
+  it('throws Relay not found when batch is null', async () => {
+    primeAmCtx()
+    vi.mocked(db.batch.findUnique).mockResolvedValue(null)
+
+    await expect(
+      sendFlaggedFeedbackToDesignerAction({
+        batchId: BATCH_ID,
+        reviewSessionId: REVIEW_SESSION_ID,
+      }),
+    ).rejects.toThrow('Relay not found')
+
+    expect(sendFlaggedFeedbackToDesigner).not.toHaveBeenCalled()
   })
 })

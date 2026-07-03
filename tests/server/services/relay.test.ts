@@ -20,6 +20,7 @@ function makeTx(): { tx: AnyMock; calls: Calls } {
     'checklistItem.deleteMany': [],
     'checklistItem.createMany': [],
     'postThread.count': [],
+    'designerFlag.count': [],
   }
 
   const tx = {
@@ -88,6 +89,13 @@ function makeTx(): { tx: AnyMock; calls: Calls } {
         return 0
       }),
     },
+    designerFlag: {
+      // Defaults to 1 so happy-path tests pass without extra setup.
+      count: vi.fn(async (args: unknown) => {
+        calls['designerFlag.count'].push([args])
+        return 1
+      }),
+    },
   }
 
   return { tx, calls }
@@ -117,6 +125,7 @@ import {
   passBaton,
   requestDesignChanges,
   sendBackBaton,
+  sendFlaggedFeedbackToDesigner,
 } from '@/server/services/relay'
 
 beforeEach(() => {
@@ -1445,5 +1454,101 @@ describe('clientReviewStartedAt stamp', () => {
     })
     const updateData = currentTx.tx.batch.update.mock.calls[0][0].data
     expect(updateData.clientReviewStartedAt).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// sendFlaggedFeedbackToDesigner
+// ---------------------------------------------------------------------------
+
+describe('sendFlaggedFeedbackToDesigner', () => {
+  function mockBatchAt(step: RelayStep, designerId: string | null = 'user_designer') {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce({
+      id: 'b1',
+      clientId: 'c1',
+      currentStep: step,
+      label: '2026-06',
+      client: { organizationId: 'org_1', assignedDesignerId: designerId },
+    })
+  }
+
+  it('throws Relay not found when batch is null', async () => {
+    currentTx.tx.batch.findUnique.mockResolvedValueOnce(null)
+    await expect(
+      sendFlaggedFeedbackToDesigner({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_1' }),
+    ).rejects.toThrow(RelayServiceError)
+  })
+
+  it('throws on cross-org access (treated as not found)', async () => {
+    mockBatchAt(RelayStep.implementing_revisions)
+    await expect(
+      sendFlaggedFeedbackToDesigner({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_OTHER' }),
+    ).rejects.toThrow(/not found/i)
+  })
+
+  it('throws unless batch is at implementing_revisions', async () => {
+    mockBatchAt(RelayStep.am_review_design)
+    await expect(
+      sendFlaggedFeedbackToDesigner({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_1' }),
+    ).rejects.toThrow(/Post Revision/)
+  })
+
+  it('throws when no flags exist for the batch', async () => {
+    mockBatchAt(RelayStep.implementing_revisions)
+    currentTx.tx.designerFlag.count.mockResolvedValueOnce(0)
+    await expect(
+      sendFlaggedFeedbackToDesigner({ batchId: 'b1', actorId: 'u_am', actorOrganizationId: 'org_1' }),
+    ).rejects.toThrow(/Flag at least one item/)
+  })
+
+  it('sets sub-state to awaiting_design_revisions without changing step or holder', async () => {
+    mockBatchAt(RelayStep.implementing_revisions)
+    const result = await sendFlaggedFeedbackToDesigner({
+      batchId: 'b1',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.subState).toBe('awaiting_design_revisions')
+    expect(result.batchId).toBe('b1')
+    expect(result.count).toBe(1)
+    const update = currentTx.tx.batch.update.mock.calls[0][0]
+    expect(update.data).toEqual({ currentSubState: 'awaiting_design_revisions' })
+    expect(update.data).not.toHaveProperty('currentStep')
+    expect(update.data).not.toHaveProperty('currentHolder')
+  })
+
+  it('records feedback_sent_to_designer activity with client_review payload and designer mention', async () => {
+    mockBatchAt(RelayStep.implementing_revisions, 'user_designer')
+    await sendFlaggedFeedbackToDesigner({
+      batchId: 'b1',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.kind).toBe(ActivityKind.feedback_sent_to_designer)
+    const payload = data.payload as {
+      kind?: string
+      surface?: string
+      batchId?: string
+      count?: number
+    }
+    expect(payload.kind).toBe('feedback_sent_to_designer')
+    expect(payload.surface).toBe('client_review')
+    expect(payload.batchId).toBe('b1')
+    expect(payload.count).toBe(1)
+    expect(data.mentions.create).toEqual([{ mentionedUserId: 'user_designer' }])
+  })
+
+  it('no-ops the mention if no designer is assigned but still sets sub-state', async () => {
+    mockBatchAt(RelayStep.implementing_revisions, null)
+    const result = await sendFlaggedFeedbackToDesigner({
+      batchId: 'b1',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(result.subState).toBe('awaiting_design_revisions')
+    const data = currentTx.tx.activityEvent.create.mock.calls[0][0].data
+    expect(data.kind).toBe(ActivityKind.feedback_sent_to_designer)
+    expect(data.mentions).toBeUndefined()
   })
 })

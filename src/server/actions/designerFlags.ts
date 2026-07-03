@@ -10,6 +10,7 @@ import {
   deleteDesignerFlag,
   findDesignerFlagForAuth,
 } from '@/server/repositories/designerFlags'
+import { sendFlaggedFeedbackToDesigner } from '@/server/services/relay'
 
 export class DesignerFlagActionError extends Error {
   constructor(message: string) {
@@ -116,4 +117,27 @@ export async function unflagFeedbackForDesignerAction(input: {
   await deleteDesignerFlag(flag.id)
   revalidateReviewPaths(flag.post.clientId, flag.batchId, input.reviewSessionId)
   return { ok: true }
+}
+
+export async function sendFlaggedFeedbackToDesignerAction(input: {
+  batchId: string
+  reviewSessionId: string
+}): Promise<{ ok: true; count: number }> {
+  const ctx = await requireClientEditor()
+  const batch = await db.batch.findUnique({
+    where: { id: input.batchId },
+    select: { clientId: true, client: { select: { organizationId: true } } },
+  })
+  if (!batch || batch.client.organizationId !== ctx.organizationDbId) {
+    throw new DesignerFlagActionError('Relay not found')
+  }
+  const result = await sendFlaggedFeedbackToDesigner({
+    batchId: input.batchId,
+    actorId: ctx.userDbId,
+    actorOrganizationId: ctx.organizationDbId,
+  })
+  revalidateReviewPaths(batch.clientId, input.batchId, input.reviewSessionId)
+  revalidatePath('/dashboard')
+  revalidatePath('/inbox')
+  return { ok: true, count: result.count }
 }
