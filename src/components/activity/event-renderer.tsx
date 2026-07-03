@@ -241,7 +241,9 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
       return {
         icon: Check,
         tone: 'success',
-        message: `completed ${p.itemType} revision: "${truncate(p.itemDescription, 50)}"`,
+        message: p.itemType
+          ? `completed ${p.itemType} revision: "${truncate(p.itemDescription ?? '', 50)}"`
+          : 'marked revisions done',
       }
     case 'batch_completed':
       if (p.kind !== 'batch_completed') break
@@ -507,6 +509,16 @@ function describeEvent(event: ActivityEventView): RenderedEvent {
         icon: Pencil,
         tone: 'default',
         message: `requested design changes on ${relay} — designer notified`,
+      }
+    }
+    case 'feedback_sent_to_designer': {
+      if (p.kind !== 'feedback_sent_to_designer') break
+      const relay = p.batchLabel ? `"${p.batchLabel}"` : 'this relay'
+      const n = p.count
+      return {
+        icon: MessageSquarePlus,
+        tone: 'default',
+        message: `sent ${n} feedback ${n === 1 ? 'item' : 'items'} to designer on ${relay}`,
       }
     }
   }

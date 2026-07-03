@@ -1,6 +1,18 @@
 import type { HydratedThread } from '@/server/repositories/threads'
 
 /**
+ * A designer flag on a piece of client feedback (a pin thread or a review
+ * item note). Built by the server page from the batch's DesignerFlag rows.
+ */
+export type DesignerFlagVM = {
+  id: string
+  threadId: string | null
+  reviewItemId: string | null
+  note: string | null
+  done: boolean
+}
+
+/**
  * Per-post view model for the AM client-feedback markup layout. Built by the
  * server page from the review-session items + client threads + posts, then
  * handed to the client shell. One entry per post in canonical batch order.
@@ -32,6 +44,8 @@ export type FeedbackPostVM = {
   noteResolved: boolean
   /** All client threads (pins/comments) on this post, open + resolved. */
   threads: ReadonlyArray<HydratedThread>
+  /** Designer flags raised on this post's feedback (pin threads or notes). */
+  flags: ReadonlyArray<DesignerFlagVM>
 }
 
 /**
@@ -61,4 +75,16 @@ export type FeedbackActions = {
     image?: { url: string; width?: number; height?: number },
   ) => Promise<void>
   startNextRound: () => Promise<void>
+  /** Flag a piece of client feedback (a pin thread or a review-item note) for
+   *  the designer. Exactly one of ref.threadId / ref.reviewItemId is provided. */
+  flagForDesigner: (
+    postId: string,
+    ref: { threadId?: string; reviewItemId?: string },
+    note?: string,
+  ) => Promise<void>
+  unflagForDesigner: (flagId: string) => Promise<void>
+  sendToDesigner: () => Promise<void>
+  setFlagDone: (flagId: string) => Promise<void>
+  unsetFlagDone: (flagId: string) => Promise<void>
+  markRevisionsDone: () => Promise<void>
 }

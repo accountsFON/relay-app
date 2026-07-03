@@ -82,6 +82,13 @@ const ALLOWLIST = new Set([
   // for auth, but stamps userId only , there is no Feedback.organizationId
   // and admins span orgs by design.
   'feedback.ts',
+  // DesignerFlags are scoped indirectly via Post/Batch -> Client -> Organization.
+  // Every action in src/server/actions/designerFlags.ts resolves auth first,
+  // requireClientEditor()/requireCan('relay.pass') then findClientForUser()
+  // or findDesignerFlagForAuth() with an explicit org check, before any repo
+  // call. The repo helpers key by id/batchId (both already org-validated one
+  // layer up). Same defense-in-depth profile as threads.ts / reviewSessions.ts.
+  'designerFlags.ts',
 ])
 
 function listTsFiles(dir: string): string[] {

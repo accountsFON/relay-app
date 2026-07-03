@@ -87,6 +87,18 @@ export interface MarkDesignRevisionsDoneInput {
   actorOrganizationId: string
 }
 
+export interface MarkClientRevisionDesignDoneInput {
+  batchId: string
+  actorId: string
+  actorOrganizationId: string
+}
+
+export interface SendFlaggedFeedbackToDesignerInput {
+  batchId: string
+  actorId: string
+  actorOrganizationId: string
+}
+
 export class RelayServiceError extends Error {
   constructor(message: string) {
     super(message)
@@ -425,45 +437,6 @@ export async function advanceFromClientReview(
       },
       tx,
     )
-
-    if (toStep === RelayStep.implementing_revisions) {
-      const clientForDesigner = await tx.client.findUnique({
-        where: { id: batch.clientId },
-        select: { assignedDesignerId: true },
-      })
-      const designerId = clientForDesigner?.assignedDesignerId ?? null
-      if (designerId) {
-        // PostThread has NO pinKind column; an image pin is a thread with
-        // imageX set (imageX/imageY = image, captionFrom/captionTo = caption,
-        // all null = post-level).
-        const openImagePins = await tx.postThread.count({
-          where: {
-            post: { batchId: batch.id },
-            reviewerToken: { not: null },
-            status: 'open',
-            imageX: { not: null },
-          },
-        })
-        if (openImagePins > 0) {
-          await recordActivity(
-            {
-              clientId: batch.clientId,
-              actorId: null,
-              kind: ActivityKind.revision_images_requested,
-              visibility: EventVisibility.internal,
-              payload: {
-                kind: 'revision_images_requested',
-                batchId: batch.id,
-                batchLabel: batch.label,
-                reviewSessionId: input.reviewSessionId,
-              },
-              mentionedUserIds: [designerId],
-            },
-            tx,
-          )
-        }
-      }
-    }
 
     return { advanced: true, toStep, newHolderId: next.userId }
   })
@@ -921,5 +894,158 @@ export async function markDesignRevisionsDone(input: MarkDesignRevisionsDoneInpu
     )
 
     return { batchId: batch.id, subState: null }
+  })
+}
+
+/**
+ * Designer-held in-step action at `implementing_revisions`: the designer has
+ * finished every flagged task and returns the relay to the AM.
+ *
+ * Close analog to `markDesignRevisionsDone` (which operates at
+ * `am_review_design`). This one operates at `implementing_revisions` with
+ * sub-state `awaiting_design_revisions`.
+ *
+ * - Guard: batch must be at `implementing_revisions` AND in the
+ *   `awaiting_design_revisions` sub-state AND have zero open DesignerFlag rows.
+ * - Clears `currentSubState` to null; no step or holder change (the AM already
+ *   holds at this step).
+ * - Notifies the assigned AM with `surface: 'client_review'` so the
+ *   notification routes to the implementing_revisions page.
+ */
+export async function markClientRevisionDesignDone(
+  input: MarkClientRevisionDesignDoneInput,
+) {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({
+      where: { id: input.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        currentSubState: true,
+        label: true,
+        client: { select: { organizationId: true, assignedAmId: true } },
+      },
+    })
+    if (!batch) throw new RelayServiceError('Relay not found')
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
+    if (batch.currentStep !== RelayStep.implementing_revisions) {
+      throw new RelayServiceError(
+        'Mark revisions done is only valid during Post Revision',
+      )
+    }
+    if (batch.currentSubState !== 'awaiting_design_revisions') {
+      throw new RelayServiceError(
+        'Mark revisions done is only valid while awaiting design revisions',
+      )
+    }
+    const open = await tx.designerFlag.count({
+      where: { batchId: batch.id, doneAt: null },
+    })
+    if (open > 0) {
+      throw new RelayServiceError('Finish every flagged task first')
+    }
+
+    const amId = batch.client.assignedAmId
+
+    await tx.batch.update({
+      where: { id: batch.id },
+      data: { currentSubState: null },
+    })
+
+    await recordActivity(
+      {
+        clientId: batch.clientId,
+        actorId: input.actorId,
+        kind: ActivityKind.batch_revision_completed,
+        visibility: EventVisibility.internal,
+        payload: {
+          batchId: batch.id,
+          batchLabel: batch.label,
+          surface: 'client_review',
+        },
+        mentionedUserIds: amId
+          ? mentionsExcludingActor([amId], input.actorId)
+          : [],
+      },
+      tx,
+    )
+
+    return { batchId: batch.id, subState: null }
+  })
+}
+
+/**
+ * AM-held in-step action at `implementing_revisions`: routes the curated set
+ * of designer-flagged client feedback items to the assigned designer.
+ *
+ * - Guard: batch must be at `implementing_revisions` AND have at least one
+ *   flagged item (DesignerFlag row for the batch).
+ * - Does NOT change currentStep or currentHolder; only flips
+ *   `currentSubState` to `awaiting_design_revisions`.
+ * - Pings the assigned designer with a `feedback_sent_to_designer` activity.
+ *   If no designer is assigned, the mention list is empty but the sub-state
+ *   still flips.
+ * - `recordActivity` swallows its own errors; this call never blocks.
+ */
+export async function sendFlaggedFeedbackToDesigner(
+  input: SendFlaggedFeedbackToDesignerInput,
+) {
+  return db.$transaction(async (tx) => {
+    const batch = await tx.batch.findUnique({
+      where: { id: input.batchId },
+      select: {
+        id: true,
+        clientId: true,
+        currentStep: true,
+        label: true,
+        client: { select: { organizationId: true, assignedDesignerId: true } },
+      },
+    })
+    if (!batch) throw new RelayServiceError('Relay not found')
+    if (batch.client.organizationId !== input.actorOrganizationId) {
+      throw new RelayServiceError('Relay not found')
+    }
+    if (batch.currentStep !== RelayStep.implementing_revisions) {
+      throw new RelayServiceError(
+        'Send to designer is only valid during Post Revision',
+      )
+    }
+
+    const count = await tx.designerFlag.count({ where: { batchId: batch.id } })
+    if (count === 0) {
+      throw new RelayServiceError('Flag at least one item before sending')
+    }
+
+    const designerId = batch.client.assignedDesignerId
+
+    await tx.batch.update({
+      where: { id: batch.id },
+      data: { currentSubState: 'awaiting_design_revisions' },
+    })
+
+    await recordActivity(
+      {
+        clientId: batch.clientId,
+        actorId: input.actorId,
+        kind: ActivityKind.feedback_sent_to_designer,
+        visibility: EventVisibility.internal,
+        payload: {
+          kind: 'feedback_sent_to_designer',
+          batchId: batch.id,
+          batchLabel: batch.label,
+          surface: 'client_review',
+          count,
+        },
+        mentionedUserIds: designerId
+          ? mentionsExcludingActor([designerId], input.actorId)
+          : [],
+      },
+      tx,
+    )
+
+    return { batchId: batch.id, subState: 'awaiting_design_revisions' as const, count }
   })
 }

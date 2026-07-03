@@ -44,6 +44,19 @@ vi.mock('@/server/repositories/threads', () => ({
   listClientThreadsForBatch: vi.fn(),
 }))
 
+vi.mock('@/server/repositories/designerFlags', () => ({
+  listDesignerFlagsForBatch: vi.fn(),
+}))
+
+vi.mock('@/server/actions/designerFlags', () => ({
+  flagFeedbackForDesignerAction: vi.fn(),
+  unflagFeedbackForDesignerAction: vi.fn(),
+  sendFlaggedFeedbackToDesignerAction: vi.fn(),
+  setDesignerFlagDoneAction: vi.fn(),
+  unsetDesignerFlagDoneAction: vi.fn(),
+  markClientRevisionDesignDoneAction: vi.fn(),
+}))
+
 vi.mock('@/server/actions/threads', () => ({
   resolveThreadAction: vi.fn(),
   addCommentAction: vi.fn(),
@@ -202,6 +215,7 @@ import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { findSessionWithItems } from '@/server/repositories/reviewSessions'
 import { listClientThreadsForBatch } from '@/server/repositories/threads'
+import { listDesignerFlagsForBatch } from '@/server/repositories/designerFlags'
 import { db } from '@/db/client'
 
 const mockCtx = {
@@ -363,6 +377,7 @@ describe('ReviewSessionDetailPage', () => {
     vi.mocked(db.user.findUnique).mockResolvedValue(mockReviewerUser as never)
     vi.mocked(db.post.findMany).mockResolvedValue(mockPosts as never)
     vi.mocked(listClientThreadsForBatch).mockResolvedValue(new Map())
+    vi.mocked(listDesignerFlagsForBatch).mockResolvedValue([])
     // Default both edit capabilities off; tests that need them opt in.
     vi.mocked(canEditClients).mockReturnValue(false)
     vi.mocked(canUploadPostMedia).mockReturnValue(false)
@@ -668,20 +683,20 @@ describe('ReviewSessionDetailPage', () => {
       vi.mocked(canEditClients).mockReturnValue(false)
     })
 
-    it('designer view shows only posts that have an image pin', async () => {
+    it('designer view shows every post (image-pin filter removed)', async () => {
       vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
       mockLaneThreads()
 
-      const { getByTestId, queryByTestId } = await renderPage({
+      const { getByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',
         sessionId: 'session_1',
       })
 
-      // post_b has an image pin -> visible
+      // Designers now see the full client review, not just image-pin posts.
+      // post_b has an image pin; post_c has only a caption pin — both visible.
       expect(getByTestId('rail-row-post_b')).toBeTruthy()
-      // post_c has only a caption pin -> hidden for designers
-      expect(queryByTestId('rail-row-post_c')).toBeNull()
+      expect(getByTestId('rail-row-post_c')).toBeTruthy()
     })
 
     it('designer view shows thread comments for all pins on the visible post', async () => {

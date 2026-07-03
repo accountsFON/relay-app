@@ -128,6 +128,7 @@ enum ActivityKind {
   preview_review_submitted
   client_review_decided
   revision_images_requested
+  feedback_sent_to_designer
 }
 
 enum ReviewSessionStatus {
@@ -242,6 +243,8 @@ model User {
   magicLinksCreated      MagicLink[]          @relation("MagicLinkCreator")
   feedback               Feedback[]           @relation("FeedbackSubmitter")
   internalReviewSessions ReviewSession[]      @relation("InternalReviewer")
+  designerFlagsCreated   DesignerFlag[]       @relation("DesignerFlagCreator")
+  designerFlagsDone      DesignerFlag[]       @relation("DesignerFlagDoneBy")
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -378,6 +381,7 @@ model Post {
   versions       PostVersion[]
   threads        PostThread[]
   reviewItems    ReviewItem[]
+  designerFlags  DesignerFlag[]
 
   /// Prevents Trigger.dev retries (or any future code path) from creating
   /// duplicate posts for the same (contentRunId, postDate). Belt-and-
@@ -519,6 +523,7 @@ model Batch {
   targetedByContentRuns ContentRun[]    @relation("ContentRunTargetBatch")
   magicLinks            MagicLink[]
   reviewSessions        ReviewSession[]
+  designerFlags         DesignerFlag[]
 
   @@index([clientId, currentStep])
   @@index([currentHolder, currentStep])
@@ -654,10 +659,11 @@ model PostThread {
   createdBy     String?
   reviewerToken String?
 
-  post     Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
-  resolver User?         @relation("ThreadResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
-  author   User?         @relation("ThreadAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
-  comments PostComment[]
+  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  resolver      User?          @relation("ThreadResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+  author        User?          @relation("ThreadAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
+  comments      PostComment[]
+  designerFlags DesignerFlag[]
 
   @@index([postId, status])
   @@index([reviewerToken])
@@ -831,10 +837,11 @@ model ReviewItem {
   noteResolvedAt DateTime?
   noteResolvedBy String?
 
-  reviewSession ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
-  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
-  acceptedAs    PostVersion?  @relation("ReviewItemAcceptedVersion", fields: [acceptedAsPostVersionId], references: [id], onDelete: SetNull)
-  lastReviewed  PostVersion?  @relation("ReviewItemLastReviewedVersion", fields: [lastReviewedVersionId], references: [id], onDelete: SetNull)
+  reviewSession ReviewSession  @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
+  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  acceptedAs    PostVersion?   @relation("ReviewItemAcceptedVersion", fields: [acceptedAsPostVersionId], references: [id], onDelete: SetNull)
+  lastReviewed  PostVersion?   @relation("ReviewItemLastReviewedVersion", fields: [lastReviewedVersionId], references: [id], onDelete: SetNull)
+  designerFlags DesignerFlag[]
 
   @@unique([reviewSessionId, postId])
   @@index([postId])
@@ -870,4 +877,32 @@ model Feedback {
   @@index([sentInDigestAt])
   @@index([userId])
   @@map("feedback")
+}
+
+/// Per-item flag an AM raises on client feedback so the designer works a
+/// curated list. Inert data model; actions and UI come in later slices.
+model DesignerFlag {
+  id           String    @id @default(cuid())
+  batchId      String
+  postId       String
+  threadId     String?
+  reviewItemId String?
+  note         String?   @db.Text
+  createdById  String
+  createdAt    DateTime  @default(now())
+  doneAt       DateTime?
+  doneById     String?
+
+  batch      Batch       @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  post       Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  thread     PostThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  reviewItem ReviewItem? @relation(fields: [reviewItemId], references: [id], onDelete: Cascade)
+  createdBy  User        @relation("DesignerFlagCreator", fields: [createdById], references: [id])
+  doneBy     User?       @relation("DesignerFlagDoneBy", fields: [doneById], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([postId])
+  @@index([threadId])
+  @@index([reviewItemId])
+  @@map("designer_flags")
 }

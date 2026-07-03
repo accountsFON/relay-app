@@ -17,7 +17,9 @@ export type PinCommentRowProps = {
   pinLabel: string
   expanded: boolean
   onToggle: () => void
-  onComment: (
+  /** Reply composer callback. Omit to render the thread read-only (no
+   *  composer, no image attach) — used by the designer's read-only view. */
+  onComment?: (
     threadId: string,
     body: string,
     image?: { url: string; width?: number; height?: number },
@@ -51,6 +53,7 @@ export function PinCommentRow({
   const replies = thread.comments.slice(1)
 
   async function send() {
+    if (!onComment) return
     const body = draft.trim()
     if (!body && !pendingImage) return
     setError(null)
@@ -209,50 +212,56 @@ export function PinCommentRow({
             </div>
           ))}
 
-          {/* Error */}
-          {error && (
-            <p
-              role="alert"
-              className="text-xs text-destructive"
-            >
-              {error}
-            </p>
-          )}
+          {/* Composer (reply + image attach). Omitted in the designer's
+              read-only view, where onComment is not provided. */}
+          {onComment && (
+            <>
+              {/* Error */}
+              {error && (
+                <p
+                  role="alert"
+                  className="text-xs text-destructive"
+                >
+                  {error}
+                </p>
+              )}
 
-          {/* Image attach */}
-          {onUploadImage && (
-            <CommentImageAttachButton
-              onUploadImage={onUploadImage}
-              value={pendingImage}
-              onChange={setPendingImage}
-              disabled={busy}
-            />
-          )}
+              {/* Image attach */}
+              {onUploadImage && (
+                <CommentImageAttachButton
+                  onUploadImage={onUploadImage}
+                  value={pendingImage}
+                  onChange={setPendingImage}
+                  disabled={busy}
+                />
+              )}
 
-          {/* Composer */}
-          <div className="flex items-end gap-2">
-            <textarea
-              data-testid={`pin-comment-input-${thread.id}`}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={2}
-              placeholder="Reply…"
-              className="min-h-[44px] flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              data-testid={`pin-comment-send-${thread.id}`}
-              onClick={() =>
-                start(() => {
-                  void send()
-                })
-              }
-              disabled={busy}
-              className="min-h-[44px] rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-            >
-              Send
-            </button>
-          </div>
+              {/* Composer */}
+              <div className="flex items-end gap-2">
+                <textarea
+                  data-testid={`pin-comment-input-${thread.id}`}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  rows={2}
+                  placeholder="Reply…"
+                  className="min-h-[44px] flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  data-testid={`pin-comment-send-${thread.id}`}
+                  onClick={() =>
+                    start(() => {
+                      void send()
+                    })
+                  }
+                  disabled={busy}
+                  className="min-h-[44px] rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  Send
+                </button>
+              </div>
+            </>
+          )}
 
           {/* Resolve */}
           {onResolve && thread.status === 'open' && (

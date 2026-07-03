@@ -67,10 +67,17 @@ export type ModeledActivityPayload =
       kind: 'batch_revision_completed'
       batchId: string
       batchLabel: string
-      itemId: string
-      itemType: 'copy' | 'design' | 'am_inline'
-      itemDescription: string
-      completedByName: string
+      /** Routing surface for notification deep-links. 'internal_review' sends
+       *  the AM to /preview; 'client_review' sends the AM to the
+       *  implementing_revisions page. Optional for back-compat with legacy
+       *  per-item events that predate this field. */
+      surface?: 'internal_review' | 'client_review'
+      // Legacy per-item fields — only present on historical events written
+      // before the batch-level surface shape was adopted.
+      itemId?: string
+      itemType?: 'copy' | 'design' | 'am_inline'
+      itemDescription?: string
+      completedByName?: string
     }
   | {
       kind: 'batch_step_advanced'
@@ -221,6 +228,13 @@ export type ModeledActivityPayload =
       batchId: string
       batchLabel: string
       surface: 'internal_review'
+    }
+  | {
+      kind: 'feedback_sent_to_designer'
+      batchId: string
+      batchLabel: string
+      surface: 'client_review'
+      count: number
     }
 
 type ModeledKind = ModeledActivityPayload['kind']

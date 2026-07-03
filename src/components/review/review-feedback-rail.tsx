@@ -1,22 +1,34 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { PinCommentRow } from '@/components/review/pin-comment-row'
 import { CaptionDiffView } from '@/components/preview/caption-diff-view'
 import { ChangesNavigator, type NavItem } from '@/components/review/changes-navigator'
 import { ResolveCheckbox } from '@/components/review/resolve-checkbox'
+import { DesignerFlagToggle } from '@/components/review/designer-flag-toggle'
+import { DesignerRevisionUpload } from '@/components/review/designer-revision-upload'
 import { diffText } from '@/lib/text-diff'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
   FeedbackPostVM,
   FeedbackActions,
+  DesignerFlagVM,
 } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 
 export type ReviewFeedbackRailProps = {
   posts: ReadonlyArray<FeedbackPostVM>
   actions: FeedbackActions
   isDesigner: boolean
+  /** Total designer flags on this batch (rendered by a later task). */
+  flagTotal: number
+  /** Designer flags still open (rendered by a later task). */
+  flagOpen: number
+  /** Batch is in the `implementing_revisions` step (rendered by a later task). */
+  isImplementingRevisions: boolean
+  /** Batch sub-state is `awaiting_design_revisions` (rendered by a later task). */
+  subStateAwaitingDesigner: boolean
   uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   selectedThreadId: string | null
   selectedPostId: string | null
@@ -67,6 +79,41 @@ function rowSummary(post: FeedbackPostVM): string {
 }
 
 // ---------------------------------------------------------------------------
+// Sub-component: designer "your task" row
+// A flagged item the AM routed to the designer. Shows the AM's note and a
+// per-item done checkbox. Highlighted as the designer's work.
+// ---------------------------------------------------------------------------
+
+function DesignerFlagTask({
+  flag,
+  actions,
+  context,
+}: {
+  flag: DesignerFlagVM
+  actions: FeedbackActions
+  context: string
+}) {
+  const hasNote = Boolean(flag.note && flag.note.trim().length > 0)
+  return (
+    <div
+      data-testid={`designer-flag-task-${flag.id}`}
+      className="mt-1 rounded-md border-l-2 border-primary bg-primary/5 px-2.5 py-1.5"
+    >
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-primary">
+        Your task · {context}
+      </p>
+      <ResolveCheckbox
+        label={hasNote ? flag.note! : 'Revise this item'}
+        resolved={flag.done}
+        onResolve={() => actions.setFlagDone(flag.id)}
+        onUnresolve={() => actions.unsetFlagDone(flag.id)}
+        testId={`designer-flag-${flag.id}`}
+      />
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Sub-component: per-post row
 // ---------------------------------------------------------------------------
 
@@ -74,6 +121,9 @@ type FeedbackRowProps = {
   post: FeedbackPostVM
   actions: FeedbackActions
   isDesigner: boolean
+  /** Batch is in the post-revision working step; gates the designer's
+   *  per-post revised-image upload. */
+  isImplementingRevisions: boolean
   uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   isSelected: boolean
   selectedThreadId: string | null
@@ -86,6 +136,7 @@ function FeedbackRow({
   post,
   actions,
   isDesigner,
+  isImplementingRevisions,
   uploadImage,
   isSelected,
   selectedThreadId,
@@ -177,6 +228,17 @@ function FeedbackRow({
       {/* Expanded body — omitted for approved-clean rows */}
       {!collapsed && (
         <div className="space-y-2 px-3 pb-3">
+          {/* Designer: swap in a revised image for this post. The one write the
+              designer needs on this otherwise read-only surface. Only while the
+              batch is in the post-revision working step; the media route also
+              blocks completed relays server side. */}
+          {isDesigner && isImplementingRevisions && (
+            <DesignerRevisionUpload
+              postId={post.postId}
+              currentMediaUrl={post.mediaUrls[0] ?? null}
+            />
+          )}
+
           {/* Caption suggestion area (AM-only actions) */}
           {showCaptionActions && post.suggestedCaption && (
             post.captionAccepted ? (
@@ -264,6 +326,22 @@ function FeedbackRow({
             )
           )}
 
+          {/* Designer: the AM's caption edit, read only for context. The
+              designer does not act on copy (that is AM inline work), but seeing
+              it helps them understand the round. */}
+          {isDesigner && post.verdict === 'caption_edited' && post.suggestedCaption && (
+            <div
+              data-testid={`rail-copy-edited-readonly-${post.postId}`}
+              className="rounded-lg border border-sky-200 bg-sky-50 p-2.5 text-[13px]"
+            >
+              <p className="mb-1.5 font-medium text-sky-900">Copy edited by your AM</p>
+              <CaptionDiffView
+                segments={diffText(post.caption, post.suggestedCaption)}
+                className="text-[13px]"
+              />
+            </div>
+          )}
+
           {/* Per-pin collapsible rows. Numbered over coordinate pins only, so
               the rail badges stay aligned with the center canvas pin numbers
               (the canvas can't render a coordinate-less post-level thread). */}
@@ -278,15 +356,42 @@ function FeedbackRow({
                 pinLabel={String(i + 1)}
                 expanded={selectedThreadId === thread.id}
                 onToggle={() => onToggleThread(thread.id)}
-                onComment={(tid, body, image) => actions.comment(tid, body, image)}
+                onComment={
+                  isDesigner ? undefined : (tid, body, image) => actions.comment(tid, body, image)
+                }
                 onResolve={
                   isDesigner ? undefined : (tid) => resolveThenMaybeAddress('pin', tid)
                 }
                 onUseAsPostImage={
                   isDesigner ? undefined : (cid) => actions.useAsPostImage(post.postId, cid)
                 }
-                onUploadImage={uploadImage}
+                onUploadImage={isDesigner ? undefined : uploadImage}
               />
+              {/* AM-only: route this client pin to the designer. */}
+              {!isDesigner && (
+                <div className="mt-1">
+                  <DesignerFlagToggle
+                    flag={post.flags.find((f) => f.threadId === thread.id) ?? null}
+                    onFlag={(note) =>
+                      actions.flagForDesigner(post.postId, { threadId: thread.id }, note)
+                    }
+                    onUnflag={actions.unflagForDesigner}
+                    testId={`rail-flag-thread-${thread.id}`}
+                  />
+                </div>
+              )}
+              {/* Designer: this pin is yours to revise. */}
+              {isDesigner &&
+                (() => {
+                  const flag = post.flags.find((f) => f.threadId === thread.id)
+                  return flag ? (
+                    <DesignerFlagTask
+                      flag={flag}
+                      actions={actions}
+                      context={`Pin ${i + 1}`}
+                    />
+                  ) : null
+                })()}
             </div>
           ))}
 
@@ -304,15 +409,25 @@ function FeedbackRow({
                 pinLabel="·"
                 expanded={selectedThreadId === thread.id}
                 onToggle={() => onToggleThread(thread.id)}
-                onComment={(tid, body, image) => actions.comment(tid, body, image)}
+                onComment={
+                  isDesigner ? undefined : (tid, body, image) => actions.comment(tid, body, image)
+                }
                 onResolve={
                   isDesigner ? undefined : (tid) => resolveThenMaybeAddress('pin', tid)
                 }
                 onUseAsPostImage={
                   isDesigner ? undefined : (cid) => actions.useAsPostImage(post.postId, cid)
                 }
-                onUploadImage={uploadImage}
+                onUploadImage={isDesigner ? undefined : uploadImage}
               />
+              {/* Designer: this post-level thread is yours to revise. */}
+              {isDesigner &&
+                (() => {
+                  const flag = post.flags.find((f) => f.threadId === thread.id)
+                  return flag ? (
+                    <DesignerFlagTask flag={flag} actions={actions} context="Note" />
+                  ) : null
+                })()}
             </div>
           ))}
 
@@ -373,6 +488,36 @@ function FeedbackRow({
               </div>
             )}
 
+          {/* AM-only: route this post's note/verdict to the designer. Only when
+              the post carries a review item worth flagging. Caption edits are
+              excluded: the AM handles that copy inline (accept/reject), it is
+              not designer work. */}
+          {!isDesigner &&
+            post.reviewItemId &&
+            post.verdict !== 'none' &&
+            post.verdict !== 'caption_edited' && (
+            <DesignerFlagToggle
+              flag={post.flags.find((f) => f.reviewItemId === post.reviewItemId) ?? null}
+              onFlag={(note) =>
+                actions.flagForDesigner(post.postId, { reviewItemId: post.reviewItemId! }, note)
+              }
+              onUnflag={actions.unflagForDesigner}
+              testId={`rail-flag-note-${post.postId}`}
+            />
+          )}
+
+          {/* Designer: this post note/verdict is yours to revise. */}
+          {isDesigner &&
+            post.reviewItemId &&
+            (() => {
+              const flag = post.flags.find(
+                (f) => f.reviewItemId !== null && f.reviewItemId === post.reviewItemId,
+              )
+              return flag ? (
+                <DesignerFlagTask flag={flag} actions={actions} context="Note" />
+              ) : null
+            })()}
+
           {/* Mark addressed / Move back (AM only) */}
           {!isDesigner && (
             <button
@@ -417,6 +562,10 @@ export function ReviewFeedbackRail({
   posts,
   actions,
   isDesigner,
+  flagTotal,
+  flagOpen,
+  isImplementingRevisions,
+  subStateAwaitingDesigner,
   uploadImage,
   selectedPostId,
   selectedThreadId,
@@ -425,7 +574,46 @@ export function ReviewFeedbackRail({
   registerThreadRef,
   onScrollToAnchor,
 }: ReviewFeedbackRailProps) {
+  const router = useRouter()
   const [filterOn, setFilterOn] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [markingDone, setMarkingDone] = useState(false)
+
+  // Designer: "Mark revisions done" returns the relay to the AM. Enabled only
+  // once every flagged task is done (flagOpen === 0) and at least one was
+  // assigned. The server action revalidates the batch surfaces but not this
+  // review-session path, so we refresh the page after it resolves.
+  const canMarkRevisionsDone = flagOpen === 0 && flagTotal > 0 && !markingDone
+
+  async function handleMarkRevisionsDone() {
+    if (flagOpen !== 0 || flagTotal < 1 || markingDone) return
+    setMarkingDone(true)
+    try {
+      await actions.markRevisionsDone()
+      router.refresh()
+    } catch {
+      setMarkingDone(false)
+    }
+  }
+
+  // "Send to designer" is available only once the batch is implementing
+  // revisions, at least one item is flagged, and we haven't already sent.
+  const canSend =
+    isImplementingRevisions && flagTotal >= 1 && !subStateAwaitingDesigner && !sending
+
+  function handleSendToDesigner() {
+    if (!canSend) return
+    setSending(true)
+    void actions.sendToDesigner().catch(() => setSending(false))
+  }
+
+  const sendHint = subStateAwaitingDesigner
+    ? 'Sent, waiting on designer'
+    : !isImplementingRevisions
+      ? 'Available once revisions start'
+      : flagTotal < 1
+        ? 'Flag at least one item first'
+        : undefined
 
   const visiblePosts = filterOn ? posts.filter(needsChanges) : posts
 
@@ -464,12 +652,66 @@ export function ReviewFeedbackRail({
           onNavigate={onScrollToAnchor}
         />
       </div>
+
+      {/* AM triage bar: how many items are flagged + send them to the designer.
+          Hidden entirely in the designer branch. */}
+      {!isDesigner && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <span
+            data-testid="rail-flag-count"
+            className="text-[12px] text-muted-foreground"
+          >
+            {flagTotal === 0
+              ? 'No items flagged for designer'
+              : `${flagTotal} flagged for designer${
+                  flagOpen !== flagTotal ? ` · ${flagOpen} open` : ''
+                }`}
+          </span>
+          <button
+            type="button"
+            data-testid="rail-send-to-designer"
+            onClick={handleSendToDesigner}
+            disabled={!canSend}
+            title={sendHint}
+            className="rounded-md bg-primary px-3 py-1 text-[12px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {subStateAwaitingDesigner ? 'Sent, waiting on designer' : 'Send to designer'}
+          </button>
+        </div>
+      )}
+
+      {/* Designer respond bar: mark the flagged revisions done and hand the
+          relay back to the AM. Only while the designer lane is active. */}
+      {isDesigner && subStateAwaitingDesigner && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <span
+            data-testid="rail-revisions-count"
+            className="text-[12px] text-muted-foreground"
+          >
+            {flagTotal === 0
+              ? 'No revisions assigned'
+              : `${flagTotal} to revise${flagOpen > 0 ? ` · ${flagOpen} left` : ''}`}
+          </span>
+          <button
+            type="button"
+            data-testid="rail-mark-revisions-done"
+            onClick={handleMarkRevisionsDone}
+            disabled={!canMarkRevisionsDone}
+            title={canMarkRevisionsDone ? undefined : 'Finish your flagged tasks first'}
+            className="rounded-md bg-primary px-3 py-1 text-[12px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Mark revisions done
+          </button>
+        </div>
+      )}
+
       {visiblePosts.map((post) => (
         <FeedbackRow
           key={post.postId}
           post={post}
           actions={actions}
           isDesigner={isDesigner}
+          isImplementingRevisions={isImplementingRevisions}
           uploadImage={uploadImage}
           isSelected={post.postId === selectedPostId}
           selectedThreadId={selectedThreadId}
