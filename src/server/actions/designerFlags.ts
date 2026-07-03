@@ -14,7 +14,10 @@ import {
 import { sendFlaggedFeedbackToDesigner, markClientRevisionDesignDone } from '@/server/services/relay'
 import { canOverrideHolder } from '@/lib/relay-holder-override'
 
-export class DesignerFlagActionError extends Error {
+// Not exported: a 'use server' module may only export async functions, so this
+// error class stays module-private (mirrors ReviewSessionActionError). Tests
+// assert on the thrown message, not the type.
+class DesignerFlagActionError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'DesignerFlagActionError'
