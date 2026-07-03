@@ -26,6 +26,20 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-02 — Restrict client creation to agency admins** (PR #302)
+  Removed the create-a-client capability from account managers; it is now agency-admin-only by
+  default. AMs keep `client.edit` (edit existing clients, onboarding, generation) but can no longer
+  create or import new clients. Root cause the ask exposed: the create surfaces were gated
+  inconsistently — the `/clients/new` form + `createClientAction` + the New client / Import CSV
+  buttons checked `client.edit`, while only the CSV import checked `client.create`, so flipping one
+  flag would not have stopped creation. Made `client.create` the single gate on every creation
+  surface: `SYSTEM_DEFAULTS.account_manager['client.create']` → false (admin stays true; still
+  per-user overridable so an admin can re-grant it via the permissions editor), and re-gated
+  `createClientAction` / `/clients/new/page.tsx` / the clients-page button block from `client.edit`
+  → `client.create`. Onboarding tour copy updated. New tests: permission-matrix (admin-only default
+  + override re-grant) + the `createClientAction` gate. 2271 unit tests, tsc + scoped lint clean; no
+  schema/jobs/services change → Trigger.dev deploy skips.
+
 - [x] **2026-07-01 — Review navigation cleanup (5 follow-ups)** (PR #301)
   Cleared the post-ship review follow-ups from the resolve-checklist slices. (1) `ChangesNavigator`
   resets its stepper cursor when the item set changes (no more stale position after a server

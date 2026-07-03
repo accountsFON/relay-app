@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, requireCan } from '@/server/middleware/permissions'
 import {
   createClient,
   updateClient,
@@ -20,7 +20,10 @@ import { db } from '@/db/client'
 import { diffFieldChanges } from '@/lib/field-changes'
 
 export async function createClientAction(input: ClientInput) {
-  const ctx = await requireClientEditor()
+  // Creation is gated on client.create (admin-only by default), not client.edit,
+  // so removing an AM's create permission does not also remove their ability to
+  // edit existing clients.
+  const ctx = await requireCan('client.create')
   const parsed = clientInputSchema.parse(input)
 
   const created = await createClient({

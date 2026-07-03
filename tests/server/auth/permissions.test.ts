@@ -25,6 +25,22 @@ describe('can() — system defaults', () => {
     expect(can({ role: 'account_manager' }, 'admin.portal')).toBe(false)
   })
 
+  it('client.create is admin-only by default (account_manager denied, keeps client.edit)', () => {
+    expect(can({ role: 'admin' }, 'client.create')).toBe(true)
+    expect(can({ role: 'account_manager' }, 'client.create')).toBe(false)
+    expect(can({ role: 'designer' }, 'client.create')).toBe(false)
+    expect(can({ role: 'client' }, 'client.create')).toBe(false)
+    // AMs still edit existing clients; only creation is removed.
+    expect(can({ role: 'account_manager' }, 'client.edit')).toBe(true)
+    // An admin can still re-grant creation to a specific AM via an override.
+    expect(
+      can(
+        { role: 'account_manager', permissionOverrides: { 'client.create': true } },
+        'client.create',
+      ),
+    ).toBe(true)
+  })
+
   it('designer is read-only', () => {
     expect(can({ role: 'designer' }, 'client.view')).toBe(true)
     expect(can({ role: 'designer' }, 'client.edit')).toBe(false)
