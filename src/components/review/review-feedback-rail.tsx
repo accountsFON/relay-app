@@ -8,6 +8,7 @@ import { CaptionDiffView } from '@/components/preview/caption-diff-view'
 import { ChangesNavigator, type NavItem } from '@/components/review/changes-navigator'
 import { ResolveCheckbox } from '@/components/review/resolve-checkbox'
 import { DesignerFlagToggle } from '@/components/review/designer-flag-toggle'
+import { DesignerRevisionUpload } from '@/components/review/designer-revision-upload'
 import { diffText } from '@/lib/text-diff'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
@@ -120,6 +121,9 @@ type FeedbackRowProps = {
   post: FeedbackPostVM
   actions: FeedbackActions
   isDesigner: boolean
+  /** Batch is in the post-revision working step; gates the designer's
+   *  per-post revised-image upload. */
+  isImplementingRevisions: boolean
   uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   isSelected: boolean
   selectedThreadId: string | null
@@ -132,6 +136,7 @@ function FeedbackRow({
   post,
   actions,
   isDesigner,
+  isImplementingRevisions,
   uploadImage,
   isSelected,
   selectedThreadId,
@@ -223,6 +228,17 @@ function FeedbackRow({
       {/* Expanded body — omitted for approved-clean rows */}
       {!collapsed && (
         <div className="space-y-2 px-3 pb-3">
+          {/* Designer: swap in a revised image for this post. The one write the
+              designer needs on this otherwise read-only surface. Only while the
+              batch is in the post-revision working step; the media route also
+              blocks completed relays server side. */}
+          {isDesigner && isImplementingRevisions && (
+            <DesignerRevisionUpload
+              postId={post.postId}
+              currentMediaUrl={post.mediaUrls[0] ?? null}
+            />
+          )}
+
           {/* Caption suggestion area (AM-only actions) */}
           {showCaptionActions && post.suggestedCaption && (
             post.captionAccepted ? (
@@ -695,6 +711,7 @@ export function ReviewFeedbackRail({
           post={post}
           actions={actions}
           isDesigner={isDesigner}
+          isImplementingRevisions={isImplementingRevisions}
           uploadImage={uploadImage}
           isSelected={post.postId === selectedPostId}
           selectedThreadId={selectedThreadId}

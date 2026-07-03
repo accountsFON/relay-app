@@ -1147,6 +1147,55 @@ describe('ReviewFeedbackRail — designer flags (AM triage)', () => {
   })
 })
 
+describe('ReviewFeedbackRail — designer revised-image upload', () => {
+  function renderRow(
+    posts: ReadonlyArray<FeedbackPostVM>,
+    opts: { isDesigner?: boolean; isImplementingRevisions?: boolean } = {},
+  ) {
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={opts.isDesigner ?? true}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
+        registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={opts.isImplementingRevisions ?? false}
+        subStateAwaitingDesigner={false}
+      />,
+    )
+  }
+
+  it('shows the upload control for the designer while implementing revisions', () => {
+    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isDesigner: true,
+      isImplementingRevisions: true,
+    })
+    expect(screen.getByTestId('designer-revision-upload-post-1')).toBeInTheDocument()
+  })
+
+  it('does not show the upload control for the designer when not implementing revisions', () => {
+    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isDesigner: true,
+      isImplementingRevisions: false,
+    })
+    expect(screen.queryByTestId('designer-revision-upload-post-1')).toBeNull()
+  })
+
+  it('does not show the upload control in the AM branch even while implementing revisions', () => {
+    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isDesigner: false,
+      isImplementingRevisions: true,
+    })
+    expect(screen.queryByTestId('designer-revision-upload-post-1')).toBeNull()
+  })
+})
+
 // ---------------------------------------------------------------------------
 // Designer read-only view + flagged task checklist + mark revisions done
 // ---------------------------------------------------------------------------
