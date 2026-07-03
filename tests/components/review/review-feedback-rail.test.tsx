@@ -936,11 +936,9 @@ describe('ReviewFeedbackRail — Changes only filter', () => {
     expect(screen.getByTestId('rail-row-post-changes')).toBeInTheDocument()
   })
 
-  it('toggling the filter shrinks the navigator counter total (stepper only walks visible posts)', () => {
-    // approved post with a RESOLVED thread: needsChanges=false (no open threads,
-    // no changes verdict, no unresolved note) but contributes 1 navItem when
-    // visiblePosts is unfiltered.  After Fix 1, the navItems list is built from
-    // visiblePosts, so this post's navItem disappears when the filter is on.
+  it('keeps a resolved-feedback post visible under the filter and hides only no-feedback posts', () => {
+    // approved post with a RESOLVED thread: it "ever had feedback", so under the
+    // hadFeedback filter it STAYS (crossed out) instead of vanishing on resolve.
     const resolvedThread: HydratedThread = {
       id: 't-resolved',
       status: 'resolved' as const,
@@ -973,18 +971,35 @@ describe('ReviewFeedbackRail — Changes only filter', () => {
         comment: null,
         addressed: false,
       }),
+      // Never had feedback: approved, no threads, no note → hidden under filter.
+      vm({
+        postId: 'post-approved-clean',
+        postNumber: 3,
+        verdict: 'approved',
+        threads: [],
+        comment: null,
+        addressed: false,
+      }),
     ]
     renderRailNew(posts)
 
-    // Before filter: 2 navItems (1 resolved thread + 1 open thread)
-    // counter = "1 of 2 resolved"
+    // Before filter: all three rows render.
+    expect(screen.getByTestId('rail-row-post-approved-resolved')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-row-post-changes-open')).toBeInTheDocument()
+    expect(screen.getByTestId('rail-row-post-approved-clean')).toBeInTheDocument()
+    // 2 navItems (1 resolved thread + 1 open thread) → "1 of 2 resolved"
     expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('1 of 2 resolved')
 
     fireEvent.click(screen.getByTestId('changes-navigator-filter'))
 
-    // After filter: approved post filtered out, only the open thread remains
-    // counter = "0 of 1 resolved"
-    expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('0 of 1 resolved')
+    // The resolved-feedback post STAYS (crossed out, not hidden).
+    expect(screen.getByTestId('rail-row-post-approved-resolved')).toBeInTheDocument()
+    // The open-changes post stays.
+    expect(screen.getByTestId('rail-row-post-changes-open')).toBeInTheDocument()
+    // Only the never-had-feedback post is hidden.
+    expect(screen.queryByTestId('rail-row-post-approved-clean')).toBeNull()
+    // Both feedback posts remain, so the navigator total is unchanged.
+    expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('1 of 2 resolved')
   })
 })
 
@@ -1379,5 +1394,83 @@ describe('ReviewFeedbackRail — designer mark revisions done', () => {
       subStateAwaitingDesigner: true,
     })
     expect(screen.queryByTestId('rail-mark-revisions-done')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Author bylines + name wrapping
+// ---------------------------------------------------------------------------
+
+describe('ReviewFeedbackRail — author bylines', () => {
+  it('shows a client byline above the general note (client-authored feedback)', () => {
+    // A client pin thread (author "Jane") lets the note byline resolve the
+    // reviewer name; the note opener renders because there is no post-level
+    // thread yet.
+    renderRailNew([
+      vm({
+        postId: 'post-1',
+        verdict: 'changes_requested',
+        comment: 'please soften',
+        reviewItemId: 'ri-1',
+        threads: [makeThread('t1')],
+      }),
+    ])
+    const byline = screen.getByTestId('rail-note-resolve-post-1-byline')
+    expect(byline).toBeInTheDocument()
+    expect(byline).toHaveTextContent('Jane')
+  })
+
+  it('falls back to "Reviewer" for a note-only post with no named client thread', () => {
+    renderRailNew([
+      vm({
+        postId: 'post-1',
+        verdict: 'changes_requested',
+        comment: 'please soften',
+        reviewItemId: 'ri-1',
+        threads: [],
+      }),
+    ])
+    expect(screen.getByTestId('rail-note-resolve-post-1-byline')).toHaveTextContent('Reviewer')
+  })
+
+  it('shows the original feedback author byline on a designer flagged-task row (threadId resolves one)', () => {
+    renderDesignerRail(
+      [
+        vm({
+          postId: 'post-1',
+          threads: [makeThread('t1')],
+          flags: [{ id: 'flag-1', threadId: 't1', reviewItemId: null, note: 'tighten spacing', done: false }],
+        }),
+      ],
+      {},
+    )
+    const byline = screen.getByTestId('designer-flag-flag-1-byline')
+    expect(byline).toBeInTheDocument()
+    expect(byline).toHaveTextContent('Jane')
+  })
+
+  it('omits the byline on a designer note-flag with no thread to resolve', () => {
+    renderDesignerRail(
+      [
+        vm({
+          postId: 'post-1',
+          verdict: 'changes_requested',
+          reviewItemId: 'ri-1',
+          threads: [],
+          flags: [{ id: 'flag-note', threadId: null, reviewItemId: 'ri-1', note: 'redo layout', done: false }],
+        }),
+      ],
+      {},
+    )
+    expect(screen.getByTestId('designer-flag-flag-note')).toBeInTheDocument()
+    expect(screen.queryByTestId('designer-flag-flag-note-byline')).toBeNull()
+  })
+
+  it('renders the pin-row author name as a wrapping span (no truncate / nowrap)', () => {
+    renderRailNew([vm({ postId: 'post-1', threads: [makeThread('t1')] })])
+    const name = screen.getByText('Jane')
+    expect(name.className).toContain('break-words')
+    expect(name.className).not.toContain('truncate')
+    expect(name.className).not.toContain('whitespace-nowrap')
   })
 })

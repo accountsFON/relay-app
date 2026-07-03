@@ -187,15 +187,17 @@ describe('InternalReviewRail', () => {
     // Filter off: both threads in counter (1 resolved of 2 total)
     expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('1 of 2 resolved')
 
-    // Toggle "Changes only" on: only the open row remains visible
+    // Toggle "Changes only" on: resolved rows STAY (they have feedback), so
+    // both rows remain visible and both threads stay in the counter.
     fireEvent.click(screen.getByTestId('changes-navigator-filter'))
 
-    // Filter on: only open row's thread counted (0 resolved of 1 total)
-    expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('0 of 1 resolved')
+    // Filter on: resolved row still counted (1 resolved of 2 total)
+    expect(screen.getByTestId('changes-navigator-counter')).toHaveTextContent('1 of 2 resolved')
   })
 
-  // New: "Changes only" filter hides non-open rows
-  it('hides non-open rows when Changes only filter is toggled on', () => {
+  // "Changes only" keeps resolved (crossed-out) rows, hiding only posts that
+  // never had feedback (pinStatus === 'none').
+  it('keeps resolved rows and hides only no-feedback rows when Changes only is on', () => {
     const mixedRows: InternalRailRow[] = [
       {
         postId: 'p1',
@@ -236,9 +238,63 @@ describe('InternalReviewRail', () => {
     // Toggle filter on
     fireEvent.click(screen.getByTestId('changes-navigator-filter'))
 
-    // After filter: only the 'open' row visible (Post 1)
+    // After filter: the open AND resolved rows stay (both have feedback); only
+    // the 'none' row (Post 3) is hidden.
     const visibleRows = screen.getAllByTestId('internal-rail-row')
-    expect(visibleRows).toHaveLength(1)
+    expect(visibleRows).toHaveLength(2)
     expect(visibleRows[0]).toHaveTextContent('Post 1')
+    expect(visibleRows[1]).toHaveTextContent('Post 2')
+    expect(screen.queryByText('Post 3')).not.toBeInTheDocument()
+  })
+
+  // New: author byline on checklist rows
+  it('renders the author byline on a checklist row for AM and client authors', () => {
+    const rowsWithBylines: InternalRailRow[] = [
+      {
+        postId: 'p1',
+        postNumber: 1,
+        thumbnailUrl: null,
+        pinStatus: 'open',
+        openCount: 2,
+        threads: [
+          { id: 't1', label: 'Tighten the crop', status: 'open', author: 'Jane AM' },
+          { id: 't2', label: 'Love this shot', status: 'open', author: 'Casey Client' },
+        ],
+      },
+    ]
+    render(
+      <InternalReviewRail
+        rows={rowsWithBylines}
+        selectedPostId={null}
+        onSelectPost={vi.fn()}
+        {...defaultProps}
+      />,
+    )
+    expect(screen.getByText('Jane AM')).toBeInTheDocument()
+    expect(screen.getByText('Casey Client')).toBeInTheDocument()
+  })
+
+  // New: long labels render in full (no hard truncation)
+  it('renders a long checklist label in full without truncation', () => {
+    const longLabel = 'x'.repeat(120)
+    const rowsWithLong: InternalRailRow[] = [
+      {
+        postId: 'p1',
+        postNumber: 1,
+        thumbnailUrl: null,
+        pinStatus: 'open',
+        openCount: 1,
+        threads: [{ id: 't1', label: longLabel, status: 'open' }],
+      },
+    ]
+    render(
+      <InternalReviewRail
+        rows={rowsWithLong}
+        selectedPostId={null}
+        onSelectPost={vi.fn()}
+        {...defaultProps}
+      />,
+    )
+    expect(screen.getByText(longLabel)).toBeInTheDocument()
   })
 })

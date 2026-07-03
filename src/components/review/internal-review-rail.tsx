@@ -9,6 +9,8 @@ import { ChangesNavigator, type NavItem } from '@/components/review/changes-navi
 export type InternalRailThread = {
   id: string
   label: string
+  /** Who created the pin / sent the first message. Omitted when unresolvable. */
+  author?: string
   status: 'open' | 'resolved'
 }
 
@@ -40,7 +42,10 @@ export function InternalReviewRail({
 }: InternalReviewRailProps) {
   const [filterOn, setFilterOn] = useState(false)
 
-  const visibleRows = filterOn ? rows.filter((r) => r.pinStatus === 'open') : rows
+  // "Changes only" keeps every post that HAS feedback (pins open OR resolved),
+  // hiding only posts that never had feedback. Resolved pins then stay visible,
+  // crossed out (ResolveCheckbox strikes them) rather than disappearing.
+  const visibleRows = filterOn ? rows.filter((r) => r.pinStatus !== 'none') : rows
 
   const navItems: NavItem[] = visibleRows.flatMap((r) =>
     r.threads.map((t) => ({ id: t.id, anchorKey: r.postId, resolved: t.status === 'resolved' })),
@@ -101,6 +106,7 @@ export function InternalReviewRail({
                     <ResolveCheckbox
                       key={t.id}
                       label={t.label}
+                      byline={t.author}
                       resolved={t.status === 'resolved'}
                       onResolve={() => onResolveThread(t.id)}
                       onUnresolve={() => onUnresolveThread(t.id)}

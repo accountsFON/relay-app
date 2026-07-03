@@ -29,7 +29,7 @@ export type PinCommentRowProps = {
   onUploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
 }
 
-function authorName(a: ThreadAuthor): string {
+export function authorName(a: ThreadAuthor): string {
   return a.kind === 'am' ? a.name : a.reviewerName
 }
 
@@ -92,7 +92,7 @@ export function PinCommentRow({
 
         {/* Author + body */}
         <div className="min-w-0 flex-1">
-          <span className="text-[12px] font-semibold text-foreground">
+          <span className="block break-words text-[12px] font-semibold text-foreground">
             {authorName(firstComment.author)}
           </span>
           {firstComment.body ? (
@@ -165,7 +165,7 @@ export function PinCommentRow({
               data-testid="pin-comment-reply"
               className="flex flex-col gap-1 text-[13px] text-foreground"
             >
-              <div>
+              <div className="break-words">
                 <span className="font-semibold">{authorName(c.author)}</span>
                 {c.body ? (
                   <>

@@ -20,6 +20,7 @@ import {
 import type { PinLocation, ThreadAuthor } from '@/types/preview'
 import { useMentionAutocomplete } from '@/lib/use-mention-autocomplete'
 import type { MentionTarget } from '@/lib/mentions'
+import { authorName } from '@/components/review/pin-comment-row'
 
 /**
  * Shared popover that opens when a pin (image or caption) is clicked. Renders
@@ -249,9 +250,9 @@ export function PinPopover({
         className="flex max-h-48 flex-col gap-2 overflow-y-auto"
       >
         {allComments.map((comment, index) => (
-          <li key={index} className="flex flex-col gap-0.5">
-            <span className="text-[11px] font-semibold text-[#262626]">
-              {authorLabel(comment.author)}
+          <li key={index} className="flex min-w-0 flex-col gap-0.5">
+            <span className="break-words text-[11px] font-semibold text-[#262626]">
+              {authorName(comment.author)}
             </span>
             <p className="whitespace-pre-line break-words text-[13px] leading-snug text-[#262626]">
               <Linkify text={comment.body} />
@@ -352,10 +353,6 @@ export function PinPopover({
       </form>
     </div>
   )
-}
-
-function authorLabel(author: ThreadAuthor): string {
-  return author.kind === 'am' ? author.name : author.reviewerName
 }
 
 function pinKindLabel(pin: PinLocation): string {

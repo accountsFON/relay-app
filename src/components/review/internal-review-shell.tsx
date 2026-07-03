@@ -7,6 +7,7 @@ import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
 import { ReviewPostCard } from '@/components/review/review-post-card'
 import { InternalReviewRail, type InternalRailRow, type InternalRailThread } from '@/components/review/internal-review-rail'
+import { authorName } from '@/components/review/pin-comment-row'
 import {
   createThreadAction,
   addCommentAction,
@@ -24,19 +25,32 @@ import type { MentionTarget } from '@/lib/mentions'
 type HydratedThread = FeedPostProps['threads'][number]
 
 /**
- * Derive a short human-readable label for a thread to show in the resolve
- * checklist. Uses the first comment body (truncated to 60 chars) when
- * available, then falls back to a label based on the pin kind.
+ * Derive a human-readable label for a thread to show in the resolve
+ * checklist. Uses the full first comment body when available (CSS handles
+ * wrapping), then falls back to a label based on the pin kind.
  */
 function threadLabelFor(thread: HydratedThread): string {
   const body = thread.firstComment?.body?.trim()
-  if (body) {
-    return body.length > 60 ? body.slice(0, 60) + '...' : body
-  }
+  if (body) return body
   const { kind } = thread.pin
   if (kind === 'image') return 'Image pin'
   if (kind === 'caption') return 'Caption note'
   return 'Post comment'
+}
+
+/**
+ * Derive the byline (who created the pin / sent the first message) for a
+ * thread's checklist row. Reuses the shared `authorName` helper: account name
+ * for agency users, the magic-link name for clients. Falls back to 'Reviewer'
+ * for a client with no name, and omits the byline when the author is genuinely
+ * unresolvable.
+ */
+function threadAuthorLabelFor(thread: HydratedThread): string | undefined {
+  const author = thread.firstComment?.author
+  if (!author) return undefined
+  const name = authorName(author).trim()
+  if (name) return name
+  return author.kind === 'client' ? 'Reviewer' : undefined
 }
 
 export type InternalReviewShellPost = {
@@ -133,6 +147,7 @@ export function InternalReviewShell({
         const railThreads: InternalRailThread[] = list.map((t) => ({
           id: t.id,
           label: threadLabelFor(t),
+          author: threadAuthorLabelFor(t),
           status: t.status,
         }))
         return {

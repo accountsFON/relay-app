@@ -404,3 +404,156 @@ describe('PinPopover "Use as post image" button', () => {
     expect(screen.queryByTestId('use-as-post-image-btn')).toBeNull()
   })
 })
+
+// ── Author bylines + wrapping ─────────────────────────────────────────────────
+
+describe('PinPopover author bylines', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('shows a client magic-link reviewerName as the comment author', () => {
+    const thread: PinPopoverThread = {
+      id: 't-client-name',
+      pin: { kind: 'post' },
+      status: 'open',
+      firstComment: {
+        id: 'c1',
+        author: { kind: 'client', reviewerName: 'Priya Sharma' },
+        body: 'Looks great!',
+        createdAt: new Date('2026-07-01T10:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c1',
+          author: { kind: 'client', reviewerName: 'Priya Sharma' },
+          body: 'Looks great!',
+          createdAt: new Date('2026-07-01T10:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    render(
+      <PinPopover
+        thread={thread}
+        anchor={{ x: 100, y: 100 }}
+        mode="review"
+        onComment={async () => {}}
+      />,
+    )
+
+    const list = screen.getByTestId('pin-popover-comments')
+    expect(list).toHaveTextContent('Priya Sharma')
+  })
+
+  it('shows an AM account name as the comment author', () => {
+    const thread: PinPopoverThread = {
+      id: 't-am-name',
+      pin: { kind: 'post' },
+      status: 'open',
+      firstComment: {
+        id: 'c1',
+        author: { kind: 'am', userId: 'u-mollie', name: 'Mollie Huebner' },
+        body: 'Here is my note.',
+        createdAt: new Date('2026-07-01T10:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c1',
+          author: { kind: 'am', userId: 'u-mollie', name: 'Mollie Huebner' },
+          body: 'Here is my note.',
+          createdAt: new Date('2026-07-01T10:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    render(
+      <PinPopover
+        thread={thread}
+        anchor={{ x: 100, y: 100 }}
+        mode="internal"
+        onComment={async () => {}}
+      />,
+    )
+
+    const list = screen.getByTestId('pin-popover-comments')
+    expect(list).toHaveTextContent('Mollie Huebner')
+  })
+
+  it('does not show "Unknown" or blank when a client has a reviewerName', () => {
+    const thread: PinPopoverThread = {
+      id: 't-no-unknown',
+      pin: { kind: 'post' },
+      status: 'open',
+      firstComment: {
+        id: 'c1',
+        author: { kind: 'client', reviewerName: 'Jordan Lee' },
+        body: 'Change the color please.',
+        createdAt: new Date('2026-07-01T10:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c1',
+          author: { kind: 'client', reviewerName: 'Jordan Lee' },
+          body: 'Change the color please.',
+          createdAt: new Date('2026-07-01T10:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    render(
+      <PinPopover
+        thread={thread}
+        anchor={{ x: 100, y: 100 }}
+        mode="review"
+        onComment={async () => {}}
+      />,
+    )
+
+    const list = screen.getByTestId('pin-popover-comments')
+    expect(list).not.toHaveTextContent('Unknown')
+    expect(list).toHaveTextContent('Jordan Lee')
+  })
+
+  it('renders the author name span with break-words so long names wrap', () => {
+    const longName = 'Alexandrina Bartholomew-Christiansen'
+    const thread: PinPopoverThread = {
+      id: 't-long-name',
+      pin: { kind: 'post' },
+      status: 'open',
+      firstComment: {
+        id: 'c1',
+        author: { kind: 'client', reviewerName: longName },
+        body: 'A note.',
+        createdAt: new Date('2026-07-01T10:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c1',
+          author: { kind: 'client', reviewerName: longName },
+          body: 'A note.',
+          createdAt: new Date('2026-07-01T10:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    render(
+      <PinPopover
+        thread={thread}
+        anchor={{ x: 100, y: 100 }}
+        mode="review"
+        onComment={async () => {}}
+      />,
+    )
+
+    const nameEl = screen.getByText(longName)
+    expect(nameEl).toHaveClass('break-words')
+    // Confirm no truncation class overrides the wrapping
+    expect(nameEl).not.toHaveClass('truncate')
+    expect(nameEl).not.toHaveClass('whitespace-nowrap')
+  })
+})

@@ -201,3 +201,75 @@ describe('InternalReviewShell markup layout', () => {
     expect(screen.getByTestId('card-p2')).toBeInTheDocument()
   })
 })
+
+describe('InternalReviewShell rail bylines + labels', () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
+    for (const key of Object.keys(cardProps)) {
+      delete cardProps[key]
+    }
+  })
+
+  const LONG_BODY =
+    'This is a very long piece of reviewer feedback that easily runs well beyond sixty characters so we can prove the checklist label is not truncated at all.'
+
+  const postsWithThreads: InternalReviewShellPost[] = [
+    {
+      post: { id: 'p1', caption: 'cap', hashtags: [], mediaUrl: null },
+      threads: [
+        {
+          id: 't-am',
+          status: 'open',
+          pin: { kind: 'post' },
+          firstComment: {
+            id: 'c1',
+            author: { kind: 'am', userId: 'u1', name: 'Author Alex' },
+            body: LONG_BODY,
+            createdAt: new Date(),
+          },
+          comments: [],
+          commentCount: 1,
+        },
+        {
+          id: 't-client',
+          status: 'open',
+          pin: { kind: 'image', x: 10, y: 20 },
+          firstComment: {
+            id: 'c2',
+            author: { kind: 'client', reviewerName: 'Casey Client' },
+            body: 'Short client note',
+            createdAt: new Date(),
+          },
+          comments: [],
+          commentCount: 1,
+        },
+      ],
+    },
+  ]
+
+  function renderBylineShell() {
+    return render(
+      <InternalReviewShell
+        batchId="b1"
+        clientName="Acme"
+        reviewerName="Rev Person"
+        posts={postsWithThreads}
+      />,
+    )
+  }
+
+  it('shows the AM account name and the client magic-link name as rail bylines', () => {
+    renderBylineShell()
+    expect(screen.getByText('Author Alex')).toBeInTheDocument()
+    expect(screen.getByText('Casey Client')).toBeInTheDocument()
+  })
+
+  it('renders a long thread label in full (no 60-char truncation)', () => {
+    renderBylineShell()
+    expect(screen.getByText(LONG_BODY)).toBeInTheDocument()
+  })
+})

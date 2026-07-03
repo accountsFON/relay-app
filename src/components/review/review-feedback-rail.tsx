@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { PinCommentRow } from '@/components/review/pin-comment-row'
+import { PinCommentRow, authorName } from '@/components/review/pin-comment-row'
 import { CaptionDiffView } from '@/components/preview/caption-diff-view'
 import { ChangesNavigator, type NavItem } from '@/components/review/changes-navigator'
 import { ResolveCheckbox } from '@/components/review/resolve-checkbox'
@@ -78,6 +78,34 @@ function rowSummary(post: FeedbackPostVM): string {
   return post.verdict === 'caption_edited' ? 'Caption suggestion' : ''
 }
 
+// Resolve a byline for the client's general note. The note is always
+// client-authored on this surface, but the post VM does not carry the reviewer
+// name directly, so reuse the name from any client thread on the same post.
+// Falls back to 'Reviewer' when no named client author is available.
+function noteAuthorByline(post: FeedbackPostVM): string {
+  for (const t of post.threads) {
+    const author = t.firstComment?.author
+    if (author && author.kind === 'client') {
+      const name = authorName(author).trim()
+      if (name) return name
+    }
+  }
+  return 'Reviewer'
+}
+
+// Resolve a byline for a designer flag: the client who authored the pin/note
+// this task refers to. Resolves via the referenced thread's first comment when
+// the flag carries a threadId; omitted (undefined) for note-flags with no
+// thread, or when the author name is genuinely unresolvable.
+function flagAuthorByline(post: FeedbackPostVM, flag: DesignerFlagVM): string | undefined {
+  if (!flag.threadId) return undefined
+  const thread = post.threads.find((t) => t.id === flag.threadId)
+  const author = thread?.firstComment?.author
+  if (!author) return undefined
+  const name = authorName(author).trim()
+  return name || undefined
+}
+
 // ---------------------------------------------------------------------------
 // Sub-component: designer "your task" row
 // A flagged item the AM routed to the designer. Shows the AM's note and a
@@ -88,10 +116,14 @@ function DesignerFlagTask({
   flag,
   actions,
   context,
+  byline,
 }: {
   flag: DesignerFlagVM
   actions: FeedbackActions
   context: string
+  /** Original feedback author (the client who raised the pin/note). Omitted
+   *  when unresolvable. */
+  byline?: string
 }) {
   const hasNote = Boolean(flag.note && flag.note.trim().length > 0)
   return (
@@ -104,6 +136,7 @@ function DesignerFlagTask({
       </p>
       <ResolveCheckbox
         label={hasNote ? flag.note! : 'Revise this item'}
+        byline={byline}
         resolved={flag.done}
         onResolve={() => actions.setFlagDone(flag.id)}
         onUnresolve={() => actions.unsetFlagDone(flag.id)}
@@ -389,6 +422,7 @@ function FeedbackRow({
                       flag={flag}
                       actions={actions}
                       context={`Pin ${i + 1}`}
+                      byline={flagAuthorByline(post, flag)}
                     />
                   ) : null
                 })()}
@@ -425,7 +459,12 @@ function FeedbackRow({
                 (() => {
                   const flag = post.flags.find((f) => f.threadId === thread.id)
                   return flag ? (
-                    <DesignerFlagTask flag={flag} actions={actions} context="Note" />
+                    <DesignerFlagTask
+                      flag={flag}
+                      actions={actions}
+                      context="Note"
+                      byline={flagAuthorByline(post, flag)}
+                    />
                   ) : null
                 })()}
             </div>
@@ -452,6 +491,7 @@ function FeedbackRow({
                 <div className="mb-2">
                   <ResolveCheckbox
                     label={post.comment}
+                    byline={noteAuthorByline(post)}
                     resolved={post.noteResolved}
                     onResolve={() => resolveThenMaybeAddress('note')}
                     onUnresolve={() => actions.unresolveNote(post.postId, post.reviewItemId!)}
@@ -514,7 +554,12 @@ function FeedbackRow({
                 (f) => f.reviewItemId !== null && f.reviewItemId === post.reviewItemId,
               )
               return flag ? (
-                <DesignerFlagTask flag={flag} actions={actions} context="Note" />
+                <DesignerFlagTask
+                  flag={flag}
+                  actions={actions}
+                  context="Note"
+                  byline={flagAuthorByline(post, flag)}
+                />
               ) : null
             })()}
 
@@ -548,13 +593,16 @@ function FeedbackRow({
 // Main component
 // ---------------------------------------------------------------------------
 
-function needsChanges(p: FeedbackPostVM): boolean {
+// "Changes only" keeps every post that EVER had feedback (a changes/caption
+// verdict, any thread open or resolved, or a general note), hiding only posts
+// that never had feedback. Resolved items then stay visible, crossed out (their
+// ResolveCheckboxes strike through) rather than vanishing when resolved.
+function hadFeedback(p: FeedbackPostVM): boolean {
   return (
-    !p.addressed &&
-    (p.verdict === 'changes_requested' ||
-      p.verdict === 'caption_edited' ||
-      p.threads.some((t) => t.status === 'open') ||
-      (Boolean(p.comment) && !p.noteResolved))
+    p.verdict === 'changes_requested' ||
+    p.verdict === 'caption_edited' ||
+    p.threads.length > 0 ||
+    Boolean(p.comment)
   )
 }
 
@@ -615,7 +663,7 @@ export function ReviewFeedbackRail({
         ? 'Flag at least one item first'
         : undefined
 
-  const visiblePosts = filterOn ? posts.filter(needsChanges) : posts
+  const visiblePosts = filterOn ? posts.filter(hadFeedback) : posts
 
   const navItems: NavItem[] = visiblePosts.flatMap((p) => {
     const out: NavItem[] = []
