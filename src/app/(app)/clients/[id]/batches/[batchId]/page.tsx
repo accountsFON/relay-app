@@ -1,5 +1,5 @@
 import { RelayStep } from '@prisma/client'
-import { requireClientViewer, canEditClients, canTriggerGeneration, canUploadPostMedia, canComment } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients, canUploadPostMedia, canComment } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -54,7 +54,6 @@ import { NextActionBoard } from '@/components/relay/next-action-board'
 import { nextActionForRelay } from '@/lib/relay-next-action'
 import { FailedRunBanner } from '@/components/runs/failed-run-banner'
 import { ExportButton } from '@/components/runs/export-button'
-import { GenerateContentDialog } from '@/components/relay/generate-content-dialog'
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
 import { SendLinkButton } from '@/components/batch/send-link-button'
 import { OpenClientContentButton } from '@/components/batch/open-client-content-button'
@@ -179,10 +178,6 @@ export default async function BatchDetailPage({
   // Cost breakdown is spend-sensitive: admins + platform owner only. AMs,
   // designers, and clients do not see it.
   const canViewCost = can(ctx, 'cost.viewAll')
-  // Generation gate (generation.trigger), applied alongside the baton-holder
-  // check so a non-generating holder (or a user with the toggle off) never
-  // sees the Generate Content dialog. Same default holders as client.edit.
-  const canGenerateContent = canTriggerGeneration(ctx)
   const mentionTargets = buildMentionRoster(memberships)
 
   // Mirror /clients/[id]/page.tsx: role-filtered option lists plus enriched
@@ -454,13 +449,11 @@ export default async function BatchDetailPage({
         )}
         {isLive && canAct && (
           <>
-            {canGenerateContent && !isLocked && batch.currentStep !== RelayStep.final_qa_schedule && (
-              <GenerateContentDialog
-                clientId={client.id}
-                targetMonth={targetMonth}
-                lockMonth
-              />
-            )}
+            {/* Generate Content is intentionally NOT offered inside an active
+                relay: in-relay it only did a full destructive regenerate of
+                this month's posts. Content is refined per-post (Regenerate
+                caption with AI) or via revisions; a true restart is Archive +
+                generate again from the client page (month picker). */}
             {run && posts.length > 0 && (
               <ExportButton
                 posts={posts.map((p) => ({
