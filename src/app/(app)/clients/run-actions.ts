@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, requireGenerationTrigger } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import {
   archiveContentRun,
@@ -43,7 +43,7 @@ export async function regenerateContentRun(
   clientId: string,
   targetMonth: string
 ) {
-  const ctx = await requireClientEditor()
+  const ctx = await requireGenerationTrigger()
 
   const client = await findClientForUser(ctx, clientId)
   if (!client) throw new Error('Client not found')
@@ -101,7 +101,7 @@ export async function bulkGenerateContent(
   items: { clientId: string; reCrawl: boolean }[],
   targetMonth: string,
 ): Promise<{ clientId: string; clientName: string; contentRunId?: string; error?: string }[]> {
-  const ctx = await requireClientEditor()
+  const ctx = await requireGenerationTrigger()
 
   const results: { clientId: string; clientName: string; contentRunId?: string; error?: string }[] = []
 

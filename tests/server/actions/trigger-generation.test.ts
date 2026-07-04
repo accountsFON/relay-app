@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/server/middleware/permissions', () => ({
-  requireClientEditor: vi.fn(),
+  requireGenerationTrigger: vi.fn(),
 }))
 vi.mock('@/server/repositories/clients', () => ({
   findClientForUser: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock('@/server/jobs/generateContent', () => ({
   generateContentTask: { trigger: triggerMock },
 }))
 
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireGenerationTrigger } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findExistingRun, createContentRun } from '@/server/repositories/contentRuns'
 import { db } from '@/db/client'
@@ -30,7 +30,7 @@ import { triggerGeneration } from '@/app/(app)/clients/[id]/generate/actions'
 describe('triggerGeneration -- persists the trigger handle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(requireClientEditor).mockResolvedValue({ userDbId: 'u1' } as never)
+    vi.mocked(requireGenerationTrigger).mockResolvedValue({ userDbId: 'u1' } as never)
     vi.mocked(findClientForUser).mockResolvedValue({ id: 'c1', autoCrawl: 'never', crawledData: null, onboardingCompletedAt: new Date('2026-01-01') } as never)
     vi.mocked(findExistingRun).mockResolvedValue(null as never)
     vi.mocked(createContentRun).mockResolvedValue({ id: 'run-1' } as never)

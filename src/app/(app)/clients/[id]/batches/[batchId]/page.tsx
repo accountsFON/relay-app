@@ -1,5 +1,5 @@
 import { RelayStep } from '@prisma/client'
-import { requireClientViewer, canEditClients, canUploadPostMedia, canComment } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients, canTriggerGeneration, canUploadPostMedia, canComment } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -179,6 +179,10 @@ export default async function BatchDetailPage({
   // Cost breakdown is spend-sensitive: admins + platform owner only. AMs,
   // designers, and clients do not see it.
   const canViewCost = can(ctx, 'cost.viewAll')
+  // Generation gate (generation.trigger), applied alongside the baton-holder
+  // check so a non-generating holder (or a user with the toggle off) never
+  // sees the Generate Content dialog. Same default holders as client.edit.
+  const canGenerateContent = canTriggerGeneration(ctx)
   const mentionTargets = buildMentionRoster(memberships)
 
   // Mirror /clients/[id]/page.tsx: role-filtered option lists plus enriched
@@ -450,7 +454,7 @@ export default async function BatchDetailPage({
         )}
         {isLive && canAct && (
           <>
-            {!isLocked && batch.currentStep !== RelayStep.final_qa_schedule && (
+            {canGenerateContent && !isLocked && batch.currentStep !== RelayStep.final_qa_schedule && (
               <GenerateContentDialog
                 clientId={client.id}
                 targetMonth={targetMonth}

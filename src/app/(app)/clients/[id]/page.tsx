@@ -1,6 +1,7 @@
 import {
   requireClientViewer,
   canEditClients,
+  canTriggerGeneration,
   canComment,
 } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
@@ -76,6 +77,10 @@ export default async function ClientDetailPage({
     listMembershipsForOrg(ctx.organizationDbId),
   ])
   const canEdit = canEditClients(ctx)
+  // Generation surfaces gate on generation.trigger, not client.edit, so the
+  // permissions-editor toggle actually removes generate access. Same default
+  // holders as client.edit (admin + AM), so no change for standard roles.
+  const canGenerateContent = canTriggerGeneration(ctx)
   // The thread composer gates on the narrow client.comment permission
   // (admin / AM / designer), NOT client.edit — designers must be able to post
   // thread comments even though they can't edit client profiles. Mirrors the
@@ -137,12 +142,14 @@ export default async function ClientDetailPage({
           <>
             {isLive && (
               <>
-                <GenerateContentDialog
-                  clientId={client.id}
-                  targetMonth={getNextMonth()}
-                  disabled={!onboardingComplete}
-                  disabledReason="Complete onboarding first"
-                />
+                {canGenerateContent && (
+                  <GenerateContentDialog
+                    clientId={client.id}
+                    targetMonth={getNextMonth()}
+                    disabled={!onboardingComplete}
+                    disabledReason="Complete onboarding first"
+                  />
+                )}
                 <ArchiveClientButton clientId={client.id} clientName={client.name} />
               </>
             )}
@@ -206,7 +213,7 @@ export default async function ClientDetailPage({
             <ActiveBatchesSection
               clientId={client.id}
               viewerUserId={ctx.userDbId}
-              canGenerate={canEdit && isLive}
+              canGenerate={canGenerateContent && isLive}
               onboardingComplete={onboardingComplete}
             />
           </div>

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/server/middleware/permissions', () => ({
-  requireClientEditor: vi.fn(),
+  requireGenerationTrigger: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/clients', () => ({
@@ -16,7 +16,7 @@ vi.mock('@/app/(app)/clients/[id]/generate/actions', () => ({
   triggerGeneration: vi.fn(),
 }))
 
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireGenerationTrigger } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findMatchingBatchForClientMonth } from '@/server/repositories/contentRuns'
 import { triggerGeneration } from '@/app/(app)/clients/[id]/generate/actions'
@@ -40,7 +40,7 @@ const TARGET_MONTH = '2026-05'
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(requireClientEditor).mockResolvedValue(mockCtx as never)
+  vi.mocked(requireGenerationTrigger).mockResolvedValue(mockCtx as never)
   // Default: onboarded client so existing tests continue to reach the batch/fire logic
   vi.mocked(findClientForUser).mockResolvedValue({
     id: CLIENT_ID,
@@ -53,6 +53,15 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('generateContentAction — auth & client lookup', () => {
+  it('gates on generation.trigger (not client.edit) before any work', async () => {
+    await generateContentAction({
+      kind: 'probe',
+      clientId: CLIENT_ID,
+      targetMonth: TARGET_MONTH,
+    })
+    expect(requireGenerationTrigger).toHaveBeenCalled()
+  })
+
   it('returns error when client not found for user', async () => {
     vi.mocked(findClientForUser).mockResolvedValueOnce(null)
     const result = await generateContentAction({

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientEditor: vi.fn(),
+  requireGenerationTrigger: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/contentRuns', () => ({
@@ -36,7 +37,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, requireGenerationTrigger } from '@/server/middleware/permissions'
 import {
   archiveContentRun,
   createContentRun,
@@ -67,6 +68,7 @@ const mockCtx = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireClientEditor).mockResolvedValue(mockCtx)
+  vi.mocked(requireGenerationTrigger).mockResolvedValue(mockCtx)
   vi.mocked(findClientForUser).mockResolvedValue({
     id: 'client_1',
     name: 'Client One',
@@ -77,6 +79,22 @@ beforeEach(() => {
   // override this.
   vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue(null)
   generateTriggerMock.mockResolvedValue({ id: 'trigger_handle_1' })
+})
+
+describe('generation gate (generation.trigger, not client.edit)', () => {
+  it('regenerateContentRun gates on requireGenerationTrigger', async () => {
+    vi.mocked(db.contentRun.findMany).mockResolvedValue([] as never)
+    await regenerateContentRun('client_1', '2026-05')
+    expect(requireGenerationTrigger).toHaveBeenCalled()
+    expect(requireClientEditor).not.toHaveBeenCalled()
+  })
+
+  it('bulkGenerateContent gates on requireGenerationTrigger', async () => {
+    vi.mocked(findExistingRun).mockResolvedValue(null as never)
+    await bulkGenerateContent([{ clientId: 'client_1', reCrawl: false }], '2026-05')
+    expect(requireGenerationTrigger).toHaveBeenCalled()
+    expect(requireClientEditor).not.toHaveBeenCalled()
+  })
 })
 
 describe('regenerateContentRun: soft-delete displacement (Phase 4)', () => {

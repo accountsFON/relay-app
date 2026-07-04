@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientEditor: vi.fn(),
+  requireGenerationTrigger: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/contentRuns', () => ({
@@ -26,7 +27,7 @@ vi.mock('@/db/client', () => ({
   },
 }))
 
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, requireGenerationTrigger } from '@/server/middleware/permissions'
 import {
   archiveContentRun,
   createContentRun,
@@ -69,6 +70,25 @@ const mockInScopeRun = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireClientEditor).mockResolvedValue(mockCtx)
+  vi.mocked(requireGenerationTrigger).mockResolvedValue(mockCtx)
+})
+
+describe('triggerGeneration — generation gate', () => {
+  it('gates on requireGenerationTrigger (not client.edit)', async () => {
+    vi.mocked(findClientForUser).mockResolvedValue({
+      id: 'client_1',
+      onboardingCompletedAt: new Date('2026-01-01'),
+      autoCrawl: 'never',
+      crawledData: null,
+    } as never)
+    vi.mocked(findExistingRun).mockResolvedValue(null as never)
+    vi.mocked(createContentRun).mockResolvedValue({ id: 'run_new' } as never)
+
+    await triggerGeneration('client_1', '2026-05')
+
+    expect(requireGenerationTrigger).toHaveBeenCalled()
+    expect(requireClientEditor).not.toHaveBeenCalled()
+  })
 })
 
 describe('getRunStatus', () => {

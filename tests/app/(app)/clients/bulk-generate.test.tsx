@@ -45,6 +45,29 @@ const notOnboardedClient = {
   onboardingComplete: false,
 }
 
+describe('BulkGenerateList — generation.trigger gate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders selection checkboxes when canGenerate is true (default)', () => {
+    render(<BulkGenerateList clients={[onboardedClient]} />)
+    expect(screen.getByLabelText(/select onboarded client/i)).toBeTruthy()
+  })
+
+  it('hides all selection checkboxes when canGenerate is false', () => {
+    render(<BulkGenerateList clients={[onboardedClient]} canGenerate={false} />)
+    expect(screen.queryByLabelText(/select onboarded client/i)).toBeNull()
+    // The list still renders the client as a navigable row.
+    expect(screen.getByText('Onboarded Client')).toBeTruthy()
+  })
+
+  it('hides the "Select all active" control when canGenerate is false', () => {
+    render(<BulkGenerateList clients={[onboardedClient]} canGenerate={false} />)
+    expect(screen.queryByText(/select all active/i)).toBeNull()
+  })
+})
+
 describe('BulkGenerateList — onboarding gate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
