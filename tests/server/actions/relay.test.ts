@@ -28,6 +28,10 @@ vi.mock('@/server/repositories/threads', () => ({
   bulkResolveOnPost: vi.fn(),
 }))
 
+vi.mock('@/server/lib/notifyHolderOfBatonHandoff', () => ({
+  notifyHolderOfBatonHandoff: vi.fn(),
+}))
+
 vi.mock('@/db/client', () => ({
   db: {
     batch: { findUnique: vi.fn(), update: vi.fn() },
@@ -51,6 +55,7 @@ import {
   markDesignRevisionsDone,
 } from '@/server/services/relay'
 import { bulkResolveOnPost } from '@/server/repositories/threads'
+import { notifyHolderOfBatonHandoff } from '@/server/lib/notifyHolderOfBatonHandoff'
 import {
   passBatonAction,
   sendBackBatonAction,
@@ -108,6 +113,47 @@ beforeEach(() => {
   vi.mocked(markDesignRevisionsDone).mockResolvedValue({
     batchId: 'b1',
     subState: null,
+  })
+})
+
+describe('baton handoff email notification', () => {
+  it('passBatonAction emails the new holder (direction forward) after a successful pass', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    mockBatch('u_actor')
+
+    await passBatonAction({ batchId: 'b1', toStep: RelayStep.in_design })
+
+    expect(notifyHolderOfBatonHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        batchId: 'b1',
+        newHolderId: 'u_designer',
+        actorId: 'u_actor',
+        toStep: RelayStep.in_design,
+        direction: 'forward',
+      }),
+    )
+  })
+
+  it('sendBackBatonAction emails the new holder (direction back) with the reason', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    mockBatch('u_actor')
+
+    await sendBackBatonAction({
+      batchId: 'b1',
+      toStep: RelayStep.in_design,
+      reason: 'Please redo post 3',
+    })
+
+    expect(notifyHolderOfBatonHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        batchId: 'b1',
+        newHolderId: 'u_designer',
+        actorId: 'u_actor',
+        toStep: RelayStep.in_design,
+        direction: 'back',
+        reason: 'Please redo post 3',
+      }),
+    )
   })
 })
 
