@@ -16,6 +16,7 @@ import {
 } from '@/server/services/relay'
 import { legalNextSteps } from '@/server/lib/relay-state-machine'
 import { canOverrideHolder } from '@/lib/relay-holder-override'
+import { notifyHolderOfBatonHandoff } from '@/server/lib/notifyHolderOfBatonHandoff'
 
 /**
  * Cheap scoped lookup used by the action-layer holder gate. Throws the
@@ -100,6 +101,15 @@ export async function passBatonAction(input: {
     wasOverride: isOverride,
   })
   revalidateBatchSurfaces(holder.clientId, input.batchId)
+  // Post-commit, best-effort: email the new holder that it's their turn.
+  await notifyHolderOfBatonHandoff({
+    batchId: input.batchId,
+    clientId: holder.clientId,
+    newHolderId: result.newHolderId,
+    actorId: ctx.userDbId,
+    toStep: input.toStep,
+    direction: 'forward',
+  })
   return result
 }
 
@@ -167,6 +177,17 @@ export async function sendBackBatonAction(input: {
     wasOverride: isOverride,
   })
   revalidateBatchSurfaces(holder.clientId, input.batchId)
+  // Post-commit, best-effort: email the new holder that the relay bounced
+  // back to them for re-review , the case Caleb flagged (no email today).
+  await notifyHolderOfBatonHandoff({
+    batchId: input.batchId,
+    clientId: holder.clientId,
+    newHolderId: result.newHolderId,
+    actorId: ctx.userDbId,
+    toStep: input.toStep,
+    direction: 'back',
+    reason: input.reason,
+  })
   return result
 }
 
