@@ -28,6 +28,23 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-03 — Remove Generate Content from inside an active relay** (PR #306, `61e4304`)
+  In-relay, the Generate Content button was locked to the relay's own month and did only a full
+  **destructive regenerate** (overwrite every post) — a mid-relay footgun that throws away
+  design/review/revision work. Removed it from the batch page. **Nothing stranded:** per-post
+  "Regenerate caption with AI" (`redoPostAction`) stays for content refresh; a full regenerate for any
+  month is still reachable from the client detail page's Generate dialog (which has a month picker, not
+  month-locked, same Replace flow); Archive stays as the explicit restart path. The onboarding tour's
+  `generate-content` anchor lives on the client detail route (`CLIENT_DETAIL_STOPS` → "Start a relay
+  here"), so it's unaffected and now more consistent. Supporting facts: every other Generate mount
+  targets *next* month (new relay); the batch page was the only month-locked one; `regenerateContentRun`
+  is dead code (zero UI). Removed the `GenerateContentDialog` block + now-unused `canTriggerGeneration`
+  import/derivation from the batch page; test flipped "renders when holder can generate" → "never on the
+  batch page". 2388 unit tests, tsc + `next build` clean. No `src/server/jobs/**` change →
+  `detect-pipeline-changes` + Trigger.dev deploy SKIPPED. From Caleb's "confirm role-scoped views"
+  review recording (~6:52). Built on PR #305 (which had just wired `generation.trigger` onto this same
+  button).
+
 - [x] **2026-07-03 — Enforce `generation.trigger` on every generation surface** (PR #305, `f0ce0c8`)
   Wired up the previously **dead** `generation.trigger` permission key. It was defined + labeled in
   the permissions editor but enforced nowhere — every generate surface actually gated on `client.edit`,
