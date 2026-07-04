@@ -28,14 +28,25 @@ function getNextMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-export function BulkGenerateList({ clients }: { clients: Client[] }) {
+export function BulkGenerateList({
+  clients,
+  canGenerate = true,
+}: {
+  clients: Client[]
+  canGenerate?: boolean
+}) {
   const [selected, setSelected] = useState<Map<string, { reCrawl: boolean }>>(new Map())
   const [targetMonth, setTargetMonth] = useState(getNextMonth)
   const [submittedRunIds, setSubmittedRunIds] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
   const { runs, refresh } = useInFlightRuns()
 
-  const activeClients = clients.filter((c) => c.status === 'active' && !c.isArchived && c.onboardingComplete)
+  // Without generation.trigger the generate affordance is hidden entirely:
+  // nothing is selectable, so the select-all row and the generate bar never
+  // render. The list below stays as plain navigable client rows.
+  const activeClients = canGenerate
+    ? clients.filter((c) => c.status === 'active' && !c.isArchived && c.onboardingComplete)
+    : []
 
   const toggleClient = (id: string) => {
     setSelected((prev) => {
@@ -180,7 +191,7 @@ export function BulkGenerateList({ clients }: { clients: Client[] }) {
               className={`flex items-center${isArchived ? ' opacity-50 grayscale' : ''}`}
             >
               <div className="pl-5 shrink-0 flex items-center gap-3">
-                {isSelectable ? (
+                {canGenerate && isSelectable ? (
                   <BrandCheckbox
                     checked={isSelected}
                     onChange={() => toggleClient(client.id)}

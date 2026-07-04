@@ -1,6 +1,6 @@
 'use server'
 
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, requireGenerationTrigger } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import {
   archiveContentRun,
@@ -16,7 +16,7 @@ export async function triggerGeneration(
   reCrawl?: boolean,
   opts?: { targetBatchId?: string | null },
 ) {
-  const ctx = await requireClientEditor()
+  const ctx = await requireGenerationTrigger()
 
   const client = await findClientForUser(ctx, clientId)
   if (!client) throw new Error('Client not found')

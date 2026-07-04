@@ -41,6 +41,10 @@ export default async function ClientsPage({
   // Creating / importing clients is agency-admin-only by default (client.create),
   // separate from client.edit which AMs keep for editing existing clients.
   const canCreate = can(ctx, 'client.create')
+  // Bulk generate triggers the pipeline, so it gates on generation.trigger
+  // (admin + AM by default), not client.view. When false the selection
+  // checkboxes + generate bar are hidden and the list stays navigable.
+  const canGenerate = can(ctx, 'generation.trigger')
 
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
@@ -87,6 +91,7 @@ export default async function ClientsPage({
           </div>
         ) : (
           <BulkGenerateList
+            canGenerate={canGenerate}
             clients={clients.map((c) => ({
               id: c.id,
               name: c.name,

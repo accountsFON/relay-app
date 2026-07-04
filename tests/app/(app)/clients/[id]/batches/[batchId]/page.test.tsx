@@ -16,6 +16,7 @@ vi.mock('@/server/auth/access', () => ({
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
   canEditClients: vi.fn(),
+  canTriggerGeneration: vi.fn(),
   canUploadPostMedia: vi.fn(),
   canComment: vi.fn(),
 }))
@@ -233,6 +234,7 @@ import { NECTR_CRM_URL } from '@/lib/nectr'
 import {
   requireClientViewer,
   canEditClients,
+  canTriggerGeneration,
   canUploadPostMedia,
   canComment,
 } from '@/server/middleware/permissions'
@@ -321,6 +323,7 @@ describe('BatchDetailPage', () => {
     vi.clearAllMocks()
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtx)
     vi.mocked(canEditClients).mockReturnValue(true)
+    vi.mocked(canTriggerGeneration).mockReturnValue(true)
     vi.mocked(canUploadPostMedia).mockReturnValue(false)
     vi.mocked(canComment).mockReturnValue(false)
     vi.mocked(findClientForUser).mockResolvedValue(mockClient as never)
@@ -331,6 +334,22 @@ describe('BatchDetailPage', () => {
     vi.mocked(db.user.findUnique).mockResolvedValue(null as never)
     vi.mocked(db.user.findMany).mockResolvedValue([] as never)
     vi.mocked(db.client.findUnique).mockResolvedValue(null as never)
+  })
+
+  // ---- Generate Content gating (generation.trigger) ----
+
+  describe('GenerateContentDialog visibility by generation.trigger', () => {
+    it('renders the dialog for a holder who can trigger generation', async () => {
+      vi.mocked(canTriggerGeneration).mockReturnValue(true)
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('generate-content-dialog-stub')).not.toBeNull()
+    })
+
+    it('hides the dialog when the viewer lacks generation.trigger, even as holder', async () => {
+      vi.mocked(canTriggerGeneration).mockReturnValue(false)
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('generate-content-dialog-stub')).toBeNull()
+    })
   })
 
   // ---- Cost breakdown role gating ----

@@ -39,6 +39,20 @@ export async function requireClientViewer() {
   return requireCan('client.view')
 }
 
+// Generation gate. Every surface that can cause the AI pipeline to run
+// (the Generate Content dialog, bulk generate, re-run, the legacy /generate
+// route) enforces `generation.trigger`, NOT `client.edit`. They previously
+// gated on client.edit, which left `generation.trigger` a dead, unenforced
+// key in the permissions editor. admin + account_manager hold it by default;
+// designer + client do not. Toggling it per-user now actually removes access.
+export async function requireGenerationTrigger() {
+  return requireCan('generation.trigger')
+}
+
+export function canTriggerGeneration(ctx: OrgContext): boolean {
+  return can(ctx, 'generation.trigger')
+}
+
 export function canEditClients(ctx: OrgContext): boolean {
   return can(ctx, 'client.edit')
 }

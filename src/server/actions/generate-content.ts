@@ -1,6 +1,6 @@
 'use server'
 
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireGenerationTrigger } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findMatchingBatchForClientMonth } from '@/server/repositories/contentRuns'
 import { triggerGeneration } from '@/app/(app)/clients/[id]/generate/actions'
@@ -30,7 +30,7 @@ export type GenerateContentResult =
 export async function generateContentAction(
   input: GenerateContentInput,
 ): Promise<GenerateContentResult> {
-  const ctx = await requireClientEditor()
+  const ctx = await requireGenerationTrigger()
   const client = await findClientForUser(ctx, input.clientId)
   if (!client) return { kind: 'error', message: 'Client not found' }
 

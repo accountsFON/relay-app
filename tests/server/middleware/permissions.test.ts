@@ -3,6 +3,7 @@ import type { OrgContext, UserRole } from '@/lib/types'
 import {
   canEditClients,
   canViewClients,
+  canTriggerGeneration,
 } from '@/server/middleware/permissions'
 
 function makeCtx(role: UserRole): OrgContext {
@@ -36,6 +37,32 @@ describe('canEditClients', () => {
 
   it('returns false for client', () => {
     expect(canEditClients(makeCtx('client'))).toBe(false)
+  })
+})
+
+describe('canTriggerGeneration', () => {
+  it('returns true for admin', () => {
+    expect(canTriggerGeneration(makeCtx('admin'))).toBe(true)
+  })
+
+  it('returns true for account_manager', () => {
+    expect(canTriggerGeneration(makeCtx('account_manager'))).toBe(true)
+  })
+
+  it('returns false for designer', () => {
+    expect(canTriggerGeneration(makeCtx('designer'))).toBe(false)
+  })
+
+  it('returns false for client', () => {
+    expect(canTriggerGeneration(makeCtx('client'))).toBe(false)
+  })
+
+  it('honors a per-user override that revokes generation from an AM', () => {
+    const ctx = makeCtx('account_manager')
+    ctx.permissionOverrides = { 'generation.trigger': false }
+    expect(canTriggerGeneration(ctx)).toBe(false)
+    // client.edit is unaffected — the AM keeps other editing rights.
+    expect(canEditClients(ctx)).toBe(true)
   })
 })
 
