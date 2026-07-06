@@ -5,10 +5,21 @@
  * Runs the passed server action (sets awaiting_design_revisions + notifies the
  * assigned designer; the batch stays at am_review_design, AM-held), then shows
  * a clear confirmation that the designer was notified.
+ *
+ * Clicking "Request changes" opens a confirmation modal. The action only fires
+ * after the AM clicks "Yes, request changes" inside the modal.
  */
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export interface RequestChangesButtonProps {
   /** Server action that sets awaiting_design_revisions + notifies designer. */
@@ -26,8 +37,10 @@ export function RequestChangesButton({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
+  const [open, setOpen] = useState(false)
 
-  function handleClick() {
+  function confirmRequest() {
+    setOpen(false)
     setError(null)
     startTransition(async () => {
       try {
@@ -46,7 +59,7 @@ export function RequestChangesButton({
       <Button
         variant="outline"
         size="default"
-        onClick={handleClick}
+        onClick={() => setOpen(true)}
         disabled={disabled || isPending || sent}
         data-testid="request-changes-button"
       >
@@ -71,6 +84,34 @@ export function RequestChangesButton({
           {error}
         </p>
       )}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request changes?</DialogTitle>
+            <DialogDescription>
+              {designerName
+                ? `This will notify ${designerName} that you've completed your feedback.`
+                : `This will notify the designer that you've completed your feedback.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              data-testid="request-changes-cancel"
+            >
+              No, go back and add notes
+            </Button>
+            <Button
+              variant="default"
+              onClick={confirmRequest}
+              data-testid="request-changes-confirm"
+            >
+              Yes, request changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
