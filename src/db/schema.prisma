@@ -187,6 +187,7 @@ model Organization {
   memberships         Membership[]
   trashAuditLogs      TrashAuditLog[]
   impersonationLogs   ImpersonationLog[]
+  designerGateAcks    DesignerGateAck[]
 
   @@map("organizations")
 }
@@ -245,6 +246,7 @@ model User {
   internalReviewSessions ReviewSession[]      @relation("InternalReviewer")
   designerFlagsCreated   DesignerFlag[]       @relation("DesignerFlagCreator")
   designerFlagsDone      DesignerFlag[]       @relation("DesignerFlagDoneBy")
+  designerGateAcks       DesignerGateAck[]
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -524,6 +526,7 @@ model Batch {
   magicLinks            MagicLink[]
   reviewSessions        ReviewSession[]
   designerFlags         DesignerFlag[]
+  designerGateAcks      DesignerGateAck[]
 
   @@index([clientId, currentStep])
   @@index([currentHolder, currentStep])
@@ -905,4 +908,20 @@ model DesignerFlag {
   @@index([threadId])
   @@index([reviewItemId])
   @@map("designer_flags")
+}
+
+model DesignerGateAck {
+  id             String   @id @default(cuid())
+  organizationId String
+  batchId        String
+  userId         String
+  acknowledgedAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  batch        Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, userId])
+  @@index([organizationId])
+  @@map("designer_gate_acks")
 }

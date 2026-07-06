@@ -3,6 +3,7 @@ import { requireClientViewer, canEditClients, canUploadPostMedia, canComment } f
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
+import { hasDesignerGateAck } from '@/server/repositories/designerGateAcks'
 import {
   listActivityForClient,
   visibilityForViewer,
@@ -65,9 +66,18 @@ import { RestoreBatchBanner } from '@/components/relay/restore-batch-button'
 import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
 import { RelayCompletedBanner } from '@/components/relay/relay-completed-banner'
 import { isRelayLocked } from '@/lib/relay-lock'
+import { DesignerOnboardingGate } from '@/components/relay/designer-onboarding-gate'
 import { cn } from '@/lib/utils'
 import { Palette, ExternalLink, Eye } from 'lucide-react'
 import Link from 'next/link'
+
+// Designer onboarding gate (P0 #1): the two designer-held steps where a
+// designer must review the client profile + brand guide once per relay before
+// the workspace unlocks.
+const DESIGNER_GATE_STEPS: RelayStep[] = [
+  RelayStep.in_design,
+  RelayStep.implementing_revisions,
+]
 
 export default async function BatchDetailPage({
   params,
@@ -97,6 +107,19 @@ export default async function BatchDetailPage({
   // findBatch now uses withArchived() so archived batches still load.
   let batch = await findBatch(batchId)
   if (!batch || batch.clientId !== client.id) redirectAccessDenied()
+
+  // Designer onboarding gate (P0 #1): a designer opening a relay at a designer
+  // step must review the client profile + brand guide once per relay before the
+  // workspace unlocks. Acknowledged state lives in DesignerGateAck. Short-circuit
+  // here, before the client auto-advance block and the expensive Promise.all.
+  if (
+    ctx.role === 'designer' &&
+    !batch.deletedAt &&
+    DESIGNER_GATE_STEPS.includes(batch.currentStep) &&
+    !(await hasDesignerGateAck(ctx.organizationDbId, batch.id, ctx.userDbId))
+  ) {
+    return <DesignerOnboardingGate client={client} batchId={batch.id} />
+  }
 
   // Spec § Verification step 9: client opening at sent_to_client auto-advances
   // to client_decision. Best-effort; failure logs and renders prior step.
