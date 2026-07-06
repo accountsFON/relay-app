@@ -1,6 +1,11 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { requireClientViewer, canEditClients, canComment } from '@/server/middleware/permissions'
+import {
+  requireClientViewer,
+  canEditClients,
+  canComment,
+  canUploadPostMedia,
+} from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -70,6 +75,10 @@ export default async function BatchPreviewPage({
   const isAssignedDesigner =
     !canEdit && ctx.userDbId === client.assignedDesignerId
   const isLocked = isRelayLocked(batch.currentStep)
+  // Drag/click "Replace image" affordance on the internal surface. Gated on the
+  // `post.media.edit` permission (admin/AM/designer true, client false) and
+  // suppressed once the relay is locked, matching the image-upload suppression.
+  const canReplaceImage = canUploadPostMedia(ctx) && !isLocked
 
   const posts = await db.post.findMany({
     where: { batchId: batch.id, deletedAt: null },
@@ -211,6 +220,7 @@ export default async function BatchPreviewPage({
             posts={feedPosts}
             canEditCaption={canEdit}
             allowPostPins={canEdit}
+            canReplaceImage={canReplaceImage}
             locked={isLocked}
             amControlsSlot={amControlsSlot}
             designerControlsSlot={designerControlsSlot}

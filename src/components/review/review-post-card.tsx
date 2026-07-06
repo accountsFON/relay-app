@@ -110,6 +110,15 @@ export type ReviewPostCardProps = {
    */
   allowPostPins?: boolean
   /**
+   * AM-only (internal mode). When true, the embedded IG/FB chrome offers the
+   * drag/click "Replace image" affordance over the post media. Gated upstream
+   * on the `post.media.edit` permission (admin/AM/designer true, client false).
+   * Defaults to false so existing callers (and the client review surface) are
+   * unchanged. Forwarded to the platform post as `canReplaceImage`; the pin
+   * signal it composes with is `pinsActive`, wired here to `allowPostPins`.
+   */
+  canReplaceImage?: boolean
+  /**
    * Transient disable (e.g. an in-flight save) — greys the verdict row and the
    * Notes field. Pins/threads stay live.
    */
@@ -174,6 +183,7 @@ export function ReviewPostCard({
   mode,
   canEditCaption = true,
   allowPostPins = true,
+  canReplaceImage = false,
   onDecisionChange,
   onCommentChange,
   onCaptionEditSave,
@@ -391,6 +401,8 @@ export function ReviewPostCard({
         client={{ name: clientName, avatarUrl: clientAvatarUrl ?? null }}
         threads={threads ?? []}
         mode={mode}
+        canReplaceImage={canReplaceImage}
+        pinsActive={allowPostPins}
         onCreateThread={onCreatePin}
         onComment={onAppendThreadComment}
         onUploadImage={onUploadImage}

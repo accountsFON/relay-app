@@ -66,6 +66,7 @@ const BASE_PROPS = {
 
 function renderShell(overrides: Partial<typeof BASE_PROPS & {
   canEditCaption?: boolean
+  canReplaceImage?: boolean
   locked?: boolean
   amControlsSlot?: React.ReactNode
   designerControlsSlot?: React.ReactNode
@@ -113,6 +114,20 @@ describe('InternalReviewShell', () => {
   it('renders the AM control slot when provided', () => {
     renderShell({ amControlsSlot: <button>Request changes</button> })
     expect(screen.getByRole('button', { name: 'Request changes' })).toBeInTheDocument()
+  })
+
+  it('passes canReplaceImage=true to every card when canReplaceImage=true', () => {
+    renderShell({ canReplaceImage: true })
+    for (const post of POSTS) {
+      expect(cardProps[post.post.id].canReplaceImage).toBe(true)
+    }
+  })
+
+  it('defaults canReplaceImage to false on every card when not provided', () => {
+    renderShell()
+    for (const post of POSTS) {
+      expect(cardProps[post.post.id].canReplaceImage).toBe(false)
+    }
   })
 
   describe('locked relay (completed step)', () => {

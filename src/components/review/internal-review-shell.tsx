@@ -91,6 +91,13 @@ export type InternalReviewShellProps = {
    */
   allowPostPins?: boolean
   /**
+   * When true, the embedded post chrome offers the "Replace image" affordance
+   * (drag/click to swap the post media). Gated upstream on `post.media.edit`
+   * (admin/AM/designer true, client false). Defaults to false. Forwarded to
+   * each ReviewPostCard as `canReplaceImage`.
+   */
+  canReplaceImage?: boolean
+  /**
    * When true, the relay is completed and locked. Caption editing and image
    * uploads are suppressed. Pins, threads, and comments remain open.
    * Defaults to false.
@@ -120,6 +127,7 @@ export function InternalReviewShell({
   posts,
   canEditCaption = true,
   allowPostPins = true,
+  canReplaceImage = false,
   locked = false,
   amControlsSlot,
   designerControlsSlot,
@@ -316,6 +324,7 @@ export function InternalReviewShell({
                       mode="internal"
                       canEditCaption={canEditCaption && !locked}
                       allowPostPins={allowPostPins}
+                      canReplaceImage={canReplaceImage}
                       onCommentChange={() => Promise.resolve(true)}
                       onCaptionEditSave={
                         canEditCaption && !locked
