@@ -16,6 +16,7 @@ import { MarkupOverlay, type OverlayPin } from './markup-overlay'
 import { CaptionMarkup, type CaptionPin } from './caption-markup'
 import { PinPopover, type PinPopoverThread } from './pin-popover'
 import { PinDraftComposer } from './pin-draft-composer'
+import { usePostImageReplace } from '@/components/preview/post-image-replace'
 
 type DraftPin = {
   pin: PinLocation
@@ -66,7 +67,9 @@ export function FacebookPost(props: FeedPostProps) {
     onEditCaption,
     suppressInlinePopover = false,
     mentionRoster = [],
+    canReplaceImage,
   } = props
+  const imageReplace = usePostImageReplace({ postId: post.id })
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
@@ -359,7 +362,7 @@ export function FacebookPost(props: FeedPostProps) {
       {/* Image renders at the photo's natural aspect ratio (FB has no hard
           clamp). Falls back to 1.91:1 landscape while loading or when
           mediaUrl is null. */}
-      <div className="relative">
+      <div className="relative" {...(canReplaceImage ? imageReplace.dragProps : {})}>
         {post.mediaUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -408,6 +411,8 @@ export function FacebookPost(props: FeedPostProps) {
           onCreatePin={handleCreateImagePin}
           disabled={!onCreateThread}
         />
+
+        {canReplaceImage && imageReplace.overlay}
       </div>
 
       {/* Action row: Like / Comment / Share */}

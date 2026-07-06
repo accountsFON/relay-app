@@ -49,6 +49,8 @@ export type FeedPostProps = {
   }>;
   // 'internal' = AM Clerk-authenticated; 'review' = magic-link client view
   mode: 'internal' | 'review';
+  /** Media editor may replace the post image in place (drop + pick). */
+  canReplaceImage?: boolean;
   // Callbacks the host page wires up (Layer 2)
   // onCreateThread: drop a new thread (image pin, caption-range, or post-level).
   // When omitted, the markup overlay + caption selection composer do not drop

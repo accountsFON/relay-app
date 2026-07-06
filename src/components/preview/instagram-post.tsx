@@ -16,6 +16,7 @@ import { MarkupOverlay, type OverlayPin } from './markup-overlay'
 import { CaptionMarkup, type CaptionPin } from './caption-markup'
 import { PinPopover, type PinPopoverThread } from './pin-popover'
 import { PinDraftComposer } from './pin-draft-composer'
+import { usePostImageReplace } from '@/components/preview/post-image-replace'
 
 type DraftPin = {
   pin: PinLocation
@@ -82,7 +83,9 @@ export function InstagramFeedPost({
   onEditCaption,
   suppressInlinePopover = false,
   mentionRoster = [],
+  canReplaceImage,
 }: FeedPostProps) {
+  const imageReplace = usePostImageReplace({ postId: post.id })
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
@@ -281,6 +284,7 @@ export function InstagramFeedPost({
         className="relative w-full overflow-hidden bg-[#fafafa]"
         style={{ aspectRatio: displayAspectRatio }}
         data-testid="instagram-post-media"
+        {...(canReplaceImage ? imageReplace.dragProps : {})}
       >
         {post.mediaUrl ? (
           <img
@@ -324,6 +328,8 @@ export function InstagramFeedPost({
           onCreatePin={handleCreateImagePin}
           disabled={!onCreateThread}
         />
+
+        {canReplaceImage && imageReplace.overlay}
       </div>
 
       {/* Action row */}

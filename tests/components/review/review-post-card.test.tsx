@@ -5,6 +5,18 @@ import { ReviewPostCard } from '@/components/review/review-post-card'
 import type { ReviewItemHydrated } from '@/types/review-session'
 import type { HydratedThread } from '@/server/repositories/threads'
 
+// The embedded IG/FB chrome calls usePostImageReplace unconditionally, which
+// reaches for the Next app router (not mounted in jsdom). Stub the hook exactly
+// as the platform-post tests do: the overlay stub only mounts where the chrome
+// gates it on `canReplaceImage`, so its presence proves the prop was forwarded.
+vi.mock('@/components/preview/post-image-replace', () => ({
+  usePostImageReplace: () => ({
+    dragProps: {},
+    isDragging: false,
+    overlay: <div data-testid="post-image-replace" />,
+  }),
+}))
+
 // jsdom lacks scrollIntoView; ReviewPostCard calls it when edit mode opens.
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
@@ -681,5 +693,44 @@ describe('ReviewPostCard -- allowPostPins gate', () => {
     )
     // Existing thread is rendered regardless of allowPostPins.
     expect(screen.getByTestId('post-comments-section')).toBeInTheDocument()
+  })
+})
+
+describe('ReviewPostCard -- canReplaceImage forwarding', () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+  })
+
+  it('renders the replace-image affordance when canReplaceImage=true (forwarded to the platform post)', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="internal"
+        canReplaceImage
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    // The IG chrome only mounts usePostImageReplace's overlay when
+    // canReplaceImage is threaded through.
+    expect(screen.getByTestId('post-image-replace')).toBeInTheDocument()
+  })
+
+  it('does not render the replace-image affordance when canReplaceImage is absent (defaults false)', () => {
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="internal"
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    expect(
+      screen.queryByTestId('post-image-replace'),
+    ).not.toBeInTheDocument()
   })
 })

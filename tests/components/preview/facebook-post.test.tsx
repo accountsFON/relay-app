@@ -5,6 +5,14 @@ import { FacebookPost } from '@/components/preview/facebook-post'
 import { FB_DEFAULT_ASPECT_RATIO } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps } from '@/types/preview'
 
+vi.mock('@/components/preview/post-image-replace', () => ({
+  usePostImageReplace: () => ({
+    dragProps: {},
+    isDragging: false,
+    overlay: <div data-testid="post-image-replace" />,
+  }),
+}))
+
 function fireImageLoad(img: HTMLImageElement, naturalWidth: number, naturalHeight: number) {
   Object.defineProperty(img, 'naturalWidth', { value: naturalWidth, configurable: true })
   Object.defineProperty(img, 'naturalHeight', { value: naturalHeight, configurable: true })
@@ -570,6 +578,46 @@ describe('FacebookPost', () => {
 
       await user.click(toggle)
       expect(screen.getByTestId('fb-caption').textContent).toContain('Reviewer suggested caption.')
+    })
+  })
+
+  describe('image replace overlay', () => {
+    it('renders the image-replace overlay inside the media container when canReplaceImage is set', () => {
+      render(
+        <FacebookPost
+          {...makeProps({
+            post: {
+              id: 'p',
+              caption: 'Replaceable.',
+              hashtags: [],
+              mediaUrl: 'https://example.com/img.png',
+            },
+            canReplaceImage: true,
+          })}
+        />,
+      )
+
+      const overlay = screen.getByTestId('post-image-replace')
+      expect(overlay).toBeInTheDocument()
+      // Overlay is mounted inside the media container (sibling of the <img>).
+      expect(screen.getByTestId('fb-media').parentElement?.contains(overlay)).toBe(true)
+    })
+
+    it('does NOT render the image-replace overlay when canReplaceImage is absent', () => {
+      render(
+        <FacebookPost
+          {...makeProps({
+            post: {
+              id: 'p',
+              caption: 'Not replaceable.',
+              hashtags: [],
+              mediaUrl: 'https://example.com/img.png',
+            },
+          })}
+        />,
+      )
+
+      expect(screen.queryByTestId('post-image-replace')).not.toBeInTheDocument()
     })
   })
 })
