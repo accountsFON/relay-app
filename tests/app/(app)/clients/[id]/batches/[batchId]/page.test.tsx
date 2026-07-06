@@ -36,6 +36,10 @@ vi.mock('@/components/relay/designer-onboarding-gate', () => ({
   DesignerOnboardingGate: () => <div data-testid="designer-gate" />,
 }))
 
+vi.mock('@/components/onboarding/tour-autostart', () => ({
+  TourAutostart: () => <div data-testid="tour-autostart" />,
+}))
+
 vi.mock('@/server/repositories/reviewSessions', () => ({
   listSessionsForBatch: vi.fn(),
 }))
@@ -924,6 +928,63 @@ describe('BatchDetailPage', () => {
       const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
       expect(queryByTestId('designer-gate')).toBeNull()
       expect(queryByTestId('relay-track-stub')).not.toBeNull()
+    })
+  })
+
+  // ---- Designer tour autostart (batch workspace) ----
+
+  describe('Designer tour autostart', () => {
+    it('renders the autostart in the workspace for a designer at a designer step who has acknowledged the gate', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'designer' })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'in_design',
+      } as never)
+      // Gate acknowledged -> workspace renders (not the gate short-circuit).
+      vi.mocked(hasDesignerGateAck).mockResolvedValue(true)
+
+      const { getByTestId, queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+      expect(getByTestId('tour-autostart')).not.toBeNull()
+      // Confirm the workspace (not the gate) rendered.
+      expect(queryByTestId('relay-track-stub')).not.toBeNull()
+      expect(queryByTestId('designer-gate')).toBeNull()
+    })
+
+    it('does not render the autostart for a non-designer (account manager) in the workspace', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'account_manager',
+      })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'in_design',
+      } as never)
+      vi.mocked(hasDesignerGateAck).mockResolvedValue(true)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('tour-autostart')).toBeNull()
+      expect(queryByTestId('relay-track-stub')).not.toBeNull()
+    })
+
+    it('does not render the autostart when the gate short-circuits (designer, unacknowledged)', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'designer' })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'in_design',
+      } as never)
+      // Unacknowledged -> gate short-circuits before the workspace return, so
+      // the autostart (which lives in the workspace tree) never mounts.
+      vi.mocked(hasDesignerGateAck).mockResolvedValue(false)
+
+      const { queryByTestId, getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+      expect(getByTestId('designer-gate')).not.toBeNull()
+      expect(queryByTestId('tour-autostart')).toBeNull()
     })
   })
 })
