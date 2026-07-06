@@ -18,6 +18,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 - [ ] **(follow-up) Refresh the admin force-step list** (`admin-force-step-section.tsx` `STEP_ORDER`) to the live step set — it predates the 2026-06-22 rework (omits `client_review`/`scheduling`, lists their retirees). `design_revisions` already removed.
 - [ ] **(follow-up, designer flags) DB unique constraint on `DesignerFlag(postId, threadId, reviewItemId)`** to harden the flag find-then-create against a same-instant duplicate. Idempotent today (note gets updated); a partial unique index would make it airtight.
 - [ ] **(cleanup, designer flags) Stale JSDoc on `AdvanceFromClientReviewInput.reviewSessionId`** still references the removed designer deep-link rationale (the auto `revision_images_requested` ping was deleted in #303). Tidy the comment.
+- [ ] **(follow-up, designer gate) Page test for the archived-batch skip** — the designer onboarding gate correctly skips archived relays (`!batch.deletedAt`), but that specific guard has no page-layer test. Cheap add; guard is correct today.
 
 ## Notes / standing rules
 
@@ -27,6 +28,24 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 ---
 
 ## Shipped
+
+- [x] **2026-07-06 — Designer onboarding gate (per-run mask + review checklist)** (PR #308, `7f93844`)
+  P0 #1 from the 2026-07-02 workflow test. When a **designer** opens a relay at a designer step
+  (`in_design` or `implementing_revisions`) and hasn't acknowledged yet, the batch page renders a
+  masked **DesignerOnboardingGate** (skeleton backdrop) instead of the workspace, with a two-item
+  click-to-review checklist: (1) Review client profile → in-app modal with read-only `ClientProfileView`;
+  (2) Review brand guide → opens `resolveCanvaUrl(client.canvaUrl)` (client Canva, or the agency
+  fallback folder) in a new tab. Opening a resource marks it done; both done → **Enter workspace** →
+  `acknowledgeDesignerGateAction` upserts a `DesignerGateAck`. **Once per relay per designer** (keyed
+  `batchId+userId`, so one ack covers both designer steps; a refresh/return doesn't re-gate, a new
+  relay does). Admins/AMs/clients never see it; archived relays skip it. It's a UX/render gate
+  (server-rendered), not a hard per-action lock (explicit non-goal). New additive `DesignerGateAck`
+  model + hand-authored `migrate deploy`-safe migration, org-scoped repo, designer-only org-scoped
+  action, base-ui Dialog component, batch-page branch that short-circuits before the expensive load.
+  2417 unit tests (16 new), tsc + `next build` clean; whole-branch adversarial review READY_TO_MERGE
+  (0 defects: tenant isolation, ack idempotency, trigger matrix, build-gate rules, migration safety all
+  verified). No `src/server/jobs/**` change → `detect-pipeline-changes` + Trigger.dev deploy SKIPPED.
+  Design + plan: vault `projects/relay-app/2026-07-06-designer-onboarding-gate-{design,plan}.md`.
 
 - [x] **2026-07-03 — Email the new holder when a relay's baton is passed** (PR #307, `0b79656`)
   The in-app bell fired on every baton pass but no email did, so an off-app holder never learned a
