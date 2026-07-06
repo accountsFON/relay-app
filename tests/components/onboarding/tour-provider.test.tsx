@@ -111,3 +111,36 @@ describe('TourProvider', () => {
     expect(screen.getByTestId('tour-popover')).toBeInTheDocument()
   })
 })
+
+function StartConsumer({ id }: { id: string }) {
+  const { activeTourId, startIfUnseen } = useTourController()
+  return (
+    <div>
+      <span data-testid="active">{activeTourId ?? 'none'}</span>
+      <button onClick={() => startIfUnseen(id)}>go</button>
+    </div>
+  )
+}
+
+describe('startIfUnseen', () => {
+  it('starts an unseen tour', () => {
+    render(
+      <TourProvider role="designer" seenTours={[]} onMarkSeen={() => {}}>
+        <StartConsumer id="batch-detail-v1" />
+      </TourProvider>,
+    )
+    expect(screen.getByTestId('active')).toHaveTextContent('none')
+    fireEvent.click(screen.getByRole('button', { name: 'go' }))
+    expect(screen.getByTestId('active')).toHaveTextContent('batch-detail-v1')
+  })
+
+  it('is a no-op when the tour is already seen', () => {
+    render(
+      <TourProvider role="designer" seenTours={['batch-detail-v1']} onMarkSeen={() => {}}>
+        <StartConsumer id="batch-detail-v1" />
+      </TourProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'go' }))
+    expect(screen.getByTestId('active')).toHaveTextContent('none')
+  })
+})

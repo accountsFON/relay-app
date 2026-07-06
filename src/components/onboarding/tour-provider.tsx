@@ -25,6 +25,12 @@ type TourContextValue = {
   start: (tourId: string) => void
   /** Dismiss the active tour (marks it seen). */
   dismiss: () => void
+  /**
+   * Start the tour only when it has not been seen yet AND no other tour is
+   * currently active. No-op otherwise. Used by TourAutostart for
+   * first-visit-only autofire without interfering with a tour already running.
+   */
+  startIfUnseen: (tourId: string) => void
 }
 
 const TourContext = createContext<TourContextValue | null>(null)
@@ -137,6 +143,15 @@ export function TourProvider({
     setCurrentIndex(0)
   }, [])
 
+  const startIfUnseen = useCallback(
+    (tourId: string) => {
+      if (activeTourId || seen.has(tourId)) return
+      setActiveTourId(tourId)
+      setCurrentIndex(0)
+    },
+    [activeTourId, seen],
+  )
+
   const dismiss = useCallback(() => {
     if (activeTourId) finish(activeTourId)
   }, [activeTourId, finish])
@@ -165,8 +180,9 @@ export function TourProvider({
       currentIndex,
       start,
       dismiss,
+      startIfUnseen,
     }),
-    [activeTourId, currentIndex, start, dismiss],
+    [activeTourId, currentIndex, start, dismiss, startIfUnseen],
   )
 
   return (
@@ -198,6 +214,7 @@ export function useTourController(): TourContextValue {
       currentIndex: 0,
       start: () => {},
       dismiss: () => {},
+      startIfUnseen: () => {},
     }
   }
   return ctx

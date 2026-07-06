@@ -193,7 +193,7 @@ const TOURS: TourDef[] = [
         : role === 'admin'
           ? 'Admin Walkthrough'
           : 'Account Manager Walkthrough',
-    roles: ['admin', 'account_manager', 'designer'],
+    roles: ['admin', 'account_manager'],
     homePath: '/dashboard',
     matchPath: (p) => p === '/dashboard',
     trigger: 'auto',
