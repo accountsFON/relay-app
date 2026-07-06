@@ -21,16 +21,23 @@ export interface MarkRevisionsDoneButtonProps {
   onClick: () => Promise<void>
   /** Disabled while ineligible (page should not render it then, but defend). */
   disabled?: boolean
+  /** Open-thread count across all posts in the batch. Gates the button. */
+  openThreadCount?: number
 }
 
 export function MarkRevisionsDoneButton({
   onClick,
   disabled,
+  openThreadCount,
 }: MarkRevisionsDoneButtonProps) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
+  const gatedByThreads = (openThreadCount ?? 0) > 0
+  const blocked = gatedByThreads || disabled
+
   function handleClick() {
+    if (blocked) return
     setError(null)
     startTransition(async () => {
       try {
@@ -49,11 +56,19 @@ export function MarkRevisionsDoneButton({
         variant="default"
         size="default"
         onClick={handleClick}
-        disabled={disabled || isPending}
+        disabled={blocked || isPending}
         data-testid="mark-revisions-done-button"
       >
         {isPending ? 'Submitting…' : 'Mark revisions done'}
       </Button>
+      {gatedByThreads && (
+        <p
+          data-testid="mark-revisions-done-hint"
+          className="text-[11px] text-muted-foreground"
+        >
+          Resolve {openThreadCount} open thread{openThreadCount === 1 ? '' : 's'} before marking revisions done
+        </p>
+      )}
       {error && (
         <p
           role="alert"
