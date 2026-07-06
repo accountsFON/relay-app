@@ -28,6 +28,14 @@ vi.mock('@/server/repositories/batches', () => ({
   findBatch: vi.fn(),
 }))
 
+vi.mock('@/server/repositories/designerGateAcks', () => ({
+  hasDesignerGateAck: vi.fn(),
+}))
+
+vi.mock('@/components/relay/designer-onboarding-gate', () => ({
+  DesignerOnboardingGate: () => <div data-testid="designer-gate" />,
+}))
+
 vi.mock('@/server/repositories/reviewSessions', () => ({
   listSessionsForBatch: vi.fn(),
 }))
@@ -238,6 +246,7 @@ import {
 } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
+import { hasDesignerGateAck } from '@/server/repositories/designerGateAcks'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
 import { findRunForBatch } from '@/server/repositories/contentRuns'
 import { can } from '@/server/auth/permissions'
@@ -325,6 +334,10 @@ describe('BatchDetailPage', () => {
     vi.mocked(canComment).mockReturnValue(false)
     vi.mocked(findClientForUser).mockResolvedValue(mockClient as never)
     vi.mocked(findBatch).mockResolvedValue(mockBatch as never)
+    // Default gate to acknowledged so every pre-existing test (including the
+    // designer-role NextActionBoard cases at designer steps) renders the
+    // workspace. Gate-specific tests opt in by overriding to false.
+    vi.mocked(hasDesignerGateAck).mockResolvedValue(true)
     vi.mocked(listSessionsForBatch).mockResolvedValue([])
     vi.mocked(db.post.findMany).mockResolvedValue([] as never)
     vi.mocked(db.magicLink.findMany).mockResolvedValue([] as never)
@@ -836,6 +849,81 @@ describe('BatchDetailPage', () => {
 
       // Archive is the only recourse — button must still be present
       expect(queryByTestId('archive-batch-button-stub')).not.toBeNull()
+    })
+  })
+
+  // ---- Designer onboarding gate ----
+
+  describe('Designer onboarding gate', () => {
+    it('renders the gate instead of the workspace for a designer at in_design who has not acknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'designer' })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'in_design',
+      } as never)
+      vi.mocked(hasDesignerGateAck).mockResolvedValue(false)
+
+      const { getByTestId, queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+      expect(getByTestId('designer-gate')).not.toBeNull()
+      // Workspace short-circuited: the hero band / relay track never render.
+      expect(queryByTestId('relay-track-stub')).toBeNull()
+    })
+
+    it('renders the gate for a designer at implementing_revisions who has not acknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'designer' })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'implementing_revisions',
+      } as never)
+      vi.mocked(hasDesignerGateAck).mockResolvedValue(false)
+
+      const { getByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(getByTestId('designer-gate')).not.toBeNull()
+    })
+
+    it('renders the workspace (no gate) for a designer at in_design who already acknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'designer' })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'in_design',
+      } as never)
+      vi.mocked(hasDesignerGateAck).mockResolvedValue(true)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('designer-gate')).toBeNull()
+      expect(queryByTestId('relay-track-stub')).not.toBeNull()
+    })
+
+    it('does not gate a non-designer (account manager) at in_design even when unacknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({
+        ...mockCtx,
+        role: 'account_manager',
+      })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'in_design',
+      } as never)
+      vi.mocked(hasDesignerGateAck).mockResolvedValue(false)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('designer-gate')).toBeNull()
+      expect(queryByTestId('relay-track-stub')).not.toBeNull()
+    })
+
+    it('does not gate a designer on a non-designer step (copy) even when unacknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'designer' })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'copy',
+      } as never)
+      vi.mocked(hasDesignerGateAck).mockResolvedValue(false)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('designer-gate')).toBeNull()
+      expect(queryByTestId('relay-track-stub')).not.toBeNull()
     })
   })
 })
