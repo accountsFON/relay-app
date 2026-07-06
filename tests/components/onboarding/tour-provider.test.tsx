@@ -124,6 +124,9 @@ function StartConsumer({ id }: { id: string }) {
 
 describe('startIfUnseen', () => {
   it('starts an unseen tour', () => {
+    // Use a pathname that matches no auto-fire tour so nothing fires on mount
+    // and the initial active state is genuinely 'none'.
+    pathname = '/settings/account'
     render(
       <TourProvider role="designer" seenTours={[]} onMarkSeen={() => {}}>
         <StartConsumer id="batch-detail-v1" />
@@ -135,6 +138,8 @@ describe('startIfUnseen', () => {
   })
 
   it('is a no-op when the tour is already seen', () => {
+    // Same non-matching pathname: no auto-fire, so state stays 'none'.
+    pathname = '/settings/account'
     render(
       <TourProvider role="designer" seenTours={['batch-detail-v1']} onMarkSeen={() => {}}>
         <StartConsumer id="batch-detail-v1" />
