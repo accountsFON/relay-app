@@ -322,6 +322,29 @@ describe('PostCard locked state (completed relay, read-only)', () => {
   })
 })
 
+describe('PostCard tour anchors', () => {
+  it('renders tour anchors when graphicHook and designerNotes are set', () => {
+    render(<PostCard post={basePost} canEdit />)
+    expect(
+      document.querySelector('[data-tour-anchor="relay-graphic-hook"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('[data-tour-anchor="relay-designer-notes"]'),
+    ).not.toBeNull()
+  })
+
+  it('does not render tour anchors when graphicHook and designerNotes are null', () => {
+    const post = { ...basePost, graphicHook: null, designerNotes: null }
+    render(<PostCard post={post} canEdit />)
+    expect(
+      document.querySelector('[data-tour-anchor="relay-graphic-hook"]'),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-tour-anchor="relay-designer-notes"]'),
+    ).toBeNull()
+  })
+})
+
 describe('PostCard reflects server updates (restore / redo)', () => {
   it('renders the updated caption prop, not stale local state', () => {
     const { rerender } = render(<PostCard post={basePost} canEdit />)

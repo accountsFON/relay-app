@@ -114,6 +114,44 @@ const BATCH_DETAIL_STOPS: TourStop[] = [
   },
 ]
 
+// Designer-only coachmarks for the relay detail page: anchored to the specific
+// elements a designer interacts with (checklist, posts, graphic hook, notes,
+// and handback). Fired programmatically by TourAutostart after the onboarding
+// gate — NOT via eligibleAutoTours (trigger: 'manual' keeps it out of
+// auto-fire so it never double-fires alongside overview-v1).
+const DESIGNER_BATCH_DETAIL_STOPS: TourStop[] = [
+  {
+    id: 'designer-checklist',
+    anchorSelector: '[data-tour-anchor="relay-actions"]',
+    title: 'Your checklist',
+    body: 'Run through this as you design, it is what the account manager expects done before the relay moves on.',
+  },
+  {
+    id: 'designer-posts',
+    anchorSelector: '[data-tour-anchor="relay-posts"]',
+    title: 'The post you are designing',
+    body: 'Each post shows the approved caption and hashtags. Design your graphic to match this copy.',
+  },
+  {
+    id: 'designer-graphic-hook',
+    anchorSelector: '[data-tour-anchor="relay-graphic-hook"]',
+    title: 'The graphic hook',
+    body: 'The visual concept for the post, the idea your design should lead with.',
+  },
+  {
+    id: 'designer-notes',
+    anchorSelector: '[data-tour-anchor="relay-designer-notes"]',
+    title: 'Designer notes',
+    body: 'Specific art direction for this post. Read these before you start.',
+  },
+  {
+    id: 'designer-handback',
+    anchorSelector: '[data-tour-anchor="relay-actions"]',
+    title: 'Upload, then hand it back',
+    body: 'Add your finished design to each post, then pass the relay back to the account manager for review.',
+  },
+]
+
 // Exact relay detail route only (not its /preview or /review-sessions children).
 const BATCH_DETAIL_ROUTE = /^\/clients\/[^/]+\/batches\/[^/]+$/
 
@@ -203,11 +241,22 @@ const TOURS: TourDef[] = [
   {
     id: 'batch-detail-v1',
     labelForRole: () => 'Relay page walkthrough',
-    roles: ['admin', 'account_manager', 'designer'],
+    roles: ['admin', 'account_manager'],
     // No homePath: dynamic route, auto-fire-on-first-visit only.
     matchPath: (p) => BATCH_DETAIL_ROUTE.test(p),
     trigger: 'auto',
     stopsForRole: () => BATCH_DETAIL_STOPS,
+  },
+  {
+    id: 'designer-batch-detail-v1',
+    labelForRole: () => 'Designer relay walkthrough',
+    roles: ['designer'],
+    // No homePath: fired programmatically by TourAutostart on the workspace
+    // mount (after the onboarding gate), not via route auto-fire. trigger:
+    // 'manual' keeps it out of eligibleAutoTours so it never double-fires.
+    matchPath: (p) => BATCH_DETAIL_ROUTE.test(p),
+    trigger: 'manual',
+    stopsForRole: () => DESIGNER_BATCH_DETAIL_STOPS,
   },
   {
     id: 'scheduling-v1',

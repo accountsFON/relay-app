@@ -67,6 +67,7 @@ import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
 import { RelayCompletedBanner } from '@/components/relay/relay-completed-banner'
 import { isRelayLocked } from '@/lib/relay-lock'
 import { DesignerOnboardingGate } from '@/components/relay/designer-onboarding-gate'
+import { TourAutostart } from '@/components/onboarding/tour-autostart'
 import { cn } from '@/lib/utils'
 import { Palette, ExternalLink, Eye } from 'lucide-react'
 import Link from 'next/link'
@@ -400,6 +401,12 @@ export default async function BatchDetailPage({
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
       <EventAnchor />
+      {/* Auto-start the designer batch-detail tour once the workspace renders
+          (i.e. after the onboarding gate is cleared). Renders null. Gated to
+          designers so only they see the designer-scoped coachmark sequence. */}
+      {ctx.role === 'designer' && (
+        <TourAutostart tourId="designer-batch-detail-v1" />
+      )}
       {isBatchComplete && celebrationParticipants.length > 0 && (
         <BatchCompletionLap
           batchId={batch.id}
