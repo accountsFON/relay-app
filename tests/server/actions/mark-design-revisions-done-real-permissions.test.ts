@@ -55,6 +55,7 @@ vi.mock('@/server/repositories/threads', () => ({
 vi.mock('@/db/client', () => ({
   db: {
     batch: { findUnique: vi.fn() },
+    postThread: { count: vi.fn() },
   },
 }))
 
@@ -102,6 +103,7 @@ beforeEach(() => {
     batchId: 'b1',
     subState: null,
   })
+  vi.mocked(db.postThread.count).mockResolvedValue(0)
 })
 
 describe('SYSTEM_DEFAULTS guard for the C1 gate change', () => {
