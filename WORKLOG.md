@@ -30,6 +30,19 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-06 — Confirm modal before "Request changes" sends** (PR #311, `98d458d`)
+  P0 #5 from the 2026-07-02 workflow test. The AM's "Request changes" button on `/preview` auto-sent
+  `requestDesignChangesAction` the instant it was clicked (Caleb hit it by accident, no notes). Now it
+  opens a base-ui confirmation `Dialog` (mirrors `close-account-panel.tsx`): "Request changes? This will
+  notify [designer] that you've completed your feedback." with **Yes, request changes** (fires the
+  action) / **No, go back and add notes** (closes, no-op). All existing states (pending/sent/error,
+  disabled) unchanged, just gated behind the confirm; the action + page + designer buttons + client
+  surface untouched. Change is contained to `RequestChangesButton`. 2439 unit tests (8 on the component:
+  4 updated from direct-fire to click-through + 4 new), tsc + `next build` clean; diff verified (action
+  fires only from confirm, cancel is a true no-op, no double-fire). No `src/server/jobs/**` change →
+  Trigger.dev deploy SKIPPED. Design + plan: vault
+  `projects/relay-app/2026-07-06-request-changes-confirm-modal-design-plan.md`.
+
 - [x] **2026-07-06 — Gate designer "Mark revisions done" on all threads resolved** (PR #310, `a67d2de`)
   P0 #3 from the 2026-07-02 workflow test. On the `/preview` internal review, the designer's "Mark
   revisions done" button let them complete a revision round with open pins/comments still standing
