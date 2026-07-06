@@ -30,6 +30,23 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-06 — Gate designer "Mark revisions done" on all threads resolved** (PR #310, `a67d2de`)
+  P0 #3 from the 2026-07-02 workflow test. On the `/preview` internal review, the designer's "Mark
+  revisions done" button let them complete a revision round with open pins/comments still standing
+  (Caleb's flag). The AM's "Mark relay reviewed" was already gated (PR #297); this adds the identical
+  gate to the designer button, client + server. Server: `markDesignRevisionsDoneAction` counts open
+  threads (`PostThread.status === 'open'` across the batch's posts) after the auth block, before the
+  service call, throws when > 0 (same query shape as `markBatchReviewedAction`). Client:
+  `MarkRevisionsDoneButton` gains an `openThreadCount` prop → disabled + hint ("Resolve N open
+  thread(s) before marking revisions done") + `handleClick` early-return (defense in depth; server
+  holds even if UI bypassed). Page passes the same `feedPosts.reduce(...status==='open'...)` count the
+  AM button uses, so both gate consistently. AM button/action untouched. 2435 unit tests, tsc +
+  `next build` clean; whole-branch adversarial review READY_TO_MERGE (0 defects). No `src/server/jobs/**`
+  change → Trigger.dev deploy SKIPPED. One full-suite catch: a separate `mark-design-revisions-done-real-
+  permissions.test.ts` needed `db.postThread.count` mocked to 0 in its happy paths (the new gate's data
+  dep); rejection paths throw at auth before the gate, so untouched. Design + plan: vault
+  `projects/relay-app/2026-07-06-designer-revisions-gate-design-plan.md`.
+
 - [x] **2026-07-06 — Designer first-time workspace tour** (PR #309, `da09843`)
   P0 #2 from the 2026-07-02 workflow test. The first time a designer lands on a relay's design
   workspace, a 5-stop guided tour auto-runs once (your checklist → the post content → the graphic hook
