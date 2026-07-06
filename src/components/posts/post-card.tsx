@@ -320,7 +320,7 @@ export function PostCard({
                   <p className="text-[14px] text-neutral-500">{post.hashtags.join(' ')}</p>
                 )}
                 {post.graphicHook && (
-                  <div className="rounded-xl bg-neutral-100/60 px-4 py-3">
+                  <div className="rounded-xl bg-neutral-100/60 px-4 py-3" data-tour-anchor="relay-graphic-hook">
                     <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                       Graphic hook
                     </p>
@@ -328,7 +328,7 @@ export function PostCard({
                   </div>
                 )}
                 {post.designerNotes && (
-                  <div className="rounded-xl bg-neutral-100/60 px-4 py-3">
+                  <div className="rounded-xl bg-neutral-100/60 px-4 py-3" data-tour-anchor="relay-designer-notes">
                     <p className="text-[12px] uppercase tracking-[0.06em] font-semibold text-muted-foreground">
                       Designer notes
                     </p>
