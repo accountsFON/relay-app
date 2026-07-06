@@ -19,6 +19,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 - [ ] **(follow-up, designer flags) DB unique constraint on `DesignerFlag(postId, threadId, reviewItemId)`** to harden the flag find-then-create against a same-instant duplicate. Idempotent today (note gets updated); a partial unique index would make it airtight.
 - [ ] **(cleanup, designer flags) Stale JSDoc on `AdvanceFromClientReviewInput.reviewSessionId`** still references the removed designer deep-link rationale (the auto `revision_images_requested` ping was deleted in #303). Tidy the comment.
 - [ ] **(follow-up, designer gate) Page test for the archived-batch skip** — the designer onboarding gate correctly skips archived relays (`!batch.deletedAt`), but that specific guard has no page-layer test. Cheap add; guard is correct today.
+- [ ] **(follow-up, designer tour) Test `startIfUnseen`'s `activeTourId` guard branch** — only the already-seen branch is exercised; the "no-op when a tour is already active" branch is untested. Code is correct. Also note `TourAutostart` fires for the rare designer-at-a-non-designer-step case (gate never shows there); still once-per-designer-global, acceptable.
 
 ## Notes / standing rules
 
@@ -28,6 +29,26 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 ---
 
 ## Shipped
+
+- [x] **2026-07-06 — Designer first-time workspace tour** (PR #309, `da09843`)
+  P0 #2 from the 2026-07-02 workflow test. The first time a designer lands on a relay's design
+  workspace, a 5-stop guided tour auto-runs once (your checklist → the post content → the graphic hook
+  → designer notes → upload & hand back), persisted in `User.seenTours`. Fires explicitly on workspace
+  mount, NOT via the route auto-fire: the engine's auto-fire effect keys on `pathname` (+ role/seen),
+  and clearing the onboarding gate (PR #308) swaps gate→workspace via a same-route revalidation with no
+  pathname change, so a plain `trigger:'auto'` tour would silently miss the first visit. Mechanism: new
+  `designer-batch-detail-v1` tour (`trigger:'manual'`, so it's excluded from route auto-fire and never
+  double-fires); new `startIfUnseen(tourId)` controller method (starts only if unseen AND nothing
+  active); a `TourAutostart` component rendered only in the designer workspace path (mounts after the
+  gate clears, anchors present same paint) that calls `startIfUnseen` on mount. Shared `batch-detail-v1`
+  narrowed to `['admin','account_manager']` so designers get the tailored tour; AMs/admins unchanged.
+  Added `relay-graphic-hook` + `relay-designer-notes` anchors to PostCard. 2429 unit tests (12 new),
+  tsc + `next build` clean; whole-branch adversarial review READY_TO_MERGE (0 critical/important; fires-
+  once-after-gate, no double-fire, no regression to other tours, anchor fidelity all verified). No
+  `src/server/jobs/**` change → Trigger.dev deploy SKIPPED. One mid-build catch: an implementer briefly
+  removed designer from the unrelated `overview-v1` dashboard tour to satisfy a test; reverted, the test
+  was fixed to use a non-matching pathname instead. Design + plan: vault
+  `projects/relay-app/2026-07-06-designer-first-time-tour-{design,plan}.md`.
 
 - [x] **2026-07-06 — Designer onboarding gate (per-run mask + review checklist)** (PR #308, `7f93844`)
   P0 #1 from the 2026-07-02 workflow test. When a **designer** opens a relay at a designer step
