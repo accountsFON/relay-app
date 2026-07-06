@@ -188,6 +188,10 @@ export default async function BatchPreviewPage({
             'use server'
             await markDesignRevisionsDoneAction({ batchId: batch.id })
           }}
+          openThreadCount={feedPosts.reduce(
+            (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
+            0,
+          )}
         />
       ) : undefined
 
