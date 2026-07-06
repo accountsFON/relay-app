@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+
+vi.mock('@/components/preview/post-image-replace', () => ({
+  usePostImageReplace: () => ({ dragProps: {}, isDragging: false, overlay: null }),
+}))
+
 import { ReviewPostsCanvas } from '@/components/review/review-posts-canvas'
 import type { FeedbackPostVM } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 import type { HydratedThread } from '@/server/repositories/threads'

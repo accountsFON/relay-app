@@ -17,6 +17,7 @@ vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
   canEditClients: vi.fn(),
   canComment: vi.fn(),
+  canUploadPostMedia: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/activityEvents', () => ({
@@ -152,6 +153,10 @@ vi.mock('@/components/review/mark-revisions-done-button', () => ({
   MarkRevisionsDoneButton: () => (
     <button data-testid="mark-revisions-done-button">Mark revisions done</button>
   ),
+}))
+
+vi.mock('@/components/preview/post-image-replace', () => ({
+  usePostImageReplace: () => ({ dragProps: {}, isDragging: false, overlay: null }),
 }))
 
 import BatchPreviewPage from '@/app/(app)/clients/[id]/batches/[batchId]/preview/page'
