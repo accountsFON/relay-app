@@ -58,10 +58,11 @@ describe('tour-registry', () => {
   describe('batch-detail coachmark', () => {
     const ROUTE = '/clients/abc/batches/xyz'
 
-    it('auto-fires on the relay detail route for internal roles', () => {
+    it('auto-fires on the relay detail route for admin and account_manager', () => {
       expect(selectAutoTour(ROUTE, 'account_manager', [])?.id).toBe('batch-detail-v1')
       expect(selectAutoTour(ROUTE, 'admin', [])?.id).toBe('batch-detail-v1')
-      expect(selectAutoTour(ROUTE, 'designer', [])?.id).toBe('batch-detail-v1')
+      // designer is no longer in batch-detail-v1 — they get the manual designer tour
+      expect(selectAutoTour(ROUTE, 'designer', [])).toBeNull()
     })
 
     it('does not fire on the detail page child routes (preview, review-sessions)', () => {
@@ -151,6 +152,41 @@ describe('tour-registry', () => {
     for (const id of ['client-detail-v1', 'inbox-v1', 'clients-v1']) {
       expect(isValidTourId(id)).toBe(true)
     }
+  })
+
+  describe('designer-batch-detail-v1 tour', () => {
+    const BATCH_PATH = '/clients/abc/batches/xyz'
+
+    it('defines designer-batch-detail-v1 as a manual, designer-only 5-stop tour', () => {
+      const t = getTourById('designer-batch-detail-v1')
+      expect(t).toBeDefined()
+      expect(t!.roles).toEqual(['designer'])
+      expect(t!.trigger).toBe('manual')
+      const stops = t!.stopsForRole('designer')
+      expect(stops.map((s) => s.anchorSelector)).toEqual([
+        '[data-tour-anchor="relay-actions"]',
+        '[data-tour-anchor="relay-posts"]',
+        '[data-tour-anchor="relay-graphic-hook"]',
+        '[data-tour-anchor="relay-designer-notes"]',
+        '[data-tour-anchor="relay-actions"]',
+      ])
+      expect(isValidTourId('designer-batch-detail-v1')).toBe(true)
+    })
+
+    it('removes designer from the shared batch-detail-v1 tour', () => {
+      expect(getTourById('batch-detail-v1')!.roles).toEqual(['admin', 'account_manager'])
+    })
+
+    it('does not auto-fire the manual designer tour, nor the shared tour, for a designer', () => {
+      const ids = eligibleAutoTours(BATCH_PATH, 'designer', []).map((t) => t.id)
+      expect(ids).not.toContain('designer-batch-detail-v1')
+      expect(ids).not.toContain('batch-detail-v1')
+    })
+
+    it('still auto-fires the shared tour for an account manager', () => {
+      const ids = eligibleAutoTours(BATCH_PATH, 'account_manager', []).map((t) => t.id)
+      expect(ids).toContain('batch-detail-v1')
+    })
   })
 
   describe('scheduling coachmark (step-gated via requiresAnchor)', () => {
