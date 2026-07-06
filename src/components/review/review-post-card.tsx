@@ -114,8 +114,8 @@ export type ReviewPostCardProps = {
    * drag/click "Replace image" affordance over the post media. Gated upstream
    * on the `post.media.edit` permission (admin/AM/designer true, client false).
    * Defaults to false so existing callers (and the client review surface) are
-   * unchanged. Forwarded to the platform post as `canReplaceImage`; the pin
-   * signal it composes with is `pinsActive`, wired here to `allowPostPins`.
+   * unchanged. Forwarded to the platform post as `canReplaceImage`. The replace
+   * affordance is a corner button for both roles, so it never occludes pins.
    */
   canReplaceImage?: boolean
   /**
@@ -402,7 +402,6 @@ export function ReviewPostCard({
         threads={threads ?? []}
         mode={mode}
         canReplaceImage={canReplaceImage}
-        pinsActive={allowPostPins}
         onCreateThread={onCreatePin}
         onComment={onAppendThreadComment}
         onUploadImage={onUploadImage}

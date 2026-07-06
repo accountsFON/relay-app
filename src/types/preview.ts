@@ -51,9 +51,6 @@ export type FeedPostProps = {
   mode: 'internal' | 'review';
   /** Media editor may replace the post image in place (drop + pick). */
   canReplaceImage?: boolean;
-  /** Pins are active for this viewer (AM). When true, image-click stays
-   *  pin-create and the replace pick is a corner button. */
-  pinsActive?: boolean;
   // Callbacks the host page wires up (Layer 2)
   // onCreateThread: drop a new thread (image pin, caption-range, or post-level).
   // When omitted, the markup overlay + caption selection composer do not drop

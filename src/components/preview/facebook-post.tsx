@@ -68,9 +68,8 @@ export function FacebookPost(props: FeedPostProps) {
     suppressInlinePopover = false,
     mentionRoster = [],
     canReplaceImage,
-    pinsActive,
   } = props
-  const imageReplace = usePostImageReplace({ postId: post.id, pinsActive: !!pinsActive })
+  const imageReplace = usePostImageReplace({ postId: post.id })
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)

@@ -84,9 +84,8 @@ export function InstagramFeedPost({
   suppressInlinePopover = false,
   mentionRoster = [],
   canReplaceImage,
-  pinsActive,
 }: FeedPostProps) {
-  const imageReplace = usePostImageReplace({ postId: post.id, pinsActive: !!pinsActive })
+  const imageReplace = usePostImageReplace({ postId: post.id })
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
