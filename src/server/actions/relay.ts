@@ -274,6 +274,13 @@ export async function markDesignRevisionsDoneAction(input: { batchId: string }) 
     )
   }
 
+  const openThreadCount = await db.postThread.count({
+    where: { post: { batchId: input.batchId, deletedAt: null }, status: 'open' },
+  })
+  if (openThreadCount > 0) {
+    throw new Error('Resolve all open threads before marking revisions done.')
+  }
+
   const result = await markDesignRevisionsDone({
     batchId: input.batchId,
     actorId: ctx.userDbId,

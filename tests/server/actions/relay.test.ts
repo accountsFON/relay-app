@@ -356,6 +356,12 @@ describe('markDesignRevisionsDoneAction gate', () => {
     } as never)
   }
 
+  beforeEach(() => {
+    // Default to zero open threads so existing happy-path tests are unaffected
+    // by the new open-thread gate. Individual tests override this as needed.
+    vi.mocked(db.postThread.count).mockResolvedValue(0)
+  })
+
   it('the assigned designer (not holder) can mark revisions done', async () => {
     vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
     mockBatchWithDesigner('u_actor') // actor is the assigned designer
@@ -407,6 +413,40 @@ describe('markDesignRevisionsDoneAction gate', () => {
       markDesignRevisionsDoneAction({ batchId: 'b1' }),
     ).rejects.toThrow(/relay not found/i)
     expect(markDesignRevisionsDone).not.toHaveBeenCalled()
+  })
+
+  it('blocks when open threads exist and does not call markDesignRevisionsDone', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    mockBatchWithDesigner('u_actor') // actor is the assigned designer
+    vi.mocked(db.postThread.count).mockResolvedValue(3)
+
+    await expect(
+      markDesignRevisionsDoneAction({ batchId: 'b1' }),
+    ).rejects.toThrow(/resolve all open threads/i)
+    expect(markDesignRevisionsDone).not.toHaveBeenCalled()
+  })
+
+  it('proceeds when there are zero open threads', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    mockBatchWithDesigner('u_actor') // actor is the assigned designer
+    // count already defaults to 0 via beforeEach
+
+    await markDesignRevisionsDoneAction({ batchId: 'b1' })
+
+    expect(markDesignRevisionsDone).toHaveBeenCalledWith(
+      expect.objectContaining({ batchId: 'b1' }),
+    )
+  })
+
+  it('counts only open threads on the batch', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('designer'))
+    mockBatchWithDesigner('u_actor')
+
+    await markDesignRevisionsDoneAction({ batchId: 'b1' })
+
+    expect(db.postThread.count).toHaveBeenCalledWith({
+      where: { post: { batchId: 'b1', deletedAt: null }, status: 'open' },
+    })
   })
 })
 
