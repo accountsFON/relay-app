@@ -143,10 +143,6 @@ vi.mock('@/components/relay/client-decision-panel', () => ({
   ClientDecisionPanel: () => <div data-testid="client-decision-panel-stub" />,
 }))
 
-vi.mock('@/components/relay/copy-substate-panel', () => ({
-  CopySubStatePanel: () => <div data-testid="copy-substate-panel-stub" />,
-}))
-
 vi.mock('@/components/relay/generate-content-dialog', () => ({
   GenerateContentDialog: () => <div data-testid="generate-content-dialog-stub" />,
 }))
@@ -634,6 +630,29 @@ describe('BatchDetailPage', () => {
       expect(container.querySelector('[data-tour-anchor="relay-track"]')).not.toBeNull()
       expect(container.querySelector('[data-tour-anchor="relay-posts"]')).not.toBeNull()
       expect(container.querySelector('[data-tour-anchor="relay-actions"]')).not.toBeNull()
+    })
+  })
+
+  // ---- Copy step single checklist (P1 #8) ----
+
+  describe('Copy step single checklist', () => {
+    it('renders only the checklist panel at the copy step, not the retired sub-state panel', async () => {
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'copy',
+        currentSubState: 'generating',
+      } as never)
+
+      const { queryByTestId, container } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+
+      expect(queryByTestId('checklist-panel-stub')).not.toBeNull()
+      expect(
+        container.querySelector('[data-component="copy-substate-panel"]'),
+      ).toBeNull()
+      expect(queryByTestId('copy-substate-panel-stub')).toBeNull()
     })
   })
 
