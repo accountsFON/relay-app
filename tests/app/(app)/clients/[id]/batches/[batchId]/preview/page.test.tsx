@@ -43,6 +43,7 @@ vi.mock('@/server/repositories/clients', () => ({
 
 vi.mock('@/server/repositories/batches', () => ({
   findBatch: vi.fn(),
+  listChecklistForBatch: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('@/server/repositories/threads', () => ({

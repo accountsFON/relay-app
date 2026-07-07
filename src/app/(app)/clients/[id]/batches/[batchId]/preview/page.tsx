@@ -8,7 +8,7 @@ import {
 } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
-import { findBatch } from '@/server/repositories/batches'
+import { findBatch, listChecklistForBatch } from '@/server/repositories/batches'
 import { listThreadsForBatch } from '@/server/repositories/threads'
 import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
 import { derivePostApprovalForBatch } from '@/server/services/approval'
@@ -148,26 +148,40 @@ export default async function BatchPreviewPage({
         })
       : null
 
-    // Activity events + mention targets for the internal chat FAB.
-    const [activityEvents, memberships] = await Promise.all([
+    // Activity events + mention targets for the internal chat FAB, plus the
+    // batch's checklist (rendered inside the Mark relay reviewed confirm modal).
+    const [activityEvents, memberships, checklist] = await Promise.all([
       listActivityForClient(client.id, {
         limit: 30,
         visibilityFilter: visibilityForViewer(ctx),
       }),
       listMembershipsForOrg(ctx.organizationDbId),
+      listChecklistForBatch(batch.id),
     ])
     const mentionTargets = buildMentionRoster(memberships)
     const canPostComment = canComment(ctx)
 
-    // AM controls: Request changes (only when at am_review_design) + Mark relay reviewed.
+    // AM controls: Request changes + Mark relay reviewed, both only at
+    // am_review_design (the internal design-review step). Gating Mark relay
+    // reviewed to this step stops it reappearing + advancing again at later
+    // steps (the P1 #12 double-click bug).
     const forwardStepCount = legalNextSteps(
       batch.currentStep,
       batch.clientReviewEnabled,
     ).filter((t) => t.direction === 'forward').length
 
-    const amControlsSlot = canEdit ? (
-      <>
-        {batch.currentStep === RelayStep.am_review_design && (
+    const reviewChecklistItems = checklist
+      .filter((i) => i.step === batch.currentStep)
+      .map((i) => ({
+        id: i.id,
+        label: i.label,
+        required: i.required,
+        checked: i.checked,
+      }))
+
+    const amControlsSlot =
+      canEdit && batch.currentStep === RelayStep.am_review_design ? (
+        <>
           <RequestChangesButton
             designerName={assignedDesigner?.name ?? null}
             onClick={async () => {
@@ -175,17 +189,18 @@ export default async function BatchPreviewPage({
               await requestDesignChangesAction({ batchId: batch.id })
             }}
           />
-        )}
-        <MarkBatchReviewedButton
-          batchId={batch.id}
-          openThreadCount={feedPosts.reduce(
-            (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
-            0,
-          )}
-          canAdvance={forwardStepCount === 1}
-        />
-      </>
-    ) : undefined
+          <MarkBatchReviewedButton
+            batchId={batch.id}
+            openThreadCount={feedPosts.reduce(
+              (sum, p) => sum + p.threads.filter((t) => t.status === 'open').length,
+              0,
+            )}
+            canAdvance={forwardStepCount === 1}
+            checklistItems={reviewChecklistItems}
+            canTick={canEdit}
+          />
+        </>
+      ) : undefined
 
     // Designer controls: Mark revisions done only when awaiting revisions.
     const designerControlsSlot =
