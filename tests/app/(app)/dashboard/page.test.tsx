@@ -31,7 +31,19 @@ vi.mock('@/components/hero-band', () => ({
 }))
 
 vi.mock('@/components/relay/dashboard-relay-track', () => ({
-  DashboardRelayTrack: () => <div data-testid="dashboard-relay-track-stub" />,
+  DashboardRelayTrack: ({
+    stations,
+  }: {
+    stations: Array<{ step: string; relays: Array<{ id: string }> }>
+  }) => (
+    <div data-testid="dashboard-relay-track-stub">
+      {stations.map((s) => (
+        <div key={s.step} data-testid={`track-station-${s.step}`}>
+          {s.relays.map((r) => r.id).join(',')}
+        </div>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock('@/components/relay/dashboard-select-mode', () => ({
@@ -89,7 +101,7 @@ describe('DashboardPage — designer awaiting revisions tile', () => {
     expect(link).not.toBeNull()
   })
 
-  it('does NOT show an am_review_design (default sub-state) batch on the designer board', async () => {
+  it('does NOT list an am_review_design (default sub-state) batch in the Awaiting your revisions tile', async () => {
     vi.mocked(listBatchesForOrg).mockResolvedValue([
       batch({
         id: 'batch_review',
@@ -103,5 +115,44 @@ describe('DashboardPage — designer awaiting revisions tile', () => {
     expect(
       container.querySelector('a[href="/clients/client_1/batches/batch_review"]'),
     ).toBeNull()
+  })
+})
+
+describe('DashboardPage — designer full lifecycle track', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('buckets the designer\'s relays at every live step, not just in_design', async () => {
+    vi.mocked(listBatchesForOrg).mockResolvedValue([
+      batch({ id: 'batch_copy', currentStep: 'copy' }),
+      batch({ id: 'batch_design', currentStep: 'in_design' }),
+      batch({ id: 'batch_client', currentStep: 'client_review' }),
+      batch({ id: 'batch_sched', currentStep: 'scheduling' }),
+      batch({ id: 'batch_done', currentStep: 'completed' }),
+    ] as never)
+
+    const { getByTestId } = await renderPage()
+    expect(getByTestId('track-station-copy').textContent).toContain('batch_copy')
+    expect(getByTestId('track-station-in_design').textContent).toContain('batch_design')
+    expect(getByTestId('track-station-client_review').textContent).toContain('batch_client')
+    expect(getByTestId('track-station-scheduling').textContent).toContain('batch_sched')
+    expect(getByTestId('track-station-completed').textContent).toContain('batch_done')
+  })
+
+  it('does not include relays on another designer\'s clients', async () => {
+    vi.mocked(listBatchesForOrg).mockResolvedValue([
+      batch({ id: 'mine', currentStep: 'copy' }),
+      batch({
+        id: 'theirs',
+        currentStep: 'copy',
+        client: { name: 'Other Client', assignedDesignerId: 'designer_2', assignedAmId: null },
+      }),
+    ] as never)
+
+    const { getByTestId } = await renderPage()
+    const copyStation = getByTestId('track-station-copy').textContent ?? ''
+    expect(copyStation).toContain('mine')
+    expect(copyStation).not.toContain('theirs')
   })
 })
