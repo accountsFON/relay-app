@@ -6,9 +6,10 @@ const pushMock = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock, prefetch: vi.fn() }) }))
 
 const markReadMock = vi.fn()
+const clearMock = vi.fn()
 const closeMock = vi.fn()
 vi.mock('@/components/notifications/notification-provider', () => ({
-  useNotifications: () => ({ markRead: markReadMock, closeDropdown: closeMock }),
+  useNotifications: () => ({ markRead: markReadMock, clear: clearMock, closeDropdown: closeMock }),
 }))
 
 const SAMPLE = {
@@ -26,6 +27,7 @@ describe('NotificationRow', () => {
   beforeEach(() => {
     pushMock.mockReset()
     markReadMock.mockReset()
+    clearMock.mockReset()
     closeMock.mockReset()
   })
 
@@ -35,12 +37,20 @@ describe('NotificationRow', () => {
     expect(screen.getByText(/1m ago/i)).toBeInTheDocument()
   })
 
-  it('on click: calls markRead, navigates to item.href verbatim, closes dropdown', () => {
+  it('on main-row click: calls markRead, navigates to item.href verbatim, closes dropdown', () => {
     render(<NotificationRow item={SAMPLE} />)
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: /Mollie passed Cedar Creek/i }))
     expect(markReadMock).toHaveBeenCalledWith('e1')
     expect(pushMock).toHaveBeenCalledWith('/clients/c1/batches/b1#comment-e1')
     expect(closeMock).toHaveBeenCalled()
+  })
+
+  it('dismiss button: clears via the provider without navigating or marking read', () => {
+    render(<NotificationRow item={SAMPLE} />)
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }))
+    expect(clearMock).toHaveBeenCalledWith('e1')
+    expect(pushMock).not.toHaveBeenCalled()
+    expect(markReadMock).not.toHaveBeenCalled()
   })
 
   it('shows the unread dot for unread items', () => {

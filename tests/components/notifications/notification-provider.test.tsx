@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, act } from '@testing-library/react'
 import { useEffect } from 'react'
 
-const { markMentionReadActionMock } = vi.hoisted(() => ({
+const { markMentionReadActionMock, clearMentionActionMock } = vi.hoisted(() => ({
   markMentionReadActionMock: vi.fn(),
+  clearMentionActionMock: vi.fn(),
 }))
 
 vi.mock('@/app/(app)/clients/[id]/activity/actions', () => ({
   markMentionReadAction: markMentionReadActionMock,
+  clearMentionAction: clearMentionActionMock,
 }))
 
 import {
@@ -66,6 +68,8 @@ describe('NotificationProvider', () => {
     vi.useFakeTimers()
     markMentionReadActionMock.mockReset()
     markMentionReadActionMock.mockResolvedValue(undefined)
+    clearMentionActionMock.mockReset()
+    clearMentionActionMock.mockResolvedValue(undefined)
     fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify(SAMPLE_SUMMARY), { status: 200 }),
     )
@@ -196,6 +200,49 @@ describe('NotificationProvider', () => {
     expect(lastCtx!.items).toHaveLength(2)
     expect(lastCtx!.count).toBe(2)
     expect(markMentionReadActionMock).toHaveBeenCalledWith('m1')
+  })
+
+  it('clear optimistically removes the item, decrements count, and calls clearMentionAction', async () => {
+    let lastCtx = null as ReturnType<typeof useNotifications> | null
+    render(
+      <NotificationProvider>
+        <Probe onState={(s) => {
+          lastCtx = s
+        }} />
+      </NotificationProvider>,
+    )
+    await flushMicrotasks()
+    expect(lastCtx?.count).toBe(2)
+    await act(async () => {
+      await lastCtx!.clear('e1')
+    })
+    expect(lastCtx!.items.find((i) => i.eventId === 'e1')).toBeUndefined()
+    expect(lastCtx!.count).toBe(1)
+    expect(clearMentionActionMock).toHaveBeenCalledWith('m1')
+    expect(markMentionReadActionMock).not.toHaveBeenCalled()
+  })
+
+  it('clear rolls back the optimistic update when the action throws', async () => {
+    clearMentionActionMock.mockRejectedValueOnce(new Error('server rejected'))
+    let lastCtx = null as ReturnType<typeof useNotifications> | null
+    render(
+      <NotificationProvider>
+        <Probe onState={(s) => {
+          lastCtx = s
+        }} />
+      </NotificationProvider>,
+    )
+    await flushMicrotasks()
+    expect(lastCtx?.items).toHaveLength(2)
+
+    await act(async () => {
+      await lastCtx!.clear('e1')
+    })
+
+    expect(lastCtx!.items.find((i) => i.eventId === 'e1')).toBeDefined()
+    expect(lastCtx!.items).toHaveLength(2)
+    expect(lastCtx!.count).toBe(2)
+    expect(clearMentionActionMock).toHaveBeenCalledWith('m1')
   })
 
   it('sets error state when fetch fails', async () => {

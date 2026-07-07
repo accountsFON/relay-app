@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { InboxRow } from '@/app/(app)/inbox/inbox-row'
 import { ActivityKind } from '@prisma/client'
@@ -13,6 +13,12 @@ vi.mock('@/app/(app)/clients/[id]/activity/actions', () => ({
   markMentionReadAction: vi.fn(),
   clearMentionAction: vi.fn().mockResolvedValue(undefined),
 }))
+
+// Reset action-mock call history between tests so per-test "not called"
+// assertions don't see a prior test's call (module-level vi.fn()s persist).
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 function makeRow(overrides: Partial<MentionInboxRow> = {}): MentionInboxRow {
   return {
@@ -262,7 +268,7 @@ describe('InboxRow unread vs read distinction', () => {
   })
 })
 
-describe('InboxRow clear (X button)', () => {
+describe('InboxRow clear (trash button)', () => {
   it('clears the mention and removes the row without navigating', () => {
     const { container } = render(<InboxRow row={makeRow({ readAt: null })} />)
     const x = screen.getByRole('button', { name: /clear notification/i })
@@ -270,5 +276,24 @@ describe('InboxRow clear (X button)', () => {
     expect(clearMentionAction).toHaveBeenCalledWith('mention-1')
     expect(markMentionReadAction).not.toHaveBeenCalled()
     expect(container.querySelector('a')).toBeNull()
+  })
+})
+
+describe('InboxRow mark-as-read (envelope button)', () => {
+  it('shows a Mark as read button when unread that marks read in place without navigating or deleting', () => {
+    const { container } = render(<InboxRow row={makeRow({ readAt: null })} />)
+    const envelope = screen.getByRole('button', { name: /mark as read/i })
+    fireEvent.click(envelope)
+    expect(markMentionReadAction).toHaveBeenCalledWith('mention-1')
+    expect(clearMentionAction).not.toHaveBeenCalled()
+    // Marking read in place keeps the row rendered (it does not delete it).
+    expect(container.querySelector('a')).not.toBeNull()
+  })
+
+  it('hides the Mark as read button once the mention is already read', () => {
+    render(<InboxRow row={makeRow({ readAt: new Date() })} />)
+    expect(screen.queryByRole('button', { name: /mark as read/i })).toBeNull()
+    // The trash / clear button stays available on read rows.
+    expect(screen.getByRole('button', { name: /clear notification/i })).toBeInTheDocument()
   })
 })

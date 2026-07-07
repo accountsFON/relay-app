@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { X } from 'lucide-react'
+import { MailOpen, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MentionInboxRow } from '@/components/activity/types'
 import {
@@ -64,6 +64,20 @@ export function InboxRow({ row }: { row: MentionInboxRow }) {
         router.refresh()
       } catch {
         // best effort; a refresh would restore the row on failure
+      }
+    })
+  }
+
+  // Mark read without navigating (the envelope icon). Same effect as clicking
+  // the row body, minus the Link navigation. No-op once already read.
+  function markReadInPlace() {
+    if (!unread) return
+    startTransition(async () => {
+      try {
+        await markMentionReadAction(row.mentionId)
+        router.refresh()
+      } catch {
+        // best effort
       }
     })
   }
@@ -175,18 +189,34 @@ export function InboxRow({ row }: { row: MentionInboxRow }) {
           <span className="sr-only">Unread</span>
         </span>
       )}
-      <button
-        type="button"
-        aria-label="Clear notification"
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          clear()
-        }}
-        className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-neutral-400 opacity-100 transition-colors hover:bg-neutral-200 hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
-      >
-        <X className="size-4" />
-      </button>
+      <span className="-mr-1 -mt-1 flex shrink-0 items-center gap-0.5">
+        {unread && (
+          <button
+            type="button"
+            aria-label="Mark as read"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              markReadInPlace()
+            }}
+            className="rounded-full p-1.5 text-neutral-400 opacity-100 transition-colors hover:bg-neutral-200 hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+          >
+            <MailOpen className="size-4" />
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label="Clear notification"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            clear()
+          }}
+          className="rounded-full p-1.5 text-neutral-400 opacity-100 transition-colors hover:bg-neutral-200 hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </span>
     </Link>
   )
 }
