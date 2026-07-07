@@ -331,44 +331,6 @@ export async function forceStepAction(input: {
   return result
 }
 
-export async function advanceCopySubStateAction(input: {
-  batchId: string
-  toSubState: 'generating' | 'drafted' | 'approved'
-}) {
-  const ctx = await requireCan('relay.pass')
-  const batch = await db.batch.findUnique({
-    where: { id: input.batchId },
-    select: {
-      id: true,
-      clientId: true,
-      currentStep: true,
-      currentSubState: true,
-      currentHolder: true,
-    },
-  })
-  if (!batch) throw new Error('Relay not found')
-  if (batch.currentStep !== 'copy') {
-    throw new Error('Sub-state advance only valid at step copy')
-  }
-  if (batch.currentHolder !== ctx.userDbId && !ctx.platformOwner) {
-    throw new Error('Only the current holder may advance sub-state')
-  }
-  if ((batch.currentSubState ?? 'generating') === input.toSubState) {
-    return { ok: true as const, changed: false }
-  }
-  await db.batch.update({
-    where: { id: batch.id },
-    data: { currentSubState: input.toSubState },
-  })
-  // Sub-state changes do not emit notifications (no relayEvent or
-  // recordActivity), so skip /inbox. The kanban card sub-state badge
-  // does change, so revalidate the dashboard.
-  revalidatePath(`/clients/${batch.clientId}/batches/${batch.id}`)
-  revalidatePath(`/clients/${batch.clientId}`)
-  revalidatePath('/dashboard')
-  return { ok: true as const, changed: true }
-}
-
 /**
  * AM completion: advance a batch forward in the relay state machine, but only
  * once every thread on its posts is resolved. This is the gated "Mark relay
