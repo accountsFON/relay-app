@@ -562,6 +562,7 @@ export default async function BatchDetailPage({
           breakdown above stays admin-only. */}
       <div className="mt-8">
         <NextActionBoard
+          anchorId={batchId}
           action={nextActionForRelay({
             step: batch.currentStep,
             subState: batch.currentSubState,

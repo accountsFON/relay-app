@@ -6,6 +6,11 @@ import type { NextAction, NextActionButton } from '@/lib/relay-next-action'
 
 interface Props {
   action: NextAction
+  /**
+   * Batch id used as the `data-action-board` anchor target so a notification
+   * deep link (`#action-{batchId}`) scrolls here (P1 #19). Omitted -> no anchor.
+   */
+  anchorId?: string
 }
 
 /** A href that points off-domain (NectrCRM, client content folder). */
@@ -60,13 +65,14 @@ function ActionLink({
  * `tone:'waiting'` usually carries none, but may expose an off-page button
  * (e.g. the AM watching design revisions can open the internal review).
  */
-export function NextActionBoard({ action }: Props) {
+export function NextActionBoard({ action, anchorId }: Props) {
   return (
     <div
       data-testid="next-action-board"
+      data-action-board={anchorId}
       data-tone={action.tone}
       className={cn(
-        'rounded-lg border',
+        'scroll-mt-20 rounded-lg border',
         TONE_CARD[action.tone],
       )}
     >

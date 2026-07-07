@@ -228,7 +228,7 @@ export function renderSummary(row: MentionInboxRow): string {
  *   1. Post event (`event.postId` + a resolvable batch) ->
  *      `/clients/{c}/batches/{b}#post-{postId}` (scrolls to the post card)
  *   2. Batch-scoped non-post event (`payload.batchId`) ->
- *      `/clients/{c}/batches/{b}#comment-{eventId}` (scrolls to the thread row)
+ *      `/clients/{c}/batches/{b}#action-{batchId}` (scrolls to the review banner)
  *   3. Run event (`runId` only) -> `/clients/{c}/runs/{runId}` (nothing to anchor)
  *   4. Client thread fallback -> `/clients/{c}#comment-{eventId}`
  *
@@ -274,7 +274,11 @@ export function resolveHref(row: MentionInboxRow): string {
   }
   const batchId = typeof payload.batchId === 'string' ? payload.batchId : null
   if (batchId) {
-    return `/clients/${clientId}/batches/${batchId}#comment-${eventId}`
+    // P1 #19: batch-level lifecycle events (baton passed, step advanced, sent
+    // back) anchor to the relay's "what to do next" banner (NextActionBoard,
+    // [data-action-board]) so the click lands on the actionable review banner
+    // rather than the top of the page or a buried activity-thread row.
+    return `/clients/${clientId}/batches/${batchId}#action-${batchId}`
   }
   if (row.event.runId) {
     return `/clients/${clientId}/runs/${row.event.runId}`

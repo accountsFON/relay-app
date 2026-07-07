@@ -50,6 +50,20 @@ describe('EventAnchor', () => {
     expect(target.classList.contains('bg-neutral-100')).toBe(true)
   })
 
+  it('scrolls to the review banner matching #action-XYZ on mount (P1 #19)', async () => {
+    window.history.replaceState({}, '', '/somewhere#action-b1')
+    document.body.innerHTML = '<div data-action-board="b1">the banner</div>'
+    render(<EventAnchor />)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ behavior: 'smooth', block: 'center' }),
+    )
+    const target = document.querySelector('[data-action-board="b1"]') as HTMLElement
+    expect(target.classList.contains('bg-neutral-100')).toBe(true)
+  })
+
   it('adds and then removes the highlight class', async () => {
     vi.useFakeTimers()
     window.history.replaceState({}, '', '/somewhere#comment-e1')

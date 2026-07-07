@@ -7,12 +7,14 @@ const HIGHLIGHT_MS = 1500
 
 /**
  * Maps a hash prefix to the DOM attribute that identifies its target.
- *   `#comment-${eventId}` -> the activity thread row   ([data-event-id])
- *   `#post-${postId}`     -> the post card             ([data-post-id])
+ *   `#comment-${eventId}` -> the activity thread row      ([data-event-id])
+ *   `#post-${postId}`     -> the post card                ([data-post-id])
+ *   `#action-${batchId}`  -> the "what to do next" banner ([data-action-board])
  */
 const ANCHOR_PREFIXES: ReadonlyArray<{ prefix: string; attr: string }> = [
   { prefix: 'comment-', attr: 'data-event-id' },
   { prefix: 'post-', attr: 'data-post-id' },
+  { prefix: 'action-', attr: 'data-action-board' },
 ]
 
 /**
