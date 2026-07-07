@@ -32,6 +32,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-07 — Block designers from the internal /library QA index** (P1 #15)
+  From the 2026-07-02 workflow-test punch list: a designer could reach `/library` (the beta QA index
+  listing every internal route + component). New `canViewLibrary(ctx)` predicate (`src/lib/library-access.ts`,
+  mirrors `isArchiveViewer`: admin / account_manager / platformOwner only) now gates BOTH the route
+  (`library/page.tsx` redirects designers + clients to `/dashboard`) and the sidebar nav link
+  (`app-chrome.tsx` `showLibrary`), so link and route agree. The other half of #15 (client review link
+  hidden from designers) was already shipped. 2457 unit tests (3 new), tsc + `next build` clean. No
+  `src/server/jobs/**` change → Trigger.dev deploy SKIPPED. Triage: vault
+  `projects/relay-app/2026-07-02-workflow-test-priorities.md`.
+
 - [x] **2026-07-06 — Drag-and-drop + click image replace on the /preview internal review** (PR #312, `b40406b`)
   P0 #4 (final P0) from the 2026-07-02 workflow test. A media editor (designer + AM) replaces a post's
   design image in place: drag an image onto the post (a "Drop to replace" overlay shows while dragging)

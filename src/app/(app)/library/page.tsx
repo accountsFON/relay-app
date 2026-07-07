@@ -12,6 +12,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { canViewLibrary } from '@/lib/library-access'
 import { db } from '@/db/client'
 import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
@@ -36,8 +37,8 @@ interface RouteLink {
 
 export default async function LibraryPage() {
   const ctx = await requireOrgContext()
-  // Beta QA index is agency-internal; bounce client-role users.
-  if (ctx.role === 'client') redirect('/dashboard')
+  // Beta QA index is agency-internal; bounce client + designer roles (P1 #15).
+  if (!canViewLibrary(ctx)) redirect('/dashboard')
 
   // Fetch one of each entity to seed dynamic-route links.
   const [client, batch, run, member] = await Promise.all([
