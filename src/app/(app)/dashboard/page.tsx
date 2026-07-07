@@ -241,10 +241,10 @@ export async function DesignerDashboard({
   const transitions = await lastTransitionByBatch(myBatches.map((b) => b.id))
   const stations = bucketRunners(myBatches, AM_TRACK_STEPS, transitions)
 
-  // Merge design steps (2026-06-26): requested changes sit on am_review_design
-  // (AM-held), so they fall outside DESIGNER_TRACK_STEPS and dropped off the
-  // designer board. Surface them in a dedicated tile so the designer still sees
-  // what needs reworking without relying on the bell alone.
+  // Requested changes sit on am_review_design (AM-held) with the
+  // `awaiting_design_revisions` sub-state. The full track shows that step as a
+  // station, but a station can't distinguish "designer must rework now" from
+  // "AM is reviewing," so keep a dedicated "act now" tile above the track.
   const awaitingRevisions = myBatches.filter(
     (b) =>
       b.currentStep === RelayStep.am_review_design &&
