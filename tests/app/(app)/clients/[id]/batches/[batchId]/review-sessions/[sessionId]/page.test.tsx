@@ -565,6 +565,37 @@ describe('ReviewSessionDetailPage', () => {
     expect(getByTestId('rail-row-post_a')).toBeTruthy()
   })
 
+  it('P1 #16: an approved post with an open client pin reads as changes, not Approved', async () => {
+    vi.mocked(listClientThreadsForBatch).mockResolvedValue(
+      new Map([['post_a', [clientThread('th1', 'open')]]]),
+    )
+    const { getByTestId } = await renderPage({
+      id: 'client_1',
+      batchId: 'batch_1',
+      sessionId: 'session_1',
+    })
+    // post_a decision is 'approved' but the open pin flips its verdict.
+    expect(getByTestId('rail-row-post_a').getAttribute('data-verdict')).toBe('changes_requested')
+  })
+
+  it('P1 #16: an approved post that carries a copy edit reads as a caption edit', async () => {
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      ...mockSession,
+      items: mockSession.items.map((it) =>
+        it.id === 'item_a'
+          ? { ...it, decision: 'approved', suggestedCaption: 'client reworded this' }
+          : it,
+      ),
+    } as never)
+    const { getByTestId } = await renderPage({
+      id: 'client_1',
+      batchId: 'batch_1',
+      sessionId: 'session_1',
+    })
+    // approved + suggestedCaption -> surfaced as caption_edited, not approved.
+    expect(getByTestId('rail-row-post_a').getAttribute('data-verdict')).toBe('caption_edited')
+  })
+
   it('moves a post to addressed once its client pins are all resolved', async () => {
     vi.mocked(listClientThreadsForBatch).mockResolvedValue(
       new Map([['post_a', [clientThread('th1', 'resolved')]]]),

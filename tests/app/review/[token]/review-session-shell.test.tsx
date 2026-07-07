@@ -153,7 +153,7 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
     expect(textarea.value).toBe('A prior suggestion')
   })
 
-  it('clicking Approve clears a saved suggested caption (sends suggestedCaption: null)', async () => {
+  it('clicking Approve PRESERVES a saved suggested caption (P1 #16: does not send suggestedCaption: null)', async () => {
     const initialItem: ReviewItemHydrated = {
       id: 'item-1',
       postId: 'post-1',
@@ -180,12 +180,13 @@ describe('ReviewSessionShell -- inline caption edit wiring', () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledTimes(1)
     })
-    const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]
-    expect(JSON.parse(call[1].body)).toMatchObject({
-      postId: 'post-1',
-      decision: 'approved',
-      suggestedCaption: null,
-    })
+    const body = JSON.parse(
+      (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body,
+    )
+    // The verdict flips to approved but the copy edit is left untouched: the
+    // PATCH carries no suggestedCaption key (so the saved edit is preserved).
+    expect(body).toMatchObject({ postId: 'post-1', decision: 'approved' })
+    expect(body).not.toHaveProperty('suggestedCaption')
   })
 })
 
@@ -263,10 +264,12 @@ describe('ReviewSessionShell -- approve all', () => {
     )
     expect(bodies).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ postId: 'post-1', decision: 'approved', suggestedCaption: null }),
-        expect.objectContaining({ postId: 'post-2', decision: 'approved', suggestedCaption: null }),
+        expect.objectContaining({ postId: 'post-1', decision: 'approved' }),
+        expect.objectContaining({ postId: 'post-2', decision: 'approved' }),
       ]),
     )
+    // No suggestedCaption key is sent -- clean approvals don't touch captions.
+    expect(bodies.every((b) => !('suggestedCaption' in b))).toBe(true)
     expect(confirmSpy).not.toHaveBeenCalled()
     confirmSpy.mockRestore()
   })
@@ -306,11 +309,11 @@ describe('ReviewSessionShell -- approve all', () => {
     expect(body.postId).toBe('post-2')
   })
 
-  it('re-approves an already-approved post that still has a pending suggested caption, to clear it', async () => {
+  it('P1 #16: skips a post that carries a copy edit (preserves the edit, never clears it)', async () => {
     render(
       <ReviewSessionShell
         {...BASE_PROPS}
-        initialItems={[{ ...item('post-1', 'approved'), suggestedCaption: 'pending edit' }]}
+        initialItems={[{ ...item('post-1', 'caption_edited'), suggestedCaption: 'pending edit' }]}
       />,
     )
 
@@ -318,18 +321,14 @@ describe('ReviewSessionShell -- approve all', () => {
       fireEvent.click(screen.getByTestId('approve-all-button'))
     })
 
-    // post-1 is approved but still carries a suggestion, so it is NOT skipped:
-    // it is PATCHed with suggestedCaption: null to clear it (alongside post-2).
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2))
-    const bodies = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) =>
-      JSON.parse(c[1].body),
+    // post-1 carries an explicit edit, so Approve all leaves it as-is; only the
+    // untouched post-2 is approved. The edit is never nulled.
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1))
+    const body = JSON.parse(
+      (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body,
     )
-    expect(bodies).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ postId: 'post-1', decision: 'approved', suggestedCaption: null }),
-        expect.objectContaining({ postId: 'post-2', decision: 'approved', suggestedCaption: null }),
-      ]),
-    )
+    expect(body.postId).toBe('post-2')
+    expect(body).not.toHaveProperty('suggestedCaption')
   })
 
   it('disables the button when all posts are already approved', () => {

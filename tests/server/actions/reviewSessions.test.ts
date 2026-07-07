@@ -899,6 +899,60 @@ describe('submitSessionAction', () => {
     expect(call.fallbackUserId).toBe('user_creator')
   })
 
+  it('P1 #16: an approved post that carries a saved copy edit routes to "changes"', async () => {
+    primeAllApprovedSubmit()
+    // The single approved item also carries a copy edit -> not a clean approval.
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      reviewerId: REVIEWER_ID,
+      status: 'in_progress',
+      round: 1,
+      startedAt: new Date(),
+      submittedAt: null,
+      submittedSummary: null,
+      items: [
+        {
+          id: 'item_1',
+          postId: 'post_1',
+          decision: 'approved',
+          comment: null,
+          suggestedCaption: 'a better caption',
+          acceptedAsPostVersionId: null,
+          updatedSinceLastReview: false,
+          lastReviewedVersionId: null,
+          reviewedAt: new Date(),
+        },
+      ],
+    } as never)
+    vi.mocked(advanceFromClientReview).mockResolvedValue({ advanced: false, reason: 'not_at_client_step' })
+
+    await submitSessionAction({ token: TOKEN })
+
+    expect(vi.mocked(advanceFromClientReview).mock.calls[0][0].decision).toBe('changes')
+  })
+
+  it('P1 #16: an approved post with an open client pin routes to "changes"', async () => {
+    primeAllApprovedSubmit()
+    // The single approved item (post_1) still has an open client-left pin.
+    vi.mocked(db.postThread.findMany).mockResolvedValue([
+      {
+        id: 'thread_a',
+        postId: 'post_1',
+        imageX: 10,
+        imageY: 20,
+        captionFrom: null,
+        captionTo: null,
+        comments: [{ body: 'move this', reviewerName: 'Jane' }],
+      },
+    ] as never)
+    vi.mocked(advanceFromClientReview).mockResolvedValue({ advanced: false, reason: 'not_at_client_step' })
+
+    await submitSessionAction({ token: TOKEN })
+
+    expect(vi.mocked(advanceFromClientReview).mock.calls[0][0].decision).toBe('changes')
+  })
+
   it('any-change summary maps to decision "changes"', async () => {
     primeReviewerResolve()
     vi.mocked(findActiveClientSessionForLink).mockResolvedValue({

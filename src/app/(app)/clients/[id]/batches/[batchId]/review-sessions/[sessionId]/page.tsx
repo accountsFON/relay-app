@@ -32,6 +32,7 @@ import {
 } from '@/server/repositories/activityEvents'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import { buildMentionRoster } from '@/lib/mentions'
+import { isApprovedWithFeedback } from '@/lib/relay-review-decision'
 import { db } from '@/db/client'
 import { ReviewSessionHeader } from '@/components/review/review-session-header'
 import { type HydratedItemWithPost } from '@/components/review/review-item-row'
@@ -425,32 +426,49 @@ export default async function ReviewSessionDetailPage({
   // Build FeedbackPostVM[] from visiblePosts.
   // ---------------------------------------------------------------------------
 
-  const feedbackPosts: FeedbackPostVM[] = visiblePosts.map((ap) => ({
-    postId: ap.postId,
-    postNumber: ap.postNumber,
-    caption: ap.post.caption,
-    mediaUrls: ap.post.mediaUrls,
-    postDate:
-      ap.post.postDate instanceof Date
-        ? ap.post.postDate.toISOString()
-        : String(ap.post.postDate),
-    verdict:
-      ap.item?.decision === 'approved'
+  const feedbackPosts: FeedbackPostVM[] = visiblePosts.map((ap) => {
+    const decision = ap.item?.decision ?? 'not_reviewed'
+    const suggestedCaption = ap.item?.suggestedCaption ?? null
+    const openPinCount = ap.clientThreads.filter((t) => t.status === 'open').length
+    // P1 #16: a post the client marked "approved" that still carries a copy
+    // edit or an open pin is not a clean approval -- surface it as changes so
+    // the AM doesn't read a green "Approved" on a post that needs work. An edit
+    // reads as a caption edit; pins-only reads as changes.
+    const verdict: FeedbackPostVM['verdict'] = isApprovedWithFeedback(
+      decision,
+      suggestedCaption,
+      openPinCount,
+    )
+      ? suggestedCaption != null
+        ? 'caption_edited'
+        : 'changes_requested'
+      : decision === 'approved'
         ? 'approved'
-        : ap.item?.decision === 'changes_requested'
+        : decision === 'changes_requested'
           ? 'changes_requested'
-          : ap.item?.decision === 'caption_edited'
+          : decision === 'caption_edited'
             ? 'caption_edited'
-            : 'none',
-    suggestedCaption: ap.item?.suggestedCaption ?? null,
-    comment: ap.item?.comment ?? null,
-    reviewItemId: ap.item?.id ?? null,
-    addressed: ap.handled,
-    captionAccepted: Boolean(ap.item?.acceptedAsPostVersionId),
-    noteResolved: Boolean(ap.item?.noteResolvedAt),
-    threads: ap.clientThreads,
-    flags: flagsByPost.get(ap.postId) ?? [],
-  }))
+            : 'none'
+    return {
+      postId: ap.postId,
+      postNumber: ap.postNumber,
+      caption: ap.post.caption,
+      mediaUrls: ap.post.mediaUrls,
+      postDate:
+        ap.post.postDate instanceof Date
+          ? ap.post.postDate.toISOString()
+          : String(ap.post.postDate),
+      verdict,
+      suggestedCaption,
+      comment: ap.item?.comment ?? null,
+      reviewItemId: ap.item?.id ?? null,
+      addressed: ap.handled,
+      captionAccepted: Boolean(ap.item?.acceptedAsPostVersionId),
+      noteResolved: Boolean(ap.item?.noteResolvedAt),
+      threads: ap.clientThreads,
+      flags: flagsByPost.get(ap.postId) ?? [],
+    }
+  })
 
   // Batch-level designer-flag state (drives the send-to-designer control and
   // the designer's "revisions done" step, wired into the rail by a later task).

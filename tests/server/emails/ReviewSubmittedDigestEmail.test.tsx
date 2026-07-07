@@ -340,4 +340,27 @@ describe('ReviewSubmittedDigestEmail', () => {
     expect(text).toContain('Every post was approved')
     expect(text).not.toMatch(/Post #1,/)
   })
+
+  it('P1 #16: surfaces an approved post that carries a copy edit (no pins), rendered as a caption edit', async () => {
+    const items = [
+      makeItem({
+        id: 'a1',
+        postNumber: 3,
+        decision: 'approved',
+        suggestedCaption: 'A client-reworded caption.',
+        pins: [],
+      }),
+    ]
+    const html = await render(<ReviewSubmittedDigestEmail {...baseProps(items)} />)
+    const text = plain(html)
+
+    // The approved-with-edit post is NOT swallowed: it renders as an item block
+    // with the caption-edit label + the suggested caption (shown as a word-level
+    // diff), so the AM sees it.
+    expect(text).toMatch(/Post #3,/)
+    expect(text).toContain('Caption edit suggested')
+    expect(text).toContain('client-reworded') // a distinctive inserted diff word
+    // It must not read as "everything approved, nothing to triage".
+    expect(text).not.toContain('Every post was approved')
+  })
 })
