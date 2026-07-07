@@ -35,6 +35,20 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-07 — Copy step collapsed to a single checklist** (P1 #8)
+  From the 2026-07-02 workflow-test punch list. The copy step was the only step with a two-panel
+  sidebar: a `CopySubStatePanel` (`generating → drafted → approved` sub-state machine) stacked above the
+  standard `ChecklistPanel`. Removed the sub-state panel so copy renders one checklist like every other
+  step. Key finding: the "enforce all checked before Pass" half was ALREADY done — copy checklist items
+  are seeded `required` via `required: item.required ?? true`, so Pass was already gated. Deleted the panel
+  + its dead `advanceCopySubStateAction` + the stale QA-index entry; the one display consumer
+  (`batch-sub-status.ts` kanban chip) now shows a static "Reviewing copy". `Batch.currentSubState` stays
+  (still used by `am_review_design`'s `awaiting_design_revisions`); vestigial writes in
+  `finalize-post-generation.ts` + `relay-admin.ts` left as harmless cleanup follow-ups. 2480 unit tests,
+  tsc + `next build` clean. Adversarial whole-branch review READY_TO_MERGE (0 critical/important). No
+  `src/server/jobs/**` change → Trigger.dev deploy SKIPPED. Design + plan:
+  vault `projects/relay-app/2026-07-07-copy-step-single-checklist-{design,plan}.md`.
+
 - [x] **2026-07-07 — Active Relays excludes completed (auto-archive already existed)** (P1 #7)
   From the 2026-07-02 workflow-test punch list ("4 active when 2 completed"). Root cause: the
   `listActiveBatchesForClient` query excluded only the RETIRED `final_qa_schedule` terminal step, not the
