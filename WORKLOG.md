@@ -32,6 +32,20 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-07 — Notification mark-as-read + delete affordances** (P1 #18)
+  From the 2026-07-02 workflow-test punch list: replace the inbox row's single "X" with explicit
+  controls, and add a dismiss action to the bell dropdown. **Inbox rows** (`inbox-row.tsx`) now show an
+  envelope (Mark as read, unread only) that marks read in place via `markMentionReadAction` without
+  navigating or deleting, plus a trash (Clear notification) that deletes via `clearMentionAction`
+  (row-body click still navigates + marks read, unchanged). **Bell dropdown rows** (`notification-row.tsx`)
+  gained a Dismiss button; the row was restructured from a single `<button>` to a div wrapper so the two
+  buttons are valid siblings (no nested interactive elements). New provider `clear(eventId)`
+  (`notification-provider.tsx`) mirrors `markRead`: optimistic remove + rollback, calls
+  `clearMentionAction`. Both server actions already existed. 2462 unit tests (5 new), tsc + `next build`
+  clean. Whole-branch adversarial review READY_TO_MERGE (0 defects: no nested buttons, outside-click
+  preserved, mobile swipe untouched, no stranded `useNotifications` consumers). No `src/server/jobs/**`
+  change → Trigger.dev deploy SKIPPED.
+
 - [x] **2026-07-07 — Remove "uploaded to Dropbox" from the Initial Design checklist** (P1 #9)
   From the 2026-07-02 workflow-test punch list: the `in_design` step's checklist carried "Visual content
   has been uploaded to the corresponding Dropbox", which belongs in a later step (upload happens after

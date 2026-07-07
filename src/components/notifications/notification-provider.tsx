@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { markMentionReadAction } from '@/app/(app)/clients/[id]/activity/actions'
+import { markMentionReadAction, clearMentionAction } from '@/app/(app)/clients/[id]/activity/actions'
 import type {
   NotificationSummaryDTO,
   NotificationItemDTO,
@@ -24,6 +24,7 @@ interface NotificationState {
 
 interface NotificationContextValue extends NotificationState {
   markRead: (eventId: string) => Promise<void>
+  clear: (eventId: string) => Promise<void>
   refresh: () => Promise<void>
   openDropdown: () => void
   closeDropdown: () => void
@@ -115,6 +116,26 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [])
 
+  // Delete (dismiss) a notification outright, vs markRead which only marks it
+  // read. Optimistic remove + rollback, same shape as markRead. Dropdown items
+  // are all unread, so a removal decrements the unread count.
+  const clear = useCallback(async (eventId: string) => {
+    const snapshot = stateRef.current
+    const target = snapshot.items.find((i) => i.eventId === eventId)
+    setState((s) => ({
+      ...s,
+      items: s.items.filter((i) => i.eventId !== eventId),
+      count: Math.max(0, s.count - 1),
+    }))
+    try {
+      if (!target) return
+      await clearMentionAction(target.mentionId)
+    } catch {
+      // Rollback
+      setState((s) => ({ ...s, items: snapshot.items, count: snapshot.count }))
+    }
+  }, [])
+
   const openDropdown = useCallback(() => setState((s) => ({ ...s, isOpen: true })), [])
   const closeDropdown = useCallback(() => setState((s) => ({ ...s, isOpen: false })), [])
   const toggleDropdown = useCallback(() => setState((s) => ({ ...s, isOpen: !s.isOpen })), [])
@@ -125,12 +146,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     () => ({
       ...state,
       markRead,
+      clear,
       refresh: fetchSummary,
       openDropdown,
       closeDropdown,
       toggleDropdown,
     }),
-    [state, markRead, fetchSummary, openDropdown, closeDropdown, toggleDropdown],
+    [state, markRead, clear, fetchSummary, openDropdown, closeDropdown, toggleDropdown],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
