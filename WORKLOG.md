@@ -32,6 +32,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-07 — Remove "uploaded to Dropbox" from the Initial Design checklist** (P1 #9)
+  From the 2026-07-02 workflow-test punch list: the `in_design` step's checklist carried "Visual content
+  has been uploaded to the corresponding Dropbox", which belongs in a later step (upload happens after
+  review, not during design). Julio confirmed it was a misstep. Removed the one seed line in
+  `src/lib/relay-checklists.ts`; tightened `relay-checklists.test.ts` to assert the exact 3 remaining
+  labels (pins the removal). Initial Design now has 3 items. 2457 unit tests, tsc + `next build` clean.
+  No `src/server/jobs/**` change → Trigger.dev deploy SKIPPED.
+
 - [x] **2026-07-07 — Block designers from the internal /library QA index** (P1 #15)
   From the 2026-07-02 workflow-test punch list: a designer could reach `/library` (the beta QA index
   listing every internal route + component). New `canViewLibrary(ctx)` predicate (`src/lib/library-access.ts`,

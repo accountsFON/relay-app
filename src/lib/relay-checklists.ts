@@ -26,7 +26,6 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
     { label: 'Graphics have been created and photos sourced for each post' },
     { label: 'Graphics have been self checked for errors (misinformation, typos, missing elements)' },
     { label: 'Visual content has been confirmed to align with its caption' },
-    { label: 'Visual content has been uploaded to the corresponding Dropbox' },
   ],
   // Retired step, kept empty so the record stays total.
   [RelayStep.designs_completed]: [],

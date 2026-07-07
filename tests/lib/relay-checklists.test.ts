@@ -10,8 +10,12 @@ describe('pipeline rework: checklist seeds', () => {
       'Copy edits have been finalized',
     ])
   })
-  it('Initial Design has four items', () => {
-    expect(CHECKLIST_SEED[RelayStep.in_design].length).toBe(4)
+  it('Initial Design has three items (Dropbox upload item removed: P1 #9, upload happens after review)', () => {
+    expect(CHECKLIST_SEED[RelayStep.in_design].map((i) => i.label)).toEqual([
+      'Graphics have been created and photos sourced for each post',
+      'Graphics have been self checked for errors (misinformation, typos, missing elements)',
+      'Visual content has been confirmed to align with its caption',
+    ])
   })
   it('Design Review has five items', () => {
     expect(CHECKLIST_SEED[RelayStep.am_review_design].length).toBe(5)
