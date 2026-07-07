@@ -70,7 +70,7 @@ export function DashboardRelayTrack({
         title="No relays on the track."
         description={
           viewerRole === 'designer'
-            ? 'When an AM passes a relay to design, it lines up here.'
+            ? 'Relays on your clients line up here as they move through the pipeline.'
             : 'Start one from a client profile and watch it move across the track.'
         }
         className={className}

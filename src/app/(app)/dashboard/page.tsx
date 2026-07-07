@@ -255,7 +255,7 @@ export async function DesignerDashboard({
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <HeroBand
         title="My relay"
-        subtitle="Your design queue, moving across the track."
+        subtitle="Every relay on your clients, moving across the track."
       />
       {awaitingRevisions.length > 0 && (
         <div className="mt-8">

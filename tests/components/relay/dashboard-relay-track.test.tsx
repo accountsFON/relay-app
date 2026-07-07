@@ -45,7 +45,7 @@ describe('DashboardRelayTrack', () => {
     )
     expect(screen.getByText(/no relays on the track\./i)).toBeInTheDocument()
     expect(
-      screen.getByText(/when an am passes a relay to design/i),
+      screen.getByText(/relays on your clients line up here/i),
     ).toBeInTheDocument()
   })
 
