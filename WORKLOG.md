@@ -35,6 +35,18 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-07 — Notification click anchors to the review banner** (P1 #19)
+  From the 2026-07-02 workflow-test punch list. Clicking a batch-level notification (baton passed, step
+  advanced, sent back, content ready) dumped the AM at the top of the batch page, because it anchored to a
+  `#comment-{eventId}` activity-thread row that lives in a desktop-only rail / mobile drawer and often
+  isn't in view. Now those notifications anchor to the relay's "what to do next" banner (NextActionBoard).
+  New `#action-{batchId}` anchor prefix in `EventAnchor`, `data-action-board={batchId}` + `scroll-mt-20` on
+  the board (new `anchorId` prop), and `resolveHref`'s batch-level branch routes to `#action-{batchId}`.
+  Post (`#post`) and client-root (`#comment`) anchors unchanged. 2479 unit tests (updated the inbox +
+  summary-route href assertions + 2 new for the anchor/board). tsc + `next build` clean; changed-file lint
+  clean (the pre-existing `Date.now()` purity error in the batch page is not mine). No `src/server/jobs/**`
+  change -> Trigger.dev deploy SKIPPED.
+
 - [x] **2026-07-07 — Approve preserves copy edits; approved-with-feedback routes to Client revisions** (P1 #16)
   Reframed by Julio in the walkthrough (not "disable Approve"). Client magic-link review: clicking Approve
   now PRESERVES a saved copy edit instead of nulling it (`review-session-shell.tsx` `handleDecisionChange`);

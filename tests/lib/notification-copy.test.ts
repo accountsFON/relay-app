@@ -362,10 +362,10 @@ describe('renderSummary, production payload shape (no kind in payload)', () => {
 })
 
 describe('resolveHref, existing kinds', () => {
-  it('batch event routes to the batch page with a #comment fragment', () => {
+  it('batch lifecycle event routes to the batch page with a #action fragment (P1 #19: the review banner, not the top)', () => {
     expect(
       resolveHref(row({ kind: 'batch_passed', batchId: 'b1' })),
-    ).toBe('/clients/c1/batches/b1#comment-e1')
+    ).toBe('/clients/c1/batches/b1#action-b1')
   })
 
   it('uses runId (no fragment) when no batchId or post', () => {
@@ -644,9 +644,9 @@ describe('resolveHref, batch-level internal_review (design_changes_requested)', 
     expect(resolveHref(r)).toBe('/clients/c1/batches/b9/preview#post-p7')
   })
 
-  it('a batch-level row WITHOUT the surface tag keeps the generic #comment href', () => {
+  it('a batch-level row WITHOUT the surface tag uses the generic #action banner href (P1 #19)', () => {
     const r = row({ kind: 'design_changes_requested', batchId: 'b9' })
-    expect(resolveHref(r)).toBe('/clients/c1/batches/b9#comment-e1')
+    expect(resolveHref(r)).toBe('/clients/c1/batches/b9#action-b9')
   })
 })
 

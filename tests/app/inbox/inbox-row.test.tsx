@@ -58,11 +58,12 @@ describe('InboxRow run_completed', () => {
     expect(screen.getByText(/Cedar Creek Dental ·/)).toBeInTheDocument()
   })
 
-  it('deep-links to the generated batch (with anchor fragment) when batchId is in payload', () => {
+  it('deep-links to the generated batch (with the #action banner anchor) when batchId is in payload', () => {
     render(<InboxRow row={makeRow()} />)
     const link = screen.getByRole('link')
+    // P1 #19: batch-level notifications anchor to the "what to do next" banner.
     expect(link.getAttribute('href')).toBe(
-      '/clients/client-1/batches/batch-9#comment-event-1',
+      '/clients/client-1/batches/batch-9#action-batch-9',
     )
   })
 

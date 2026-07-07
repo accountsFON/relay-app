@@ -20,6 +20,19 @@ describe('NextActionBoard', () => {
     expect(link).not.toHaveAttribute('target', '_blank')
   })
 
+  it('P1 #19: renders data-action-board with the anchorId so notifications can deep-link to it', () => {
+    const action: NextAction = {
+      tone: 'action',
+      title: 'Review the designs',
+      button: { label: 'Review designs', href: '/clients/c/batches/b/preview' },
+    }
+    const { getByTestId, rerender } = render(<NextActionBoard action={action} anchorId="b1" />)
+    expect(getByTestId('next-action-board')).toHaveAttribute('data-action-board', 'b1')
+    // No anchorId -> no anchor attribute (the board is unaddressable off this page).
+    rerender(<NextActionBoard action={action} />)
+    expect(getByTestId('next-action-board')).not.toHaveAttribute('data-action-board')
+  })
+
   it('opens an external (http) button in a new tab with rel noopener', () => {
     const action: NextAction = {
       tone: 'action',
