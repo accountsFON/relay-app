@@ -23,7 +23,6 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { RelayTrack } from '@/components/relay/relay-track'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
 import { ClientDecisionPanel } from '@/components/relay/client-decision-panel'
-import { CopySubStatePanel } from '@/components/relay/copy-substate-panel'
 import { ActivityThread } from '@/components/activity/activity-thread'
 import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { STEP_LABEL } from '@/components/relay/labels'
@@ -323,9 +322,6 @@ export default async function BatchDetailPage({
     ctx.role === 'client' &&
     batch.currentStep === RelayStep.client_decision &&
     canAct
-  const isCopyPreApproved =
-    batch.currentStep === RelayStep.copy &&
-    (batch.currentSubState ?? 'generating') !== 'approved'
 
   // Celebration participants: AM, Designer, current holder, and any linked
   // client users. Only loaded once the batch has reached the terminal
@@ -721,28 +717,17 @@ export default async function BatchDetailPage({
           {isClientDecisionView ? (
             <ClientDecisionPanel batch={batchSummary} />
           ) : isLocked ? null : (
-            <>
-              {isCopyPreApproved && (
-                <CopySubStatePanel
-                  batchId={batch.id}
-                  clientId={client.id}
-                  label={batch.label}
-                  subState={batch.currentSubState}
-                  canAct={canAct}
-                />
-              )}
-              <ChecklistPanel
-                batch={batchSummary}
-                items={batch.checklists}
-                canAct={canAct}
-                legalSendBackTargets={sendBackTargets}
-                nextStep={nextStep}
-                canForceStep={canForceStep}
-                legalForwardTargets={legalForwardTargets}
-                clientReviewEmail={batch.client.clientReviewEmail}
-                clientName={client.name}
-              />
-            </>
+            <ChecklistPanel
+              batch={batchSummary}
+              items={batch.checklists}
+              canAct={canAct}
+              legalSendBackTargets={sendBackTargets}
+              nextStep={nextStep}
+              canForceStep={canForceStep}
+              legalForwardTargets={legalForwardTargets}
+              clientReviewEmail={batch.client.clientReviewEmail}
+              clientName={client.name}
+            />
           )}
 
           <div

@@ -26,19 +26,11 @@ export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
   )
 
   switch (batch.currentStep) {
-    case RelayStep.copy: {
-      const sub = batch.currentSubState ?? 'generating'
-      const map: Record<string, SubStatus['tone']> = {
-        generating: 'progress',
-        drafted: 'attention',
-        approved: 'success',
-      }
-      return {
-        label: humanizeSubState(sub),
-        tone: map[sub] ?? 'neutral',
-        daysHere,
-      }
-    }
+    case RelayStep.copy:
+      // Copy step renders a single checklist like every other step (P1 #8,
+      // 2026-07-07). The old generating/drafted/approved sub-state UI was
+      // retired, so the card shows one static chip.
+      return { label: 'Reviewing copy', tone: 'progress', daysHere }
 
     case RelayStep.implementing_revisions:
       return { label: 'Implementing revisions', tone: 'progress', daysHere }
@@ -190,8 +182,4 @@ export function clientKanbanColumn(step: RelayStep): ClientKanbanColumn | null {
       // Completed batches surface on the dashboard Completed station, not in the legacy kanban.
       return null
   }
-}
-
-function humanizeSubState(sub: string): string {
-  return sub.charAt(0).toUpperCase() + sub.slice(1).replace(/_/g, ' ')
 }

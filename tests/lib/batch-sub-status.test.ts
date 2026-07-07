@@ -48,21 +48,16 @@ describe('deriveSubStatus', () => {
     expect(result.label).toBe('Ready for review')
   })
 
-  it('humanizes copy sub-states', () => {
-    expect(
-      deriveSubStatus({
+  it('reports a static label for copy regardless of sub-state', () => {
+    for (const sub of ['generating', 'drafted', 'approved', null]) {
+      const result = deriveSubStatus({
         currentStep: RelayStep.copy,
-        currentSubState: 'generating',
+        currentSubState: sub,
         createdAt: new Date(),
-      }).label,
-    ).toBe('Generating')
-    expect(
-      deriveSubStatus({
-        currentStep: RelayStep.copy,
-        currentSubState: 'drafted',
-        createdAt: new Date(),
-      }).label,
-    ).toBe('Drafted')
+      })
+      expect(result.label).toBe('Reviewing copy')
+      expect(result.tone).toBe('progress')
+    }
   })
 })
 

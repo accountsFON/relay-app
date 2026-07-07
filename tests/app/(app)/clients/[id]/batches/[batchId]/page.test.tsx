@@ -143,10 +143,6 @@ vi.mock('@/components/relay/client-decision-panel', () => ({
   ClientDecisionPanel: () => <div data-testid="client-decision-panel-stub" />,
 }))
 
-vi.mock('@/components/relay/copy-substate-panel', () => ({
-  CopySubStatePanel: () => <div data-testid="copy-substate-panel-stub" />,
-}))
-
 vi.mock('@/components/relay/generate-content-dialog', () => ({
   GenerateContentDialog: () => <div data-testid="generate-content-dialog-stub" />,
 }))
@@ -634,6 +630,30 @@ describe('BatchDetailPage', () => {
       expect(container.querySelector('[data-tour-anchor="relay-track"]')).not.toBeNull()
       expect(container.querySelector('[data-tour-anchor="relay-posts"]')).not.toBeNull()
       expect(container.querySelector('[data-tour-anchor="relay-actions"]')).not.toBeNull()
+    })
+  })
+
+  // ---- Copy step single checklist (P1 #8) ----
+
+  describe('Copy step single checklist', () => {
+    // The copy step now renders the same single ChecklistPanel as every other
+    // step (P1 #8). The retired CopySubStatePanel is a compile-time guarantee:
+    // a lingering import of the deleted module would fail the build, so this
+    // test just guards that the checklist itself still renders at copy (a
+    // future refactor of the sidebar ternary could drop it).
+    it('renders the checklist panel at the copy step', async () => {
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'copy',
+        currentSubState: 'generating',
+      } as never)
+
+      const { queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+      })
+
+      expect(queryByTestId('checklist-panel-stub')).not.toBeNull()
     })
   })
 
