@@ -15,20 +15,21 @@ beforeEach(() => {
 })
 
 describe('listActiveBatchesForClient', () => {
-  it('excludes batches at the terminal step', async () => {
+  it('excludes batches at a terminal step (completed + the retired final_qa_schedule)', async () => {
     vi.mocked(db.batch.findMany).mockResolvedValue([] as never)
     await listActiveBatchesForClient('client_1', 'user_viewer')
 
     const call = vi.mocked(db.batch.findMany).mock.calls[0]?.[0]
     expect(call).toBeDefined()
-    // currentStep filter must exclude final_qa_schedule
-    expect(call?.where).toMatchObject({
-      clientId: 'client_1',
-    })
-    // Accept either { not: 'final_qa_schedule' } or { not: RelayStep.final_qa_schedule } shape
+    expect(call?.where).toMatchObject({ clientId: 'client_1' })
+    // P1 #7: "active" must exclude the current terminal step `completed` (the
+    // "4 active when 2 completed" bug), plus the retired `final_qa_schedule`
+    // that old batches may still sit at.
     const stepFilter = (call?.where as Record<string, unknown>)?.currentStep as Record<string, unknown>
     expect(stepFilter).toBeDefined()
-    expect(stepFilter.not).toBeTruthy()
+    expect(stepFilter.notIn).toEqual(
+      expect.arrayContaining(['final_qa_schedule', 'completed']),
+    )
   })
 
   it('sorts held-by-viewer first', async () => {

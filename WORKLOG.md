@@ -35,6 +35,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-07 — Active Relays excludes completed (auto-archive already existed)** (P1 #7)
+  From the 2026-07-02 workflow-test punch list ("4 active when 2 completed"). Root cause: the
+  `listActiveBatchesForClient` query excluded only the RETIRED `final_qa_schedule` terminal step, not the
+  current terminal `completed` (added in the pipeline rework), so completed relays counted as active.
+  Fixed to `currentStep notIn [completed, final_qa_schedule]`. Archived relays were already excluded (the
+  Prisma soft-delete extension). **The "auto-archive completed relays" half was already shipped:** the
+  `autoArchiveCompletedRelays` cron sweeps `completed` batches past 37 days (`completedAt` anchor set in
+  `finishBatch`, invoked daily from `purgeArchivedItems`) — so no new cron was needed and no
+  `src/server/jobs/**` change -> Trigger.dev deploy SKIPPED. 2479 unit tests (updated the active-query
+  test to assert the two-terminal `notIn`). tsc + `next build` clean.
+
 - [x] **2026-07-07 — Notification click anchors to the review banner** (P1 #19)
   From the 2026-07-02 workflow-test punch list. Clicking a batch-level notification (baton passed, step
   advanced, sent back, content ready) dumped the AM at the top of the batch page, because it anchored to a
