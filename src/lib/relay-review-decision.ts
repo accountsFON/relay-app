@@ -28,6 +28,22 @@ export function mapReviewDecision(
   return allApproved ? 'approved' : 'changes'
 }
 
+/**
+ * True when a post the client marked "approved" nonetheless carries feedback
+ * the AM must act on: a saved copy edit (`suggestedCaption`) or an open client
+ * pin/thread. Such a post is NOT a clean approval (P1 #16) -- it routes the
+ * batch to Client revisions and reads as "changes needed" on the AM side,
+ * instead of auto-scheduling with a green Approved badge. One source of truth
+ * for the submit-routing check and the AM verdict display.
+ */
+export function isApprovedWithFeedback(
+  decision: string,
+  suggestedCaption: string | null,
+  openPinCount: number,
+): boolean {
+  return decision === 'approved' && (suggestedCaption != null || openPinCount > 0)
+}
+
 /** The destination step for each verdict. */
 export function targetStepForDecision(decision: ReviewDecision): RelayStep {
   return decision === 'approved'

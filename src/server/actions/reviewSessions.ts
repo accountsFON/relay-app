@@ -17,7 +17,7 @@ import {
 } from '@/server/repositories/reviewSessions'
 import { startNextRound } from '@/server/services/reviewRound'
 import { advanceFromClientReview } from '@/server/services/relay'
-import { mapReviewDecision } from '@/lib/relay-review-decision'
+import { mapReviewDecision, isApprovedWithFeedback } from '@/lib/relay-review-decision'
 import { snapshotPostVersion } from '@/server/services/postVersions'
 import { recordActivity } from '@/server/services/activity'
 import { sendEmail } from '@/lib/resend'
@@ -558,7 +558,19 @@ export async function submitSessionAction(input: {
   let advanced: { toStep: RelayStep; newHolderId: string } | undefined
   if (link && link.creator?.id) {
     try {
-      const decision = mapReviewDecision(summary, posts.length)
+      // P1 #16: a post the client marked "approved" but that carries a copy
+      // edit or an open client pin is NOT a clean approval -- it must route to
+      // Client revisions, not scheduling. mapReviewDecision only sees decision
+      // counts, so override to 'changes' when any approved item has feedback.
+      const baseDecision = mapReviewDecision(summary, posts.length)
+      const hasApprovedWithFeedback = hydrated.items.some((it) =>
+        isApprovedWithFeedback(
+          it.decision,
+          it.suggestedCaption ?? null,
+          pinsByPostId.get(it.postId)?.length ?? 0,
+        ),
+      )
+      const decision = hasApprovedWithFeedback ? 'changes' : baseDecision
       const moved = await advanceFromClientReview({
         batchId: ctx.batchId,
         decision,

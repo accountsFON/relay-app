@@ -264,29 +264,27 @@ export function ReviewSessionShell({
 
   const handleDecisionChange = useCallback(
     (postId: string, decision: ReviewDecisionType) => {
-      // Approve discards any pending suggested caption — the reviewer is
-      // approving the original copy, so the edit no longer applies. Other
-      // verdicts leave the suggestion untouched (a Changes post may carry a
-      // copy edit, persisted as decision='caption_edited').
-      const patch =
-        decision === 'approved'
-          ? { decision, suggestedCaption: null }
-          : { decision }
-      void persistDraft(postId, patch).then(reflectSave)
+      // Approve PRESERVES any saved copy edit (P1 #16): the client can approve
+      // a post they've also edited, and the edit is not silently discarded. On
+      // the AM side an approved post that carries a copy edit (or open pins)
+      // reads as changes and routes the batch to Client revisions.
+      void persistDraft(postId, { decision }).then(reflectSave)
     },
     [persistDraft, reflectSave],
   )
 
   const handleApproveAll = useCallback(async () => {
-    // Posts whose existing feedback Approve would override: a Changes verdict
-    // or a caption edit (Approve discards the suggested caption). Notes are
-    // kept, so they are not counted here.
-    const overrideCount = summary.changesRequested + summary.captionEdited
+    // Approve all approves the posts the client hasn't given specific feedback
+    // on. Posts carrying a saved copy edit are LEFT AS-IS (P1 #16): Approve all
+    // never overrides or discards an explicit edit. A plain Changes verdict
+    // WOULD be flipped to approved, so confirm that.
+    const overrideCount = summary.changesRequested
     if (
       overrideCount > 0 &&
       !window.confirm(
-        `Approve all ${summary.totalPosts} posts? This will discard your ` +
-          `changes on ${overrideCount} post${overrideCount === 1 ? '' : 's'}.`,
+        `Approve all? This approves ${overrideCount} post` +
+          `${overrideCount === 1 ? '' : 's'} you marked as changes. ` +
+          `Posts you've edited are left as-is.`,
       )
     ) {
       return
@@ -297,12 +295,13 @@ export function ReviewSessionShell({
         postIds
           .filter((id) => {
             const it = itemsByPostId[id]
-            // Skip posts already approved with no pending caption edit.
-            return !(it?.decision === 'approved' && !it?.suggestedCaption)
+            // Skip posts carrying an explicit copy edit (preserve it) and posts
+            // already cleanly approved (nothing to do).
+            if (it?.suggestedCaption) return false
+            if (it?.decision === 'approved') return false
+            return true
           })
-          .map((id) =>
-            persistDraft(id, { decision: 'approved', suggestedCaption: null }),
-          ),
+          .map((id) => persistDraft(id, { decision: 'approved' })),
       )
       reflectSave(results.every(Boolean))
     } finally {

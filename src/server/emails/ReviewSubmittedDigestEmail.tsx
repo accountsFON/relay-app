@@ -314,9 +314,15 @@ function ItemBlock({
   batchUrl: string
 }) {
   const isChanges = item.decision === 'changes_requested'
-  const isEdit = item.decision === 'caption_edited'
+  // An approved post that still carries a copy edit reads as a caption edit
+  // (P1 #16), mirroring the AM detail page, so the AM sees the suggested copy.
+  const isEdit =
+    item.decision === 'caption_edited' ||
+    (item.decision === 'approved' && item.suggestedCaption != null)
   const isApprovedWithPins =
-    item.decision === 'approved' && item.pins.length > 0
+    item.decision === 'approved' &&
+    item.suggestedCaption == null &&
+    item.pins.length > 0
 
   const decisionLabel = isChanges
     ? 'Request changes'
@@ -529,7 +535,10 @@ export function ReviewSubmittedDigestEmail(props: ReviewSubmittedDigestEmailProp
     (i) =>
       i.decision === 'changes_requested' ||
       i.decision === 'caption_edited' ||
-      i.pins.length > 0,
+      i.pins.length > 0 ||
+      // P1 #16: an approved post that carries a copy edit is not a clean
+      // approval -- the AM must see the suggested copy, so surface it here too.
+      (i.decision === 'approved' && i.suggestedCaption != null),
   )
 
   const previewText =
