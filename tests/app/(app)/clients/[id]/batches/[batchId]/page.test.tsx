@@ -636,23 +636,24 @@ describe('BatchDetailPage', () => {
   // ---- Copy step single checklist (P1 #8) ----
 
   describe('Copy step single checklist', () => {
-    it('renders only the checklist panel at the copy step, not the retired sub-state panel', async () => {
+    // The copy step now renders the same single ChecklistPanel as every other
+    // step (P1 #8). The retired CopySubStatePanel is a compile-time guarantee:
+    // a lingering import of the deleted module would fail the build, so this
+    // test just guards that the checklist itself still renders at copy (a
+    // future refactor of the sidebar ternary could drop it).
+    it('renders the checklist panel at the copy step', async () => {
       vi.mocked(findBatch).mockResolvedValue({
         ...mockBatch,
         currentStep: 'copy',
         currentSubState: 'generating',
       } as never)
 
-      const { queryByTestId, container } = await renderPage({
+      const { queryByTestId } = await renderPage({
         id: 'client_1',
         batchId: 'batch_1',
       })
 
       expect(queryByTestId('checklist-panel-stub')).not.toBeNull()
-      expect(
-        container.querySelector('[data-component="copy-substate-panel"]'),
-      ).toBeNull()
-      expect(queryByTestId('copy-substate-panel-stub')).toBeNull()
     })
   })
 
