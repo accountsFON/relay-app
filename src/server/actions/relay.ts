@@ -407,6 +407,23 @@ export async function markBatchReviewedAction(input: { batchId: string }) {
     )
   }
 
+  // 2b. Gate: refuse while any required checklist item for the current step is
+  // unchecked (parity with the batch-page Pass button). Defense in depth: the
+  // /preview button also gates client-side, but a bypassed UI can't skip this.
+  const incompleteChecklistItems = await db.checklistItem.count({
+    where: {
+      batchId: batch.id,
+      step: batch.currentStep,
+      required: true,
+      checked: false,
+    },
+  })
+  if (incompleteChecklistItems > 0) {
+    throw new Error(
+      'Complete the review checklist before marking the relay reviewed.',
+    )
+  }
+
   // 3. Find the single forward step. Refuse if the step branches (the AM
   // should use Pass Baton to pick) or has no forward edge.
   const forwardSteps = legalNextSteps(

@@ -35,7 +35,7 @@ vi.mock('@/server/lib/notifyHolderOfBatonHandoff', () => ({
 vi.mock('@/db/client', () => ({
   db: {
     batch: { findUnique: vi.fn(), update: vi.fn() },
-    checklistItem: { findUnique: vi.fn(), update: vi.fn() },
+    checklistItem: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
     postThread: { count: vi.fn() },
   },
 }))
@@ -770,6 +770,34 @@ describe('markBatchReviewedAction gated completion', () => {
       client: { organizationId: 'org_1' },
     } as never)
     vi.mocked(passBaton).mockResolvedValue({ batchId: 'b1' } as never)
+    // Default: review checklist fully complete (no unchecked required items).
+    vi.mocked(db.checklistItem.count).mockResolvedValue(0)
+  })
+
+  it('refuses to advance while a required checklist item is unchecked', async () => {
+    vi.mocked(db.postThread.count).mockResolvedValue(0)
+    vi.mocked(db.checklistItem.count).mockResolvedValue(1)
+
+    await expect(markBatchReviewedAction({ batchId: 'b1' })).rejects.toThrow(
+      /complete the review checklist/i,
+    )
+    expect(passBaton).not.toHaveBeenCalled()
+  })
+
+  it('checks required-and-unchecked items for the current step only', async () => {
+    vi.mocked(db.postThread.count).mockResolvedValue(0)
+    vi.mocked(db.checklistItem.count).mockResolvedValue(0)
+
+    await markBatchReviewedAction({ batchId: 'b1' })
+
+    expect(db.checklistItem.count).toHaveBeenCalledWith({
+      where: {
+        batchId: 'b1',
+        step: RelayStep.am_review_design,
+        required: true,
+        checked: false,
+      },
+    })
   })
 
   it('refuses to advance while any thread is open, and does not auto-resolve', async () => {
