@@ -35,6 +35,22 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-07 — Designer My Relay shows the full lifecycle** (P1 #14)
+  From the 2026-07-02 workflow-test punch list. The designer "My relay" track bucketed by
+  `DESIGNER_TRACK_STEPS` = `[in_design]` only, so a relay assigned to the designer at any other step was
+  invisible. Now the designer track buckets by the full lifecycle (scoped to their assigned clients).
+  **Fixed a latent bug found en route:** the shared `AM_TRACK_STEPS` was stale — it listed the RETIRED
+  pre-2026-06-22 steps and was MISSING the current `client_review` + `scheduling`, so `bucketRunners`
+  (exact `currentStep` match) silently dropped current-step relays from BOTH the AM and designer tracks and
+  rendered 5 empty zombie stations. Rewrote it to the live set: `copy, in_design, am_review_design,
+  am_qa_pre_client, client_review, implementing_revisions, scheduling, completed`. Kept the "Awaiting your
+  revisions" tile; refreshed 2 copy strings. No schema/query/server change. 2482 unit tests, tsc + `next
+  build` clean. Adversarial whole-branch review READY_TO_MERGE (0 critical/important). No `src/server/jobs/**`
+  change → Trigger.dev deploy SKIPPED. **Known caveat (acceptable):** a pre-rework batch stranded at the
+  retired `revisions_complete` step (not in the cutover MOVES map) no longer shows on the track, but is still
+  reachable via the client page's Active Batches + admin force-step/archive. Design + plan: vault
+  `projects/relay-app/2026-07-07-designer-my-relay-full-lifecycle-{design,plan}.md`.
+
 - [x] **2026-07-07 — Copy step collapsed to a single checklist** (P1 #8)
   From the 2026-07-02 workflow-test punch list. The copy step was the only step with a two-panel
   sidebar: a `CopySubStatePanel` (`generating → drafted → approved` sub-state machine) stacked above the

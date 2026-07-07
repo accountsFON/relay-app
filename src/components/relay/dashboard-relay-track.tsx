@@ -4,7 +4,7 @@
  * Replaces the old vertical kanban board. Each RelayStep is a station along a
  * horizontal track; each in-flight relay sits as a runner card under the
  * station where it is currently waiting. Stations are arranged left to right
- * from onboarding through final QA so the dashboard reads as a single sweep.
+ * from Copy Review through Scheduling so the dashboard reads as a single sweep.
  *
  * Naming: this file deliberately uses "DashboardRelayTrack" to avoid
  * colliding with the existing RelayTrack component in relay-track.tsx, which
@@ -70,7 +70,7 @@ export function DashboardRelayTrack({
         title="No relays on the track."
         description={
           viewerRole === 'designer'
-            ? 'When an AM passes a relay to design, it lines up here.'
+            ? 'Relays on your clients line up here as they move through the pipeline.'
             : 'Start one from a client profile and watch it move across the track.'
         }
         className={className}

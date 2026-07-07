@@ -31,37 +31,24 @@ import { DashboardSelectMode } from '@/components/relay/dashboard-select-mode'
 
 /**
  * Full relay track, left to right, starting at Copy Review. The dashboard
- * surfaces every step so the race reads as one sweep through final QA.
- * Designer view is a filtered subset of this same ordering.
+ * surfaces every LIVE step so the race reads as one sweep through scheduling.
+ * The designer view reuses this exact list, filtered to their clients.
+ *
+ * Uses the current post-2026-06-22 step set: `client_review` and `scheduling`
+ * replace the retired `sent_to_client` / `client_decision` / `ready_to_schedule`
+ * / `revisions_complete` / `final_qa_schedule` (kept in the enum for historical
+ * rows, but no live batch lands there, so they are not stations). `bucketRunners`
+ * matches `currentStep` exactly, so a stale list silently drops live relays.
  */
 const AM_TRACK_STEPS: RelayStep[] = [
   RelayStep.copy,
   RelayStep.in_design,
-  // `designs_completed` removed per Phase 3 item 15 PR1. Enum value
-  // preserved so historical events render; no live batch lands here.
   RelayStep.am_review_design,
-  // `design_revisions` removed (merge design steps 2026-06-26). "Request changes"
-  // is an in-step action on am_review_design; enum value kept for historical rows.
   RelayStep.am_qa_pre_client,
-  RelayStep.sent_to_client,
-  RelayStep.client_decision,
-  RelayStep.ready_to_schedule,
+  RelayStep.client_review,
   RelayStep.implementing_revisions,
-  RelayStep.revisions_complete,
-  RelayStep.final_qa_schedule,
+  RelayStep.scheduling,
   RelayStep.completed,
-]
-
-/**
- * Designer view scopes to the steps where a designer is the holder or is
- * actively being unblocked. Mirrors the prior DESIGNER_COLUMNS shape but
- * uses raw RelayStep keys so the same component renders both views.
- */
-const DESIGNER_TRACK_STEPS: RelayStep[] = [
-  RelayStep.in_design,
-  // `designs_completed` removed per Phase 3 item 15 PR1.
-  // `design_revisions` removed (merge design steps 2026-06-26): the designer
-  // reworks in-step while the batch stays at am_review_design, AM-held.
 ]
 
 const CLIENT_COLUMNS: ClientKanbanColumn[] = [
@@ -252,12 +239,12 @@ export async function DesignerDashboard({
   )
 
   const transitions = await lastTransitionByBatch(myBatches.map((b) => b.id))
-  const stations = bucketRunners(myBatches, DESIGNER_TRACK_STEPS, transitions)
+  const stations = bucketRunners(myBatches, AM_TRACK_STEPS, transitions)
 
-  // Merge design steps (2026-06-26): requested changes sit on am_review_design
-  // (AM-held), so they fall outside DESIGNER_TRACK_STEPS and dropped off the
-  // designer board. Surface them in a dedicated tile so the designer still sees
-  // what needs reworking without relying on the bell alone.
+  // Requested changes sit on am_review_design (AM-held) with the
+  // `awaiting_design_revisions` sub-state. The full track shows that step as a
+  // station, but a station can't distinguish "designer must rework now" from
+  // "AM is reviewing," so keep a dedicated "act now" tile above the track.
   const awaitingRevisions = myBatches.filter(
     (b) =>
       b.currentStep === RelayStep.am_review_design &&
@@ -268,7 +255,7 @@ export async function DesignerDashboard({
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <HeroBand
         title="My relay"
-        subtitle="Your design queue, moving across the track."
+        subtitle="Every relay on your clients, moving across the track."
       />
       {awaitingRevisions.length > 0 && (
         <div className="mt-8">
