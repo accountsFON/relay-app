@@ -157,8 +157,11 @@ export async function listBatchesForOrg(
  * List batches in flight for a client, sorted by held-by-viewer first,
  * then by most recent activity (RelayEvent createdAt, fallback to batch.createdAt).
  *
- * In flight = currentStep != final_qa_schedule (the terminal step in the
- * RelayStep enum).
+ * In flight = not at a terminal step. Terminal = `completed` (the current
+ * terminal step after the pipeline rework) plus the retired `final_qa_schedule`
+ * that pre-rework batches may still sit at. Excluding `completed` fixes the
+ * "N active" over-count (P1 #7). Archived (soft-deleted) batches are already
+ * excluded by the Prisma soft-delete extension.
  *
  * Used by ActiveBatchesSection on the client page. In flight counts per
  * client are typically <5, so the in-JS sort is cheap.
@@ -170,7 +173,9 @@ export async function listActiveBatchesForClient(
   const batches = await db.batch.findMany({
     where: {
       clientId,
-      currentStep: { not: RelayStepEnum.final_qa_schedule },
+      currentStep: {
+        notIn: [RelayStepEnum.completed, RelayStepEnum.final_qa_schedule],
+      },
     },
     include: {
       holder: { select: { id: true, name: true, role: true, avatarUrl: true } },
