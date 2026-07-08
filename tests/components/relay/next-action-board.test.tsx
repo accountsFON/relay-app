@@ -105,4 +105,29 @@ describe('NextActionBoard', () => {
     expect(getByText('This relay is complete')).toBeTruthy()
     expect(queryByRole('link')).toBeNull()
   })
+
+  it('P2 #20: renders a "Next step" eyebrow label on the action tone', () => {
+    const action: NextAction = { tone: 'action', title: 'Review the designs' }
+    const { getByTestId } = render(<NextActionBoard action={action} />)
+    expect(getByTestId('next-action-eyebrow').textContent).toBe('Next step')
+  })
+
+  it('P2 #20: does NOT render the "Next step" eyebrow on the waiting tone', () => {
+    const action: NextAction = { tone: 'waiting', title: 'Waiting on design revisions' }
+    const { queryByTestId } = render(<NextActionBoard action={action} />)
+    expect(queryByTestId('next-action-eyebrow')).toBeNull()
+  })
+
+  it('P2 #20: does NOT render the "Next step" eyebrow on the done tone', () => {
+    const action: NextAction = { tone: 'done', title: 'This relay is complete' }
+    const { queryByTestId } = render(<NextActionBoard action={action} />)
+    expect(queryByTestId('next-action-eyebrow')).toBeNull()
+  })
+
+  it('P2 #20: renders no leading icon on the action tone (the clickable-looking arrow is gone)', () => {
+    // No button, so the only <svg> that could appear is the leading icon.
+    const action: NextAction = { tone: 'action', title: 'Review the designs' }
+    const { container } = render(<NextActionBoard action={action} />)
+    expect(container.querySelector('svg')).toBeNull()
+  })
 })
