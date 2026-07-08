@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { RelayStep } from '@prisma/client'
 import { nextActionForRelay } from '@/lib/relay-next-action'
-import { NECTR_CRM_URL } from '@/lib/nectr'
 
 const BASE = {
   clientId: 'client_1',
@@ -171,7 +170,7 @@ describe('nextActionForRelay', () => {
       RelayStep.ready_to_schedule,
       RelayStep.final_qa_schedule,
     ]) {
-      it(`${step} -> "Go to NectrCRM"`, () => {
+      it(`${step} -> schedule action with no banner button (combined button is page-provided, P2 #30)`, () => {
         const a = nextActionForRelay({
           ...BASE,
           step,
@@ -180,7 +179,7 @@ describe('nextActionForRelay', () => {
           isHolder: true,
         })
         expect(a.tone).toBe('action')
-        expect(a.button?.href).toBe(NECTR_CRM_URL)
+        expect(a.button).toBeUndefined()
       })
     }
   })

@@ -51,9 +51,9 @@ import {
 import { PostVersionHistory } from '@/components/posts/post-version-history'
 import { CostBreakdown } from '@/components/runs/cost-breakdown'
 import { NextActionBoard } from '@/components/relay/next-action-board'
-import { nextActionForRelay } from '@/lib/relay-next-action'
+import { nextActionForRelay, SCHEDULING_STEPS } from '@/lib/relay-next-action'
 import { FailedRunBanner } from '@/components/runs/failed-run-banner'
-import { ExportButton } from '@/components/runs/export-button'
+import { ExportAndScheduleButton } from '@/components/relay/export-and-schedule-button'
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
 import { OpenClientContentButton } from '@/components/batch/open-client-content-button'
 import { GoToNectrCrmButton } from '@/components/batch/go-to-nectrcrm-button'
@@ -393,6 +393,28 @@ export default async function BatchDetailPage({
     celebrationParticipants = resolveCelebrationParticipants(ordered, clerkPhotos)
   }
 
+  // P2 #30: at the Scheduling step, the next-steps banner carries one combined
+  // "Export CSV & go to NectrCRM" button instead of the plain Go-to-NectrCRM link.
+  // Gated like the old ExportButton was (`isLive && canAct`): actions are
+  // unavailable on archived batches, and only the holder/AM/admin may act — a
+  // designer/client viewing the (all-roles) banner must not see it.
+  const schedulingExportSlot =
+    isLive &&
+    canAct &&
+    SCHEDULING_STEPS.has(batch.currentStep) &&
+    run &&
+    posts.length > 0 ? (
+      <ExportAndScheduleButton
+        posts={posts.map((p) => ({
+          date: p.postDate.toISOString().split('T')[0],
+          caption: p.caption,
+          hashtags: p.hashtags.join(' '),
+          mediaUrl: p.mediaUrls?.[0] ?? '',
+        }))}
+        filename={`${client.name}-${targetMonth}`}
+      />
+    ) : undefined
+
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-7xl">
       <EventAnchor />
@@ -476,17 +498,6 @@ export default async function BatchDetailPage({
                 this month's posts. Content is refined per-post (Regenerate
                 caption with AI) or via revisions; a true restart is Archive +
                 generate again from the client page (month picker). */}
-            {run && posts.length > 0 && (
-              <ExportButton
-                posts={posts.map((p) => ({
-                  date: p.postDate.toISOString().split('T')[0],
-                  caption: p.caption,
-                  hashtags: p.hashtags.join(' '),
-                  mediaUrl: p.mediaUrls?.[0] ?? '',
-                }))}
-                filename={`${client.name}-${targetMonth}`}
-              />
-            )}
             <GoToNectrCrmButton currentStep={batch.currentStep} />
             {canEdit && <ArchiveBatchButton batchId={batch.id} />}
           </>
@@ -555,6 +566,7 @@ export default async function BatchDetailPage({
       <div className="mt-8">
         <NextActionBoard
           anchorId={batchId}
+          primaryActionSlot={schedulingExportSlot}
           action={nextActionForRelay({
             step: batch.currentStep,
             subState: batch.currentSubState,

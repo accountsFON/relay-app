@@ -20,6 +20,33 @@ describe('NextActionBoard', () => {
     expect(link).not.toHaveAttribute('target', '_blank')
   })
 
+  it('P2 #30: renders primaryActionSlot in place of the default action button', () => {
+    const action: NextAction = {
+      tone: 'action',
+      title: 'Schedule',
+      button: { label: 'Go to NectrCRM', href: 'https://n' },
+    }
+    const { getByRole, queryByRole } = render(
+      <NextActionBoard
+        anchorId="b1"
+        action={action}
+        primaryActionSlot={<button>Export CSV &amp; go to NectrCRM</button>}
+      />,
+    )
+    expect(getByRole('button', { name: /export csv & go to nectrcrm/i })).toBeTruthy()
+    expect(queryByRole('link', { name: /go to nectrcrm/i })).toBeNull()
+  })
+
+  it('P2 #30: renders the default action button when no slot is provided', () => {
+    const action: NextAction = {
+      tone: 'action',
+      title: 'Schedule',
+      button: { label: 'Go to NectrCRM', href: 'https://n' },
+    }
+    const { getByRole } = render(<NextActionBoard action={action} />)
+    expect(getByRole('link', { name: /go to nectrcrm/i })).toBeTruthy()
+  })
+
   it('P1 #19: renders data-action-board with the anchorId so notifications can deep-link to it', () => {
     const action: NextAction = {
       tone: 'action',

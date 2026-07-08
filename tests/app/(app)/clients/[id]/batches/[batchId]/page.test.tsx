@@ -214,9 +214,6 @@ vi.mock('@/components/runs/failed-run-banner', () => ({
   FailedRunBanner: () => <div data-testid="failed-run-banner-stub" />,
 }))
 
-vi.mock('@/components/runs/export-button', () => ({
-  ExportButton: () => <div data-testid="export-button-stub" />,
-}))
 
 vi.mock('@/components/batch/open-client-content-button', () => ({
   OpenClientContentButton: () => (
