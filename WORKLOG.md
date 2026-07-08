@@ -35,6 +35,18 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-08 — "Next step" banner label (no more clickable-looking arrow)** (P2 #20)
+  The `NextActionBoard` "what to do next" banner showed a solid dark `ArrowRight` as its leading icon on the
+  `action` tone, which read like a clickable button. Replaced it (action tone only) with a muted-gray
+  uppercase "Next step" eyebrow label above the title; `done` (check) and `waiting` (clock) keep their
+  leading icons. The action button's own arrow (inside `ActionLink`, on real buttons) is untouched. Pure
+  presentational, one component. Adversarial review READY_TO_MERGE, 0 defects (tone union is a closed
+  3-value set so the `else`→null branch is exactly `action`; layout fine with a single flex child; only
+  consumer is the batch page via `primaryActionSlot`, unaffected). TDD: 4 new tests (eyebrow present on
+  action / absent on waiting+done / no leading icon on action). 2521 unit tests, tsc + `next build` clean.
+  No `src/server/jobs/**` change -> Trigger.dev deploy SKIPPED. Design: vault
+  `projects/relay-app/2026-07-08-next-step-banner-label-design.md`.
+
 - [x] **2026-07-08 — Resolved pins stay visible (greyed/struck), don't vanish** (P2 #26)
   Resolved pins used to disappear on the client magic-link review and the internal `/preview` because both
   hydrated threads via `listThreadsForBatch({ batchId })`, which excludes resolved by default. Flipped both to

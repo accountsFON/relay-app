@@ -89,11 +89,17 @@ export function NextActionBoard({ action, anchorId, primaryActionSlot }: Props) 
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
         ) : action.tone === 'waiting' ? (
           <Clock className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
-        ) : (
-          <ArrowRight className="mt-0.5 h-5 w-5 shrink-0 text-foreground" />
-        )}
+        ) : null}
         <div className="min-w-0 flex-1 space-y-2">
           <div>
+            {action.tone === 'action' && (
+              <p
+                data-testid="next-action-eyebrow"
+                className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Next step
+              </p>
+            )}
             <h2 className="text-[15px] font-semibold text-foreground">
               {action.title}
             </h2>
