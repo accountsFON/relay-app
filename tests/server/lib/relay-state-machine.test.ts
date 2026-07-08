@@ -466,74 +466,48 @@ describe('implementing_revisions transitions (pipeline rework)', () => {
   })
 })
 
-describe('checklistRowsForStep — send review link item', () => {
-  it('appends a required Send review link item on am_qa_pre_client when client review is on', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true)
-    const sendItem = rows.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
-    expect(sendItem).toEqual({
-      batchId: 'batch-1',
-      step: RelayStep.am_qa_pre_client,
-      label: SEND_REVIEW_LINK_LABEL,
-      required: true,
-      checked: false,
-    })
-    expect(rows.length).toBe(4)
+describe('checklistRowsForStep — Send review link row removed (P1 #13)', () => {
+  it('seeds no rows on am_qa_pre_client, with or without client review', () => {
+    expect(checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true)).toEqual([])
+    expect(checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, false)).toEqual([])
   })
 
-  it('marks the Send review link item checked when sendLinkChecked is true', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true, true)
-    const sendItem = rows.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
-    expect(sendItem?.checked).toBe(true)
+  it('never emits the Send review link row on any step', () => {
+    for (const step of Object.values(RelayStep)) {
+      const rows = checklistRowsForStep('batch-1', step, true)
+      expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
+    }
   })
 
-  it('omits the Send review link item on am_qa_pre_client when client review is off', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, false)
-    expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
-    expect(rows.length).toBe(3)
-  })
-
-  it('never adds the item on am_review_design, even when client review is on', () => {
+  it('still seeds the static rows for other steps (am_review_design has 5)', () => {
     const rows = checklistRowsForStep('batch-1', RelayStep.am_review_design, true)
-    expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
     expect(rows.length).toBe(5)
   })
 })
 
-describe('reseedChecklistForStep — send-link auto-check', () => {
-  function makeTx(activeLink: boolean) {
+describe('reseedChecklistForStep — no magic-link query (send-link removed)', () => {
+  function makeTx() {
     return {
       checklistItem: {
         deleteMany: vi.fn().mockResolvedValue({}),
         createMany: vi.fn().mockResolvedValue({}),
       },
       magicLink: {
-        findFirst: vi.fn().mockResolvedValue(activeLink ? { id: 'ml1' } : null),
+        findFirst: vi.fn().mockResolvedValue({ id: 'ml1' }),
       },
     }
   }
 
-  function sentRow(tx: ReturnType<typeof makeTx>) {
-    const data = tx.checklistItem.createMany.mock.calls[0][0].data as {
-      label: string
-      checked: boolean
-    }[]
-    return data.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
-  }
-
-  it('checks the Send review link item on Pre-Client QA when an active link exists', async () => {
-    const tx = makeTx(true)
+  it('never queries magic links when reseeding Pre-Client QA', async () => {
+    const tx = makeTx()
     await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_qa_pre_client, true)
-    expect(sentRow(tx)?.checked).toBe(true)
+    expect(tx.magicLink.findFirst).not.toHaveBeenCalled()
+    // QA seeds nothing now, so no createMany call is made.
+    expect(tx.checklistItem.createMany).not.toHaveBeenCalled()
   })
 
-  it('leaves the Send review link item unchecked when no active link exists', async () => {
-    const tx = makeTx(false)
-    await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_qa_pre_client, true)
-    expect(sentRow(tx)?.checked).toBe(false)
-  })
-
-  it('does not query magic links for non-QA steps', async () => {
-    const tx = makeTx(false)
+  it('does not query magic links for any step', async () => {
+    const tx = makeTx()
     await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_review_design, true)
     expect(tx.magicLink.findFirst).not.toHaveBeenCalled()
   })

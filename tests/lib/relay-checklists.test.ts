@@ -23,8 +23,8 @@ describe('pipeline rework: checklist seeds', () => {
   it('Design Revision seed is retired (merge design steps: empty)', () => {
     expect(CHECKLIST_SEED[RelayStep.design_revisions].length).toBe(0)
   })
-  it('QA has three items', () => {
-    expect(CHECKLIST_SEED[RelayStep.am_qa_pre_client].length).toBe(3)
+  it('Pre-Client QA seed is retired (removed as a live step: P1 #13, empty)', () => {
+    expect(CHECKLIST_SEED[RelayStep.am_qa_pre_client]).toEqual([])
   })
   it('Scheduling has the three doc items', () => {
     expect(CHECKLIST_SEED[RelayStep.scheduling].map((i) => i.label)).toEqual([

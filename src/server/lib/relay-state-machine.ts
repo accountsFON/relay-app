@@ -1,5 +1,5 @@
 import { RelayStep, RelayRole } from '@prisma/client'
-import { CHECKLIST_SEED, SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
+import { CHECKLIST_SEED } from '@/lib/relay-checklists'
 import type { DbClient, DbTx } from '@/db/client'
 
 export { RelayStep, RelayRole }
@@ -159,59 +159,24 @@ export function holderRoleForStep(step: RelayStep): RelayRole {
 }
 
 /**
- * The checklist rows a batch should have at `step`: static template rows plus
- * the conditional "Send review link" item on the AM review step when the client
- * has client review enabled (item 21).
+ * The checklist rows a batch should have at `step`: the static template rows
+ * from CHECKLIST_SEED. The Pre-Client QA "Send review link" row was removed
+ * (P1 #13); the final-QA once-over + send-link now live in the Design Review
+ * transition confirm modal.
  */
-/**
- * True when the batch already has a live (non-revoked, unexpired) magic link,
- * i.e. the "Send review link" gate is already satisfied. Used to pre-check the
- * Pre-Client QA send-link item so a reseed / migration / loop-back after the
- * link is out does not re-prompt the AM. Only queries for the QA step under
- * client review; otherwise short-circuits without a DB round-trip.
- */
-async function sendLinkAlreadyActive(
-  tx: DbOrTx,
-  batchId: string,
-  step: RelayStep,
-  clientReviewEnabled: boolean,
-): Promise<boolean> {
-  if (step !== RelayStep.am_qa_pre_client || !clientReviewEnabled) return false
-  const link = await tx.magicLink.findFirst({
-    where: { batchId, revokedAt: null, expiresAt: { gt: new Date() } },
-    select: { id: true },
-  })
-  return link !== null
-}
-
 export function checklistRowsForStep(
   batchId: string,
   step: RelayStep,
   clientReviewEnabled: boolean,
-  sendLinkChecked = false,
 ): { batchId: string; step: RelayStep; label: string; required: boolean; checked: boolean }[] {
   const seed = CHECKLIST_SEED[step] ?? []
-  const rows = seed.map((item) => ({
+  return seed.map((item) => ({
     batchId,
     step,
     label: item.label,
     required: item.required ?? true,
     checked: false,
   }))
-  // Client review: the "Send review link" gate lives on Pre-Client QA (step 5),
-  // so the AM runs the final internal QA and sends the link there, then passes
-  // to Client Review with the link already out. `checked` reflects an already-
-  // sent active link so a reseed / migration / loop-back does not re-prompt.
-  if (step === RelayStep.am_qa_pre_client && clientReviewEnabled) {
-    rows.push({
-      batchId,
-      step,
-      label: SEND_REVIEW_LINK_LABEL,
-      required: true,
-      checked: sendLinkChecked,
-    })
-  }
-  return rows
 }
 
 /**
@@ -226,8 +191,7 @@ export async function reseedChecklistForStep(
   clientReviewEnabled: boolean,
 ): Promise<void> {
   await tx.checklistItem.deleteMany({ where: { batchId } })
-  const sendLinkChecked = await sendLinkAlreadyActive(tx, batchId, step, clientReviewEnabled)
-  const data = checklistRowsForStep(batchId, step, clientReviewEnabled, sendLinkChecked)
+  const data = checklistRowsForStep(batchId, step, clientReviewEnabled)
   if (data.length === 0) return
   await tx.checklistItem.createMany({ data })
 }
@@ -238,8 +202,7 @@ export async function seedChecklistForStep(
   step: RelayStep,
   clientReviewEnabled: boolean,
 ): Promise<void> {
-  const sendLinkChecked = await sendLinkAlreadyActive(tx, batchId, step, clientReviewEnabled)
-  const data = checklistRowsForStep(batchId, step, clientReviewEnabled, sendLinkChecked)
+  const data = checklistRowsForStep(batchId, step, clientReviewEnabled)
   if (data.length === 0) return
   await tx.checklistItem.createMany({ data })
 }
