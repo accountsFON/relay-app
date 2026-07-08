@@ -35,6 +35,20 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-08 — Client review counter accuracy** (P2 #27)
+  Reframed by Julio (punch list said "remove the broken '1 approved / 0 changes / 2 edits' banner"; instead
+  FIX it). The client magic-link review counter (`SubmitReviewBar`) counted a post marked approved-but-
+  carrying-feedback (a saved copy edit or an open CLIENT pin) as a clean "approved", mismatching the server
+  submit routing (`isApprovedWithFeedback`) and causing a false "all approved" flash. New pure
+  `summarizeReviewDecisions` helper (reuses `isApprovedWithFeedback`) reclassifies approved-with-feedback →
+  changes; the shell's summary useMemo calls it. Also fixes the `ApproveAllButton` all-approved gate for
+  free. **Adversarial review caught a real gap** (fixed + tested): the pin count must scope to CLIENT-
+  authored open pins (`firstComment.author.kind === 'client'`), mirroring the server's `reviewerToken != null`
+  — an AM pin on an approved post must NOT make it "changes" or the counter would disagree with submit again;
+  plus corrected the Approve-all confirm `overrideCount` to count explicit `changes_requested` only. 2486
+  unit tests, tsc + `next build` clean. No `src/server/jobs/**` change -> Trigger.dev deploy SKIPPED. Design +
+  plan: vault `projects/relay-app/2026-07-08-client-review-counter-accuracy-{design,plan}.md`.
+
 - [x] **2026-07-08 — Removed Pre-Client QA as its own step** (P1 #13)
   From the 2026-07-02 workflow-test punch list — the heaviest P1. `am_qa_pre_client` is removed from the
   live flow (enum kept for history): Design Review now advances STRAIGHT to Client Review (review clients)
