@@ -35,6 +35,20 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-08 — Cmd/Ctrl+Enter to send comments on the client review** (P2 #25)
+  The client magic-link review had keyboard-submit on the new-pin composer (`PinDraftComposer`) but not on
+  its two reply/comment composers. Added Cmd/Ctrl+Enter to both `PinPopover` (pin-thread reply) and
+  `CommentThread` (post-level "Comments" / "Start a discussion"), mirroring the draft composer: mention
+  dropdown consumes nav/insert keys first, then `Enter && (metaKey || ctrlKey)` submits; plain Enter still
+  inserts a newline. Extracted a `submit()` core in each so the form path and the shortcut share one guard
+  (empty/`submitting`). PinPopover is shared, so internal `/preview` + AM inline replies get it too.
+  Adversarial review of the initial PinPopover-only cut flagged the `CommentThread` gap (folded in) + a
+  resolved-guard nit (added `thread.status === 'resolved'` short-circuit for defense-in-depth). Out of scope:
+  `PinCommentRow` (AM feedback rail, not the client view). TDD: 8 new tests (metaKey/ctrlKey/plain-Enter/empty
+  across both composers). 2512 unit tests, tsc + `next build` clean. No `src/server/jobs/**` change ->
+  Trigger.dev deploy SKIPPED. Design: vault
+  `projects/relay-app/2026-07-08-cmd-enter-send-comment-design.md`.
+
 - [x] **2026-07-08 — Client feedback pin label → "N comments"** (P2 #24)
   The post-level feedback pin badge on a feed post used to read `📍 Post · N` (Caleb read "Post · 2" as a
   post number on the 2026-07-02 workflow test). It now shows a lucide `MessageSquare` icon + `N comments`

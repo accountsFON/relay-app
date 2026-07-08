@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CommentThread } from '@/components/preview/comment-thread'
 
@@ -23,5 +23,38 @@ describe('CommentThread', () => {
   it('hides the composer when readOnly', () => {
     render(<CommentThread comments={[c1]} onSend={vi.fn()} readOnly />)
     expect(screen.queryByTestId('comment-composer')).toBeNull()
+  })
+  it('submits on Cmd+Enter (metaKey)', async () => {
+    const onSend = vi.fn()
+    render(<CommentThread comments={[c1]} onSend={onSend} />)
+    const input = screen.getByTestId('comment-composer-input')
+    fireEvent.change(input, { target: { value: 'thanks' } })
+    fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith('thanks'))
+  })
+  it('submits on Ctrl+Enter (ctrlKey)', async () => {
+    const onSend = vi.fn()
+    render(<CommentThread comments={[c1]} onSend={onSend} />)
+    const input = screen.getByTestId('comment-composer-input')
+    fireEvent.change(input, { target: { value: 'ship it' } })
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith('ship it'))
+  })
+  it('does NOT submit on a plain Enter (newline, no modifier)', () => {
+    const onSend = vi.fn()
+    render(<CommentThread comments={[c1]} onSend={onSend} />)
+    const input = screen.getByTestId('comment-composer-input')
+    fireEvent.change(input, { target: { value: 'a note' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onSend).not.toHaveBeenCalled()
+  })
+  it('does NOT submit an empty comment on Cmd+Enter', () => {
+    const onSend = vi.fn()
+    render(<CommentThread comments={[c1]} onSend={onSend} />)
+    fireEvent.keyDown(screen.getByTestId('comment-composer-input'), {
+      key: 'Enter',
+      metaKey: true,
+    })
+    expect(onSend).not.toHaveBeenCalled()
   })
 })
