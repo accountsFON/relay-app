@@ -35,6 +35,21 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-08 — Quieter designer notifications during client review** (P2 #28)
+  A magic-link client dropping a pin during client review pinged the assigned designer's bell on every pin:
+  `createThread` (`threads.ts`) auto-added `assignedDesignerId` to the `post_thread_opened` mentions
+  regardless of actor. Gated that auto-notify to AM actors only (`isAmActor && designerId`). Now a client
+  pin/reply pings only the AM (via `notifyAmOfClientReply`, unchanged) and still records for the activity
+  feed; the designer is notified on the ACTIONABLE events instead — review submit (`reviewSessions.ts`
+  mentions AM + designer) and the revision / designer-flag flows (`relay.ts`). AM internal-review pins still
+  notify the designer + honor @-mentions (unchanged). Adversarial review READY_TO_MERGE, 0 defects (verified
+  `createThread` was the only per-comment client→designer ping; all actionable designer paths intact). Minor
+  incidental effect (consistent with the ticket): `promotePostFeedbackToThread`'s reviewer-authored seed
+  (AM replying to client Notes) also no longer pings the designer once. TDD: flipped the reviewer-actor unit
+  test to assert no designer mention; AM cases still assert it. 2522 unit tests, tsc + `next build` clean.
+  No `src/server/jobs/**` change -> Trigger.dev deploy SKIPPED. Design: vault
+  `projects/relay-app/2026-07-08-quiet-designer-notifs-design.md`.
+
 - [x] **2026-07-08 — "Next step" banner label (no more clickable-looking arrow)** (P2 #20)
   The `NextActionBoard` "what to do next" banner showed a solid dark `ArrowRight` as its leading icon on the
   `action` tone, which read like a clickable button. Replaced it (action tone only) with a muted-gray

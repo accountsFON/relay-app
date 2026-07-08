@@ -216,6 +216,12 @@ export async function createThread(
   // this is the first comment, it's the create-thread path). Skip the
   // mention when the AM IS the designer (self-notify) or when no designer
   // is assigned.
+  //
+  // P2 #28: the designer auto-notify is gated to AM actors ONLY. A client
+  // reviewer's pins during client review must NOT ping the designer per-pin
+  // (that was noise on every client comment); the designer is notified on the
+  // actionable event instead — review submit + revisions both mention the
+  // assigned designer (reviewSessions submit, relay revision flow).
   const post = await db.post.findUnique({
     where: { id: postId },
     select: {
@@ -224,12 +230,13 @@ export async function createThread(
     },
   })
   if (post) {
-    const actorUserId = author.kind === 'am' ? author.userId : null
+    const isAmActor = author.kind === 'am'
+    const actorUserId = isAmActor ? author.userId : null
     const designerId = post.client?.assignedDesignerId ?? null
-    // Designer auto-notify (kept) ∪ resolved @-mentioned users, deduped, minus
-    // the actor so a self-mention never self-pings.
+    // Designer auto-notify (AM-authored threads only) ∪ resolved @-mentioned
+    // users, deduped, minus the actor so a self-mention never self-pings.
     const mentionSet = new Set<string>([
-      ...(designerId ? [designerId] : []),
+      ...(isAmActor && designerId ? [designerId] : []),
       ...(input.mentionedUserIds ?? []),
     ])
     if (actorUserId) mentionSet.delete(actorUserId)
