@@ -74,7 +74,6 @@ export function nextActionForRelay(input: NextActionInput): NextAction {
     viewerRole,
     clientId,
     batchId,
-    clientReviewEnabled,
     hasSubmittedReviewSession,
     reviewSessionId,
     assetsFolderUrl,

@@ -167,6 +167,11 @@ export function holderRoleForStep(step: RelayStep): RelayRole {
 export function checklistRowsForStep(
   batchId: string,
   step: RelayStep,
+  // Retained for signature stability: reseed/seedChecklistForStep and their many
+  // callers thread clientReviewEnabled positionally. Unused here since the QA
+  // send-link row was removed (P1 #13); removing it would cascade across every
+  // passBaton/sendBackBaton/migration caller, out of scope for this change.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   clientReviewEnabled: boolean,
 ): { batchId: string; step: RelayStep; label: string; required: boolean; checked: boolean }[] {
   const seed = CHECKLIST_SEED[step] ?? []
