@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, Clock, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,13 @@ interface Props {
    * deep link (`#action-{batchId}`) scrolls here (P1 #19). Omitted -> no anchor.
    */
   anchorId?: string
+  /**
+   * When provided, renders in place of the default primary `action.button`
+   * (P2 #30: the Scheduling banner's combined "Export CSV & go to NectrCRM"
+   * client button, which needs an onClick the pure NextAction can't carry).
+   * `action.secondaryButton` is unaffected.
+   */
+  primaryActionSlot?: ReactNode
 }
 
 /** A href that points off-domain (NectrCRM, client content folder). */
@@ -65,7 +73,7 @@ function ActionLink({
  * `tone:'waiting'` usually carries none, but may expose an off-page button
  * (e.g. the AM watching design revisions can open the internal review).
  */
-export function NextActionBoard({ action, anchorId }: Props) {
+export function NextActionBoard({ action, anchorId, primaryActionSlot }: Props) {
   return (
     <div
       data-testid="next-action-board"
@@ -95,11 +103,13 @@ export function NextActionBoard({ action, anchorId }: Props) {
               </p>
             )}
           </div>
-          {(action.button || action.secondaryButton) && (
+          {(primaryActionSlot || action.button || action.secondaryButton) && (
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {action.button && (
-                <ActionLink button={action.button} variant="default" />
-              )}
+              {primaryActionSlot
+                ? primaryActionSlot
+                : action.button && (
+                    <ActionLink button={action.button} variant="default" />
+                  )}
               {action.secondaryButton && (
                 <ActionLink
                   button={action.secondaryButton}
