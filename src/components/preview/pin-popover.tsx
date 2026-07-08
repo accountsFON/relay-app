@@ -8,6 +8,7 @@ import {
   useState,
   useTransition,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { cn } from '@/lib/utils'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
@@ -168,8 +169,8 @@ export function PinPopover({
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [onClose, requestClose])
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function submit() {
+    if (thread.status === 'resolved') return
     const trimmed = body.trim()
     // Allow submit when there's text OR an attached image (image-only reply).
     if ((!trimmed && !attachedImage) || submitting) return
@@ -180,6 +181,21 @@ export function PinPopover({
       setAttachedImage(null)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    await submit()
+  }
+
+  function handleReplyKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    // Let the mention dropdown consume navigation/insert/close keys first.
+    if (mention.handleKeyDown(event)) return
+    // Cmd/Ctrl+Enter submits the reply; plain Enter inserts a newline.
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault()
+      void submit()
     }
   }
 
@@ -305,9 +321,7 @@ export function PinPopover({
               setBody(event.target.value)
               mention.onBodyChange(event.target.value)
             }}
-            onKeyDown={(event) => {
-              mention.handleKeyDown(event)
-            }}
+            onKeyDown={handleReplyKeyDown}
             disabled={submitting || thread.status === 'resolved'}
             rows={2}
             placeholder={

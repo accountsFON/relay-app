@@ -557,3 +557,85 @@ describe('PinPopover author bylines', () => {
     expect(nameEl).not.toHaveClass('whitespace-nowrap')
   })
 })
+
+describe('PinPopover Cmd/Ctrl+Enter submits the reply', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('submits the reply on Cmd+Enter (metaKey)', async () => {
+    const onComment = vi.fn(async () => {})
+    render(
+      <PinPopover
+        thread={makeThread()}
+        anchor={{ x: 100, y: 100 }}
+        mode="review"
+        onComment={onComment}
+      />,
+    )
+
+    const input = screen.getByTestId('pin-popover-input')
+    fireEvent.change(input, { target: { value: 'Looks great' } })
+    fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
+
+    await waitFor(() => {
+      expect(onComment).toHaveBeenCalledTimes(1)
+    })
+    expect(onComment).toHaveBeenCalledWith('Looks great', undefined)
+  })
+
+  it('submits the reply on Ctrl+Enter (ctrlKey)', async () => {
+    const onComment = vi.fn(async () => {})
+    render(
+      <PinPopover
+        thread={makeThread()}
+        anchor={{ x: 100, y: 100 }}
+        mode="review"
+        onComment={onComment}
+      />,
+    )
+
+    const input = screen.getByTestId('pin-popover-input')
+    fireEvent.change(input, { target: { value: 'Ship it' } })
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+
+    await waitFor(() => {
+      expect(onComment).toHaveBeenCalledWith('Ship it', undefined)
+    })
+  })
+
+  it('does NOT submit on a plain Enter (newline, no modifier)', () => {
+    const onComment = vi.fn(async () => {})
+    render(
+      <PinPopover
+        thread={makeThread()}
+        anchor={{ x: 100, y: 100 }}
+        mode="review"
+        onComment={onComment}
+      />,
+    )
+
+    const input = screen.getByTestId('pin-popover-input')
+    fireEvent.change(input, { target: { value: 'a note' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onComment).not.toHaveBeenCalled()
+  })
+
+  it('does NOT submit an empty reply on Cmd+Enter', () => {
+    const onComment = vi.fn(async () => {})
+    render(
+      <PinPopover
+        thread={makeThread()}
+        anchor={{ x: 100, y: 100 }}
+        mode="review"
+        onComment={onComment}
+      />,
+    )
+
+    const input = screen.getByTestId('pin-popover-input')
+    fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
+
+    expect(onComment).not.toHaveBeenCalled()
+  })
+})

@@ -1,6 +1,11 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import {
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Linkify } from '@/components/ui/linkify'
@@ -56,8 +61,7 @@ export function CommentThread({
     setBody,
   })
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function submit() {
     const trimmed = body.trim()
     if (!trimmed || submitting) return
     setSubmitting(true)
@@ -66,6 +70,21 @@ export function CommentThread({
       setBody('')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    await submit()
+  }
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    // Let the mention dropdown consume navigation/insert/close keys first.
+    if (mention.handleKeyDown(event)) return
+    // Cmd/Ctrl+Enter submits; plain Enter inserts a newline.
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault()
+      void submit()
     }
   }
 
@@ -120,9 +139,7 @@ export function CommentThread({
                 setBody(event.target.value)
                 mention.onBodyChange(event.target.value)
               }}
-              onKeyDown={(event) => {
-                mention.handleKeyDown(event)
-              }}
+              onKeyDown={handleKeyDown}
               disabled={submitting}
               rows={2}
               placeholder={placeholder ?? 'Add a comment...'}
