@@ -731,6 +731,36 @@ describe('ReviewSessionDetailPage', () => {
       expect(queryByTestId('rail-row-post_a')).toBeNull()
     })
 
+    it('designer still sees a clean-approved post the AM flagged for them (P2 #29 flag coverage)', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
+      mockLaneThreads() // post_b/post_c carry pins; post_a is approved-clean
+      // The AM flagged the clean-approved post_a for the designer to rework.
+      vi.mocked(listDesignerFlagsForBatch).mockResolvedValue([
+        {
+          id: 'flag_a',
+          batchId: 'batch_1',
+          postId: 'post_a',
+          threadId: null,
+          reviewItemId: 'item_post_a',
+          note: 'redo the background',
+          createdById: 'am_1',
+          createdAt: new Date(),
+          doneAt: null,
+          doneById: null,
+        },
+      ] as never)
+
+      const { getByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // post_a has no client feedback, but a designer flag makes it relevant —
+      // it MUST stay visible (else the task vanishes and the batch can deadlock).
+      expect(getByTestId('rail-row-post_a')).toBeTruthy()
+    })
+
     it('the AM still sees all posts incl. the clean-approved one (P2 #29 does not filter the AM)', async () => {
       vi.mocked(requireClientViewer).mockResolvedValue(mockCtx) // account_manager
       mockLaneThreads()

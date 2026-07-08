@@ -92,9 +92,11 @@ export function ReviewFeedbackShell({
     }
   }
 
-  // P2 #29: a designer's filtered view can be empty (no posts the client
-  // changed). Show a friendly empty state instead of a blank rail + canvas.
-  // Placed after all hooks so hook order is preserved.
+  // P2 #29: a designer's filtered view can be empty (no relevant posts — nothing
+  // the client changed and nothing flagged for them). Show a friendly empty state
+  // instead of a blank rail + canvas. Placed after all hooks so hook order is
+  // preserved. No respond control here: with no flagged posts there is nothing to
+  // mark done (the mark-revisions-done button lives inside the rail per post).
   if (posts.length === 0) {
     return (
       <div
@@ -102,7 +104,6 @@ export function ReviewFeedbackShell({
         className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground"
       >
         No changes to work on.
-        {respondSlot}
       </div>
     )
   }

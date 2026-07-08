@@ -63,6 +63,20 @@ export function hadFeedback(p: FeedbackPostVM): boolean {
 }
 
 /**
+ * Which posts a DESIGNER sees on the review-session page (P2 #29): the posts the
+ * client changed (`hadFeedback`) OR any post the AM flagged for the designer to
+ * rework. A designer flag can sit on a clean-approved post (the AM can flag a
+ * post the client approved, e.g. "redo the background"), so flags MUST be part of
+ * relevance — otherwise the flagged task vanishes and, if it's the only one, the
+ * batch deadlocks in awaiting_design_revisions with an unreachable open flag.
+ * Distinct from `hadFeedback` on purpose: the rail's AM-facing "Changes only"
+ * toggle is client-change semantics and must NOT fold in designer flags.
+ */
+export function isRelevantToDesigner(p: FeedbackPostVM): boolean {
+  return hadFeedback(p) || p.flags.length > 0
+}
+
+/**
  * Parameterized server actions passed from the server page into the client
  * shell. These wrap the existing review-session server actions + revalidate;
  * the shell/rail bind the right ids per row.

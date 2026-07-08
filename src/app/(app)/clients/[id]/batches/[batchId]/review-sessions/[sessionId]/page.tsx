@@ -69,7 +69,7 @@ import type {
   FeedbackActions,
   DesignerFlagVM,
 } from './review-feedback-types'
-import { hadFeedback } from './review-feedback-types'
+import { isRelevantToDesigner } from './review-feedback-types'
 import type { ReviewSessionSummary } from '@/types/review-session'
 
 type AttentionPost = {
@@ -508,11 +508,11 @@ export default async function ReviewSessionDetailPage({
       />
     ) : null
 
-  // P2 #29: a designer sees only the posts the client changed (verdict
-  // changes/edited, a thread, or a comment), not the whole batch. AM/admin see
-  // all posts. Server-authoritative: the clean-approved posts are never sent.
+  // P2 #29: a designer sees only the posts relevant to them — the posts the
+  // client changed OR any post the AM flagged for them to rework (a flag can sit
+  // on a clean-approved post). AM/admin see all posts. Server-authoritative.
   const shellPosts = isDesigner
-    ? feedbackPosts.filter(hadFeedback)
+    ? feedbackPosts.filter(isRelevantToDesigner)
     : feedbackPosts
 
   return (
