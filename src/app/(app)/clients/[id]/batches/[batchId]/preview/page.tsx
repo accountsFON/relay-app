@@ -198,6 +198,9 @@ export default async function BatchPreviewPage({
             canAdvance={forwardStepCount === 1}
             checklistItems={reviewChecklistItems}
             canTick={canEdit}
+            clientReviewEnabled={batch.clientReviewEnabled}
+            clientName={client.name}
+            clientReviewEmail={client.clientReviewEmail}
           />
         </>
       ) : undefined
