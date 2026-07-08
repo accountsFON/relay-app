@@ -457,7 +457,7 @@ export function FacebookPost(props: FeedPostProps) {
                 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
                 thread.status === 'open'
                   ? 'bg-amber-100 text-amber-900 hover:bg-amber-200'
-                  : 'bg-[#efefef] text-[#8e8e8e] hover:bg-[#e5e5e5]',
+                  : 'bg-[#efefef] text-[#8e8e8e] line-through hover:bg-[#e5e5e5]',
               )}
             >
               <MessageSquare aria-hidden="true" className="size-3" />

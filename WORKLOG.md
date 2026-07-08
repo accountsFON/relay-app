@@ -35,6 +35,26 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-08 — Resolved pins stay visible (greyed/struck), don't vanish** (P2 #26)
+  Resolved pins used to disappear on the client magic-link review and the internal `/preview` because both
+  hydrated threads via `listThreadsForBatch({ batchId })`, which excludes resolved by default. Flipped both to
+  `includeResolved: true`. Rendering was already resolved-ready (image dots grey, caption pins grey +
+  `line-through`, popover disabled + "Thread resolved"); added `line-through` to the resolved post-level
+  badge in `instagram-post.tsx` + `facebook-post.tsx` for consistency (dot markers stay greyed — a struck
+  digit reads worse). **Critical ripple fixed:** the client shell's `openPinCount` filtered by client-author
+  but not status, so a resolved client pin would have counted as open feedback and flipped an approved post
+  to "changes" on submit; added `t.status === 'open'` so it matches the server's open-client-pin routing
+  (server is authoritative regardless, but the client counter now agrees). Also fixed the ChangesNavigator
+  nav item `resolved` flag (was hardcoded false). The AM review-session page already included resolved (no
+  change); every `/preview` open-feedback count already filtered open. Adversarial review READY_TO_MERGE, 0
+  blocking defects (verified submit-routing parity across all four approved/resolved/AM/client pin cases).
+  TDD: 7 new tests (resolved-client-pin-doesn't-count [critical], post-badge strike in ig/fb, + both pages
+  assert `includeResolved: true` to guard against a silent revert). 2518 unit tests, tsc + `next build`
+  clean. No `src/server/jobs/**` change -> Trigger.dev deploy SKIPPED. Design: vault
+  `projects/relay-app/2026-07-08-resolved-pins-visible-design.md`. Follow-up: `postHasNewAmReply` doesn't
+  filter status, so a resolved client thread with an unseen AM reply now shows a "new reply" badge (cosmetic,
+  clears on view).
+
 - [x] **2026-07-08 — Cmd/Ctrl+Enter to send comments on the client review** (P2 #25)
   The client magic-link review had keyboard-submit on the new-pin composer (`PinDraftComposer`) but not on
   its two reply/comment composers. Added Cmd/Ctrl+Enter to both `PinPopover` (pin-thread reply) and

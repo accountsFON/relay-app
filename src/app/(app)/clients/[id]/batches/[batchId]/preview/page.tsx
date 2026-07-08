@@ -93,7 +93,10 @@ export default async function BatchPreviewPage({
   })
 
   const [threadsByPost, approvalCounts, mentionRoster] = await Promise.all([
-    listThreadsForBatch({ batchId: batch.id }),
+    // P2 #26: include resolved threads so resolved pins stay visible (greyed /
+    // struck) on the internal review instead of vanishing. Every open-feedback
+    // count on this surface already filters `status === 'open'`.
+    listThreadsForBatch({ batchId: batch.id, includeResolved: true }),
     derivePostApprovalForBatch(batch.id),
     internalMentionRosterForClient(client.id),
   ])

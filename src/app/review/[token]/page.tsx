@@ -210,11 +210,16 @@ export default async function ReviewPage({
     },
   })
 
-  // Phase 4 item 22: hydrate open threads per post so the v2 client surface
-  // renders existing image/caption pins as numbered badges. Threads created
-  // by reviewers on prior visits (same magic link, same or other reviewer)
-  // round-trip onto the page. Resolved threads are excluded by default.
-  const threadsByPostId = await listThreadsForBatch({ batchId: link.batch.id })
+  // Phase 4 item 22: hydrate threads per post so the v2 client surface renders
+  // existing image/caption pins as numbered badges. Threads created by reviewers
+  // on prior visits (same magic link, same or other reviewer) round-trip onto the
+  // page. P2 #26: include RESOLVED threads too so a resolved pin stays visible
+  // (greyed / struck) instead of vanishing; counts that gate submit routing scope
+  // to open client pins in the shell.
+  const threadsByPostId = await listThreadsForBatch({
+    batchId: link.batch.id,
+    includeResolved: true,
+  })
 
   const feedPosts = posts.map((p) => {
     const postThreads = threadsByPostId.get(p.id) ?? []

@@ -160,7 +160,7 @@ export function ReviewSessionShell({
           decision: itemsByPostId[post.id]?.decision ?? 'not_reviewed',
           suggestedCaption: itemsByPostId[post.id]?.suggestedCaption ?? null,
           openPinCount: (threads ?? []).filter(
-            (t) => t.firstComment.author.kind === 'client',
+            (t) => t.status === 'open' && t.firstComment.author.kind === 'client',
           ).length,
         })),
       ),
@@ -175,7 +175,7 @@ export function ReviewSessionShell({
       const d = itemsByPostId[post.id]?.decision
       if (d !== 'changes_requested' && d !== 'caption_edited') return []
       const out: NavItem[] = []
-      ;(threads ?? []).forEach((t) => out.push({ id: t.id, anchorKey: post.id, resolved: false }))
+      ;(threads ?? []).forEach((t) => out.push({ id: t.id, anchorKey: post.id, resolved: t.status === 'resolved' }))
       if (itemsByPostId[post.id]?.comment) out.push({ id: `note-${post.id}`, anchorKey: post.id, resolved: false })
       if (out.length === 0) out.push({ id: `post-${post.id}`, anchorKey: post.id, resolved: false })
       return out

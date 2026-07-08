@@ -207,6 +207,11 @@ describe('ReviewPage /review/[token] (v2 surface)', () => {
     expect(html).toContain('data-testid="review-session-shell"')
     expect(html).toContain('Jordan Reviewer')
     expect(html).not.toContain('data-testid="name-modal"')
+    // P2 #26: resolved pins must stay visible, so the page hydrates resolved
+    // threads too (guards against a silent revert of the includeResolved flag).
+    expect(mocks.listThreadsForBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ includeResolved: true }),
+    )
   })
 
   it('returns notFound when middleware-rejected (no x-magic-link-id header)', async () => {
