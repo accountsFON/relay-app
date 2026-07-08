@@ -69,6 +69,7 @@ import type {
   FeedbackActions,
   DesignerFlagVM,
 } from './review-feedback-types'
+import { hadFeedback } from './review-feedback-types'
 import type { ReviewSessionSummary } from '@/types/review-session'
 
 type AttentionPost = {
@@ -507,6 +508,13 @@ export default async function ReviewSessionDetailPage({
       />
     ) : null
 
+  // P2 #29: a designer sees only the posts the client changed (verdict
+  // changes/edited, a thread, or a comment), not the whole batch. AM/admin see
+  // all posts. Server-authoritative: the clean-approved posts are never sent.
+  const shellPosts = isDesigner
+    ? feedbackPosts.filter(hadFeedback)
+    : feedbackPosts
+
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
       <ReviewSessionHeader
@@ -536,7 +544,7 @@ export default async function ReviewSessionDetailPage({
 
       <div className="mt-6">
         <ReviewFeedbackShell
-          posts={feedbackPosts}
+          posts={shellPosts}
           actions={feedbackActions}
           role={shellRole}
           isDesigner={isDesigner}

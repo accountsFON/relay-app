@@ -714,8 +714,25 @@ describe('ReviewSessionDetailPage', () => {
       vi.mocked(canEditClients).mockReturnValue(false)
     })
 
-    it('designer view shows every post (image-pin filter removed)', async () => {
+    it('designer view shows only the posts the client changed, not clean-approved (P2 #29)', async () => {
       vi.mocked(requireClientViewer).mockResolvedValue(designerCtx)
+      mockLaneThreads() // post_b + post_c carry pins; post_a is approved-clean
+
+      const { getByTestId, queryByTestId } = await renderPage({
+        id: 'client_1',
+        batchId: 'batch_1',
+        sessionId: 'session_1',
+      })
+
+      // post_b (image pin) + post_c (caption pin) changed -> visible to the designer.
+      expect(getByTestId('rail-row-post_b')).toBeTruthy()
+      expect(getByTestId('rail-row-post_c')).toBeTruthy()
+      // post_a is approved with no threads/comment -> filtered out for the designer.
+      expect(queryByTestId('rail-row-post_a')).toBeNull()
+    })
+
+    it('the AM still sees all posts incl. the clean-approved one (P2 #29 does not filter the AM)', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue(mockCtx) // account_manager
       mockLaneThreads()
 
       const { getByTestId } = await renderPage({
@@ -724,8 +741,7 @@ describe('ReviewSessionDetailPage', () => {
         sessionId: 'session_1',
       })
 
-      // Designers now see the full client review, not just image-pin posts.
-      // post_b has an image pin; post_c has only a caption pin — both visible.
+      expect(getByTestId('rail-row-post_a')).toBeTruthy()
       expect(getByTestId('rail-row-post_b')).toBeTruthy()
       expect(getByTestId('rail-row-post_c')).toBeTruthy()
     })
