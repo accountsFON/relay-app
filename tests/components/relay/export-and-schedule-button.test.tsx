@@ -44,5 +44,9 @@ describe('ExportAndScheduleButton', () => {
       '_blank',
       'noopener,noreferrer',
     )
+    // Download must fire BEFORE the redirect (the anchor click before window.open).
+    expect(clickSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      openSpy.mock.invocationCallOrder[0],
+    )
   })
 })

@@ -395,8 +395,15 @@ export default async function BatchDetailPage({
 
   // P2 #30: at the Scheduling step, the next-steps banner carries one combined
   // "Export CSV & go to NectrCRM" button instead of the plain Go-to-NectrCRM link.
+  // Gated like the old ExportButton was (`isLive && canAct`): actions are
+  // unavailable on archived batches, and only the holder/AM/admin may act — a
+  // designer/client viewing the (all-roles) banner must not see it.
   const schedulingExportSlot =
-    SCHEDULING_STEPS.has(batch.currentStep) && run && posts.length > 0 ? (
+    isLive &&
+    canAct &&
+    SCHEDULING_STEPS.has(batch.currentStep) &&
+    run &&
+    posts.length > 0 ? (
       <ExportAndScheduleButton
         posts={posts.map((p) => ({
           date: p.postDate.toISOString().split('T')[0],
