@@ -22,6 +22,7 @@ import {
   leaveCommentAsReviewer,
 } from '@/app/review/[token]/_actions'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
+import { summarizeReviewDecisions } from '@/lib/relay-review-decision'
 import type {
   ReviewDecisionType,
   ReviewItemHydrated,
@@ -145,23 +146,26 @@ export function ReviewSessionShell({
 
   const postIds = useMemo(() => posts.map((p) => p.post.id), [posts])
 
-  const summary: ReviewSessionSummary = useMemo(() => {
-    let approved = 0
-    let changesRequested = 0
-    let captionEdited = 0
-    for (const id of postIds) {
-      const decision = itemsByPostId[id]?.decision ?? 'not_reviewed'
-      if (decision === 'approved') approved += 1
-      else if (decision === 'changes_requested') changesRequested += 1
-      else if (decision === 'caption_edited') captionEdited += 1
-    }
-    return {
-      approved,
-      changesRequested,
-      captionEdited,
-      totalPosts: postIds.length,
-    }
-  }, [postIds, itemsByPostId])
+  // A post marked "approved" that carries feedback (a saved copy edit or an open
+  // pin) is counted as a change, not a clean approval (P2 #27), so the counter and
+  // the "all approved" gate match the submit routing (isApprovedWithFeedback).
+  // `openPinCount` counts CLIENT-authored open pins only, mirroring the server
+  // routing (`reviewerToken != null`); AM-authored pins on an approved post do
+  // NOT make it approved-with-feedback, so they must not be counted here (else
+  // the counter would disagree with what Submit actually does).
+  const summary: ReviewSessionSummary = useMemo(
+    () =>
+      summarizeReviewDecisions(
+        posts.map(({ post, threads }) => ({
+          decision: itemsByPostId[post.id]?.decision ?? 'not_reviewed',
+          suggestedCaption: itemsByPostId[post.id]?.suggestedCaption ?? null,
+          openPinCount: (threads ?? []).filter(
+            (t) => t.firstComment.author.kind === 'client',
+          ).length,
+        })),
+      ),
+    [posts, itemsByPostId],
+  )
 
   // Nav items for the ChangesNavigator: one entry per thread + note per
   // Changes post, collapsed to one per post if no threads are present.
@@ -278,7 +282,13 @@ export function ReviewSessionShell({
     // on. Posts carrying a saved copy edit are LEFT AS-IS (P1 #16): Approve all
     // never overrides or discards an explicit edit. A plain Changes verdict
     // WOULD be flipped to approved, so confirm that.
-    const overrideCount = summary.changesRequested
+    // Count only posts the client explicitly marked "changes" — these are the
+    // verdicts Approve all flips to approved. Not summary.changesRequested, which
+    // (P2 #27) now also includes approved-with-feedback posts that Approve all
+    // deliberately skips (they stay approved), so it would over-count + mislabel.
+    const overrideCount = postIds.filter(
+      (id) => itemsByPostId[id]?.decision === 'changes_requested',
+    ).length
     if (
       overrideCount > 0 &&
       !window.confirm(
@@ -307,7 +317,7 @@ export function ReviewSessionShell({
     } finally {
       setApprovingAll(false)
     }
-  }, [summary, postIds, itemsByPostId, persistDraft, reflectSave])
+  }, [postIds, itemsByPostId, persistDraft, reflectSave])
 
   const handleCommentChange = useCallback(
     (postId: string, comment: string): Promise<boolean> =>

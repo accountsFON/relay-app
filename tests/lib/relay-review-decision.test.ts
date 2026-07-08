@@ -1,7 +1,51 @@
 import { describe, it, expect } from 'vitest'
-import { mapReviewDecision, isApprovedWithFeedback } from '@/lib/relay-review-decision'
+import {
+  mapReviewDecision,
+  isApprovedWithFeedback,
+  summarizeReviewDecisions,
+} from '@/lib/relay-review-decision'
 
 const counts = { approved: 0, changesRequested: 0, captionEdited: 0 }
+
+describe('summarizeReviewDecisions (P2 #27)', () => {
+  const item = (
+    over: Partial<{ decision: string; suggestedCaption: string | null; openPinCount: number }>,
+  ) => ({ decision: 'not_reviewed', suggestedCaption: null, openPinCount: 0, ...over })
+
+  it('counts a clean approval as approved', () => {
+    const s = summarizeReviewDecisions([item({ decision: 'approved' })])
+    expect(s).toEqual({ approved: 1, changesRequested: 0, captionEdited: 0, totalPosts: 1 })
+  })
+
+  it('counts approved-with-copy-edit as changes, not approved', () => {
+    const s = summarizeReviewDecisions([item({ decision: 'approved', suggestedCaption: 'new caption' })])
+    expect(s).toMatchObject({ approved: 0, changesRequested: 1 })
+  })
+
+  it('counts approved-with-open-pin as changes, not approved', () => {
+    const s = summarizeReviewDecisions([item({ decision: 'approved', openPinCount: 2 })])
+    expect(s).toMatchObject({ approved: 0, changesRequested: 1 })
+  })
+
+  it('counts explicit changes_requested and caption_edited into their buckets', () => {
+    const s = summarizeReviewDecisions([
+      item({ decision: 'changes_requested' }),
+      item({ decision: 'caption_edited' }),
+    ])
+    expect(s).toMatchObject({ approved: 0, changesRequested: 1, captionEdited: 1 })
+  })
+
+  it('totalPosts counts every item incl. not_reviewed; approved excludes fed-back posts', () => {
+    const s = summarizeReviewDecisions([
+      item({ decision: 'approved' }),
+      item({ decision: 'approved', openPinCount: 1 }),
+      item({ decision: 'not_reviewed' }),
+    ])
+    expect(s.totalPosts).toBe(3)
+    expect(s.approved).toBe(1)
+    expect(s.approved === s.totalPosts).toBe(false)
+  })
+})
 
 describe('mapReviewDecision', () => {
   it('every batch post approved → approved', () => {

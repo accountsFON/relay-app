@@ -340,6 +340,39 @@ describe('ReviewSessionShell -- approve all', () => {
     )
     expect(screen.getByTestId('approve-all-button')).toBeDisabled()
   })
+
+  it('scopes approved-with-pin to CLIENT pins: an approved post with only an AM pin stays approved (P2 #27)', () => {
+    const makeThread = (id: string, kind: 'am' | 'client') => ({
+      id,
+      status: 'open' as const,
+      pin: { kind: 'post' as const },
+      firstComment: {
+        id: `${id}-c`,
+        author:
+          kind === 'am'
+            ? { kind: 'am' as const, userId: 'am-1', name: 'AM' }
+            : { kind: 'client' as const, reviewerName: 'Client' },
+        body: 'note',
+        createdAt: new Date('2026-05-01T00:00:00Z'),
+      },
+      comments: [],
+      commentCount: 1,
+    })
+    render(
+      <ReviewSessionShell
+        {...BASE_PROPS}
+        posts={[
+          { ...makePost('post-1', 'Cap 1'), threads: [makeThread('t-am', 'am')] },
+          { ...makePost('post-2', 'Cap 2'), threads: [makeThread('t-cl', 'client')] },
+        ]}
+        initialItems={[item('post-1', 'approved'), item('post-2', 'approved')]}
+      />,
+    )
+    // post-1 = approved + AM-only pin -> clean approved (AM pins don't count).
+    // post-2 = approved + client pin -> changes. Matches the server routing.
+    expect(screen.getByTestId('counter-approved').textContent).toContain('1 approved')
+    expect(screen.getByTestId('counter-changes').textContent).toContain('1 changes')
+  })
 })
 
 describe('ReviewSessionShell -- sticky condensed bar', () => {
