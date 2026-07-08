@@ -35,6 +35,21 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-08 — Designer feedback view filtered to changed posts** (P2 #29)
+  On the review-session detail page a designer now sees only the posts relevant to them, not the whole
+  batch. Signal: `hadFeedback` (client changed/edited, a thread, or a comment) OR any post the AM flagged
+  for the designer. Extracted a shared `hadFeedback` (rail + page share it) and a distinct
+  `isRelevantToDesigner = hadFeedback || flags.length > 0`; the page filters the designer's posts
+  server-side; the shell shows a "No changes to work on" empty state when the filtered set is empty. AM/admin
+  unchanged. **Adversarial review caught a CRITICAL bug** (fixed): the first cut filtered on `hadFeedback`
+  alone, so an AM-flagged CLEAN-APPROVED post vanished from the designer's view — and if it was the only
+  flagged post, `shellPosts` went empty, the empty state hid the flag + the mark-revisions-done control, and
+  the batch could DEADLOCK in `awaiting_design_revisions`. Fixed by folding flags into the designer-relevance
+  predicate (kept the rail's AM "Changes only" toggle on `hadFeedback` only) + a flag-coverage regression
+  test. Re-review RESOLVED. 2500 unit tests, tsc + `next build` clean. No `src/server/jobs/**` change ->
+  Trigger.dev deploy SKIPPED. Design + plan: vault
+  `projects/relay-app/2026-07-08-designer-feedback-view-filter-{design,plan}.md`.
+
 - [x] **2026-07-08 — Scheduling export consolidation** (P2 #30)
   The always-on top-toolbar "Export CSV" button is gone; the Scheduling step's next-steps banner now
   carries ONE combined "Export CSV & go to NectrCRM" button — one click downloads the Social Planner CSV
