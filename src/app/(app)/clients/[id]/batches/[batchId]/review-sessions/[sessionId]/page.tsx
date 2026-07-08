@@ -69,6 +69,7 @@ import type {
   FeedbackActions,
   DesignerFlagVM,
 } from './review-feedback-types'
+import { isRelevantToDesigner } from './review-feedback-types'
 import type { ReviewSessionSummary } from '@/types/review-session'
 
 type AttentionPost = {
@@ -507,6 +508,13 @@ export default async function ReviewSessionDetailPage({
       />
     ) : null
 
+  // P2 #29: a designer sees only the posts relevant to them — the posts the
+  // client changed OR any post the AM flagged for them to rework (a flag can sit
+  // on a clean-approved post). AM/admin see all posts. Server-authoritative.
+  const shellPosts = isDesigner
+    ? feedbackPosts.filter(isRelevantToDesigner)
+    : feedbackPosts
+
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
       <ReviewSessionHeader
@@ -536,7 +544,7 @@ export default async function ReviewSessionDetailPage({
 
       <div className="mt-6">
         <ReviewFeedbackShell
-          posts={feedbackPosts}
+          posts={shellPosts}
           actions={feedbackActions}
           role={shellRole}
           isDesigner={isDesigner}

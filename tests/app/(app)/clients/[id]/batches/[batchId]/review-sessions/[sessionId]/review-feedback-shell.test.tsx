@@ -148,6 +148,14 @@ describe('ReviewFeedbackShell — zone rendering', () => {
     // PlatformToggle renders a radiogroup labelled "Preview platform"
     expect(screen.getByRole('radiogroup', { name: 'Preview platform' })).toBeTruthy()
   })
+
+  it('P2 #29: shows an empty state (and no rail/canvas) when there are no posts', () => {
+    render(<ReviewFeedbackShell {...baseProps} posts={[]} />)
+    expect(screen.getByTestId('feedback-empty')).toBeTruthy()
+    expect(screen.getByText(/no changes to work on/i)).toBeTruthy()
+    expect(screen.queryByTestId('review-feedback-rail')).toBeNull()
+    expect(screen.queryByTestId('review-posts-canvas')).toBeNull()
+  })
 })
 
 describe('ReviewFeedbackShell — canvas pin → rail expand', () => {
