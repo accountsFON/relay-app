@@ -92,6 +92,21 @@ export function ReviewFeedbackShell({
     }
   }
 
+  // P2 #29: a designer's filtered view can be empty (no posts the client
+  // changed). Show a friendly empty state instead of a blank rail + canvas.
+  // Placed after all hooks so hook order is preserved.
+  if (posts.length === 0) {
+    return (
+      <div
+        data-testid="feedback-empty"
+        className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground"
+      >
+        No changes to work on.
+        {respondSlot}
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
       {/* Column 1: feedback rail (fixed/sticky with its own scroll, so the
