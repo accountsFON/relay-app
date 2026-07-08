@@ -382,6 +382,28 @@ describe('FacebookPost', () => {
       expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
     })
 
+    it('post-level pin badge shows the pluralized comment count, not the post number', () => {
+      render(
+        <FacebookPost {...makeProps({
+          post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: null },
+          threads: [{ ...postThread, commentCount: 2 }],
+        })} />,
+      )
+      const badge = screen.getByTestId('fb-pin-badge')
+      expect(badge).toHaveTextContent(/^2 comments$/)
+      expect(badge).not.toHaveTextContent('Post')
+    })
+
+    it('post-level pin badge uses the singular "comment" for a single comment', () => {
+      render(
+        <FacebookPost {...makeProps({
+          post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: null },
+          threads: [postThread],
+        })} />,
+      )
+      expect(screen.getByTestId('fb-pin-badge')).toHaveTextContent(/^1 comment$/)
+    })
+
     it('without suppressInlinePopover (default): image pin click still opens the popover', async () => {
       const user = userEvent.setup()
 

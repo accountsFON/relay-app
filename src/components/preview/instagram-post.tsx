@@ -8,7 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type SyntheticEvent,
 } from 'react'
-import { Pencil } from 'lucide-react'
+import { MessageSquare, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { clampInstagramAspectRatio } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
@@ -481,8 +481,11 @@ export function InstagramFeedPost({
                     : 'bg-[#efefef] text-[#8e8e8e] hover:bg-[#e5e5e5]',
                 )}
               >
-                <span aria-hidden="true">📍</span>
-                <span>Post · {thread.commentCount}</span>
+                <MessageSquare aria-hidden="true" className="size-3" />
+                <span>
+                  {thread.commentCount}{' '}
+                  {thread.commentCount === 1 ? 'comment' : 'comments'}
+                </span>
               </button>
             ))}
           </div>

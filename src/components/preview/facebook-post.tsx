@@ -8,7 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type SyntheticEvent,
 } from 'react'
-import { Globe, Pencil, ThumbsUp, MessageCircle, Share2 } from 'lucide-react'
+import { Globe, Pencil, ThumbsUp, MessageCircle, MessageSquare, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { facebookAspectRatio } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
@@ -460,8 +460,11 @@ export function FacebookPost(props: FeedPostProps) {
                   : 'bg-[#efefef] text-[#8e8e8e] hover:bg-[#e5e5e5]',
               )}
             >
-              <span aria-hidden="true">📍</span>
-              <span>Post · {thread.commentCount}</span>
+              <MessageSquare aria-hidden="true" className="size-3" />
+              <span>
+                {thread.commentCount}{' '}
+                {thread.commentCount === 1 ? 'comment' : 'comments'}
+              </span>
             </button>
           ))}
         </div>

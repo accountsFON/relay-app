@@ -35,6 +35,18 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-08 — Client feedback pin label → "N comments"** (P2 #24)
+  The post-level feedback pin badge on a feed post used to read `📍 Post · N` (Caleb read "Post · 2" as a
+  post number on the 2026-07-02 workflow test). It now shows a lucide `MessageSquare` icon + `N comments`
+  (pluralized; `1 comment` singular). `commentCount = comments.length`, always ≥1 for a post-level thread,
+  so no "0 comments" case. Shared one-spot change in `instagram-post.tsx` + `facebook-post.tsx`, so it fixes
+  the client magic-link review, internal `/preview`, and AM review-session surfaces at once; image/caption
+  pins (numbered dots / highlights) are separate primitives, untouched. No server/data/schema change. TDD
+  (label assertions added to both preview post test suites). Adversarial whole-branch review READY_TO_MERGE,
+  0 defects. 2504 unit tests, tsc + `next build` clean, changed-file lint clean. No `src/server/jobs/**`
+  change -> Trigger.dev deploy SKIPPED. Design: vault
+  `projects/relay-app/2026-07-08-pin-comment-count-label-design.md`.
+
 - [x] **2026-07-08 — Designer feedback view filtered to changed posts** (P2 #29)
   On the review-session detail page a designer now sees only the posts relevant to them, not the whole
   batch. Signal: `hadFeedback` (client changed/edited, a thread, or a comment) OR any post the AM flagged
