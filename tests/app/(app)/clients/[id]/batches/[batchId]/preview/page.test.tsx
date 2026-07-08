@@ -285,6 +285,14 @@ describe('BatchPreviewPage', () => {
     expect(screen.getByRole('button', { name: /mark relay reviewed/i })).toBeInTheDocument()
   })
 
+  it('hydrates resolved threads so resolved pins stay visible (P2 #26)', async () => {
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    // Guards against a silent revert of the includeResolved flag.
+    expect(listThreadsForBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ includeResolved: true }),
+    )
+  })
+
   it('passes canEditCaption=true and allowPostPins=true to the shell for an AM', async () => {
     await renderPage({ id: 'client_1', batchId: 'batch_1' })
     expect(screen.getByTestId('shell-canEditCaption')).toHaveTextContent('true')

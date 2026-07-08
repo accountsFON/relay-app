@@ -373,6 +373,40 @@ describe('ReviewSessionShell -- approve all', () => {
     expect(screen.getByTestId('counter-approved').textContent).toContain('1 approved')
     expect(screen.getByTestId('counter-changes').textContent).toContain('1 changes')
   })
+
+  it('does NOT count a RESOLVED client pin as open feedback: approved stays approved (P2 #26)', () => {
+    const makeThread = (
+      id: string,
+      status: 'open' | 'resolved',
+    ) => ({
+      id,
+      status,
+      pin: { kind: 'post' as const },
+      firstComment: {
+        id: `${id}-c`,
+        author: { kind: 'client' as const, reviewerName: 'Client' },
+        body: 'note',
+        createdAt: new Date('2026-05-01T00:00:00Z'),
+      },
+      comments: [],
+      commentCount: 1,
+    })
+    render(
+      <ReviewSessionShell
+        {...BASE_PROPS}
+        posts={[
+          { ...makePost('post-1', 'Cap 1'), threads: [makeThread('t-res', 'resolved')] },
+          { ...makePost('post-2', 'Cap 2'), threads: [makeThread('t-open', 'open')] },
+        ]}
+        initialItems={[item('post-1', 'approved'), item('post-2', 'approved')]}
+      />,
+    )
+    // post-1 = approved + only a RESOLVED client pin -> clean approved
+    //          (resolved pins don't count; matches the server's open-client-pin routing).
+    // post-2 = approved + an OPEN client pin -> changes.
+    expect(screen.getByTestId('counter-approved').textContent).toContain('1 approved')
+    expect(screen.getByTestId('counter-changes').textContent).toContain('1 changes')
+  })
 })
 
 describe('ReviewSessionShell -- sticky condensed bar', () => {

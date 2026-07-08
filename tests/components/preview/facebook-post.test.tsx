@@ -404,6 +404,26 @@ describe('FacebookPost', () => {
       expect(screen.getByTestId('fb-pin-badge')).toHaveTextContent(/^1 comment$/)
     })
 
+    it('strikes through the post-level pin badge when the thread is resolved (P2 #26)', () => {
+      render(
+        <FacebookPost {...makeProps({
+          post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: null },
+          threads: [{ ...postThread, status: 'resolved' as const }],
+        })} />,
+      )
+      expect(screen.getByTestId('fb-pin-badge').className).toContain('line-through')
+    })
+
+    it('does NOT strike through an open post-level pin badge', () => {
+      render(
+        <FacebookPost {...makeProps({
+          post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: null },
+          threads: [postThread],
+        })} />,
+      )
+      expect(screen.getByTestId('fb-pin-badge').className).not.toContain('line-through')
+    })
+
     it('without suppressInlinePopover (default): image pin click still opens the popover', async () => {
       const user = userEvent.setup()
 

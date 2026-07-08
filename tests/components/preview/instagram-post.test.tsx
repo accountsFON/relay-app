@@ -459,6 +459,30 @@ describe('InstagramFeedPost', () => {
       expect(screen.getByTestId('instagram-post-pin')).toHaveTextContent(/^1 comment$/)
     })
 
+    it('strikes through the post-level pin badge when the thread is resolved (P2 #26)', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: null },
+            threads: [{ ...postThread, status: 'resolved' as const }],
+          })}
+        />,
+      )
+      expect(screen.getByTestId('instagram-post-pin').className).toContain('line-through')
+    })
+
+    it('does NOT strike through an open post-level pin badge', () => {
+      render(
+        <InstagramFeedPost
+          {...baseProps({
+            post: { id: 'p', caption: 'Caption.', hashtags: [], mediaUrl: null },
+            threads: [postThread],
+          })}
+        />,
+      )
+      expect(screen.getByTestId('instagram-post-pin').className).not.toContain('line-through')
+    })
+
     it('without suppressInlinePopover (default): image pin click still opens the popover', async () => {
       const user = userEvent.setup()
 
