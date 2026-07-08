@@ -183,24 +183,6 @@ export function nextActionForRelay(input: NextActionInput): NextAction {
       return waiting('account manager')
     }
 
-    case RelayStep.am_qa_pre_client:
-      if (amViewer) {
-        return clientReviewEnabled
-          ? {
-              tone: 'action',
-              title: 'Run final QA, then send the review link',
-              detail: 'Do the final internal check, then send the client the review link.',
-              button: { label: 'Open internal review', href: preview },
-            }
-          : {
-              tone: 'action',
-              title: 'Run final QA',
-              detail: 'Check the relay before it goes to scheduling.',
-              button: { label: 'Open internal review', href: preview },
-            }
-      }
-      return waiting('account manager')
-
     case RelayStep.sent_to_client:
     case RelayStep.client_decision:
     case RelayStep.client_review: {

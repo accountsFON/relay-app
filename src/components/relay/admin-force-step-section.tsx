@@ -41,7 +41,6 @@ const STEP_ORDER: RelayStep[] = [
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,
-  RelayStep.am_qa_pre_client,
   RelayStep.sent_to_client,
   RelayStep.client_decision,
   RelayStep.ready_to_schedule,

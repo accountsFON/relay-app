@@ -28,7 +28,6 @@ export const FULL_TRACK: RelayStep[] = [
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,
-  RelayStep.am_qa_pre_client,
   RelayStep.client_review, // merges old sent_to_client + client_decision
   RelayStep.implementing_revisions, // Post Revision (client-requested changes)
   RelayStep.scheduling, // merges old ready_to_schedule + final_qa_schedule
@@ -38,7 +37,6 @@ export const NO_REVIEW_TRACK: RelayStep[] = [
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,
-  RelayStep.am_qa_pre_client,
   // No client review => no client_review step and no client-requested
   // post-revision (implementing_revisions); QA goes straight to scheduling.
   RelayStep.scheduling,
