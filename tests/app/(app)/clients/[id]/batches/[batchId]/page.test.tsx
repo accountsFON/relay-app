@@ -218,10 +218,6 @@ vi.mock('@/components/runs/export-button', () => ({
   ExportButton: () => <div data-testid="export-button-stub" />,
 }))
 
-vi.mock('@/components/batch/send-link-button', () => ({
-  SendLinkButton: () => <div data-testid="send-link-button-stub" />,
-}))
-
 vi.mock('@/components/batch/open-client-content-button', () => ({
   OpenClientContentButton: () => (
     <div data-testid="open-client-content-button-stub" />
@@ -818,26 +814,6 @@ describe('BatchDetailPage', () => {
 
       expect(getByText('Review link')).toBeInTheDocument()
       expect(getAllByTestId(/^magic-link-row-/)).toHaveLength(1)
-    })
-  })
-
-  describe('toolbar Send review link button gating', () => {
-    it('shows the Send review link button on Pre-Client QA', async () => {
-      vi.mocked(findBatch).mockResolvedValue({
-        ...mockBatch,
-        currentStep: 'am_qa_pre_client',
-      } as never)
-      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
-      expect(queryByTestId('send-link-button-stub')).toBeInTheDocument()
-    })
-
-    it('hides the Send review link button on Design Review', async () => {
-      vi.mocked(findBatch).mockResolvedValue({
-        ...mockBatch,
-        currentStep: 'am_review_design',
-      } as never)
-      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
-      expect(queryByTestId('send-link-button-stub')).not.toBeInTheDocument()
     })
   })
 
