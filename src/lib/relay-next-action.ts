@@ -1,6 +1,5 @@
 import { RelayStep } from '@prisma/client'
 import type { UserRole } from '@/lib/types'
-import { NECTR_CRM_URL } from '@/lib/nectr'
 
 /**
  * The scheduling stage. Mirrors `SCHEDULING_STEPS` in
@@ -9,7 +8,7 @@ import { NECTR_CRM_URL } from '@/lib/nectr'
  * `scheduling` step, but pre-rework batches still sit on the retired steps,
  * so the next-action map must treat all three as "scheduling".
  */
-const SCHEDULING_STEPS: ReadonlySet<RelayStep> = new Set([
+export const SCHEDULING_STEPS: ReadonlySet<RelayStep> = new Set([
   RelayStep.scheduling,
   RelayStep.ready_to_schedule,
   RelayStep.final_qa_schedule,
@@ -105,8 +104,7 @@ export function nextActionForRelay(input: NextActionInput): NextAction {
       return {
         tone: 'action',
         title: 'Schedule the approved posts',
-        detail: 'Upload the exported CSV to NectrCRM and schedule the run.',
-        button: { label: 'Go to NectrCRM', href: NECTR_CRM_URL },
+        detail: 'Export the CSV and upload it to NectrCRM to schedule the run.',
       }
     }
     return waiting('account manager')
