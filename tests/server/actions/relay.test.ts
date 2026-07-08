@@ -817,7 +817,7 @@ describe('markBatchReviewedAction gated completion', () => {
 
     expect(bulkResolveOnPost).not.toHaveBeenCalled()
     expect(passBaton).toHaveBeenCalledWith(
-      expect.objectContaining({ batchId: 'b1', toStep: RelayStep.am_qa_pre_client }),
+      expect.objectContaining({ batchId: 'b1', toStep: RelayStep.client_review }),
     )
   })
 
