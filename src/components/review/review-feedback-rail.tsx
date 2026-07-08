@@ -16,6 +16,7 @@ import type {
   FeedbackActions,
   DesignerFlagVM,
 } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
+import { hadFeedback } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 
 export type ReviewFeedbackRailProps = {
   posts: ReadonlyArray<FeedbackPostVM>
@@ -593,18 +594,9 @@ function FeedbackRow({
 // Main component
 // ---------------------------------------------------------------------------
 
-// "Changes only" keeps every post that EVER had feedback (a changes/caption
-// verdict, any thread open or resolved, or a general note), hiding only posts
-// that never had feedback. Resolved items then stay visible, crossed out (their
-// ResolveCheckboxes strike through) rather than vanishing when resolved.
-function hadFeedback(p: FeedbackPostVM): boolean {
-  return (
-    p.verdict === 'changes_requested' ||
-    p.verdict === 'caption_edited' ||
-    p.threads.length > 0 ||
-    Boolean(p.comment)
-  )
-}
+// "Changes only" keeps every post that EVER had feedback (see the shared
+// `hadFeedback` in review-feedback-types). Resolved items stay visible, crossed
+// out (their ResolveCheckboxes strike through) rather than vanishing.
 
 export function ReviewFeedbackRail({
   posts,

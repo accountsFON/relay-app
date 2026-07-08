@@ -49,6 +49,20 @@ export type FeedbackPostVM = {
 }
 
 /**
+ * "Changes only" predicate (P2 #29 + the rail's Changes-only filter): a post that
+ * ever had client feedback — a changes/caption verdict, any thread (open or
+ * resolved), or a general note. Clean-approved posts with nothing return false.
+ */
+export function hadFeedback(p: FeedbackPostVM): boolean {
+  return (
+    p.verdict === 'changes_requested' ||
+    p.verdict === 'caption_edited' ||
+    p.threads.length > 0 ||
+    Boolean(p.comment)
+  )
+}
+
+/**
  * Parameterized server actions passed from the server page into the client
  * shell. These wrap the existing review-session server actions + revalidate;
  * the shell/rail bind the right ids per row.
