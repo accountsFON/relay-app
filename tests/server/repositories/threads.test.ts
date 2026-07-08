@@ -8,12 +8,12 @@
  * a real DB. Here we mock `db` and `recordActivity` so the mention payload
  * is asserted in isolation — no DB cluster needed.
  *
- * Two cases:
- *   1. createThread mentions the assigned designer when actor !== designer.
+ * Cases:
+ *   1. createThread mentions the assigned designer when an AM actor != designer.
  *   2. createThread skips the mention when the AM actor IS the designer.
- *
- * Both cases assume an AM actor (reviewer actors never trigger the gate
- * because their userId is null).
+ *   3. (P2 #28) createThread does NOT mention the designer for a reviewer
+ *      (client) actor — the auto-notify is gated to AM actors only, so a
+ *      client's pins during client review no longer ping the designer per-pin.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -184,7 +184,7 @@ describe('createThread mention emit', () => {
     expect((activityInput.payload as Record<string, unknown>).surface).toBe('internal_review')
   })
 
-  it('does NOT tag surface for a reviewer-created pin (client /review path stays untouched)', async () => {
+  it('does NOT notify the designer for a reviewer-created pin, nor tag surface (P2 #28)', async () => {
     vi.mocked(db.post.findUnique).mockResolvedValue({
       clientId: CLIENT_ID,
       client: { assignedDesignerId: DESIGNER_USER_ID },
@@ -199,9 +199,14 @@ describe('createThread mention emit', () => {
 
     expect(recordActivity).toHaveBeenCalledTimes(1)
     const activityInput = vi.mocked(recordActivity).mock.calls[0][0]
-    // Designer is still notified (kept behavior)...
-    expect(activityInput.mentionedUserIds).toContain(DESIGNER_USER_ID)
-    // ...but the event is NOT stamped internal_review, so the designer's deep
+    // P2 #28: a client reviewer's pin during client review must NOT ping the
+    // designer per-pin (noise). The designer is notified on the actionable
+    // event — review submit / revisions — instead. The auto-notify is now
+    // gated to AM actors only.
+    const mentions = activityInput.mentionedUserIds ?? []
+    expect(mentions).not.toContain(DESIGNER_USER_ID)
+    expect(mentions).toEqual([])
+    // The event is still NOT stamped internal_review, so the designer's deep
     // link keeps its prior (non-/preview) routing for client-originated pins.
     expect((activityInput.payload as Record<string, unknown>).surface).toBeUndefined()
   })
