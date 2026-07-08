@@ -35,6 +35,22 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-08 — Removed Pre-Client QA as its own step** (P1 #13)
+  From the 2026-07-02 workflow-test punch list — the heaviest P1. `am_qa_pre_client` is removed from the
+  live flow (enum kept for history): Design Review now advances STRAIGHT to Client Review (review clients)
+  or Scheduling (no-review), through a confirm modal that folds in the final-QA once-over (3 ephemeral
+  checkboxes, client-side gate) + the review-link generation (the existing SendLinkModal), on BOTH the
+  batch-page Pass button (new `SendToClientReviewButton`) and the /preview Mark-reviewed modal (merged into
+  the #12 modal). Modal titled "Send to Client Review" (review) / "Final QA" (no-review). Send-backs that
+  targeted QA (from client_review + scheduling) now target Design Review. Old QA checklist seed emptied;
+  the "Send review link" checklist row + `sendLinkAlreadyActive` removed. `am_qa_pre_client` stripped from
+  the live tracks/dashboard/next-action/sub-status/admin-force-step (labels kept for history). Migration
+  script `scripts/remove-pre-client-qa.ts` moves any stuck QA batch back to Design Review (run --apply after
+  deploy; dry-run showed the prod count first). Built subagent-driven (8 tasks) + a whole-branch adversarial
+  review (READY_TO_MERGE, 0 critical/important; 2 nits fixed: skip-link bypass now gated on the once-over,
+  dev seed retargeted off QA). 2479 unit tests, tsc + `next build` clean. No `src/server/jobs/**` change ->
+  Trigger.dev deploy SKIPPED. Design + plan: vault `projects/relay-app/2026-07-07-remove-pre-client-qa-step-{design,plan}.md`.
+
 - [x] **2026-07-07 — Designer My Relay shows the full lifecycle** (P1 #14)
   From the 2026-07-02 workflow-test punch list. The designer "My relay" track bucketed by
   `DESIGNER_TRACK_STEPS` = `[in_design]` only, so a relay assigned to the designer at any other step was

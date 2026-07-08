@@ -228,14 +228,15 @@ describe('passBaton', () => {
   })
 
   it('rejects send-back direction (caller should use sendBackBaton)', async () => {
-    // merge design steps: am_qa_pre_client -> am_review_design is the surviving
-    // send_back edge (was am_review_design -> design_revisions).
+    // client_review -> am_review_design is a surviving send_back edge, so
+    // passing (not sending back) along it must be rejected as non-forward.
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.client_review,
       currentHolder: 'u1',
       label: '2026-05',
+      clientReviewEnabled: true,
       client: { organizationId: 'org_1' },
     })
     await expect(
@@ -302,7 +303,7 @@ describe('passBaton', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.am_review_design,
       currentHolder: 'u_am',
       label: '2026-05',
       clientReviewEnabled: true,
@@ -325,7 +326,7 @@ describe('passBaton', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.am_review_design,
       currentHolder: 'u_am',
       label: '2026-05',
       clientReviewEnabled: true,
@@ -375,13 +376,14 @@ describe('sendBackBaton', () => {
     ).rejects.toThrow(/non-send_back/)
   })
 
-  it('advances backward + reseeds + records send-back event (merge design steps: QA -> am_review_design)', async () => {
+  it('advances backward + reseeds + records send-back event (client_review -> am_review_design)', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.client_review,
       currentHolder: 'u_am',
       label: '2026-05',
+      clientReviewEnabled: true,
       client: { organizationId: 'org_1' },
     })
     const result = await sendBackBaton({
@@ -856,9 +858,10 @@ describe('sendBackBaton wasOverride flag', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.client_review,
       currentHolder: 'u_am',
       label: '2026-05',
+      clientReviewEnabled: true,
       client: { organizationId: 'org_1' },
     })
     await sendBackBaton({
@@ -877,9 +880,10 @@ describe('sendBackBaton wasOverride flag', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.client_review,
       currentHolder: 'u_designer',
       label: '2026-05',
+      clientReviewEnabled: true,
       client: { organizationId: 'org_1' },
     })
     await sendBackBaton({
@@ -969,11 +973,11 @@ describe('cross-tenant scope guards', () => {
 })
 
 describe('passBaton, no review flow', () => {
-  it('forwards am_qa_pre_client to scheduling on a no review batch', async () => {
+  it('forwards am_review_design to scheduling on a no review batch', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.am_review_design,
       currentHolder: 'u_am',
       label: 'Foo May 2026',
       clientReviewEnabled: false,
@@ -995,11 +999,11 @@ describe('passBaton, no review flow', () => {
     expect(relayEventCall.data.toStep).toBe(RelayStep.scheduling)
   })
 
-  it('rejects am_qa_pre_client to client_review on a no review batch', async () => {
+  it('rejects am_review_design to client_review on a no review batch', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.am_review_design,
       currentHolder: 'u_am',
       label: 'Foo May 2026',
       clientReviewEnabled: false,
@@ -1015,11 +1019,11 @@ describe('passBaton, no review flow', () => {
     ).rejects.toThrow(/Illegal transition/)
   })
 
-  it('regression: am_qa_pre_client to client_review is legal on a review enabled batch', async () => {
+  it('regression: am_review_design to client_review is legal on a review enabled batch', async () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.am_review_design,
       currentHolder: 'u_am',
       label: 'Foo May 2026',
       clientReviewEnabled: true,
@@ -1550,7 +1554,7 @@ describe('clientReviewStartedAt stamp', () => {
     currentTx.tx.batch.findUnique.mockResolvedValueOnce({
       id: 'b1',
       clientId: 'c1',
-      currentStep: RelayStep.am_qa_pre_client,
+      currentStep: RelayStep.am_review_design,
       currentHolder: 'u_am',
       label: 'Foo May 2026',
       clientReviewEnabled: true,

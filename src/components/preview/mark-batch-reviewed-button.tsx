@@ -13,6 +13,11 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { markBatchReviewedAction, tickChecklistItemAction } from '@/server/actions/relay'
+import {
+  FinalQaOnceOver,
+  allQaOnceOverChecked,
+} from '@/components/relay/final-qa-once-over'
+import { SendLinkModal } from '@/components/batch/send-link-modal'
 
 export interface MarkReviewedChecklistItem {
   id: string
@@ -34,6 +39,16 @@ export interface MarkBatchReviewedButtonProps {
   checklistItems?: MarkReviewedChecklistItem[]
   /** Whether the viewer may tick items (the AM holder). Default true. */
   canTick?: boolean
+  /**
+   * True when the client reviews this relay. Confirming opens the send-link
+   * modal and only advances once the link is sent; false advances straight to
+   * Scheduling.
+   */
+  clientReviewEnabled: boolean
+  /** Client display name, passed through to the send-link modal. */
+  clientName: string
+  /** Client review email on file; pre-fills the send-link modal. */
+  clientReviewEmail?: string | null
   className?: string
 }
 
@@ -56,14 +71,19 @@ export function MarkBatchReviewedButton({
   canAdvance = true,
   checklistItems = [],
   canTick = true,
+  clientReviewEnabled,
+  clientName,
+  clientReviewEmail,
   className,
 }: MarkBatchReviewedButtonProps) {
   const [open, setOpen] = useState(false)
+  const [linkOpen, setLinkOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(checklistItems.map((i) => [i.id, i.checked])),
   )
+  const [qaChecked, setQaChecked] = useState<Record<number, boolean>>({})
 
   const gatedByThreads = openThreadCount > 0
   const gatedByBranch = canAdvance === false
@@ -81,8 +101,7 @@ export function MarkBatchReviewedButton({
     })
   }
 
-  function confirmReviewed() {
-    setOpen(false)
+  function advance() {
     setError(null)
     startTransition(async () => {
       try {
@@ -91,6 +110,18 @@ export function MarkBatchReviewedButton({
         setError(err instanceof Error ? err.message : 'Failed to advance relay')
       }
     })
+  }
+
+  function confirmReviewed() {
+    setError(null)
+    if (clientReviewEnabled) {
+      // Hand off to the send-link modal; advance only once the link is sent.
+      setOpen(false)
+      setLinkOpen(true)
+      return
+    }
+    setOpen(false)
+    advance()
   }
 
   return (
@@ -180,6 +211,15 @@ export function MarkBatchReviewedButton({
               })}
             </ul>
           )}
+          <div className="flex flex-col gap-2">
+            <p className="text-[13px] font-medium text-foreground">
+              Final once-over
+            </p>
+            <FinalQaOnceOver
+              checked={qaChecked}
+              onToggle={(i, v) => setQaChecked((c) => ({ ...c, [i]: v }))}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -191,14 +231,37 @@ export function MarkBatchReviewedButton({
             <Button
               variant="default"
               onClick={confirmReviewed}
-              disabled={!allRequiredChecked}
+              disabled={!allRequiredChecked || !allQaOnceOverChecked(qaChecked)}
               data-testid="mark-batch-reviewed-confirm"
             >
-              Yes, mark reviewed
+              {clientReviewEnabled
+                ? 'Send review link & advance'
+                : 'Move to Scheduling'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {linkOpen && (
+        <SendLinkModal
+          batchId={batchId}
+          clientName={clientName}
+          clientReviewEmail={clientReviewEmail}
+          open={linkOpen}
+          onOpenChange={(o) => {
+            if (!o) setLinkOpen(false)
+          }}
+          onSent={() => {
+            setLinkOpen(false)
+            startTransition(() => {
+              markBatchReviewedAction({ batchId }).catch((err) =>
+                setError(
+                  err instanceof Error ? err.message : 'Failed to advance relay',
+                ),
+              )
+            })
+          }}
+        />
+      )}
     </div>
   )
 }

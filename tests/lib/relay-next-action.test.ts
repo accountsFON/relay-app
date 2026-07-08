@@ -136,37 +136,6 @@ describe('nextActionForRelay', () => {
     })
   })
 
-  describe('am_qa_pre_client', () => {
-    it('AM (actor) gets "Open internal review" -> preview', () => {
-      const a = nextActionForRelay({
-        ...BASE,
-        step: RelayStep.am_qa_pre_client,
-        subState: null,
-        viewerRole: 'account_manager',
-        isHolder: true,
-      })
-      expect(a.tone).toBe('action')
-      expect(a.title).toMatch(/final qa/i)
-      expect(a.detail).toMatch(/review link/i)
-      expect(a.button?.href).toBe(PREVIEW)
-    })
-
-    it('AM QA card does NOT mention the review link when client review is off', () => {
-      const a = nextActionForRelay({
-        ...BASE,
-        step: RelayStep.am_qa_pre_client,
-        subState: null,
-        viewerRole: 'account_manager',
-        isHolder: true,
-        clientReviewEnabled: false,
-      })
-      expect(a.tone).toBe('action')
-      expect(a.title).toMatch(/final qa/i)
-      expect(a.title).not.toMatch(/review link/i)
-      expect(a.detail).not.toMatch(/review link/i)
-    })
-  })
-
   describe('client_review', () => {
     it('shows "View client feedback" only when a session was submitted', () => {
       const a = nextActionForRelay({

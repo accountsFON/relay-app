@@ -55,7 +55,6 @@ import { nextActionForRelay } from '@/lib/relay-next-action'
 import { FailedRunBanner } from '@/components/runs/failed-run-banner'
 import { ExportButton } from '@/components/runs/export-button'
 import { ArchiveBatchButton } from '@/components/relay/archive-batch-button'
-import { SendLinkButton } from '@/components/batch/send-link-button'
 import { OpenClientContentButton } from '@/components/batch/open-client-content-button'
 import { GoToNectrCrmButton } from '@/components/batch/go-to-nectrcrm-button'
 import { Button } from '@/components/ui/button'
@@ -470,9 +469,6 @@ export default async function BatchDetailPage({
           currentStep={batch.currentStep}
           assetsFolderUrl={client.assetsFolderUrl}
         />
-        {isLive && canEdit && batch.clientReviewEnabled && batch.currentStep === RelayStep.am_qa_pre_client && (
-          <SendLinkButton batchId={batch.id} clientName={client.name} clientReviewEmail={batch.client.clientReviewEmail} />
-        )}
         {isLive && canAct && (
           <>
             {/* Generate Content is intentionally NOT offered inside an active

@@ -1,5 +1,5 @@
 import { RelayStep, RelayRole } from '@prisma/client'
-import { CHECKLIST_SEED, SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
+import { CHECKLIST_SEED } from '@/lib/relay-checklists'
 import type { DbClient, DbTx } from '@/db/client'
 
 export { RelayStep, RelayRole }
@@ -65,11 +65,10 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
   // transition, so am_review_design has no send_back target and design_revisions
   // is retired (removed from both transition tables). It stays in RelayStep +
   // HOLDER_ROLE for historical rows only.
-  { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
-
-  // QA -> Client Review (the merged client step).
-  { from: RelayStep.am_qa_pre_client, to: RelayStep.client_review, direction: 'forward' },
-  { from: RelayStep.am_qa_pre_client, to: RelayStep.am_review_design, direction: 'send_back' },
+  // Pre-Client QA removed (P1 #13): Design Review advances straight to Client
+  // Review; the final-QA once-over + send-link happen in a confirm modal on this
+  // transition. am_qa_pre_client stays in the enum for historical rows only.
+  { from: RelayStep.am_review_design, to: RelayStep.client_review, direction: 'forward' },
 
   // Client Review exits are driven by advanceFromClientReview (client submit)
   // or the auto-advance cron. Marked `auto` so passBaton accepts them when an
@@ -77,7 +76,7 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
   // table entirely (see services/relay.ts).
   { from: RelayStep.client_review, to: RelayStep.scheduling, direction: 'auto' },
   { from: RelayStep.client_review, to: RelayStep.implementing_revisions, direction: 'auto' },
-  { from: RelayStep.client_review, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
+  { from: RelayStep.client_review, to: RelayStep.am_review_design, direction: 'send_back' },
 
   // Post Revision: re-review (back to client) or finish (to scheduling). Both
   // are `forward` so passBaton (which accepts only forward/auto) can traverse
@@ -86,7 +85,7 @@ export const LEGAL_TRANSITIONS: readonly LegalTransition[] = [
   { from: RelayStep.implementing_revisions, to: RelayStep.scheduling, direction: 'forward' },
 
   { from: RelayStep.scheduling, to: RelayStep.completed, direction: 'forward' },
-  { from: RelayStep.scheduling, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
+  { from: RelayStep.scheduling, to: RelayStep.am_review_design, direction: 'send_back' },
 
   { from: RelayStep.completed, to: RelayStep.scheduling, direction: 'send_back' },
 ] as const
@@ -102,14 +101,11 @@ export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
   // Merge design steps (2026-06-26): see LEGAL_TRANSITIONS above. design_revisions
   // is retired here too; am_review_design's send_back is replaced by the in-step
   // "Request changes" action.
-  { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
-
-  // Final QA -> Scheduling (no client steps).
-  { from: RelayStep.am_qa_pre_client, to: RelayStep.scheduling, direction: 'forward' },
-  { from: RelayStep.am_qa_pre_client, to: RelayStep.am_review_design, direction: 'send_back' },
+  // Pre-Client QA removed (P1 #13): Design Review advances straight to Scheduling.
+  { from: RelayStep.am_review_design, to: RelayStep.scheduling, direction: 'forward' },
 
   { from: RelayStep.scheduling, to: RelayStep.completed, direction: 'forward' },
-  { from: RelayStep.scheduling, to: RelayStep.am_qa_pre_client, direction: 'send_back' },
+  { from: RelayStep.scheduling, to: RelayStep.am_review_design, direction: 'send_back' },
 
   { from: RelayStep.completed, to: RelayStep.scheduling, direction: 'send_back' },
 ] as const
@@ -163,59 +159,29 @@ export function holderRoleForStep(step: RelayStep): RelayRole {
 }
 
 /**
- * The checklist rows a batch should have at `step`: static template rows plus
- * the conditional "Send review link" item on the AM review step when the client
- * has client review enabled (item 21).
+ * The checklist rows a batch should have at `step`: the static template rows
+ * from CHECKLIST_SEED. The Pre-Client QA "Send review link" row was removed
+ * (P1 #13); the final-QA once-over + send-link now live in the Design Review
+ * transition confirm modal.
  */
-/**
- * True when the batch already has a live (non-revoked, unexpired) magic link,
- * i.e. the "Send review link" gate is already satisfied. Used to pre-check the
- * Pre-Client QA send-link item so a reseed / migration / loop-back after the
- * link is out does not re-prompt the AM. Only queries for the QA step under
- * client review; otherwise short-circuits without a DB round-trip.
- */
-async function sendLinkAlreadyActive(
-  tx: DbOrTx,
-  batchId: string,
-  step: RelayStep,
-  clientReviewEnabled: boolean,
-): Promise<boolean> {
-  if (step !== RelayStep.am_qa_pre_client || !clientReviewEnabled) return false
-  const link = await tx.magicLink.findFirst({
-    where: { batchId, revokedAt: null, expiresAt: { gt: new Date() } },
-    select: { id: true },
-  })
-  return link !== null
-}
-
 export function checklistRowsForStep(
   batchId: string,
   step: RelayStep,
+  // Retained for signature stability: reseed/seedChecklistForStep and their many
+  // callers thread clientReviewEnabled positionally. Unused here since the QA
+  // send-link row was removed (P1 #13); removing it would cascade across every
+  // passBaton/sendBackBaton/migration caller, out of scope for this change.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   clientReviewEnabled: boolean,
-  sendLinkChecked = false,
 ): { batchId: string; step: RelayStep; label: string; required: boolean; checked: boolean }[] {
   const seed = CHECKLIST_SEED[step] ?? []
-  const rows = seed.map((item) => ({
+  return seed.map((item) => ({
     batchId,
     step,
     label: item.label,
     required: item.required ?? true,
     checked: false,
   }))
-  // Client review: the "Send review link" gate lives on Pre-Client QA (step 5),
-  // so the AM runs the final internal QA and sends the link there, then passes
-  // to Client Review with the link already out. `checked` reflects an already-
-  // sent active link so a reseed / migration / loop-back does not re-prompt.
-  if (step === RelayStep.am_qa_pre_client && clientReviewEnabled) {
-    rows.push({
-      batchId,
-      step,
-      label: SEND_REVIEW_LINK_LABEL,
-      required: true,
-      checked: sendLinkChecked,
-    })
-  }
-  return rows
 }
 
 /**
@@ -230,8 +196,7 @@ export async function reseedChecklistForStep(
   clientReviewEnabled: boolean,
 ): Promise<void> {
   await tx.checklistItem.deleteMany({ where: { batchId } })
-  const sendLinkChecked = await sendLinkAlreadyActive(tx, batchId, step, clientReviewEnabled)
-  const data = checklistRowsForStep(batchId, step, clientReviewEnabled, sendLinkChecked)
+  const data = checklistRowsForStep(batchId, step, clientReviewEnabled)
   if (data.length === 0) return
   await tx.checklistItem.createMany({ data })
 }
@@ -242,8 +207,7 @@ export async function seedChecklistForStep(
   step: RelayStep,
   clientReviewEnabled: boolean,
 ): Promise<void> {
-  const sendLinkChecked = await sendLinkAlreadyActive(tx, batchId, step, clientReviewEnabled)
-  const data = checklistRowsForStep(batchId, step, clientReviewEnabled, sendLinkChecked)
+  const data = checklistRowsForStep(batchId, step, clientReviewEnabled)
   if (data.length === 0) return
   await tx.checklistItem.createMany({ data })
 }

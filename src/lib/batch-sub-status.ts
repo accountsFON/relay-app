@@ -43,6 +43,8 @@ export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
       }
       return { label: 'Ready for review', tone: 'attention', daysHere }
 
+    // am_qa_pre_client retired from the live flow (P1 #13); case kept for enum
+    // totality so stranded/historical rows still render a label.
     case RelayStep.am_qa_pre_client:
       return { label: 'In pre-client QA', tone: 'progress', daysHere }
 
@@ -104,9 +106,10 @@ export function amKanbanColumn(step: RelayStep): AmKanbanColumn | null {
     case RelayStep.designs_completed:
     case RelayStep.am_review_design:
     case RelayStep.design_revisions:
-      return 'Design'
+    // am_qa_pre_client retired from the live flow (P1 #13); keep the case for
+    // enum totality and fold stranded/historical rows into the Design column.
     case RelayStep.am_qa_pre_client:
-      return 'Pre-Client QA'
+      return 'Design'
     case RelayStep.sent_to_client:
     case RelayStep.client_decision:
     case RelayStep.client_review:

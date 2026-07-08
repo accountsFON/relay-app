@@ -37,17 +37,17 @@ describe('validateTransition', () => {
     expect(validateTransition(RelayStep.copy, RelayStep.copy, true).ok).toBe(false)
   })
 
-  it('rejects step 8 send-back to copy; sends back to am_review_design (merge design steps: was design_revisions)', () => {
+  it('am_qa_pre_client has no live edges (Pre-Client QA removed, P1 #13)', () => {
     expect(
       validateTransition(RelayStep.am_qa_pre_client, RelayStep.copy, true).ok,
     ).toBe(false)
-    // design_revisions is retired; QA send-back now lands on Design Review.
     expect(
       validateTransition(RelayStep.am_qa_pre_client, RelayStep.design_revisions, true).ok,
     ).toBe(false)
+    // Pre-Client QA removed: am_qa_pre_client no longer sends back to Design Review.
     expect(
       validateTransition(RelayStep.am_qa_pre_client, RelayStep.am_review_design, true).ok,
-    ).toBe(true)
+    ).toBe(false)
   })
 })
 
@@ -66,15 +66,15 @@ describe('merge design steps: design_revisions retired from live tables', () => 
     }
   })
 
-  it('legalNextSteps(am_review_design, true) returns only forward to am_qa_pre_client', () => {
+  it('legalNextSteps(am_review_design, true) returns only forward to client_review (Pre-Client QA removed)', () => {
     expect(legalNextSteps(RelayStep.am_review_design, true)).toEqual([
-      { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
+      { from: RelayStep.am_review_design, to: RelayStep.client_review, direction: 'forward' },
     ])
   })
 
-  it('legalNextSteps(am_review_design, false) returns only forward to am_qa_pre_client', () => {
+  it('legalNextSteps(am_review_design, false) returns only forward to scheduling (Pre-Client QA removed)', () => {
     expect(legalNextSteps(RelayStep.am_review_design, false)).toEqual([
-      { from: RelayStep.am_review_design, to: RelayStep.am_qa_pre_client, direction: 'forward' },
+      { from: RelayStep.am_review_design, to: RelayStep.scheduling, direction: 'forward' },
     ])
   })
 
@@ -83,22 +83,31 @@ describe('merge design steps: design_revisions retired from live tables', () => 
     expect(legalSendBackTargets(RelayStep.am_review_design, false)).toEqual([])
   })
 
-  it('both tables still contain in_design -> am_review_design and am_review_design -> am_qa_pre_client', () => {
+  it('both tables still contain in_design -> am_review_design; am_review_design advances forward past QA (Pre-Client QA removed)', () => {
     for (const table of [LEGAL_TRANSITIONS, LEGAL_TRANSITIONS_NO_REVIEW]) {
       expect(
         table.some(
           (t) => t.from === RelayStep.in_design && t.to === RelayStep.am_review_design && t.direction === 'forward',
         ),
       ).toBe(true)
+      // Pre-Client QA removed: am_review_design no longer forwards to am_qa_pre_client.
       expect(
         table.some(
-          (t) =>
-            t.from === RelayStep.am_review_design &&
-            t.to === RelayStep.am_qa_pre_client &&
-            t.direction === 'forward',
+          (t) => t.from === RelayStep.am_review_design && t.to === RelayStep.am_qa_pre_client,
         ),
-      ).toBe(true)
+      ).toBe(false)
     }
+    // Review track forwards to client_review; no-review track forwards to scheduling.
+    expect(
+      LEGAL_TRANSITIONS.some(
+        (t) => t.from === RelayStep.am_review_design && t.to === RelayStep.client_review && t.direction === 'forward',
+      ),
+    ).toBe(true)
+    expect(
+      LEGAL_TRANSITIONS_NO_REVIEW.some(
+        (t) => t.from === RelayStep.am_review_design && t.to === RelayStep.scheduling && t.direction === 'forward',
+      ),
+    ).toBe(true)
   })
 })
 
@@ -107,10 +116,8 @@ describe('legalSendBackTargets', () => {
     expect(legalSendBackTargets(RelayStep.am_review_design, true)).toEqual([])
   })
 
-  it('returns am_review_design only for am_qa_pre_client (merge design steps: was design_revisions)', () => {
-    expect(legalSendBackTargets(RelayStep.am_qa_pre_client, true)).toEqual([
-      RelayStep.am_review_design,
-    ])
+  it('returns empty for am_qa_pre_client (Pre-Client QA removed, P1 #13)', () => {
+    expect(legalSendBackTargets(RelayStep.am_qa_pre_client, true)).toEqual([])
   })
 
   it('returns empty only for onboarding_gate (no predecessor)', () => {
@@ -280,6 +287,8 @@ describe('go back on every step', () => {
       // implementing_revisions has two forward edges only (re-review + schedule); no send_back.
       // The re-review path uses direction: 'forward' to client_review (not 'revision').
       RelayStep.implementing_revisions,
+      // Pre-Client QA removed (P1 #13): am_qa_pre_client has no live edges.
+      RelayStep.am_qa_pre_client,
     ])
     for (const step of Object.values(RelayStep)) {
       if (noEdgesSteps.has(step as RelayStep)) {
@@ -307,9 +316,10 @@ describe('go back on every step', () => {
     expect(legalSendBackTargets(RelayStep.design_revisions, true)).toEqual([])
   })
 
-  it('client_review can go back to am_qa_pre_client (pipeline rework: was sent_to_client -> am_qa_pre_client)', () => {
+  it('client_review can go back to am_review_design (Pre-Client QA removed, P1 #13)', () => {
     const targets = legalSendBackTargets(RelayStep.client_review, true)
-    expect(targets).toContain(RelayStep.am_qa_pre_client)
+    expect(targets).toContain(RelayStep.am_review_design)
+    expect(targets).not.toContain(RelayStep.am_qa_pre_client)
     expect(targets).not.toContain(RelayStep.revisions_complete)
     expect(targets).toHaveLength(1)
   })
@@ -344,9 +354,10 @@ describe('go back on every step', () => {
     expect(legalSendBackTargets(RelayStep.revisions_complete, true)).toEqual([])
   })
 
-  it('scheduling can go back to am_qa_pre_client (pipeline rework: was final_qa_schedule -> ready_to_schedule)', () => {
+  it('scheduling can go back to am_review_design (Pre-Client QA removed, P1 #13)', () => {
     const targets = legalSendBackTargets(RelayStep.scheduling, true)
-    expect(targets).toContain(RelayStep.am_qa_pre_client)
+    expect(targets).toContain(RelayStep.am_review_design)
+    expect(targets).not.toContain(RelayStep.am_qa_pre_client)
     expect(targets).not.toContain(RelayStep.revisions_complete)
     expect(targets).toHaveLength(1)
   })
@@ -375,9 +386,9 @@ describe('state machine, no review flow', () => {
     }
   })
 
-  it('am_qa_pre_client forward lands on scheduling when review is off (pipeline rework: was ready_to_schedule)', () => {
+  it('am_review_design forward lands on scheduling when review is off (Pre-Client QA removed, P1 #13)', () => {
     const result = validateTransition(
-      RelayStep.am_qa_pre_client,
+      RelayStep.am_review_design,
       RelayStep.scheduling,
       false,
     )
@@ -394,28 +405,25 @@ describe('state machine, no review flow', () => {
     expect(result.ok).toBe(false)
   })
 
-  it('scheduling send-back lands on am_qa_pre_client when review is off (pipeline rework: was ready_to_schedule)', () => {
+  it('scheduling send-back lands on am_review_design when review is off (Pre-Client QA removed, P1 #13)', () => {
     const result = validateTransition(
       RelayStep.scheduling,
-      RelayStep.am_qa_pre_client,
+      RelayStep.am_review_design,
       false,
     )
     expect(result.ok).toBe(true)
     expect(result.direction).toBe('send_back')
   })
 
-  it('legalNextSteps(am_qa_pre_client, false) returns exactly scheduling + am_review_design (merge design steps: was design_revisions)', () => {
-    const next = legalNextSteps(RelayStep.am_qa_pre_client, false)
+  it('legalNextSteps(am_review_design, false) returns exactly scheduling:forward (Pre-Client QA removed, P1 #13)', () => {
+    const next = legalNextSteps(RelayStep.am_review_design, false)
     const summary = next.map((t) => `${t.to}:${t.direction}`).sort()
-    expect(summary).toEqual([
-      `${RelayStep.am_review_design}:send_back`,
-      `${RelayStep.scheduling}:forward`,
-    ].sort())
+    expect(summary).toEqual([`${RelayStep.scheduling}:forward`])
   })
 
-  it('legalSendBackTargets(scheduling, false) returns am_qa_pre_client only (pipeline rework)', () => {
+  it('legalSendBackTargets(scheduling, false) returns am_review_design only (Pre-Client QA removed, P1 #13)', () => {
     expect(legalSendBackTargets(RelayStep.scheduling, false)).toEqual([
-      RelayStep.am_qa_pre_client,
+      RelayStep.am_review_design,
     ])
   })
 
@@ -458,74 +466,48 @@ describe('implementing_revisions transitions (pipeline rework)', () => {
   })
 })
 
-describe('checklistRowsForStep — send review link item', () => {
-  it('appends a required Send review link item on am_qa_pre_client when client review is on', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true)
-    const sendItem = rows.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
-    expect(sendItem).toEqual({
-      batchId: 'batch-1',
-      step: RelayStep.am_qa_pre_client,
-      label: SEND_REVIEW_LINK_LABEL,
-      required: true,
-      checked: false,
-    })
-    expect(rows.length).toBe(4)
+describe('checklistRowsForStep — Send review link row removed (P1 #13)', () => {
+  it('seeds no rows on am_qa_pre_client, with or without client review', () => {
+    expect(checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true)).toEqual([])
+    expect(checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, false)).toEqual([])
   })
 
-  it('marks the Send review link item checked when sendLinkChecked is true', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, true, true)
-    const sendItem = rows.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
-    expect(sendItem?.checked).toBe(true)
+  it('never emits the Send review link row on any step', () => {
+    for (const step of Object.values(RelayStep)) {
+      const rows = checklistRowsForStep('batch-1', step, true)
+      expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
+    }
   })
 
-  it('omits the Send review link item on am_qa_pre_client when client review is off', () => {
-    const rows = checklistRowsForStep('batch-1', RelayStep.am_qa_pre_client, false)
-    expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
-    expect(rows.length).toBe(3)
-  })
-
-  it('never adds the item on am_review_design, even when client review is on', () => {
+  it('still seeds the static rows for other steps (am_review_design has 5)', () => {
     const rows = checklistRowsForStep('batch-1', RelayStep.am_review_design, true)
-    expect(rows.some((r) => r.label === SEND_REVIEW_LINK_LABEL)).toBe(false)
     expect(rows.length).toBe(5)
   })
 })
 
-describe('reseedChecklistForStep — send-link auto-check', () => {
-  function makeTx(activeLink: boolean) {
+describe('reseedChecklistForStep — no magic-link query (send-link removed)', () => {
+  function makeTx() {
     return {
       checklistItem: {
         deleteMany: vi.fn().mockResolvedValue({}),
         createMany: vi.fn().mockResolvedValue({}),
       },
       magicLink: {
-        findFirst: vi.fn().mockResolvedValue(activeLink ? { id: 'ml1' } : null),
+        findFirst: vi.fn().mockResolvedValue({ id: 'ml1' }),
       },
     }
   }
 
-  function sentRow(tx: ReturnType<typeof makeTx>) {
-    const data = tx.checklistItem.createMany.mock.calls[0][0].data as {
-      label: string
-      checked: boolean
-    }[]
-    return data.find((r) => r.label === SEND_REVIEW_LINK_LABEL)
-  }
-
-  it('checks the Send review link item on Pre-Client QA when an active link exists', async () => {
-    const tx = makeTx(true)
+  it('never queries magic links when reseeding Pre-Client QA', async () => {
+    const tx = makeTx()
     await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_qa_pre_client, true)
-    expect(sentRow(tx)?.checked).toBe(true)
+    expect(tx.magicLink.findFirst).not.toHaveBeenCalled()
+    // QA seeds nothing now, so no createMany call is made.
+    expect(tx.checklistItem.createMany).not.toHaveBeenCalled()
   })
 
-  it('leaves the Send review link item unchecked when no active link exists', async () => {
-    const tx = makeTx(false)
-    await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_qa_pre_client, true)
-    expect(sentRow(tx)?.checked).toBe(false)
-  })
-
-  it('does not query magic links for non-QA steps', async () => {
-    const tx = makeTx(false)
+  it('does not query magic links for any step', async () => {
+    const tx = makeTx()
     await reseedChecklistForStep(tx as never, 'b1', RelayStep.am_review_design, true)
     expect(tx.magicLink.findFirst).not.toHaveBeenCalled()
   })
@@ -535,9 +517,9 @@ describe('state machine, full flow regression', () => {
   // NOTE: these two tests reference old edges (sent_to_client, client_decision,
   // ready_to_schedule) that are retired by the pipeline rework. They are updated
   // in the pipeline rework commit to point at the new edges.
-  it('am_qa_pre_client forward lands on client_review when review is on (pipeline rework)', () => {
+  it('am_review_design forward lands on client_review when review is on (Pre-Client QA removed, P1 #13)', () => {
     const result = validateTransition(
-      RelayStep.am_qa_pre_client,
+      RelayStep.am_review_design,
       RelayStep.client_review,
       true,
     )
@@ -569,8 +551,8 @@ describe('pipeline rework: holders', () => {
 })
 
 describe('pipeline rework: with-review transitions', () => {
-  it('QA advances to client_review', () => {
-    expect(validateTransition(RelayStep.am_qa_pre_client, RelayStep.client_review, true).ok).toBe(true)
+  it('Design Review advances to client_review (Pre-Client QA removed, P1 #13)', () => {
+    expect(validateTransition(RelayStep.am_review_design, RelayStep.client_review, true).ok).toBe(true)
   })
   it('client_review advances to scheduling (auto)', () => {
     const r = validateTransition(RelayStep.client_review, RelayStep.scheduling, true)
@@ -605,14 +587,40 @@ describe('pipeline rework: with-review transitions', () => {
 })
 
 describe('pipeline rework: no-review transitions', () => {
-  it('QA (Final QA) advances straight to scheduling', () => {
-    expect(validateTransition(RelayStep.am_qa_pre_client, RelayStep.scheduling, false).ok).toBe(true)
+  it('Design Review advances straight to scheduling (Pre-Client QA removed, P1 #13)', () => {
+    expect(validateTransition(RelayStep.am_review_design, RelayStep.scheduling, false).ok).toBe(true)
   })
   it('no client_review in the no-review track', () => {
     expect(validateTransition(RelayStep.am_qa_pre_client, RelayStep.client_review, false).ok).toBe(false)
   })
   it('scheduling completes', () => {
     expect(validateTransition(RelayStep.scheduling, RelayStep.completed, false).ok).toBe(true)
+  })
+})
+
+describe('Pre-Client QA removal (P1 #13)', () => {
+  it('advances Design Review straight to Client Review (review enabled)', () => {
+    expect(validateTransition(RelayStep.am_review_design, RelayStep.client_review, true))
+      .toMatchObject({ ok: true, direction: 'forward' })
+  })
+  it('advances Design Review straight to Scheduling (no review)', () => {
+    expect(validateTransition(RelayStep.am_review_design, RelayStep.scheduling, false))
+      .toMatchObject({ ok: true, direction: 'forward' })
+  })
+  it('no longer routes through am_qa_pre_client', () => {
+    expect(validateTransition(RelayStep.am_review_design, RelayStep.am_qa_pre_client, true).ok).toBe(false)
+    expect(validateTransition(RelayStep.am_qa_pre_client, RelayStep.client_review, true).ok).toBe(false)
+  })
+  it('send-backs from client_review and scheduling land on Design Review', () => {
+    expect(legalSendBackTargets(RelayStep.client_review, true)).toContain(RelayStep.am_review_design)
+    expect(legalSendBackTargets(RelayStep.client_review, true)).not.toContain(RelayStep.am_qa_pre_client)
+    expect(legalSendBackTargets(RelayStep.scheduling, true)).toContain(RelayStep.am_review_design)
+    expect(legalSendBackTargets(RelayStep.scheduling, false)).toContain(RelayStep.am_review_design)
+  })
+  it('Design Review has exactly one forward edge (no branch)', () => {
+    const fwd = legalNextSteps(RelayStep.am_review_design, true).filter((t) => t.direction === 'forward')
+    expect(fwd).toHaveLength(1)
+    expect(fwd[0].to).toBe(RelayStep.client_review)
   })
 })
 

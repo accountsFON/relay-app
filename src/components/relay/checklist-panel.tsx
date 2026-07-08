@@ -39,8 +39,7 @@ import { relayStepLabel } from '@/lib/relay-step-labels'
 import type { BatchSummary, ChecklistItem } from './types'
 import { SimpleTooltip } from './relay-tooltips'
 import { AdminForceStepSection } from './admin-force-step-section'
-import { SendLinkModal } from '@/components/batch/send-link-modal'
-import { SEND_REVIEW_LINK_LABEL } from '@/lib/relay-checklists'
+import { SendToClientReviewButton } from './send-to-client-review-button'
 import {
   finishBatchAction,
   passBatonAction,
@@ -112,7 +111,6 @@ export function ChecklistPanel({
     setSeededSignature(itemsSignature)
   }
   const [sendBackTarget, setSendBackTarget] = useState<RelayStep | null>(null)
-  const [sendLinkItemId, setSendLinkItemId] = useState<string | null>(null)
   const [reasonText, setReasonText] = useState('')
   const [error, setError] = useState<string | null>(null)
   // `isActing` gates the destructive state-machine actions (pass / finish /
@@ -178,37 +176,24 @@ export function ChecklistPanel({
   const isFinishStep = nextStep === RelayStep.completed
 
   /**
-   * Phase 3 item 16: smart skip CTA on AM review.
+   * Smart forward CTA copy (P1 #13).
    *
-   * The state machine forward edge from `am_review_design` already lands on
-   * `am_qa_pre_client` (the "skip designer revisions" path is the forward
-   * transition, send-back is the revisions path). The wiring exists; this is
-   * a copy override so the AM sees a destination-named label instead of the
-   * internal step name "Pre-client QA".
+   * Pre-Client QA is retired: Design Review advances straight to Client Review
+   * (review clients) or Scheduling (no-review clients) via the confirm modal in
+   * SendToClientReviewButton. This label mirrors that button so the sticky pass
+   * reads by destination, not internal step name.
    *
-   *   am_review_design + clientReviewEnabled  -> "Send to Pre-Client QA"
-   *   am_review_design + no client review     -> "Send to final QA"
-   *   am_qa_pre_client + clientReviewEnabled  -> "Send to client review"
-   *   am_qa_pre_client + no client review     -> "Send to scheduling"
+   *   am_review_design + clientReviewEnabled  -> "Send to Client Review"
+   *   am_review_design + no client review     -> "Final QA"
    *   anything else                           -> "Pass to ${STEP_LABEL[nextStep]}"
    *
-   * The client review link goes out ON Pre-Client QA (its checklist gate), so
-   * Design Review passes to QA (not straight to the client) and QA is the step
-   * that sends to client review. Server still validates the transition via
-   * LEGAL_TRANSITIONS in passBatonAction, so a stale UI cannot bypass the state
-   * machine.
+   * Server still validates the transition via LEGAL_TRANSITIONS in
+   * passBatonAction, so a stale UI cannot bypass the state machine.
    */
   function passButtonLabel(): string {
     if (!nextStep) return ''
     if (batch.currentStep === RelayStep.am_review_design) {
-      return batch.clientReviewEnabled
-        ? 'Send to Pre-Client QA'
-        : 'Send to final QA'
-    }
-    if (batch.currentStep === RelayStep.am_qa_pre_client) {
-      return batch.clientReviewEnabled
-        ? 'Send to client review'
-        : 'Send to scheduling'
+      return batch.clientReviewEnabled ? 'Send to Client Review' : 'Final QA'
     }
     return `Pass to ${STEP_LABEL[nextStep]}`
   }
@@ -255,68 +240,6 @@ export function ChecklistPanel({
 
       <ul className="space-y-2">
         {items.map((item) => {
-          if (item.label === SEND_REVIEW_LINK_LABEL) {
-            const isChecked = checked[item.id]
-            return (
-              <li key={item.id} className="flex flex-col gap-1.5">
-                <div className="flex items-start gap-2">
-                  <span
-                    className={cn(
-                      'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
-                      isChecked
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border bg-background'
-                    )}
-                    aria-hidden
-                  >
-                    {isChecked && <Check className="size-3" />}
-                  </span>
-                  <span
-                    className={cn(
-                      'text-[13px] leading-tight',
-                      isChecked ? 'text-muted-foreground line-through' : 'text-foreground'
-                    )}
-                  >
-                    {item.label}
-                    {isChecked && <span className="sr-only"> (done)</span>}
-                    {item.required && (
-                      <span className="ml-1 text-[10px] uppercase text-muted-foreground">
-                        required
-                      </span>
-                    )}
-                  </span>
-                </div>
-                {canAct && !isChecked && (
-                  <div className="flex items-center gap-3 pl-6">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={isActing}
-                      onClick={() => setSendLinkItemId(item.id)}
-                    >
-                      Send review link
-                    </Button>
-                    <button
-                      type="button"
-                      className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                      onClick={() => tick(item.id, true)}
-                    >
-                      Mark done without sending
-                    </button>
-                  </div>
-                )}
-                {canAct && isChecked && (
-                  <button
-                    type="button"
-                    className="pl-6 text-left text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                    onClick={() => tick(item.id, false)}
-                  >
-                    Undo
-                  </button>
-                )}
-              </li>
-            )
-          }
           return (
             <li key={item.id} className="flex items-start gap-2">
               <button
@@ -387,6 +310,15 @@ export function ChecklistPanel({
                 <Check />
               </Button>
             </SimpleTooltip>
+          ) : nextStep && batch.currentStep === RelayStep.am_review_design ? (
+            <SendToClientReviewButton
+              batchId={batch.id}
+              clientReviewEnabled={batch.clientReviewEnabled}
+              clientName={clientName ?? batch.label}
+              clientReviewEmail={clientReviewEmail}
+              disabled={!allRequiredChecked || isActing}
+              onAdvance={() => passTo(nextStep!)}
+            />
           ) : nextStep ? (
             <SimpleTooltip content="Hand the baton to the next person on the relay.">
               <Button
@@ -491,19 +423,6 @@ export function ChecklistPanel({
             </div>
           )}
         </div>
-      )}
-
-      {sendLinkItemId && (
-        <SendLinkModal
-          batchId={batch.id}
-          clientName={clientName ?? batch.label}
-          clientReviewEmail={clientReviewEmail}
-          open
-          onOpenChange={(o) => {
-            if (!o) setSendLinkItemId(null)
-          }}
-          onSent={() => tick(sendLinkItemId, true)}
-        />
       )}
     </Card>
   )

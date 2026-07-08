@@ -44,7 +44,6 @@ const AM_TRACK_STEPS: RelayStep[] = [
   RelayStep.copy,
   RelayStep.in_design,
   RelayStep.am_review_design,
-  RelayStep.am_qa_pre_client,
   RelayStep.client_review,
   RelayStep.implementing_revisions,
   RelayStep.scheduling,

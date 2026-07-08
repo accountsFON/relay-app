@@ -40,11 +40,9 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
   // in-step action on am_review_design, so no live batch seeds this. Kept empty
   // for record totality + pre-cutover historical batches.
   [RelayStep.design_revisions]: [],
-  [RelayStep.am_qa_pre_client]: [
-    { label: 'Final captions have been reviewed' },
-    { label: 'Designs have received a final pass review' },
-    { label: 'Posting dates have been verified' },
-  ],
+  // Pre-Client QA removed as a live step (P1 #13). Empty seed kept for enum
+  // totality; the final-QA once-over now lives in the transition confirm modal.
+  [RelayStep.am_qa_pre_client]: [],
   // Client Review: no agency checklist; the client submitting (or the window
   // expiring) is the gate.
   [RelayStep.client_review]: [],
