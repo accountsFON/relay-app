@@ -22,6 +22,7 @@ import {
   leaveCommentAsReviewer,
 } from '@/app/review/[token]/_actions'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
+import { summarizeReviewDecisions } from '@/lib/relay-review-decision'
 import type {
   ReviewDecisionType,
   ReviewItemHydrated,
@@ -145,23 +146,20 @@ export function ReviewSessionShell({
 
   const postIds = useMemo(() => posts.map((p) => p.post.id), [posts])
 
-  const summary: ReviewSessionSummary = useMemo(() => {
-    let approved = 0
-    let changesRequested = 0
-    let captionEdited = 0
-    for (const id of postIds) {
-      const decision = itemsByPostId[id]?.decision ?? 'not_reviewed'
-      if (decision === 'approved') approved += 1
-      else if (decision === 'changes_requested') changesRequested += 1
-      else if (decision === 'caption_edited') captionEdited += 1
-    }
-    return {
-      approved,
-      changesRequested,
-      captionEdited,
-      totalPosts: postIds.length,
-    }
-  }, [postIds, itemsByPostId])
+  // A post marked "approved" that carries feedback (a saved copy edit or an open
+  // pin) is counted as a change, not a clean approval (P2 #27), so the counter and
+  // the "all approved" gate match the submit routing (isApprovedWithFeedback).
+  const summary: ReviewSessionSummary = useMemo(
+    () =>
+      summarizeReviewDecisions(
+        posts.map(({ post, threads }) => ({
+          decision: itemsByPostId[post.id]?.decision ?? 'not_reviewed',
+          suggestedCaption: itemsByPostId[post.id]?.suggestedCaption ?? null,
+          openPinCount: (threads ?? []).length,
+        })),
+      ),
+    [posts, itemsByPostId],
+  )
 
   // Nav items for the ChangesNavigator: one entry per thread + note per
   // Changes post, collapsed to one per post if no threads are present.
