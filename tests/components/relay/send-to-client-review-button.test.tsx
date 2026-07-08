@@ -46,4 +46,17 @@ describe('SendToClientReviewButton', () => {
     expect(onAdvance).toHaveBeenCalledOnce()
     expect(screen.queryByTestId('send-link-modal-stub')).toBeNull()
   })
+
+  it('gates the skip-link bypass on the once-over too, then advances without a link', () => {
+    const onAdvance = vi.fn()
+    render(<SendToClientReviewButton {...base} clientReviewEnabled onAdvance={onAdvance} />)
+    fireEvent.click(screen.getByRole('button', { name: /send to client review/i }))
+    const skip = screen.getByRole('button', { name: /skip link and advance/i })
+    expect(skip).toBeDisabled()
+    tickAll()
+    expect(skip).toBeEnabled()
+    fireEvent.click(skip)
+    expect(onAdvance).toHaveBeenCalledOnce()
+    expect(screen.queryByTestId('send-link-modal-stub')).toBeNull()
+  })
 })

@@ -38,8 +38,9 @@ const BATCH_SPECS: BatchSpec[] = [
   { clientIdx: 2, month: '2026-03', step: RelayStep.client_decision },
   { clientIdx: 2, month: '2026-04', step: RelayStep.sent_to_client },
 
-  // Sunrise Yoga (Dakota linked) — am_qa_pre_client Mar, client_decision Apr.
-  { clientIdx: 3, month: '2026-03', step: RelayStep.am_qa_pre_client, checkedCount: 2 },
+  // Sunrise Yoga (Dakota linked) — am_review_design Mar (Pre-Client QA retired,
+  // P1 #13), client_decision Apr.
+  { clientIdx: 3, month: '2026-03', step: RelayStep.am_review_design, checkedCount: 2 },
   { clientIdx: 3, month: '2026-04', step: RelayStep.client_decision },
 
   // Riverbend Realty — ready_to_schedule Mar, copy (drafted) Apr.
@@ -112,8 +113,8 @@ const BATCH_SPECS: BatchSpec[] = [
     stuck: true,
   },
 
-  // Polaris Wellness (archived) — am_qa_pre_client Mar.
-  { clientIdx: 18, month: '2026-03', step: RelayStep.am_qa_pre_client },
+  // Polaris Wellness (archived) — am_review_design Mar (Pre-Client QA retired, P1 #13).
+  { clientIdx: 18, month: '2026-03', step: RelayStep.am_review_design },
 
   // Ironwood Construction (unassigned) — onboarding_gate.
   { clientIdx: 19, month: null, step: RelayStep.onboarding_gate },

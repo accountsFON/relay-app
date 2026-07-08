@@ -103,6 +103,7 @@ export function SendToClientReviewButton({
               <Button
                 type="button"
                 variant="ghost"
+                disabled={!allChecked}
                 onClick={() => {
                   setOpen(false)
                   onAdvance()
