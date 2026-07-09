@@ -4,6 +4,7 @@ import {
   HOLDER_ROLE,
   LEGAL_TRANSITIONS,
   LEGAL_TRANSITIONS_NO_REVIEW,
+  LIVE_PIPELINE_STEPS,
   checklistRowsForStep,
   reseedChecklistForStep,
   holderRoleForStep,
@@ -637,5 +638,51 @@ describe('onboarding_gate retired from transitions', () => {
     const touches = (t: { from: RelayStep; to: RelayStep }) => t.from === RelayStep.onboarding_gate || t.to === RelayStep.onboarding_gate
     expect(LEGAL_TRANSITIONS.some(touches)).toBe(false)
     expect(LEGAL_TRANSITIONS_NO_REVIEW.some(touches)).toBe(false)
+  })
+})
+
+describe('LIVE_PIPELINE_STEPS', () => {
+  const RETIRED_STEPS = [
+    RelayStep.onboarding_gate,
+    RelayStep.designs_completed,
+    RelayStep.design_revisions,
+    RelayStep.am_qa_pre_client,
+    RelayStep.sent_to_client,
+    RelayStep.client_decision,
+    RelayStep.ready_to_schedule,
+    RelayStep.revisions_complete,
+    RelayStep.final_qa_schedule,
+  ]
+
+  it('is the live pipeline in order', () => {
+    expect(LIVE_PIPELINE_STEPS).toEqual([
+      RelayStep.copy,
+      RelayStep.in_design,
+      RelayStep.am_review_design,
+      RelayStep.client_review,
+      RelayStep.implementing_revisions,
+      RelayStep.scheduling,
+      RelayStep.completed,
+    ])
+  })
+
+  it('includes the two live steps added in the 2026-06-22 rework', () => {
+    expect(LIVE_PIPELINE_STEPS).toContain(RelayStep.client_review)
+    expect(LIVE_PIPELINE_STEPS).toContain(RelayStep.scheduling)
+  })
+
+  it('excludes every retired step', () => {
+    for (const step of RETIRED_STEPS) {
+      expect(LIVE_PIPELINE_STEPS, `retired ${step} must not be live`).not.toContain(step)
+    }
+  })
+
+  // Note: an "every live step has an outgoing edge" assertion would be
+  // tautological (LIVE_PIPELINE_STEPS IS the deduped `from` set). The
+  // exact-order `toEqual` above is the real drift guard: any change to the
+  // transition tables flips the derived array and fails it.
+
+  it('has no duplicates', () => {
+    expect(new Set(LIVE_PIPELINE_STEPS).size).toBe(LIVE_PIPELINE_STEPS.length)
   })
 })

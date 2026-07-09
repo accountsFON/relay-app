@@ -5,7 +5,7 @@
  *   - canForceStep=false renders nothing
  *   - canForceStep=true renders the collapsed "Admin tools" toggle (body hidden)
  *   - expanding shows the step dropdown + optional reason textarea
- *   - dropdown excludes current step + designs_completed, includes copy/completed
+ *   - dropdown offers the live steps (incl. client_review + scheduling), excludes current step + every retired step
  *   - "Force step" disabled until a step is chosen
  *   - confirming opens the confirm dialog with from/to copy
  *   - confirm calls forceStepAction with batchId + toStep + trimmed reason
@@ -70,7 +70,7 @@ describe('AdminForceStepSection', () => {
     ).toBeInTheDocument()
   })
 
-  it('excludes the current step and designs_completed, includes copy and completed', async () => {
+  it('offers the live steps (incl. client_review + scheduling), excludes the current step and every retired step', async () => {
     const user = userEvent.setup()
     render(<AdminForceStepSection {...baseProps} canForceStep />)
 
@@ -79,12 +79,35 @@ describe('AdminForceStepSection', () => {
     const select = (await screen.findByRole('combobox', {
       name: /move this relay to/i,
     })) as HTMLSelectElement
-    const values = Array.from(select.options).map((o) => o.value)
+    const values = Array.from(select.options)
+      .map((o) => o.value)
+      .filter((v) => v !== '') // drop the "Select step…" placeholder
 
-    expect(values).not.toContain(RelayStep.am_review_design)
-    expect(values).not.toContain(RelayStep.designs_completed)
+    // Live steps offered (the two 2026-06-22 additions were previously missing).
     expect(values).toContain(RelayStep.copy)
+    expect(values).toContain(RelayStep.in_design)
+    expect(values).toContain(RelayStep.client_review)
+    expect(values).toContain(RelayStep.implementing_revisions)
+    expect(values).toContain(RelayStep.scheduling)
     expect(values).toContain(RelayStep.completed)
+
+    // Current step is never offered.
+    expect(values).not.toContain(RelayStep.am_review_design)
+
+    // No retired step is offered (these used to litter the dropdown).
+    for (const retired of [
+      RelayStep.onboarding_gate,
+      RelayStep.designs_completed,
+      RelayStep.design_revisions,
+      RelayStep.am_qa_pre_client,
+      RelayStep.sent_to_client,
+      RelayStep.client_decision,
+      RelayStep.ready_to_schedule,
+      RelayStep.revisions_complete,
+      RelayStep.final_qa_schedule,
+    ]) {
+      expect(values, `retired ${retired} must not be offered`).not.toContain(retired)
+    }
   })
 
   it('disables "Force step" until a step is selected', async () => {
