@@ -89,20 +89,25 @@ export function signToken({ magicLinkId, expiresAt }: SignTokenInput): string {
 }
 
 /**
- * Returns the parsed claims if the signature checks out and the token has
- * not expired. Returns null on any failure (malformed, bad signature,
- * expired). Callers use the magicLinkId for the DB lookup; the lookup is
- * the second gate (revocation + batch archival).
+ * Discriminated inspection of a token: `valid` (good signature, not expired),
+ * `expired` (good signature but past `expiresAt`), or `invalid` (malformed or
+ * bad signature). Lets the middleware distinguish an expired-but-ours token
+ * (→ friendly "expired" page) from one we never minted (→ 404). P2 #23.
  */
-export function verifyToken(token: string): VerifiedToken | null {
-  if (typeof token !== 'string' || token.length === 0) return null
+export type TokenInspection =
+  | { status: 'valid'; magicLinkId: string; expiresAt: number }
+  | { status: 'expired'; magicLinkId: string; expiresAt: number }
+  | { status: 'invalid' }
+
+export function inspectToken(token: string): TokenInspection {
+  if (typeof token !== 'string' || token.length === 0) return { status: 'invalid' }
   const parts = token.split('.')
-  if (parts.length !== 3) return null
+  if (parts.length !== 3) return { status: 'invalid' }
   const [sigPart, magicLinkId, expiresAtPart] = parts
-  if (!sigPart || !magicLinkId || !expiresAtPart) return null
+  if (!sigPart || !magicLinkId || !expiresAtPart) return { status: 'invalid' }
 
   const expiresAt = Number(expiresAtPart)
-  if (!Number.isFinite(expiresAt)) return null
+  if (!Number.isFinite(expiresAt)) return { status: 'invalid' }
 
   const payload = `${magicLinkId}.${expiresAtPart}`
   const expected = createHmac("sha256", getSecret()).update(payload).digest()
@@ -111,14 +116,26 @@ export function verifyToken(token: string): VerifiedToken | null {
   try {
     provided = base64urlDecodeToBuffer(sigPart)
   } catch {
-    return null
+    return { status: 'invalid' }
   }
-  if (provided.length !== expected.length) return null
-  if (!timingSafeEqual(provided, expected)) return null
+  if (provided.length !== expected.length) return { status: 'invalid' }
+  if (!timingSafeEqual(provided, expected)) return { status: 'invalid' }
 
-  if (Date.now() > expiresAt) return null
+  if (Date.now() > expiresAt) return { status: 'expired', magicLinkId, expiresAt }
+  return { status: 'valid', magicLinkId, expiresAt }
+}
 
-  return { magicLinkId, expiresAt }
+/**
+ * Returns the parsed claims if the signature checks out and the token has
+ * not expired. Returns null on any failure (malformed, bad signature,
+ * expired). Callers use the magicLinkId for the DB lookup; the lookup is
+ * the second gate (revocation + batch archival).
+ */
+export function verifyToken(token: string): VerifiedToken | null {
+  const inspected = inspectToken(token)
+  return inspected.status === 'valid'
+    ? { magicLinkId: inspected.magicLinkId, expiresAt: inspected.expiresAt }
+    : null
 }
 
 /**

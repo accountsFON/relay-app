@@ -51,6 +51,41 @@ describe('signToken / verifyToken', () => {
   })
 })
 
+describe('inspectToken (P2 #23)', () => {
+  it('returns valid for a good, unexpired token', () => {
+    const expiresAt = Date.now() + 60_000
+    const token = lib.signToken({ magicLinkId: 'ml_ok', expiresAt })
+    expect(lib.inspectToken(token)).toEqual({
+      status: 'valid',
+      magicLinkId: 'ml_ok',
+      expiresAt,
+    })
+  })
+
+  it('returns expired (with the id) for a correctly-signed past token', () => {
+    const expiresAt = Date.now() - 1_000
+    const token = lib.signToken({ magicLinkId: 'ml_exp', expiresAt })
+    expect(lib.inspectToken(token)).toEqual({
+      status: 'expired',
+      magicLinkId: 'ml_exp',
+      expiresAt,
+    })
+  })
+
+  it('returns invalid for a tampered signature (never leaks expired)', () => {
+    const expiresAt = Date.now() - 1_000 // past, but the signature is bad
+    const token = lib.signToken({ magicLinkId: 'ml_x', expiresAt })
+    const [sig, id, exp] = token.split('.')
+    const flipped = sig.startsWith('A') ? `B${sig.slice(1)}` : `A${sig.slice(1)}`
+    expect(lib.inspectToken(`${flipped}.${id}.${exp}`)).toEqual({ status: 'invalid' })
+  })
+
+  it('returns invalid for a malformed token', () => {
+    expect(lib.inspectToken('not-a-token')).toEqual({ status: 'invalid' })
+    expect(lib.inspectToken('')).toEqual({ status: 'invalid' })
+  })
+})
+
 describe('hashToken', () => {
   // The "revocation rejected via tokenHash lookup" case in the spec is a
   // composite of (a) the lib producing a stable hash for any given token

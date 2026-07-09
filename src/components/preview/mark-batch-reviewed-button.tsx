@@ -49,6 +49,8 @@ export interface MarkBatchReviewedButtonProps {
   clientName: string
   /** Client review email on file; pre-fills the send-link modal. */
   clientReviewEmail?: string | null
+  /** Agency review window; seeds the review-link default expiry (P2 #23). */
+  reviewWindowDays?: number
   className?: string
 }
 
@@ -74,6 +76,7 @@ export function MarkBatchReviewedButton({
   clientReviewEnabled,
   clientName,
   clientReviewEmail,
+  reviewWindowDays,
   className,
 }: MarkBatchReviewedButtonProps) {
   const [open, setOpen] = useState(false)
@@ -246,6 +249,7 @@ export function MarkBatchReviewedButton({
           batchId={batchId}
           clientName={clientName}
           clientReviewEmail={clientReviewEmail}
+          reviewWindowDays={reviewWindowDays}
           open={linkOpen}
           onOpenChange={(o) => {
             if (!o) setLinkOpen(false)

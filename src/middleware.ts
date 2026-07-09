@@ -1,6 +1,6 @@
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
-import { hashToken, verifyToken } from '@/lib/magic-link'
+import { hashToken, inspectToken } from '@/lib/magic-link'
 import { findByTokenHash } from '@/server/repositories/magicLinks'
 import { PUBLIC_ROUTE_PATTERNS, REVIEW_ROUTE_PATTERNS } from '@/lib/route-matchers'
 
@@ -17,6 +17,9 @@ const isReviewRoute = createRouteMatcher([...REVIEW_ROUTE_PATTERNS])
  *  Lets the page skip a duplicate verifyToken + DB lookup. */
 const MAGIC_LINK_ID_HEADER = 'x-magic-link-id'
 const MAGIC_LINK_BATCH_ID_HEADER = 'x-magic-link-batch-id'
+/** Set when a correctly-signed token is past its expiry (P2 #23). The route
+ *  handler renders a friendly "link expired" page instead of the review. */
+const MAGIC_LINK_EXPIRED_HEADER = 'x-magic-link-expired'
 
 const clerk = clerkMiddleware(async (auth, request) => {
   // Sign-up gate: when public signup is disabled, block the bare /sign-up
@@ -64,10 +67,24 @@ async function guardReviewRoute(request: NextRequest) {
     return new NextResponse(null, { status: 404 })
   }
 
-  const verified = verifyToken(token)
-  if (!verified) {
-    // Malformed, bad signature, or expired. 404 to avoid leaking which.
+  const inspected = inspectToken(token)
+  if (inspected.status === 'invalid') {
+    // Malformed or bad signature — 404 so we never confirm a token existed.
     return new NextResponse(null, { status: 404 })
+  }
+  // The three trust headers are set ONLY by this guard. Strip any inbound
+  // copies first so a crafted request header can never reach the route handler.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.delete(MAGIC_LINK_ID_HEADER)
+  requestHeaders.delete(MAGIC_LINK_BATCH_ID_HEADER)
+  requestHeaders.delete(MAGIC_LINK_EXPIRED_HEADER)
+
+  if (inspected.status === 'expired') {
+    // Correctly signed but past expiry: we minted this token, so it is safe to
+    // tell the reviewer it expired (P2 #23). No DB lookup — the signature is
+    // proof enough, and the friendly page is the same regardless of link state.
+    requestHeaders.set(MAGIC_LINK_EXPIRED_HEADER, '1')
+    return NextResponse.next({ request: { headers: requestHeaders } })
   }
 
   const tokenHash = hashToken(token)
@@ -77,7 +94,6 @@ async function guardReviewRoute(request: NextRequest) {
   }
 
   // Forward the validated identity to the route handler.
-  const requestHeaders = new Headers(request.headers)
   requestHeaders.set(MAGIC_LINK_ID_HEADER, link.id)
   requestHeaders.set(MAGIC_LINK_BATCH_ID_HEADER, link.batchId)
 

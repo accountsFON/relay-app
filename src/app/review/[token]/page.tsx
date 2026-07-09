@@ -1,5 +1,6 @@
 import { cookies, headers } from 'next/headers'
 import { notFound } from 'next/navigation'
+import { ReviewLinkExpired } from './review-link-expired'
 import { verifySession, hashToken } from '@/lib/magic-link'
 import { db } from '@/db/client'
 import { markMagicLinkVisited } from '@/server/services/magic-link-visited-emit'
@@ -45,6 +46,13 @@ export default async function ReviewPage({
   const { token } = await params
 
   const hdrs = await headers()
+
+  // P2 #23: a correctly-signed but expired token gets a friendly page instead
+  // of a 404. The middleware sets this header only for tokens we minted.
+  if (hdrs.get('x-magic-link-expired') === '1') {
+    return <ReviewLinkExpired />
+  }
+
   const magicLinkId = hdrs.get('x-magic-link-id')
   const batchId = hdrs.get('x-magic-link-batch-id')
 
