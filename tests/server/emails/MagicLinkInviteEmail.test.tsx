@@ -73,3 +73,29 @@ describe('MagicLinkInviteEmail', () => {
     expect(plainText).toContain('May 31, 2026')
   })
 })
+
+describe('MagicLinkInviteEmail white-label branding (P2 #21)', () => {
+  it('defaults to the Five One Nine wordmark and the renamed CTA', async () => {
+    const html = await render(<MagicLinkInviteEmail {...baseProps} />)
+    expect(html).toContain('Five One Nine Marketing')
+    expect(html).toContain('Review your social posts')
+    expect(html).not.toContain('Review the relay')
+  })
+
+  it('renders the agency logo, name, and accent color when branding is set', async () => {
+    const html = await render(
+      <MagicLinkInviteEmail
+        {...baseProps}
+        brandName="Acme Agency"
+        brandLogoUrl="https://cdn.example.com/acme-logo.png"
+        brandColor="#0a84ff"
+      />,
+    )
+    // Logo image (agency), footer signature name, and CTA accent color.
+    expect(html).toContain('https://cdn.example.com/acme-logo.png')
+    expect(html).toContain('Acme Agency')
+    expect(html).toContain('#0a84ff')
+    // The default FON wordmark is gone when the agency name is set.
+    expect(html).not.toContain('Five One Nine Marketing')
+  })
+})

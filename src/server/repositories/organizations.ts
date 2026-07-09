@@ -1,5 +1,6 @@
 import { db } from '@/db/client'
 import type { Plan } from '@/lib/types'
+import { normalizeBrandColor, normalizeBrandLogoUrl } from '@/lib/org-branding'
 
 export async function findOrgByClerkId(clerkOrgId: string) {
   return db.organization.findUnique({
@@ -35,4 +36,42 @@ export async function getReviewWindowDays(organizationId: string): Promise<numbe
     select: { reviewWindowDays: true },
   })
   return org?.reviewWindowDays ?? DEFAULT_REVIEW_WINDOW_DAYS
+}
+
+export interface OrgBranding {
+  name: string
+  brandLogoUrl: string | null
+  brandColor: string | null
+}
+
+/**
+ * Minimal white-label branding for an org (P2 #21): its name + optional logo
+ * URL + accent color. Null logo/color means "use the current FON / Relay look".
+ */
+export async function getOrgBranding(organizationId: string): Promise<OrgBranding> {
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: { name: true, brandLogoUrl: true, brandColor: true },
+  })
+  // Re-normalize on read (defense in depth): the values are sanitized on write,
+  // but never trust a stored value before rendering it into the client email.
+  return {
+    name: org?.name ?? 'Five One Nine Marketing',
+    brandLogoUrl: normalizeBrandLogoUrl(org?.brandLogoUrl),
+    brandColor: normalizeBrandColor(org?.brandColor),
+  }
+}
+
+/**
+ * Persist an org's white-label branding. Values are already normalized by the
+ * action (`normalizeBrandColor` / `normalizeBrandLogoUrl`); empty → null.
+ */
+export async function updateOrgBranding(
+  organizationId: string,
+  input: { brandLogoUrl: string | null; brandColor: string | null },
+): Promise<void> {
+  await db.organization.update({
+    where: { id: organizationId },
+    data: { brandLogoUrl: input.brandLogoUrl, brandColor: input.brandColor },
+  })
 }

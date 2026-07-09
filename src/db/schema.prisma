@@ -177,6 +177,8 @@ model Organization {
   stripeSubscriptionId String?
   runCredits           Int      @default(0)
   reviewWindowDays     Int      @default(7)
+  brandLogoUrl         String?
+  brandColor           String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

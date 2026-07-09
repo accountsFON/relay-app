@@ -59,6 +59,14 @@ vi.mock('@/server/services/sendMagicLinkEmail', () => ({
   sendMagicLinkEmail: vi.fn(),
 }))
 
+vi.mock('@/server/repositories/organizations', () => ({
+  getOrgBranding: vi.fn().mockResolvedValue({
+    name: 'Five One Nine Marketing',
+    brandLogoUrl: null,
+    brandColor: null,
+  }),
+}))
+
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientEditor: vi.fn(),
 }))
@@ -125,6 +133,7 @@ import { snapshotPostVersion } from '@/server/services/postVersions'
 import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
+import { getOrgBranding } from '@/server/repositories/organizations'
 import { advanceFromClientReview } from '@/server/services/relay'
 import { bulkResolveOnPost, bulkReopenOnPost } from '@/server/repositories/threads'
 import {
@@ -1522,6 +1531,43 @@ describe('startNextRoundAction', () => {
     // The signToken mock returns the literal 'reminted-token-abc'; the
     // URL builder prefixes it with the `/review/` path.
     expect(sendArgs.reviewUrl).toContain('/review/reminted-token-abc')
+    // Default org (no branding set) carries the FON defaults through.
+    expect(sendArgs.brandName).toBe('Five One Nine Marketing')
+    expect(sendArgs.brandLogoUrl).toBeNull()
+    expect(sendArgs.brandColor).toBeNull()
+  })
+
+  it('white-labels the re-round email with the org branding (P2 #21)', async () => {
+    primeAmCtx()
+    vi.mocked(getOrgBranding).mockResolvedValueOnce({
+      name: 'Acme Agency',
+      brandLogoUrl: 'https://cdn.example.com/acme.png',
+      brandColor: '#123abc',
+    })
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      revokedAt: null,
+      expiresAt: new Date('2026-12-31T00:00:00Z'),
+      defaultReviewerName: 'Jane Client',
+      defaultReviewerEmail: 'jane@client.com',
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        scheduledAt: new Date('2026-06-01T00:00:00Z'),
+        label: 'June 2026',
+      },
+      creator: { id: 'user_creator', name: 'Caleb', email: 'caleb@fonmarketing.com' },
+    } as never)
+    vi.mocked(startNextRound).mockResolvedValue({ id: 'session_2', round: 2 } as never)
+    vi.mocked(sendMagicLinkEmail).mockResolvedValue({ messageId: 'm_1' } as never)
+
+    await startNextRoundAction({ magicLinkId: MAGIC_LINK_ID })
+
+    const sendArgs = vi.mocked(sendMagicLinkEmail).mock.calls[0][0]
+    expect(sendArgs.brandName).toBe('Acme Agency')
+    expect(sendArgs.brandLogoUrl).toBe('https://cdn.example.com/acme.png')
+    expect(sendArgs.brandColor).toBe('#123abc')
   })
 })
 

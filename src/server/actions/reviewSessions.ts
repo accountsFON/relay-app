@@ -23,6 +23,7 @@ import { recordActivity } from '@/server/services/activity'
 import { sendEmail } from '@/lib/resend'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
+import { getOrgBranding } from '@/server/repositories/organizations'
 import { bulkResolveOnPost, bulkReopenOnPost } from '@/server/repositories/threads'
 import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
 import {
@@ -942,6 +943,9 @@ export async function startNextRoundAction(input: {
       const month = link.batch.scheduledAt
         ? monthLabel(link.batch.scheduledAt)
         : link.batch.label
+      // White-label the re-round email the same as the first send (P2 #21),
+      // so a branded org's client keeps its logo/color/name on round 2+.
+      const branding = await getOrgBranding(ctx.organizationDbId)
       await sendMagicLinkEmail({
         recipientName,
         recipientEmail,
@@ -950,6 +954,9 @@ export async function startNextRoundAction(input: {
         monthLabel: month,
         reviewUrl,
         expiresAt: link.expiresAt,
+        brandName: branding.name,
+        brandLogoUrl: branding.brandLogoUrl,
+        brandColor: branding.brandColor,
       })
     } catch (err) {
       emailError = err instanceof Error ? err.message : String(err)
