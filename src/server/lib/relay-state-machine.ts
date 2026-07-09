@@ -110,6 +110,33 @@ export const LEGAL_TRANSITIONS_NO_REVIEW: readonly LegalTransition[] = [
   { from: RelayStep.completed, to: RelayStep.scheduling, direction: 'send_back' },
 ] as const
 
+/**
+ * Ordered set of LIVE pipeline steps: every step that has at least one
+ * outgoing transition in either track, so forcing a batch onto one never
+ * strands it on a dead-end / retired step. DERIVED from the transition tables
+ * (the single source of truth) rather than hand-maintained, because a hand
+ * list has drifted out of sync across the 2026-06-22, 2026-06-26, and 2026-07
+ * reworks (retired steps lingered, new live steps went missing). Order follows
+ * first appearance as a `from` step, which is pipeline order. Currently:
+ * copy -> in_design -> am_review_design -> client_review ->
+ * implementing_revisions -> scheduling -> completed (`completed` qualifies via
+ * its send_back edge to scheduling).
+ *
+ * Used by the admin force-step dropdown; keep any UI that offers "move a relay
+ * to a step" pointed here so it can't drift again.
+ */
+export const LIVE_PIPELINE_STEPS: readonly RelayStep[] = (() => {
+  const seen = new Set<RelayStep>()
+  const ordered: RelayStep[] = []
+  for (const t of [...LEGAL_TRANSITIONS, ...LEGAL_TRANSITIONS_NO_REVIEW]) {
+    if (!seen.has(t.from)) {
+      seen.add(t.from)
+      ordered.push(t.from)
+    }
+  }
+  return ordered
+})()
+
 export function transitionsFor(
   clientReviewEnabled: boolean,
 ): readonly LegalTransition[] {

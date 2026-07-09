@@ -26,29 +26,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { relayStepLabel, RELAY_STEP_LABELS } from '@/lib/relay-step-labels'
+import { LIVE_PIPELINE_STEPS } from '@/server/lib/relay-state-machine'
 import { forceStepAction } from '@/server/actions/relay'
-
-/** Canonical pipeline order for the step dropdown. Retired steps are excluded
- *  so an admin can't strand a batch on a step with no outgoing transitions:
- *  designs_completed and (2026-06-26) design_revisions, which the merge into
- *  am_review_design left with zero edges.
- *  TODO(followup): this list still predates the 2026-06-22 rework — it omits
- *  the live client_review + scheduling steps and lists their retirees
- *  (sent_to_client/client_decision/ready_to_schedule/revisions_complete/
- *  final_qa_schedule). Refresh to the live step set separately. */
-const STEP_ORDER: RelayStep[] = [
-  RelayStep.onboarding_gate,
-  RelayStep.copy,
-  RelayStep.in_design,
-  RelayStep.am_review_design,
-  RelayStep.sent_to_client,
-  RelayStep.client_decision,
-  RelayStep.ready_to_schedule,
-  RelayStep.implementing_revisions,
-  RelayStep.revisions_complete,
-  RelayStep.final_qa_schedule,
-  RelayStep.completed,
-]
 
 export interface AdminForceStepSectionProps {
   batchId: string
@@ -68,11 +47,11 @@ export function AdminForceStepSection({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
+  // Offer every live pipeline step except the one the relay is already on.
+  // LIVE_PIPELINE_STEPS is derived from the state machine, so retired steps
+  // (which would strand the batch) can never appear here.
   const options = useMemo(
-    () =>
-      STEP_ORDER.filter(
-        (s) => s !== currentStep && s !== RelayStep.designs_completed,
-      ),
+    () => LIVE_PIPELINE_STEPS.filter((s) => s !== currentStep),
     [currentStep],
   )
 
