@@ -39,6 +39,7 @@ const REVIEWER_ROW = {
     id: 'link_1',
     tokenHash: 'hash_abc',
     revokedAt: null,
+    batchId: 'batch_1',
   },
 }
 
@@ -125,6 +126,7 @@ describe('getMagicLinkReviewerFromCookie', () => {
       reviewerId: 'reviewer_1',
       name: 'Jane Reviewer',
       magicLinkId: 'link_1',
+      batchId: 'batch_1',
       tokenHash: 'hash_abc',
     })
 
@@ -135,7 +137,7 @@ describe('getMagicLinkReviewerFromCookie', () => {
         id: true,
         name: true,
         magicLinkId: true,
-        magicLink: { select: { id: true, tokenHash: true, revokedAt: true } },
+        magicLink: { select: { id: true, tokenHash: true, revokedAt: true, batchId: true } },
       },
     })
   })

@@ -8,6 +8,9 @@ export interface MagicLinkReviewerContext {
   reviewerId: string
   name: string
   magicLinkId: string
+  /** The batch this reviewer's link is scoped to. Thread actions enforce that
+   *  any post/thread the reviewer touches belongs to THIS batch. */
+  batchId: string
   tokenHash: string
 }
 
@@ -33,7 +36,9 @@ export async function getMagicLinkReviewerFromCookie(): Promise<MagicLinkReviewe
       id: true,
       name: true,
       magicLinkId: true,
-      magicLink: { select: { id: true, tokenHash: true, revokedAt: true } },
+      magicLink: {
+        select: { id: true, tokenHash: true, revokedAt: true, batchId: true },
+      },
     },
   })
   if (!reviewer) return null
@@ -44,6 +49,7 @@ export async function getMagicLinkReviewerFromCookie(): Promise<MagicLinkReviewe
     reviewerId: reviewer.id,
     name: reviewer.name,
     magicLinkId: reviewer.magicLinkId,
+    batchId: reviewer.magicLink.batchId,
     tokenHash: reviewer.magicLink.tokenHash,
   }
 }

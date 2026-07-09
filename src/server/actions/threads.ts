@@ -41,13 +41,14 @@ function validateImage(image: CommentImage | undefined): CommentImage | undefine
  *
  * Delegates to the shared getMagicLinkReviewerFromCookie helper so the
  * upload route can reuse the same trust logic without duplicating it.
- * Returns the `{ token, name }` shape expected by resolveActor.
+ * Returns the `{ token, name, batchId }` shape expected by resolveActor;
+ * `batchId` is the batch the reviewer's link is scoped to (enforced below).
  */
 async function tryGetMagicLinkReviewer(): Promise<
-  null | { token: string; name: string }
+  null | { token: string; name: string; batchId: string }
 > {
   const r = await getMagicLinkReviewerFromCookie()
-  return r ? { token: r.tokenHash, name: r.name } : null
+  return r ? { token: r.tokenHash, name: r.name, batchId: r.batchId } : null
 }
 
 // Internal-only: not exported because a 'use server' module can only export
@@ -60,14 +61,37 @@ class UnauthorizedError extends Error {
 }
 
 /**
- * Resolves the action caller into a ThreadActor. Clerk session wins; if
+ * Action-layer actor, enriched with the caller's TENANT SCOPE (which the
+ * service-facing `ThreadActor` deliberately omits): an AM carries their
+ * `organizationId`; a magic-link reviewer carries the `batchId` their link is
+ * bound to. Every thread action asserts the target post/thread/batch belongs to
+ * this scope BEFORE mutating (see `assertScope`), because server actions are
+ * directly POST-able and the caller supplies the id.
+ */
+type ActionActor =
+  | { kind: 'am'; userId: string; organizationId: string }
+  | { kind: 'reviewer'; reviewerToken: string; reviewerName: string; batchId: string }
+
+/** Strip an ActionActor down to the attribution-only shape the services want. */
+function toThreadActor(actor: ActionActor): ThreadActor {
+  return actor.kind === 'am'
+    ? { kind: 'am', userId: actor.userId }
+    : {
+        kind: 'reviewer',
+        reviewerToken: actor.reviewerToken,
+        reviewerName: actor.reviewerName,
+      }
+}
+
+/**
+ * Resolves the action caller into a scoped ActionActor. Clerk session wins; if
  * absent, falls back to the magic-link reviewer cookie. Throws if neither
  * is present.
  */
-async function resolveActor(): Promise<ThreadActor> {
+async function resolveActor(): Promise<ActionActor> {
   const ctx = await getOrgContext()
   if (ctx) {
-    return { kind: 'am', userId: ctx.userDbId }
+    return { kind: 'am', userId: ctx.userDbId, organizationId: ctx.organizationDbId }
   }
   const reviewer = await tryGetMagicLinkReviewer()
   if (reviewer) {
@@ -75,6 +99,7 @@ async function resolveActor(): Promise<ThreadActor> {
       kind: 'reviewer',
       reviewerToken: reviewer.token,
       reviewerName: reviewer.name,
+      batchId: reviewer.batchId,
     }
   }
   throw new UnauthorizedError(
@@ -85,13 +110,84 @@ async function resolveActor(): Promise<ThreadActor> {
 /**
  * AM-only variant. Used by resolve / reopen / bulk-resolve actions where
  * reviewer-side overrides are not allowed in v1 (per design § AM overrides).
+ * Returns a scoped AM ActionActor so callers can reuse `assertScope`.
  */
-async function resolveAmActor(): Promise<{ userDbId: string }> {
+async function resolveAmActor(): Promise<{ userDbId: string; actor: ActionActor }> {
   const ctx = await getOrgContext()
   if (!ctx) {
     throw new UnauthorizedError('AM-only action: Clerk session required')
   }
-  return { userDbId: ctx.userDbId }
+  return {
+    userDbId: ctx.userDbId,
+    actor: { kind: 'am', userId: ctx.userDbId, organizationId: ctx.organizationDbId },
+  }
+}
+
+/**
+ * Tenant-scope guard. Cross-tenant (AM in another org) and cross-batch (a
+ * magic-link reviewer touching a post outside their link's batch) reads are
+ * treated as "not found" so no existence leaks. An unbatched post
+ * (`batchId === null`) can never match a reviewer's batch, so reviewers are
+ * denied it; an AM is still scoped by the owning client's org.
+ */
+function assertScope(
+  actor: ActionActor,
+  target: { batchId: string | null; organizationId: string } | null,
+): void {
+  if (!target) throw new Error('Not found')
+  if (actor.kind === 'am') {
+    if (target.organizationId !== actor.organizationId) throw new Error('Not found')
+  } else if (!target.batchId || target.batchId !== actor.batchId) {
+    throw new Error('Not found')
+  }
+}
+
+async function loadPostScope(
+  postId: string,
+): Promise<{ batchId: string | null; organizationId: string } | null> {
+  const post = await db.post.findUnique({
+    where: { id: postId },
+    select: { batchId: true, client: { select: { organizationId: true } } },
+  })
+  return post ? { batchId: post.batchId, organizationId: post.client.organizationId } : null
+}
+
+async function loadThreadScope(
+  threadId: string,
+): Promise<{ batchId: string | null; organizationId: string } | null> {
+  const thread = await db.postThread.findUnique({
+    where: { id: threadId },
+    select: {
+      post: { select: { batchId: true, client: { select: { organizationId: true } } } },
+    },
+  })
+  return thread
+    ? { batchId: thread.post.batchId, organizationId: thread.post.client.organizationId }
+    : null
+}
+
+async function loadBatchScope(
+  batchId: string,
+): Promise<{ batchId: string | null; organizationId: string } | null> {
+  const batch = await db.batch.findUnique({
+    where: { id: batchId },
+    select: { id: true, client: { select: { organizationId: true } } },
+  })
+  return batch ? { batchId: batch.id, organizationId: batch.client.organizationId } : null
+}
+
+async function loadReviewItemScope(
+  reviewItemId: string,
+): Promise<{ batchId: string | null; organizationId: string } | null> {
+  const item = await db.reviewItem.findUnique({
+    where: { id: reviewItemId },
+    select: {
+      post: { select: { batchId: true, client: { select: { organizationId: true } } } },
+    },
+  })
+  return item
+    ? { batchId: item.post.batchId, organizationId: item.post.client.organizationId }
+    : null
 }
 
 /**
@@ -135,6 +231,7 @@ export async function createThreadAction(input: {
   const image = validateImage(input.image)
   if (!input.body.trim() && !image) throw new Error('Comment requires text or an image')
   const author = await resolveActor()
+  assertScope(author, await loadPostScope(input.postId))
 
   // Resolve internal @-mentions server-side from the body against the client's
   // internal roster (never trust a client-sent id list). Reviewers (no Clerk
@@ -156,7 +253,7 @@ export async function createThreadAction(input: {
     postId: input.postId,
     pin: input.pin,
     body: input.body,
-    author,
+    author: toThreadActor(author),
     imageUrl: image?.url ?? null,
     imageWidth: image?.width ?? null,
     imageHeight: image?.height ?? null,
@@ -174,10 +271,11 @@ export async function addCommentAction(input: {
   const image = validateImage(input.image)
   if (!input.body.trim() && !image) throw new Error('Comment requires text or an image')
   const author = await resolveActor()
+  assertScope(author, await loadThreadScope(input.threadId))
   const result = await addComment({
     threadId: input.threadId,
     body: input.body,
-    author,
+    author: toThreadActor(author),
     imageUrl: image?.url ?? null,
     imageWidth: image?.width ?? null,
     imageHeight: image?.height ?? null,
@@ -214,7 +312,8 @@ export async function resolveThreadAction(input: {
   threadId: string
   resolvedReason: string | null
 }) {
-  const { userDbId } = await resolveAmActor()
+  const { userDbId, actor } = await resolveAmActor()
+  assertScope(actor, await loadThreadScope(input.threadId))
   await resolveThread({
     threadId: input.threadId,
     resolvedBy: userDbId,
@@ -225,7 +324,8 @@ export async function resolveThreadAction(input: {
 
 export async function reopenThreadAction(input: { threadId: string }) {
   // AM-only per design § Open vs resolved.
-  await resolveAmActor()
+  const { actor } = await resolveAmActor()
+  assertScope(actor, await loadThreadScope(input.threadId))
   await reopenThread({ threadId: input.threadId })
   await revalidatePathForThread(input.threadId)
 }
@@ -235,7 +335,8 @@ export async function listThreadsForPostAction(input: {
   includeResolved?: boolean
 }) {
   // Listing is read-only; either AM or reviewer can call.
-  await resolveActor()
+  const actor = await resolveActor()
+  assertScope(actor, await loadPostScope(input.postId))
   return listThreadsForPost(input)
 }
 
@@ -243,7 +344,8 @@ export async function listThreadsForBatchAction(input: {
   batchId: string
   includeResolved?: boolean
 }) {
-  await resolveActor()
+  const actor = await resolveActor()
+  assertScope(actor, await loadBatchScope(input.batchId))
   const map = await listThreadsForBatch(input)
   // Maps don't serialize cleanly across the server-action boundary; flatten
   // to a plain object keyed by postId for the client.
@@ -258,7 +360,8 @@ export async function bulkResolveOnPostAction(input: {
   postId: string
   resolvedReason: string
 }) {
-  const { userDbId } = await resolveAmActor()
+  const { userDbId, actor } = await resolveAmActor()
+  assertScope(actor, await loadPostScope(input.postId))
   const count = await bulkResolveOnPost({
     postId: input.postId,
     resolvedBy: userDbId,
@@ -280,7 +383,8 @@ export async function replyToPostFeedbackAction(input: {
 }) {
   const image = validateImage(input.image)
   if (!input.body.trim() && !image) throw new Error('Comment requires text or an image')
-  const { userDbId } = await resolveAmActor()
+  const { userDbId, actor } = await resolveAmActor()
+  assertScope(actor, await loadReviewItemScope(input.reviewItemId))
   const result = await promotePostFeedbackToThread({
     reviewItemId: input.reviewItemId,
     amUserId: userDbId,

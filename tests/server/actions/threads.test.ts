@@ -54,6 +54,8 @@ vi.mock('@/db/client', () => ({
     post: { findUnique: vi.fn() },
     postThread: { findUnique: vi.fn() },
     postComment: { findUnique: vi.fn() },
+    reviewItem: { findUnique: vi.fn() },
+    batch: { findUnique: vi.fn() },
   },
 }))
 
@@ -86,7 +88,15 @@ vi.mock('@/server/lib/internalMentionRoster', () => ({ internalMentionRosterForC
 import { getOrgContext } from '@/server/middleware/auth'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { requireCan } from '@/server/middleware/permissions'
-import { createThread, addComment } from '@/server/repositories/threads'
+import {
+  createThread,
+  addComment,
+  resolveThread,
+  reopenThread,
+  bulkResolveOnPost,
+  listThreadsForPost,
+  listThreadsForBatch,
+} from '@/server/repositories/threads'
 import { db } from '@/db/client'
 import { attachMediaToPost } from '@/lib/media'
 import { promotePostFeedbackToThread } from '@/server/lib/promotePostFeedback'
@@ -99,6 +109,11 @@ import {
   addCommentAction,
   useCommentImageAsPostMediaAction,
   replyToPostFeedbackAction,
+  resolveThreadAction,
+  reopenThreadAction,
+  listThreadsForPostAction,
+  listThreadsForBatchAction,
+  bulkResolveOnPostAction,
 } from '@/server/actions/threads'
 
 // A valid comment-image blob URL (the stub hostname matches the guard)
@@ -163,14 +178,21 @@ beforeEach(() => {
   // attachMediaToPost no-op
   vi.mocked(attachMediaToPost).mockResolvedValue(undefined as never)
 
-  // Revalidate path helpers
+  // Revalidate path helpers + tenant-scope guards (loadPostScope /
+  // loadThreadScope select batchId + client.organizationId; the mock returns a
+  // superset object for every findUnique call regardless of select).
   vi.mocked(db.post.findUnique).mockResolvedValue({
     clientId: 'client_1',
     batchId: 'batch_1',
+    client: { organizationId: 'org_1' },
   } as never)
   vi.mocked(db.postThread.findUnique).mockResolvedValue({
     postId: 'post_1',
-    post: { clientId: 'client_1' },
+    post: {
+      clientId: 'client_1',
+      batchId: 'batch_1',
+      client: { organizationId: 'org_1' },
+    },
   } as never)
 
   // Internal-review roster default: empty (no roster members).
@@ -273,6 +295,7 @@ describe('createThreadAction', () => {
     vi.mocked(db.post.findUnique).mockResolvedValue({
       clientId: 'client_1',
       batchId: 'batch_1',
+      client: { organizationId: 'org_1' },
     } as never)
     vi.mocked(internalMentionRosterForClient).mockResolvedValue([
       { id: 'u_des', name: 'Dan Designer', handle: 'dan.designer' },
@@ -543,7 +566,11 @@ describe('addCommentAction relay-lock guard (chat stays open)', () => {
     vi.mocked(addComment).mockResolvedValue(COMMENT_RESULT)
     vi.mocked(db.postThread.findUnique).mockResolvedValue({
       postId: 'post_1',
-      post: { clientId: 'client_1' },
+      post: {
+        clientId: 'client_1',
+        batchId: 'batch_1',
+        client: { organizationId: 'org_1' },
+      },
     } as never)
     vi.mocked(internalMentionRosterForClient).mockResolvedValue([])
   })
@@ -563,10 +590,14 @@ describe('replyToPostFeedbackAction', () => {
     vi.clearAllMocks()
     vi.mocked(promotePostFeedbackToThread).mockResolvedValue({ threadId: 't1' })
     vi.mocked(db.postThread.findUnique).mockResolvedValue(null as never)
+    // In-scope reviewItem for loadReviewItemScope (org_1 matches the AM ctx).
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      post: { batchId: 'batch_1', client: { organizationId: 'org_1' } },
+    } as never)
   })
 
   it('forwards to the service with the authenticated AM user id', async () => {
-    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am', organizationDbId: 'org_1' } as never)
     await replyToPostFeedbackAction({ reviewItemId: 'ri1', body: 'Hello' })
     expect(promotePostFeedbackToThread).toHaveBeenCalledWith({
       reviewItemId: 'ri1',
@@ -585,7 +616,7 @@ describe('replyToPostFeedbackAction', () => {
   })
 
   it('throws on empty body with no image and does not call the service', async () => {
-    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am', organizationDbId: 'org_1' } as never)
     await expect(replyToPostFeedbackAction({ reviewItemId: 'ri1', body: '   ' })).rejects.toThrow(
       'Comment requires text or an image',
     )
@@ -600,18 +631,29 @@ describe('replyToPostFeedbackAction', () => {
 describe('AM reply notifies the client', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(db.postThread.findUnique).mockResolvedValue(null as never) // revalidate helper no-op
+    // In-scope thread + reviewItem for the tenant-scope guards (org_1 / batch_1).
+    vi.mocked(db.postThread.findUnique).mockResolvedValue({
+      postId: 'post_1',
+      post: {
+        clientId: 'client_1',
+        batchId: 'batch_1',
+        client: { organizationId: 'org_1' },
+      },
+    } as never)
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      post: { batchId: 'batch_1', client: { organizationId: 'org_1' } },
+    } as never)
   })
 
   it('replyToPostFeedbackAction notifies with the promoted thread id', async () => {
-    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am', organizationDbId: 'org_1' } as never)
     vi.mocked(promotePostFeedbackToThread).mockResolvedValue({ threadId: 't_new' })
     await replyToPostFeedbackAction({ reviewItemId: 'ri1', body: 'On it' })
     expect(notifyClientOfAmReply).toHaveBeenCalledWith({ threadId: 't_new', amUserId: 'u_am' })
   })
 
   it('addCommentAction notifies when an AM (Clerk session) comments', async () => {
-    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am', organizationDbId: 'org_1' } as never)
     vi.mocked(addComment).mockResolvedValue({ id: 'c1', threadId: 't1' } as never)
     await addCommentAction({ threadId: 't1', body: 'reply' })
     expect(notifyClientOfAmReply).toHaveBeenCalledWith({ threadId: 't1', amUserId: 'u_am' })
@@ -619,7 +661,7 @@ describe('AM reply notifies the client', () => {
 
   it('addCommentAction does NOT notify when a magic-link reviewer comments', async () => {
     vi.mocked(getOrgContext).mockResolvedValue(null as never)
-    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue({ tokenHash: 'HASH', name: 'Dana' } as never)
+    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue({ tokenHash: 'HASH', name: 'Dana', batchId: 'batch_1' } as never)
     vi.mocked(addComment).mockResolvedValue({ id: 'c1', threadId: 't1' } as never)
     await addCommentAction({ threadId: 't1', body: 'reply' })
     expect(notifyClientOfAmReply).not.toHaveBeenCalled()
@@ -637,13 +679,17 @@ describe('addCommentAction internal reply notify', () => {
     vi.mocked(addComment).mockResolvedValue({ id: 'c1', threadId: 't1' } as never)
     vi.mocked(db.postThread.findUnique).mockResolvedValue({
       postId: 'post_1',
-      post: { clientId: 'client_1' },
+      post: {
+        clientId: 'client_1',
+        batchId: 'batch_1',
+        client: { organizationId: 'org_1' },
+      },
     } as never)
     vi.mocked(internalMentionRosterForClient).mockResolvedValue([])
   })
 
   it('calls notifyInternalThreadReply with resolved mentionedUserIds for an internal author', async () => {
-    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am', organizationDbId: 'org_1' } as never)
     vi.mocked(internalMentionRosterForClient).mockResolvedValue([
       { id: 'u_des', name: 'Dan Designer', handle: 'dan.designer' },
     ])
@@ -658,7 +704,7 @@ describe('addCommentAction internal reply notify', () => {
   })
 
   it('resolves no mentions when the body has none (still notifies participants/holder)', async () => {
-    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am' } as never)
+    vi.mocked(getOrgContext).mockResolvedValue({ userDbId: 'u_am', organizationDbId: 'org_1' } as never)
     await addCommentAction({ threadId: 't1', body: 'plain reply' })
     expect(notifyInternalThreadReply).toHaveBeenCalledWith({
       threadId: 't1',
@@ -669,8 +715,200 @@ describe('addCommentAction internal reply notify', () => {
 
   it('does NOT call notifyInternalThreadReply when a magic-link reviewer comments', async () => {
     vi.mocked(getOrgContext).mockResolvedValue(null as never)
-    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue({ tokenHash: 'HASH', name: 'Dana' } as never)
+    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue({ tokenHash: 'HASH', name: 'Dana', batchId: 'batch_1' } as never)
     await addCommentAction({ threadId: 't1', body: 'reply @dan.designer' })
     expect(notifyInternalThreadReply).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tenant-scope guards: cross-org (AM) + cross-batch (reviewer) are rejected
+// as "not found" BEFORE any service call, on every thread action.
+// ---------------------------------------------------------------------------
+
+describe('tenant-scope guards (cross-org / cross-batch)', () => {
+  const REVIEWER = { tokenHash: 'HASH', name: 'Rae', batchId: 'batch_mine' }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Default: AM in org_1 (from AM_CTX).
+    vi.mocked(getOrgContext).mockResolvedValue(AM_CTX as never)
+    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue(null)
+  })
+
+  function asReviewer() {
+    vi.mocked(getOrgContext).mockResolvedValue(null as never)
+    vi.mocked(getMagicLinkReviewerFromCookie).mockResolvedValue(REVIEWER as never)
+  }
+  const postIn = (organizationId: string, batchId: string | null) =>
+    ({ clientId: 'c', batchId, client: { organizationId } }) as never
+  const threadIn = (organizationId: string, batchId: string | null) =>
+    ({ postId: 'p', post: { clientId: 'c', batchId, client: { organizationId } } }) as never
+
+  // ---- createThreadAction (post scope; AM + reviewer) ----
+  it('createThreadAction: AM in another org → not found, no thread created', async () => {
+    vi.mocked(db.post.findUnique).mockResolvedValue(postIn('org_OTHER', 'batch_1'))
+    await expect(
+      createThreadAction({ postId: 'p_x', pin: { kind: 'post' }, body: 'hi' }),
+    ).rejects.toThrow(/not found/i)
+    expect(createThread).not.toHaveBeenCalled()
+  })
+
+  it('createThreadAction: reviewer outside their batch → not found, no thread created', async () => {
+    asReviewer()
+    vi.mocked(db.post.findUnique).mockResolvedValue(postIn('org_1', 'batch_OTHER'))
+    await expect(
+      createThreadAction({ postId: 'p_x', pin: { kind: 'post' }, body: 'hi' }),
+    ).rejects.toThrow(/not found/i)
+    expect(createThread).not.toHaveBeenCalled()
+  })
+
+  it('createThreadAction: reviewer denied an unbatched post (batchId null)', async () => {
+    asReviewer()
+    vi.mocked(db.post.findUnique).mockResolvedValue(postIn('org_1', null))
+    await expect(
+      createThreadAction({ postId: 'p_x', pin: { kind: 'post' }, body: 'hi' }),
+    ).rejects.toThrow(/not found/i)
+    expect(createThread).not.toHaveBeenCalled()
+  })
+
+  it('createThreadAction: unknown post id → not found, no thread created', async () => {
+    vi.mocked(db.post.findUnique).mockResolvedValue(null as never)
+    await expect(
+      createThreadAction({ postId: 'nope', pin: { kind: 'post' }, body: 'hi' }),
+    ).rejects.toThrow(/not found/i)
+    expect(createThread).not.toHaveBeenCalled()
+  })
+
+  it('createThreadAction: reviewer IN their own batch still succeeds', async () => {
+    asReviewer()
+    vi.mocked(db.post.findUnique).mockResolvedValue(postIn('org_1', 'batch_mine'))
+    vi.mocked(createThread).mockResolvedValue(THREAD_RESULT)
+    await expect(
+      createThreadAction({ postId: 'p_x', pin: { kind: 'post' }, body: 'hi' }),
+    ).resolves.toBeDefined()
+    expect(createThread).toHaveBeenCalled()
+  })
+
+  // ---- addCommentAction (thread scope; AM + reviewer) ----
+  it('addCommentAction: AM in another org → not found, no comment added', async () => {
+    vi.mocked(db.postThread.findUnique).mockResolvedValue(threadIn('org_OTHER', 'batch_1'))
+    await expect(addCommentAction({ threadId: 't_x', body: 'hi' })).rejects.toThrow(/not found/i)
+    expect(addComment).not.toHaveBeenCalled()
+  })
+
+  it('addCommentAction: reviewer outside their batch → not found, no comment added', async () => {
+    asReviewer()
+    vi.mocked(db.postThread.findUnique).mockResolvedValue(threadIn('org_1', 'batch_OTHER'))
+    await expect(addCommentAction({ threadId: 't_x', body: 'hi' })).rejects.toThrow(/not found/i)
+    expect(addComment).not.toHaveBeenCalled()
+  })
+
+  // ---- listThreadsForPostAction (post scope; AM + reviewer) ----
+  it('listThreadsForPostAction: AM in another org → not found, no read', async () => {
+    vi.mocked(db.post.findUnique).mockResolvedValue(postIn('org_OTHER', 'batch_1'))
+    await expect(listThreadsForPostAction({ postId: 'p_x' })).rejects.toThrow(/not found/i)
+    expect(listThreadsForPost).not.toHaveBeenCalled()
+  })
+
+  it('listThreadsForPostAction: reviewer outside their batch → not found, no read', async () => {
+    asReviewer()
+    vi.mocked(db.post.findUnique).mockResolvedValue(postIn('org_1', 'batch_OTHER'))
+    await expect(listThreadsForPostAction({ postId: 'p_x' })).rejects.toThrow(/not found/i)
+    expect(listThreadsForPost).not.toHaveBeenCalled()
+  })
+
+  // ---- listThreadsForBatchAction (batch scope; AM + reviewer) ----
+  it('listThreadsForBatchAction: AM in another org → not found, no read', async () => {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'batch_x',
+      client: { organizationId: 'org_OTHER' },
+    } as never)
+    await expect(listThreadsForBatchAction({ batchId: 'batch_x' })).rejects.toThrow(/not found/i)
+    expect(listThreadsForBatch).not.toHaveBeenCalled()
+  })
+
+  it('listThreadsForBatchAction: reviewer for a different batch → not found, no read', async () => {
+    asReviewer()
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'batch_OTHER',
+      client: { organizationId: 'org_1' },
+    } as never)
+    await expect(listThreadsForBatchAction({ batchId: 'batch_OTHER' })).rejects.toThrow(/not found/i)
+    expect(listThreadsForBatch).not.toHaveBeenCalled()
+  })
+
+  it('listThreadsForBatchAction: reviewer for THEIR OWN batch succeeds', async () => {
+    asReviewer()
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'batch_mine',
+      client: { organizationId: 'org_1' },
+    } as never)
+    vi.mocked(listThreadsForBatch).mockResolvedValue(new Map())
+    await expect(listThreadsForBatchAction({ batchId: 'batch_mine' })).resolves.toBeDefined()
+    expect(listThreadsForBatch).toHaveBeenCalled()
+  })
+
+  // ---- AM-only actions: cross-org rejected + reviewer can't reach them ----
+  it('resolveThreadAction: AM in another org → not found, no resolve', async () => {
+    vi.mocked(db.postThread.findUnique).mockResolvedValue(threadIn('org_OTHER', 'batch_1'))
+    await expect(
+      resolveThreadAction({ threadId: 't_x', resolvedReason: null }),
+    ).rejects.toThrow(/not found/i)
+    expect(resolveThread).not.toHaveBeenCalled()
+  })
+
+  it('resolveThreadAction: a magic-link reviewer is rejected (AM-only), no resolve', async () => {
+    asReviewer()
+    await expect(
+      resolveThreadAction({ threadId: 't_x', resolvedReason: null }),
+    ).rejects.toThrow()
+    expect(resolveThread).not.toHaveBeenCalled()
+  })
+
+  it('reopenThreadAction: AM in another org → not found, no reopen', async () => {
+    vi.mocked(db.postThread.findUnique).mockResolvedValue(threadIn('org_OTHER', 'batch_1'))
+    await expect(reopenThreadAction({ threadId: 't_x' })).rejects.toThrow(/not found/i)
+    expect(reopenThread).not.toHaveBeenCalled()
+  })
+
+  it('reopenThreadAction: a magic-link reviewer is rejected (AM-only), no reopen', async () => {
+    asReviewer()
+    await expect(reopenThreadAction({ threadId: 't_x' })).rejects.toThrow()
+    expect(reopenThread).not.toHaveBeenCalled()
+  })
+
+  it('bulkResolveOnPostAction: AM in another org → not found, no bulk resolve', async () => {
+    vi.mocked(db.post.findUnique).mockResolvedValue(postIn('org_OTHER', 'batch_1'))
+    await expect(
+      bulkResolveOnPostAction({ postId: 'p_x', resolvedReason: 'x' }),
+    ).rejects.toThrow(/not found/i)
+    expect(bulkResolveOnPost).not.toHaveBeenCalled()
+  })
+
+  it('bulkResolveOnPostAction: a magic-link reviewer is rejected (AM-only), no bulk resolve', async () => {
+    asReviewer()
+    await expect(
+      bulkResolveOnPostAction({ postId: 'p_x', resolvedReason: 'x' }),
+    ).rejects.toThrow()
+    expect(bulkResolveOnPost).not.toHaveBeenCalled()
+  })
+
+  it('replyToPostFeedbackAction: AM in another org → not found, no promote', async () => {
+    vi.mocked(db.reviewItem.findUnique).mockResolvedValue({
+      post: { batchId: 'batch_1', client: { organizationId: 'org_OTHER' } },
+    } as never)
+    await expect(
+      replyToPostFeedbackAction({ reviewItemId: 'ri_x', body: 'hi' }),
+    ).rejects.toThrow(/not found/i)
+    expect(promotePostFeedbackToThread).not.toHaveBeenCalled()
+  })
+
+  it('replyToPostFeedbackAction: a magic-link reviewer is rejected (AM-only), no promote', async () => {
+    asReviewer()
+    await expect(
+      replyToPostFeedbackAction({ reviewItemId: 'ri_x', body: 'hi' }),
+    ).rejects.toThrow()
+    expect(promotePostFeedbackToThread).not.toHaveBeenCalled()
   })
 })
