@@ -35,6 +35,28 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-09 — Review-link expiry date picker + expired page** (P2 #23)
+  Three parts. (1) **Expired page:** new `inspectToken` in `magic-link.ts` distinguishes `expired` (valid
+  HMAC, past expiry) from `invalid`; the middleware serves a friendly "This review link has expired" page for
+  expired (via an `x-magic-link-expired` header + `<ReviewLinkExpired>`), still 404 for malformed/bad-sig and
+  410 for revoked/missing. The guard now STRIPS all three trust headers from inbound and sets them
+  authoritatively, so no crafted request header can reach the page (hardens the pre-existing id/batch trust
+  too). (2) **Date picker + org default:** the modal's "Expires in (days)" number input is now a `type=date`
+  picker defaulting to today + `Organization.reviewWindowDays` (the setting already existed; default 7), min
+  tomorrow / max +90; submit converts the picked date to `expiresInDays` (action + 1..90 clamp unchanged).
+  New pure `src/lib/expiry-date.ts` (format/addDays/daysUntilDate). (3) **Plumbing:** `reviewWindowDays`
+  threaded through both send paths (batch page → `ChecklistPanel` → `SendToClientReviewButton` → modal;
+  /preview → `MarkBatchReviewedButton` → modal) via a new `getReviewWindowDays(orgId)` repo read. Scope
+  (Julio): read-only default now (no editable `/settings/org` UI — placeholder page, follow-up). Default
+  expiry flips from a hardcoded 30 to the org value (7) — intended. Adversarial review READY_TO_MERGE, 0
+  critical/important (security boundary verified: `expired` requires a valid signature; header-strip closes
+  spoofing; fails closed). TDD: 11 new tests (expiry-date helpers, `inspectToken` statuses, expired-page
+  short-circuit, date default + past-date reject). 2544 unit tests, tsc + `next build` clean.
+  **Follow-up (nit):** no direct `guardReviewRoute` middleware test for the header-strip invariant —
+  `middleware.ts` can't be imported in jsdom (Clerk), so a regression guard needs the guard extracted to a
+  Clerk-free module. No `src/server/jobs/**` change -> Trigger.dev deploy SKIPPED. Design: vault
+  `projects/relay-app/2026-07-09-review-link-expiry-picker-design.md`.
+
 - [x] **2026-07-09 — Review link multi-recipient** (P2 #22)
   The Send review link modal now accepts comma-separated emails and sends ONE shared magic link to each
   recipient (the review model already supports multiple reviewers per link — each confirms their own name on

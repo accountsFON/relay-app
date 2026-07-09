@@ -53,6 +53,10 @@ vi.mock('@/server/repositories/memberships', () => ({
   listMembershipsForOrg: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@/server/repositories/organizations', () => ({
+  getReviewWindowDays: vi.fn().mockResolvedValue(7),
+}))
+
 vi.mock('@/server/repositories/contentRuns', () => ({
   findRunForBatch: vi.fn().mockResolvedValue(null),
 }))

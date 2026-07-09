@@ -10,6 +10,7 @@ import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch, listChecklistForBatch } from '@/server/repositories/batches'
 import { listThreadsForBatch } from '@/server/repositories/threads'
+import { getReviewWindowDays } from '@/server/repositories/organizations'
 import { internalMentionRosterForClient } from '@/server/lib/internalMentionRoster'
 import { derivePostApprovalForBatch } from '@/server/services/approval'
 import {
@@ -92,13 +93,14 @@ export default async function BatchPreviewPage({
     },
   })
 
-  const [threadsByPost, approvalCounts, mentionRoster] = await Promise.all([
+  const [threadsByPost, approvalCounts, mentionRoster, reviewWindowDays] = await Promise.all([
     // P2 #26: include resolved threads so resolved pins stay visible (greyed /
     // struck) on the internal review instead of vanishing. Every open-feedback
     // count on this surface already filters `status === 'open'`.
     listThreadsForBatch({ batchId: batch.id, includeResolved: true }),
     derivePostApprovalForBatch(batch.id),
     internalMentionRosterForClient(client.id),
+    getReviewWindowDays(ctx.organizationDbId),
   ])
 
   const heroBand = (
@@ -204,6 +206,7 @@ export default async function BatchPreviewPage({
             clientReviewEnabled={batch.clientReviewEnabled}
             clientName={client.name}
             clientReviewEmail={client.clientReviewEmail}
+            reviewWindowDays={reviewWindowDays}
           />
         </>
       ) : undefined

@@ -9,6 +9,7 @@ import {
   visibilityForViewer,
 } from '@/server/repositories/activityEvents'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
+import { getReviewWindowDays } from '@/server/repositories/organizations'
 import { can } from '@/server/auth/permissions'
 import { buildMentionRoster } from '@/lib/mentions'
 import { ClientTeamHeader } from '@/components/clients/client-team-header'
@@ -153,7 +154,7 @@ export default async function BatchDetailPage({
     archivedByName = actor?.name ?? null
   }
 
-  const [events, posts, memberships, magicLinks, reviewSessions] = await Promise.all([
+  const [events, posts, memberships, magicLinks, reviewSessions, reviewWindowDays] = await Promise.all([
     listActivityForClient(client.id, {
       limit: 30,
       visibilityFilter: visibilityForViewer(ctx),
@@ -195,6 +196,7 @@ export default async function BatchDetailPage({
       },
     }),
     listSessionsForBatch(batchId),
+    getReviewWindowDays(ctx.organizationDbId),
   ])
   const canManageTeam = can(ctx, 'admin.portal')
   // Cost breakdown is spend-sensitive: admins + platform owner only. AMs,
@@ -735,6 +737,7 @@ export default async function BatchDetailPage({
               legalForwardTargets={legalForwardTargets}
               clientReviewEmail={batch.client.clientReviewEmail}
               clientName={client.name}
+              reviewWindowDays={reviewWindowDays}
             />
           )}
 

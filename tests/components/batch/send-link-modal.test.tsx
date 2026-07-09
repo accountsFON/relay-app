@@ -12,6 +12,7 @@ vi.mock('@/server/actions/magicLink', () => ({
 
 import { createAndSendMagicLinkAction } from '@/server/actions/magicLink'
 import { SendLinkModal } from '@/components/batch/send-link-modal'
+import { addDays, formatDateInputValue } from '@/lib/expiry-date'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -123,10 +124,10 @@ describe('SendLinkModal', () => {
     await user.type(screen.getByLabelText(/recipient name/i), 'Jane Doe')
     await user.type(screen.getByLabelText(/recipient email/i), 'jane@client.com')
 
-    // Override the default 30-day expiry.
-    const daysInput = screen.getByLabelText(/expires in/i) as HTMLInputElement
-    await user.clear(daysInput)
-    await user.type(daysInput, '14')
+    // Override the default expiry with an explicit date 14 days out.
+    fireEvent.change(screen.getByLabelText(/link expires on/i), {
+      target: { value: formatDateInputValue(addDays(new Date(), 14)) },
+    })
 
     await user.click(screen.getByRole('button', { name: /generate and send/i }))
 
@@ -182,7 +183,8 @@ describe('SendLinkModal', () => {
         batchId: 'cuid_batch_1',
         recipientName: 'Jane Doe',
         recipientEmails: ['jane@client.com', 'bob@client.com'],
-        expiresInDays: 30,
+        // No reviewWindowDays prop → default window (7 days) seeds the expiry.
+        expiresInDays: 7,
       }),
     )
 
@@ -190,5 +192,42 @@ describe('SendLinkModal', () => {
     expect(await screen.findByTestId('send-link-success')).toHaveTextContent(
       /emailed to 2 recipients/i,
     )
+  })
+
+  it('P2 #23: defaults the expiry date to today + the agency review window', () => {
+    render(
+      <SendLinkModal
+        batchId="cuid_batch_1"
+        clientName="Akkoo Coffee"
+        reviewWindowDays={10}
+        open
+        onOpenChange={vi.fn()}
+      />,
+    )
+    expect(screen.getByLabelText(/link expires on/i)).toHaveValue(
+      formatDateInputValue(addDays(new Date(), 10)),
+    )
+  })
+
+  it('P2 #23: rejects a past expiry date (JS guard behind the native min)', async () => {
+    render(
+      <SendLinkModal
+        batchId="cuid_batch_1"
+        clientName="Akkoo Coffee"
+        clientReviewEmail="jane@client.com"
+        open
+        onOpenChange={vi.fn()}
+      />,
+    )
+    const dateInput = screen.getByLabelText(/link expires on/i) as HTMLInputElement
+    fireEvent.change(dateInput, {
+      target: { value: formatDateInputValue(addDays(new Date(), -1)) },
+    })
+    // The native `min` would block a real click; submit the form directly so the
+    // JS validator (defense-in-depth) runs and surfaces the error.
+    fireEvent.submit(dateInput.closest('form')!)
+
+    expect(createAndSendMagicLinkAction).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('send-link-error')).toHaveTextContent(/future/i)
   })
 })

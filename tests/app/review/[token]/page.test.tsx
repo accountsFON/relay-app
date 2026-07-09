@@ -189,6 +189,17 @@ describe('ReviewPage /review/[token] (v2 surface)', () => {
     expect(html).not.toContain('data-testid="review-session-shell"')
   })
 
+  it('P2 #23: renders the expired view when the expired header is set, short-circuiting the DB lookup', async () => {
+    mocks.headersMock.mockResolvedValue(
+      makeHeaders({ 'x-magic-link-expired': '1' }),
+    )
+    const html = await renderPage()
+    expect(html).toContain('data-testid="review-link-expired"')
+    expect(html).toContain('has expired')
+    expect(mocks.findUniqueMagicLink).not.toHaveBeenCalled()
+    expect(mocks.notFoundMock).not.toHaveBeenCalled()
+  })
+
   it('renders the v2 ReviewSessionShell when a valid session cookie is present', async () => {
     const cookieValue = signSession({
       magicLinkId: FAKE_MAGIC_LINK_ID,

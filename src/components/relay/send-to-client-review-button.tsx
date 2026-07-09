@@ -22,6 +22,8 @@ export interface SendToClientReviewButtonProps {
   clientReviewEnabled: boolean
   clientName: string
   clientReviewEmail?: string | null
+  /** Agency review window; seeds the review-link default expiry (P2 #23). */
+  reviewWindowDays?: number
   disabled?: boolean
   onAdvance: () => void
 }
@@ -45,6 +47,7 @@ export function SendToClientReviewButton({
   clientReviewEnabled,
   clientName,
   clientReviewEmail,
+  reviewWindowDays,
   disabled = false,
   onAdvance,
 }: SendToClientReviewButtonProps) {
@@ -128,6 +131,7 @@ export function SendToClientReviewButton({
           batchId={batchId}
           clientName={clientName}
           clientReviewEmail={clientReviewEmail}
+          reviewWindowDays={reviewWindowDays}
           open
           onOpenChange={(o) => {
             if (!o) setLinkOpen(false)

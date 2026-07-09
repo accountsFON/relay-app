@@ -16,11 +16,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createAndSendMagicLinkAction } from '@/server/actions/magicLink'
 import { parseRecipientEmails } from '@/lib/recipient-emails'
+import { addDays, daysUntilDate, formatDateInputValue } from '@/lib/expiry-date'
 
 interface Props {
   batchId: string
   clientName: string
   clientReviewEmail?: string | null
+  /** Agency review window (Organization.reviewWindowDays); seeds the default
+   *  expiry date. Falls back to DEFAULT_REVIEW_WINDOW_DAYS when unset. */
+  reviewWindowDays?: number
   open: boolean
   onOpenChange: (open: boolean) => void
   onSent?: () => void
@@ -35,14 +39,22 @@ interface SuccessState {
 
 const MIN_DAYS = 1
 const MAX_DAYS = 90
-const DEFAULT_DAYS = 30
+const DEFAULT_REVIEW_WINDOW_DAYS = 7
 
-export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, onOpenChange, onSent }: Props) {
+/** Default expiry date = today + the agency review window, clamped to bounds. */
+function defaultExpiryDate(reviewWindowDays?: number): string {
+  const window = Number.isFinite(reviewWindowDays)
+    ? Math.min(MAX_DAYS, Math.max(MIN_DAYS, reviewWindowDays as number))
+    : DEFAULT_REVIEW_WINDOW_DAYS
+  return formatDateInputValue(addDays(new Date(), window))
+}
+
+export function SendLinkModal({ batchId, clientName, clientReviewEmail, reviewWindowDays, open, onOpenChange, onSent }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [name, setName] = useState(clientName ?? '')
   const [email, setEmail] = useState(clientReviewEmail ?? '')
-  const [days, setDays] = useState(String(DEFAULT_DAYS))
+  const [expiryDate, setExpiryDate] = useState(() => defaultExpiryDate(reviewWindowDays))
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<SuccessState | null>(null)
   const [copied, setCopied] = useState(false)
@@ -50,7 +62,7 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
   function reset() {
     setName(clientName ?? '')
     setEmail(clientReviewEmail ?? '')
-    setDays(String(DEFAULT_DAYS))
+    setExpiryDate(defaultExpiryDate(reviewWindowDays))
     setError(null)
     setSuccess(null)
     setCopied(false)
@@ -65,23 +77,26 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
     onOpenChange(next)
   }
 
-  function validate(parsed: { emails: string[]; invalid: string[] }): string | null {
+  function validate(
+    parsed: { emails: string[]; invalid: string[] },
+    expiryDays: number,
+  ): string | null {
     if (!name.trim()) return 'Recipient name is required'
     if (parsed.invalid.length > 0) {
       return `Not a valid email address: ${parsed.invalid.join(', ')}`
     }
     if (parsed.emails.length === 0) return 'At least one recipient email is required'
-    const d = Number(days)
-    if (!Number.isFinite(d) || d < MIN_DAYS || d > MAX_DAYS) {
-      return `Expiry must be between ${MIN_DAYS} and ${MAX_DAYS} days`
-    }
+    if (!expiryDate || Number.isNaN(expiryDays)) return 'Pick an expiry date'
+    if (expiryDays < MIN_DAYS) return 'Expiry must be a future date'
+    if (expiryDays > MAX_DAYS) return `Expiry can be at most ${MAX_DAYS} days out`
     return null
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const parsed = parseRecipientEmails(email)
-    const err = validate(parsed)
+    const expiryDays = daysUntilDate(expiryDate, new Date())
+    const err = validate(parsed, expiryDays)
     if (err) {
       setError(err)
       return
@@ -94,7 +109,7 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
           batchId,
           recipientName: name.trim(),
           recipientEmails: parsed.emails,
-          expiresInDays: Number(days),
+          expiresInDays: expiryDays,
         })
         setSuccess({
           reviewUrl: result.reviewUrl,
@@ -229,19 +244,19 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="send-link-days">Expires in (days)</Label>
+              <Label htmlFor="send-link-expiry">Link expires on</Label>
               <Input
-                id="send-link-days"
-                type="number"
-                min={MIN_DAYS}
-                max={MAX_DAYS}
-                value={days}
-                onChange={(e) => setDays(e.target.value)}
+                id="send-link-expiry"
+                type="date"
+                min={formatDateInputValue(addDays(new Date(), MIN_DAYS))}
+                max={formatDateInputValue(addDays(new Date(), MAX_DAYS))}
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
                 disabled={isPending}
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Between {MIN_DAYS} and {MAX_DAYS} days. Default is {DEFAULT_DAYS}.
+                Defaults to your agency review window. Up to {MAX_DAYS} days out.
               </p>
             </div>
 

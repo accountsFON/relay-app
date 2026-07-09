@@ -81,6 +81,8 @@ export interface ChecklistPanelProps {
    * review link modal.
    */
   clientName?: string
+  /** Agency review window; seeds the review-link default expiry (P2 #23). */
+  reviewWindowDays?: number
 }
 
 export function ChecklistPanel({
@@ -93,6 +95,7 @@ export function ChecklistPanel({
   legalForwardTargets,
   clientReviewEmail,
   clientName,
+  reviewWindowDays,
 }: ChecklistPanelProps) {
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(items.map((i) => [i.id, i.checked]))
@@ -316,6 +319,7 @@ export function ChecklistPanel({
               clientReviewEnabled={batch.clientReviewEnabled}
               clientName={clientName ?? batch.label}
               clientReviewEmail={clientReviewEmail}
+              reviewWindowDays={reviewWindowDays}
               disabled={!allRequiredChecked || isActing}
               onAdvance={() => passTo(nextStep!)}
             />

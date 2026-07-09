@@ -9,6 +9,8 @@ interface Props {
   batchId: string
   clientName: string
   clientReviewEmail?: string | null
+  /** Agency review window; seeds the review-link default expiry (P2 #23). */
+  reviewWindowDays?: number
 }
 
 /**
@@ -17,7 +19,7 @@ interface Props {
  * Internal AM use only. The host page should only render this for users
  * with client.edit permission.
  */
-export function SendLinkButton({ batchId, clientName, clientReviewEmail }: Props) {
+export function SendLinkButton({ batchId, clientName, clientReviewEmail, reviewWindowDays }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -36,6 +38,7 @@ export function SendLinkButton({ batchId, clientName, clientReviewEmail }: Props
         batchId={batchId}
         clientName={clientName}
         clientReviewEmail={clientReviewEmail}
+        reviewWindowDays={reviewWindowDays}
         open={open}
         onOpenChange={setOpen}
       />
