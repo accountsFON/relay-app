@@ -644,7 +644,7 @@ describe('forceStepAction permission gate', () => {
 })
 
 describe('tickChecklistItemAction holder-override gate', () => {
-  function seedItemAndBatch(currentHolder: string) {
+  function seedItemAndBatch(currentHolder: string, organizationId = 'org_1') {
     vi.mocked(db.checklistItem.findUnique).mockResolvedValue({
       id: 'item1',
       batchId: 'b1',
@@ -652,6 +652,7 @@ describe('tickChecklistItemAction holder-override gate', () => {
     vi.mocked(db.batch.findUnique).mockResolvedValue({
       currentHolder,
       clientId: 'c1',
+      client: { organizationId },
     } as never)
     vi.mocked(db.checklistItem.update).mockResolvedValue({} as never)
   }
@@ -686,6 +687,18 @@ describe('tickChecklistItemAction holder-override gate', () => {
     await expect(
       tickChecklistItemAction({ itemId: 'item1', checked: true }),
     ).rejects.toThrow(/current holder, an AM, or an admin/i)
+    expect(db.checklistItem.update).not.toHaveBeenCalled()
+  })
+
+  it('throws "Relay not found" when the item\'s batch belongs to a different org (cross-tenant guard)', async () => {
+    // Even an admin (who would pass the holder-override gate) cannot tick an
+    // item on another org's batch: the org-scope check runs first, so the
+    // failure is "not found", not the holder error (no existence leak).
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('admin'))
+    seedItemAndBatch('someone_else', 'org_OTHER')
+    await expect(
+      tickChecklistItemAction({ itemId: 'item1', checked: true }),
+    ).rejects.toThrow(/relay not found/i)
     expect(db.checklistItem.update).not.toHaveBeenCalled()
   })
 })

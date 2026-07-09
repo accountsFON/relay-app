@@ -469,9 +469,19 @@ export async function tickChecklistItemAction(input: {
   if (!item) throw new Error('Checklist item not found')
   const batch = await db.batch.findUnique({
     where: { id: item.batchId },
-    select: { currentHolder: true, clientId: true },
+    select: {
+      currentHolder: true,
+      clientId: true,
+      client: { select: { organizationId: true } },
+    },
   })
-  if (!batch) throw new Error('Relay not found')
+  // Org-scope check first (parity with markBatchReviewedAction): a foreign
+  // itemId whose batch belongs to another org is treated as not found, before
+  // the holder gate, so an overriding AM/admin can't tick across tenants and
+  // the error doesn't leak the item's existence.
+  if (!batch || batch.client.organizationId !== ctx.organizationDbId) {
+    throw new Error('Relay not found')
+  }
   // Holder-override gate, matching the page-level canAct flag and the
   // passBaton / sendBack / finish actions: the current holder ticks their
   // own items, and AM / admin / platformOwner can tick on any batch they do
