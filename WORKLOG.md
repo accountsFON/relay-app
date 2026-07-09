@@ -35,6 +35,23 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-09 — Review link multi-recipient** (P2 #22)
+  The Send review link modal now accepts comma-separated emails and sends ONE shared magic link to each
+  recipient (the review model already supports multiple reviewers per link — each confirms their own name on
+  arrival). New pure `src/lib/recipient-emails.ts` `parseRecipientEmails` (split on comma/semicolon/newline,
+  trim, dedupe case-insensitively, validate). `createAndSendMagicLinkAction` input `recipientEmail: string`
+  → `recipientEmails: string[]`; validates + dedupes server-side (defense in depth, throws before any side
+  effect), mints ONE link (primary = first address), loops `sendMagicLinkEmail` per recipient with a
+  per-recipient result (`recipients: {email,sent,error}[]`), keeps `emailSent`/`emailError`. A partial send
+  failure never rolls back the link; the modal names the failed addresses. Activity payload keeps
+  `recipientEmail` (primary) + adds `recipientEmails` + `recipientCount`. Modal email input `type=email` →
+  `type=text inputMode=email` (native email input rejects comma lists), success line shows the recipient
+  count. Adversarial review READY_TO_MERGE, 0 defects (only caller migrated; payload renderers key on
+  recipientName; partial-failure + validation parity verified). TDD: 11 new tests (7 helper, 3 action incl.
+  multi/partial/invalid, 1 modal). 2533 unit tests, tsc + `next build` clean. No `src/server/jobs/**` change
+  -> Trigger.dev deploy SKIPPED. Design: vault
+  `projects/relay-app/2026-07-09-review-link-multi-recipient-design.md`.
+
 - [x] **2026-07-08 — Quieter designer notifications during client review** (P2 #28)
   A magic-link client dropping a pin during client review pinged the assigned designer's bell on every pin:
   `createThread` (`threads.ts`) auto-added `assignedDesignerId` to the `post_thread_opened` mentions

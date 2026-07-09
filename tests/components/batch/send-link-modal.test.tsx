@@ -82,6 +82,7 @@ describe('SendLinkModal', () => {
     vi.mocked(createAndSendMagicLinkAction).mockResolvedValue({
       magicLinkId: 'l', reviewUrl: 'https://relay.test/review/tok',
       expiresAt: new Date('2026-07-01'), emailSent: true, emailError: null,
+      recipients: [{ email: 'jane@client.com', sent: true, error: null }],
     })
     render(
       <SendLinkModal
@@ -105,6 +106,7 @@ describe('SendLinkModal', () => {
       expiresAt: new Date('2026-06-15'),
       emailSent: true,
       emailError: null,
+      recipients: [{ email: 'jane@client.com', sent: true, error: null }],
     })
 
     render(
@@ -132,7 +134,7 @@ describe('SendLinkModal', () => {
       expect(createAndSendMagicLinkAction).toHaveBeenCalledWith({
         batchId: 'cuid_batch_1',
         recipientName: 'Jane Doe',
-        recipientEmail: 'jane@client.com',
+        recipientEmails: ['jane@client.com'],
         expiresInDays: 14,
       }),
     )
@@ -141,6 +143,52 @@ describe('SendLinkModal', () => {
     expect(await screen.findByTestId('send-link-success')).toBeInTheDocument()
     expect(screen.getByTestId('send-link-url')).toHaveValue(
       'https://relay-app.test/review/abc123',
+    )
+  })
+
+  it('P2 #22: parses comma-separated recipients into a deduped list (multi-recipient)', async () => {
+    const user = userEvent.setup()
+    vi.mocked(createAndSendMagicLinkAction).mockResolvedValue({
+      magicLinkId: 'l',
+      reviewUrl: 'https://relay.test/review/tok',
+      expiresAt: new Date('2026-07-01'),
+      emailSent: true,
+      emailError: null,
+      recipients: [
+        { email: 'jane@client.com', sent: true, error: null },
+        { email: 'bob@client.com', sent: true, error: null },
+      ],
+    })
+
+    render(
+      <SendLinkModal
+        batchId="cuid_batch_1"
+        clientName="Akkoo Coffee"
+        open
+        onOpenChange={vi.fn()}
+      />,
+    )
+
+    await user.clear(screen.getByLabelText(/recipient name/i))
+    await user.type(screen.getByLabelText(/recipient name/i), 'Jane Doe')
+    await user.type(
+      screen.getByLabelText(/recipient email/i),
+      'jane@client.com, bob@client.com, jane@CLIENT.com',
+    )
+    await user.click(screen.getByRole('button', { name: /generate and send/i }))
+
+    await waitFor(() =>
+      expect(createAndSendMagicLinkAction).toHaveBeenCalledWith({
+        batchId: 'cuid_batch_1',
+        recipientName: 'Jane Doe',
+        recipientEmails: ['jane@client.com', 'bob@client.com'],
+        expiresInDays: 30,
+      }),
+    )
+
+    // Success line reflects the recipient count.
+    expect(await screen.findByTestId('send-link-success')).toHaveTextContent(
+      /emailed to 2 recipients/i,
     )
   })
 })

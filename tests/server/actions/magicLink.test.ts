@@ -124,7 +124,7 @@ describe('createAndSendMagicLinkAction', () => {
     const result = await createAndSendMagicLinkAction({
       batchId: mockBatch.id,
       recipientName: 'Jane Doe',
-      recipientEmail: 'jane@client.com',
+      recipientEmails: ['jane@client.com'],
       expiresInDays: 14,
     })
 
@@ -157,7 +157,103 @@ describe('createAndSendMagicLinkAction', () => {
       batchId: mockBatch.id,
       recipientName: 'Jane Doe',
       recipientEmail: 'jane@client.com',
+      recipientEmails: ['jane@client.com'],
     })
+  })
+
+  it('emails ONE shared link to every recipient, deduped (P2 #22)', async () => {
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+    vi.mocked(createMagicLink).mockResolvedValue({
+      link: { id: 'cuid_link_multi', batchId: mockBatch.id } as never,
+      token: 'multitoken',
+    })
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      name: 'Caleb',
+      email: 'caleb@fonmarketing.com',
+    } as never)
+    vi.mocked(sendMagicLinkEmail).mockResolvedValue({ messageId: 'm' })
+
+    const result = await createAndSendMagicLinkAction({
+      batchId: mockBatch.id,
+      recipientName: 'Jane Doe',
+      // Third address is a case-insensitive duplicate of the first.
+      recipientEmails: ['jane@client.com', 'bob@client.com', 'jane@CLIENT.com'],
+    })
+
+    // ONE link minted; primary reviewer email = the first address.
+    expect(createMagicLink).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(createMagicLink).mock.calls[0][0].defaultReviewerEmail).toBe(
+      'jane@client.com',
+    )
+
+    // Emailed to each UNIQUE recipient, and every email carries the SAME URL.
+    expect(sendMagicLinkEmail).toHaveBeenCalledTimes(2)
+    const sentTo = vi.mocked(sendMagicLinkEmail).mock.calls.map((c) => c[0].recipientEmail)
+    expect(sentTo).toEqual(['jane@client.com', 'bob@client.com'])
+    expect(vi.mocked(sendMagicLinkEmail).mock.calls[0][0].reviewUrl).toBe(
+      vi.mocked(sendMagicLinkEmail).mock.calls[1][0].reviewUrl,
+    )
+
+    expect(result.emailSent).toBe(true)
+    expect(result.emailError).toBeNull()
+    expect(result.recipients).toEqual([
+      { email: 'jane@client.com', sent: true, error: null },
+      { email: 'bob@client.com', sent: true, error: null },
+    ])
+
+    // Activity payload carries the full deduped list + count.
+    expect(vi.mocked(recordActivity).mock.calls[0][0].payload).toMatchObject({
+      recipientEmail: 'jane@client.com',
+      recipientEmails: ['jane@client.com', 'bob@client.com'],
+      recipientCount: 2,
+    })
+  })
+
+  it('records a per-recipient failure without rolling back the link (partial send)', async () => {
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+    vi.mocked(createMagicLink).mockResolvedValue({
+      link: { id: 'cuid_link_partial', batchId: mockBatch.id } as never,
+      token: 'partialtoken',
+    })
+    vi.mocked(db.user.findUnique).mockResolvedValue({
+      name: 'Caleb',
+      email: 'caleb@fonmarketing.com',
+    } as never)
+    vi.mocked(sendMagicLinkEmail)
+      .mockResolvedValueOnce({ messageId: 'ok' })
+      .mockRejectedValueOnce(new Error('bounce'))
+
+    const result = await createAndSendMagicLinkAction({
+      batchId: mockBatch.id,
+      recipientName: 'Jane',
+      recipientEmails: ['jane@client.com', 'bob@client.com'],
+    })
+
+    expect(createMagicLink).toHaveBeenCalledTimes(1) // link still minted
+    expect(result.emailSent).toBe(false)
+    expect(result.emailError).toMatch(/bounce/)
+    expect(result.recipients).toEqual([
+      { email: 'jane@client.com', sent: true, error: null },
+      { email: 'bob@client.com', sent: false, error: 'bounce' },
+    ])
+  })
+
+  it('rejects an invalid recipient address before any side effect', async () => {
+    vi.mocked(findBatch).mockResolvedValue(mockBatch)
+    vi.mocked(findClientForUser).mockResolvedValue(mockClient)
+
+    await expect(
+      createAndSendMagicLinkAction({
+        batchId: mockBatch.id,
+        recipientName: 'Jane',
+        recipientEmails: ['jane@client.com', 'not-an-email'],
+      }),
+    ).rejects.toThrow(/not a valid email/i)
+
+    expect(createMagicLink).not.toHaveBeenCalled()
+    expect(sendMagicLinkEmail).not.toHaveBeenCalled()
   })
 
   it('rejects callers who lack access to the batch (findClientForUser returns null → notFound)', async () => {
@@ -169,7 +265,7 @@ describe('createAndSendMagicLinkAction', () => {
       createAndSendMagicLinkAction({
         batchId: mockBatch.id,
         recipientName: 'Jane Doe',
-        recipientEmail: 'jane@client.com',
+        recipientEmails: ['jane@client.com'],
       }),
     ).rejects.toThrow(/NEXT_NOT_FOUND/)
 
@@ -195,7 +291,7 @@ describe('createAndSendMagicLinkAction', () => {
     const result = await createAndSendMagicLinkAction({
       batchId: mockBatch.id,
       recipientName: 'Jane',
-      recipientEmail: 'jane@client.com',
+      recipientEmails: ['jane@client.com'],
     })
 
     expect(result.emailSent).toBe(false)
@@ -221,7 +317,7 @@ describe('createAndSendMagicLinkAction, clientReviewEnabled gate', () => {
       createAndSendMagicLinkAction({
         batchId: noReviewBatch.id,
         recipientName: 'Test Reviewer',
-        recipientEmail: 'test@example.com',
+        recipientEmails: ['test@example.com'],
       }),
     ).rejects.toThrow(/client review/i)
 
@@ -250,7 +346,7 @@ describe('createAndSendMagicLinkAction, clientReviewEnabled gate', () => {
     const result = await createAndSendMagicLinkAction({
       batchId: mockBatch.id,
       recipientName: 'Test',
-      recipientEmail: 'test@example.com',
+      recipientEmails: ['test@example.com'],
     })
 
     expect(result.magicLinkId).toBe('cuid_link_gate_ok')
@@ -463,7 +559,7 @@ describe('createAndSendMagicLinkAction — stores client review email', () => {
     } as never)
 
     await createAndSendMagicLinkAction({
-      batchId: 'cuid_batch_1', recipientName: 'Akkoo Coffee', recipientEmail: 'jane@client.com',
+      batchId: 'cuid_batch_1', recipientName: 'Akkoo Coffee', recipientEmails: ['jane@client.com'],
     })
 
     expect(db.client.update).toHaveBeenCalledWith({
@@ -478,7 +574,7 @@ describe('createAndSendMagicLinkAction — stores client review email', () => {
     } as never)
 
     await createAndSendMagicLinkAction({
-      batchId: 'cuid_batch_1', recipientName: 'Akkoo Coffee', recipientEmail: 'jane@client.com',
+      batchId: 'cuid_batch_1', recipientName: 'Akkoo Coffee', recipientEmails: ['jane@client.com'],
     })
 
     expect(db.client.update).not.toHaveBeenCalled()
