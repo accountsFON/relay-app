@@ -51,6 +51,7 @@ const REVIEWER = {
   reviewerId: 'reviewer_1',
   name: 'Alice',
   magicLinkId: 'link_1',
+  batchId: 'batch_1',
   tokenHash: TOKEN_HASH,
 }
 
