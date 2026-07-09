@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from 'react'
 import { RelayStep, RelayEventType } from '@prisma/client'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { LIVE_PIPELINE_STEPS } from '@/server/lib/relay-state-machine'
 import { AccessDeniedToast } from '@/components/dashboard/access-denied-toast'
 import { ClientNoAccessState } from '@/components/dashboard/client-no-access-state'
 import { getMonthlyCostSummary } from '@/server/repositories/contentRuns'
@@ -34,21 +35,13 @@ import { DashboardSelectMode } from '@/components/relay/dashboard-select-mode'
  * surfaces every LIVE step so the race reads as one sweep through scheduling.
  * The designer view reuses this exact list, filtered to their clients.
  *
- * Uses the current post-2026-06-22 step set: `client_review` and `scheduling`
- * replace the retired `sent_to_client` / `client_decision` / `ready_to_schedule`
- * / `revisions_complete` / `final_qa_schedule` (kept in the enum for historical
- * rows, but no live batch lands there, so they are not stations). `bucketRunners`
- * matches `currentStep` exactly, so a stale list silently drops live relays.
+ * Sourced from `LIVE_PIPELINE_STEPS` (derived from the state machine's
+ * transition tables) so it can't drift out of sync with the pipeline the way a
+ * hand-maintained copy did across the 2026-06-22 / -06-26 / -07 reworks.
+ * `bucketRunners` matches `currentStep` exactly, so a stale list would silently
+ * drop live relays; deriving it removes that risk.
  */
-const AM_TRACK_STEPS: RelayStep[] = [
-  RelayStep.copy,
-  RelayStep.in_design,
-  RelayStep.am_review_design,
-  RelayStep.client_review,
-  RelayStep.implementing_revisions,
-  RelayStep.scheduling,
-  RelayStep.completed,
-]
+const AM_TRACK_STEPS = LIVE_PIPELINE_STEPS
 
 const CLIENT_COLUMNS: ClientKanbanColumn[] = [
   'Awaiting Your Approval',
@@ -118,7 +111,7 @@ function toRunner(
 
 function bucketRunners(
   batches: OrgBatch[],
-  steps: RelayStep[],
+  steps: readonly RelayStep[],
   transitions: Map<string, Date>,
 ): DashboardRelayTrackStation[] {
   const buckets = new Map<RelayStep, RunnerRelay[]>()
