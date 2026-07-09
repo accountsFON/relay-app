@@ -16,7 +16,7 @@
  *
  * Concat of equal+delete segments reproduces the old string exactly; concat of
  * equal+insert reproduces the new string. That contract is asserted by the
- * fixWithAi + text-diff tests and must not be broken.
+ * text-diff tests and must not be broken.
  */
 
 import { diffArrays } from 'diff'

@@ -64,7 +64,7 @@ export function EventRenderer({ event, className }: EventRendererProps) {
   }
   // NOTE: dispatch on event.kind (the ActivityEvent column, always set by the
   // read path), NOT event.payload.kind. Writers store the payload object
-  // verbatim WITHOUT a `kind` field (see fixWithAi / reviewSessions), and
+  // verbatim WITHOUT a `kind` field (see reviewSessions), and
   // recordActivity does not inject one, so event.payload.kind is undefined in
   // production. Payload fields are read defensively below.
   if (event.kind === 'post_caption_ai_fixed') {

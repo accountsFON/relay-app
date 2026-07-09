@@ -658,46 +658,6 @@ describe('ReviewFeedbackRail — mark addressed toggle', () => {
   })
 })
 
-describe('ReviewFeedbackRail — Fix with AI (per post)', () => {
-  function renderRail(post: FeedbackPostVM, isDesigner = false) {
-    render(
-      <ReviewFeedbackRail
-        posts={[post]}
-        actions={noopActions}
-        isDesigner={isDesigner}
-        selectedPostId={null}
-        selectedThreadId={null}
-        onToggleThread={vi.fn()}
-        onSelectPost={vi.fn()}
-        registerThreadRef={vi.fn()}
-        onScrollToAnchor={vi.fn()}
-        flagTotal={0}
-        flagOpen={0}
-        isImplementingRevisions={false}
-        subStateAwaitingDesigner={false}
-      />,
-    )
-  }
-
-  // Fix with AI was removed from the AM "View client feedback" rail (Julio:
-  // it should not appear on this client-feedback surface). It must not render
-  // for any verdict/thread combination here.
-  it('never renders the Fix with AI button (removed from this surface)', () => {
-    renderRail(vm({ postId: 'post-1', verdict: 'changes_requested', threads: [] }))
-    expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
-  })
-
-  it('never renders Fix with AI for a caption_edited post', () => {
-    renderRail(vm({ postId: 'post-1', verdict: 'caption_edited', suggestedCaption: 'x', reviewItemId: 'ri', threads: [] }))
-    expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
-  })
-
-  it('never renders Fix with AI for a verdict=none post with an open thread', () => {
-    renderRail(vm({ postId: 'post-1', verdict: 'none', threads: [makeThread('t1')] }))
-    expect(screen.queryByTestId('fix-with-ai-button')).toBeNull()
-  })
-})
-
 describe('ReviewFeedbackRail — general feedback reply (post-level)', () => {
   function renderRail(post: FeedbackPostVM, actions = noopActions, isDesigner = false) {
     render(
