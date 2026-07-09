@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { db } from '@/db/client'
+import { normalizeBrandColor, normalizeBrandLogoUrl } from '@/lib/org-branding'
 
 /**
  * Magic-link review layout. Locked chrome: a minimal header only, no
@@ -34,22 +35,49 @@ export default async function ReviewLayout({ children }: { children: ReactNode }
 
   const link = await db.magicLink.findUnique({
     where: { id: magicLinkId },
-    select: { batch: { select: { client: { select: { name: true } } } } },
+    select: {
+      batch: {
+        select: {
+          client: {
+            select: {
+              name: true,
+              // White-label agency branding (P2 #21); null → the Relay look.
+              organization: {
+                select: { name: true, brandLogoUrl: true, brandColor: true },
+              },
+            },
+          },
+        },
+      },
+    },
   })
   const clientName = link?.batch.client.name ?? 'Client'
+  const branding = link?.batch.client.organization
+  // Re-normalize on read (defense in depth) — never trust a stored value before
+  // rendering it into the review page style / img src.
+  const brandLogoUrl = normalizeBrandLogoUrl(branding?.brandLogoUrl)
+  const brandColor = normalizeBrandColor(branding?.brandColor)
+  const brandName = branding?.name ?? 'Relay'
 
   return (
     <div className="flex min-h-dvh flex-col bg-neutral-50 text-foreground">
-      <header>
+      <header style={brandColor ? { borderTop: `4px solid ${brandColor}` } : undefined}>
         <div className="mx-auto flex w-full max-w-[880px] items-center justify-between px-4 py-4 sm:px-6 md:py-6">
-          <Image
-            src="/brand/wordmark-dark.svg"
-            alt="Relay"
-            width={96}
-            height={32}
-            className="h-7 w-auto"
-            priority
-          />
+          {brandLogoUrl ? (
+            // Agency-supplied external URL (admin-set, normalized to http(s));
+            // a plain img avoids next/image remote-domain config.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brandLogoUrl} alt={brandName} className="h-7 w-auto" />
+          ) : (
+            <Image
+              src="/brand/wordmark-dark.svg"
+              alt="Relay"
+              width={96}
+              height={32}
+              className="h-7 w-auto"
+              priority
+            />
+          )}
           <div className="flex flex-col items-end">
             <span className="text-[11px] uppercase tracking-wide text-neutral-500">
               Review by

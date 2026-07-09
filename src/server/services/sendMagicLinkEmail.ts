@@ -35,14 +35,19 @@ export interface SendMagicLinkEmailInput {
   /** Fully-qualified review URL the AM just generated. */
   reviewUrl: string
   expiresAt: Date
+  /** White-label agency branding (P2 #21); all optional, null → the FON look. */
+  brandName?: string
+  brandLogoUrl?: string | null
+  brandColor?: string | null
 }
 
 export interface SendMagicLinkEmailResult {
   messageId: string | null
 }
 
+/** White-label-neutral subject (P2 #21): no agency-specific prefix. */
 export function buildSubject(clientName: string, monthLabel: string): string {
-  return `[Five One Nine] ${clientName} ${monthLabel} batch ready for your review`
+  return `Review your social posts — ${clientName} ${monthLabel}`
 }
 
 export async function sendMagicLinkEmail(
@@ -61,6 +66,9 @@ export async function sendMagicLinkEmail(
         reviewUrl: input.reviewUrl,
         senderName: input.senderName,
         expiresAt: input.expiresAt,
+        brandName: input.brandName,
+        brandLogoUrl: input.brandLogoUrl,
+        brandColor: input.brandColor,
       }),
     })
 

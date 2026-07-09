@@ -1,12 +1,20 @@
 import { requireClientViewer } from '@/server/middleware/permissions'
+import { can } from '@/server/auth/permissions'
+import { getOrgBranding } from '@/server/repositories/organizations'
 import { HeroBand } from '@/components/hero-band'
 import { PageSection } from '@/components/ui/page-section'
 import { Badge } from '@/components/ui/badge'
-import { CreditCard, Bell, Building2, Plug, Lock, Compass } from 'lucide-react'
+import { CreditCard, Bell, Building2, Plug, Lock, Compass, Palette } from 'lucide-react'
 import { ToursPanel } from '@/components/onboarding/tours-panel'
+import { OrgBrandingForm } from './org-branding-form'
 
 export default async function OrgSettingsPage() {
   const ctx = await requireClientViewer()
+
+  // White-label branding (P2 #21) is the first live agency-level control.
+  // Admin-only (mutation re-checks `admin.portal` in the action).
+  const isAdmin = can(ctx, 'admin.portal')
+  const branding = isAdmin ? await getOrgBranding(ctx.organizationDbId) : null
 
   const sections = [
     {
@@ -65,6 +73,31 @@ export default async function OrgSettingsPage() {
             </PageSection>
           )
         })}
+
+        {/* White-label branding (P2 #21) — a live control (admins only). Agency
+            logo + accent color; applies to the client review email + page. */}
+        {branding && (
+          <PageSection>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start gap-4">
+                <div className="rounded-full bg-neutral-100 p-2.5 shrink-0">
+                  <Palette className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-medium">White-label branding</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Your logo + one accent color on the client review email and
+                    review page.
+                  </p>
+                </div>
+              </div>
+              <OrgBrandingForm
+                brandLogoUrl={branding.brandLogoUrl}
+                brandColor={branding.brandColor}
+              />
+            </div>
+          </PageSection>
+        )}
 
         {/* Guided tour reset. Phase 4 item 25. Lives above the
             placeholder copy because it is the one live control on

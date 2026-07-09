@@ -31,6 +31,14 @@ vi.mock('@/server/services/sendMagicLinkEmail', () => ({
   sendMagicLinkEmail: vi.fn(),
 }))
 
+vi.mock('@/server/repositories/organizations', () => ({
+  getOrgBranding: vi.fn().mockResolvedValue({
+    name: 'Five One Nine Marketing',
+    brandLogoUrl: null,
+    brandColor: null,
+  }),
+}))
+
 vi.mock('@/db/client', () => ({
   db: {
     user: { findUnique: vi.fn() },

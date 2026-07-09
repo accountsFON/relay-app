@@ -12,6 +12,7 @@ import {
 } from '@/server/repositories/magicLinks'
 import { recordActivity } from '@/server/services/activity'
 import { sendMagicLinkEmail } from '@/server/services/sendMagicLinkEmail'
+import { getOrgBranding } from '@/server/repositories/organizations'
 import { db } from '@/db/client'
 
 const MIN_EXPIRY_DAYS = 1
@@ -170,6 +171,9 @@ export async function createAndSendMagicLinkAction(
   })
   const senderName = am?.name?.trim() || am?.email || 'Your Five One Nine team'
 
+  // White-label branding for this org (P2 #21); null fields → the FON look.
+  const branding = await getOrgBranding(ctx.organizationDbId)
+
   // One shared link, emailed to each recipient. A single failure does not roll
   // back the link (the AM can still copy the URL) — we record which addresses
   // failed so the UI can flag them.
@@ -184,6 +188,9 @@ export async function createAndSendMagicLinkAction(
         monthLabel: monthLabel(batch.scheduledAt ?? batch.createdAt),
         reviewUrl,
         expiresAt,
+        brandName: branding.name,
+        brandLogoUrl: branding.brandLogoUrl,
+        brandColor: branding.brandColor,
       })
       recipients.push({ email, sent: true, error: null })
     } catch (err) {
@@ -442,6 +449,7 @@ export async function resendMagicLinkEmailAction(
     select: { name: true, email: true },
   })
   const senderName = am?.name?.trim() || am?.email || 'Your Five One Nine team'
+  const branding = await getOrgBranding(rotated.ctx.organizationDbId)
 
   let emailSent = false
   let emailError: string | null = null
@@ -454,6 +462,9 @@ export async function resendMagicLinkEmailAction(
       monthLabel: monthLabel(rotated.batch.scheduledAt ?? rotated.batch.createdAt),
       reviewUrl: rotated.reviewUrl,
       expiresAt: rotated.oldLink.expiresAt,
+      brandName: branding.name,
+      brandLogoUrl: branding.brandLogoUrl,
+      brandColor: branding.brandColor,
     })
     emailSent = true
   } catch (err) {

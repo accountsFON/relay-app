@@ -49,7 +49,7 @@ describe('sendMagicLinkEmail (Resend)', () => {
     const payload = sendEmailMock.mock.calls[0][0]
     expect(payload.to).toBe('sarah@example.com')
     expect(payload.subject).toBe(
-      '[Five One Nine] My DUI Guy May 2026 batch ready for your review',
+      'Review your social posts — My DUI Guy May 2026',
     )
     // React element passed under `react`. We can't easily snapshot the
     // rendered output here without pulling in the renderer, but we can
@@ -78,12 +78,12 @@ describe('sendMagicLinkEmail (Resend)', () => {
     )
   })
 
-  it('subject format matches v1 (preserved exactly through the migration)', () => {
+  it('subject is white-label-neutral: "Review your social posts — <client> <month>" (P2 #21)', () => {
     expect(buildSubject('My DUI Guy', 'May 2026')).toBe(
-      '[Five One Nine] My DUI Guy May 2026 batch ready for your review',
+      'Review your social posts — My DUI Guy May 2026',
     )
     expect(buildSubject('North Georgia Design Build', 'December 2026')).toBe(
-      '[Five One Nine] North Georgia Design Build December 2026 batch ready for your review',
+      'Review your social posts — North Georgia Design Build December 2026',
     )
   })
 })

@@ -20,6 +20,7 @@ import {
   Head,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
@@ -40,6 +41,15 @@ export interface MagicLinkInviteEmailProps {
   senderName: string
   /** Expiry timestamp for the magic link. */
   expiresAt: Date
+  /**
+   * White-label agency branding (P2 #21). `brandName` is the agency wordmark
+   * text (defaults to Five One Nine Marketing); `brandLogoUrl` renders as a
+   * header image when set (else the wordmark text); `brandColor` tints the CTA
+   * button when set (else the default dark button).
+   */
+  brandName?: string
+  brandLogoUrl?: string | null
+  brandColor?: string | null
 }
 
 const MONTHS = [
@@ -193,6 +203,9 @@ export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.Re
     reviewUrl,
     senderName,
     expiresAt,
+    brandName = 'Five One Nine Marketing',
+    brandLogoUrl = null,
+    brandColor = null,
   } = props
 
   const greetName = greetingName(recipientName)
@@ -206,7 +219,16 @@ export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.Re
       <Body style={bodyStyle}>
         <Container style={containerStyle}>
           <Section style={headerSectionStyle}>
-            <Text style={brandStyle}>Five One Nine Marketing</Text>
+            {brandLogoUrl ? (
+              <Img
+                src={brandLogoUrl}
+                alt={brandName}
+                height={28}
+                style={{ height: 28, width: 'auto', display: 'block' }}
+              />
+            ) : (
+              <Text style={brandStyle}>{brandName}</Text>
+            )}
             <Text style={brandSubStyle}>Review request</Text>
           </Section>
 
@@ -230,8 +252,15 @@ export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.Re
           </Section>
 
           <Section style={ctaSectionStyle}>
-            <Button href={reviewUrl} style={buttonStyle}>
-              Review the relay
+            <Button
+              href={reviewUrl}
+              style={
+                brandColor
+                  ? { ...buttonStyle, background: brandColor }
+                  : buttonStyle
+              }
+            >
+              Review your social posts
             </Button>
           </Section>
 
@@ -252,7 +281,7 @@ export function MagicLinkInviteEmail(props: MagicLinkInviteEmailProps): React.Re
             <Text style={signatureStyle}>
               {senderName}
               <br />
-              Five One Nine Marketing
+              {brandName}
             </Text>
             <Text style={supportLineStyle}>
               Need help? <Link href="mailto:support@fonmarketing.com" style={supportLinkStyle}>support@fonmarketing.com</Link>
