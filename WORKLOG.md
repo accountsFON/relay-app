@@ -16,7 +16,6 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done — full internal review parity):
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
-- [ ] **(follow-up, force-step) Point the dashboard `AM_TRACK_STEPS` at `LIVE_PIPELINE_STEPS`** — `dashboard/page.tsx` still hand-maintains a second copy of the live-step list (matches today, but the same drift class #334 killed for the force-step dropdown). Dedup onto the derived const. (surfaced in the #334 review)
 - [ ] **(follow-up, force-step) Harden the `LIVE_PIPELINE_STEPS` client-import boundary** — `admin-force-step-section.tsx` (client) imports it from `@/server/lib/relay-state-machine`. Safe today (the module has only type-only db imports), but relocating `LIVE_PIPELINE_STEPS` + the transition tables to a non-`@/server` module (or prop-passing the list from the server parent) would remove the latent risk of a future runtime server import breaking the client bundle. (surfaced in the #334 review)
 - [ ] **(follow-up, designer flags) DB unique constraint on `DesignerFlag(postId, threadId, reviewItemId)`** to harden the flag find-then-create against a same-instant duplicate. Idempotent today (note gets updated); a partial unique index would make it airtight.
 - [ ] **(cleanup, designer flags) Stale JSDoc on `AdvanceFromClientReviewInput.reviewSessionId`** still references the removed designer deep-link rationale (the auto `revision_images_requested` ping was deleted in #303). Tidy the comment.
@@ -33,6 +32,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 ---
 
 ## Shipped
+
+- [x] **2026-07-09 — Dedup dashboard `AM_TRACK_STEPS` onto `LIVE_PIPELINE_STEPS`** (force-step follow-up, PR #337)
+  `dashboard/page.tsx` hand-maintained a second copy of the live-step list (fed to `bucketRunners` for the
+  AM + designer relay track) — the same drift class #334 killed for the force-step dropdown. Pointed it at the
+  derived `LIVE_PIPELINE_STEPS` (`const AM_TRACK_STEPS = LIVE_PIPELINE_STEPS`) and widened `bucketRunners`'
+  `steps` param to `readonly RelayStep[]` (it only iterates). Value-identical refactor — the list matched
+  exactly, so no behavior change; the existing dashboard bucketing tests (relays at copy/client_review/
+  scheduling/completed bucket correctly) still pass and now exercise the derived source. Last hand-maintained
+  copy of the pipeline step list is gone. 2530 unit tests, tsc + `next build` clean. No `src/server/jobs/**`
+  change → Trigger.dev deploy SKIPPED.
 
 - [x] **2026-07-09 — Org-scope guard on `tickChecklistItemAction`** (tenant-safety follow-up, PR #336)
   Defense-in-depth: the checklist-tick action loaded the batch with `currentHolder`/`clientId` but NOT
