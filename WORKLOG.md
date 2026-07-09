@@ -11,14 +11,13 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-- [ ] **(follow-up, client review UX) "All approved" bar vs server routing mismatch** — on the client magic-link review, the sticky summary + Approve-all state count an approved-with-edit post as `approved`, so the client can briefly see "all approved" then Submit routes the batch to Client revisions (the edit/pins force changes). Momentary, resolves on refresh; not data loss. Consider reflecting "approved-with-feedback" in the client summary too. (surfaced in the P1 #16 review)
 - [ ] **(follow-up, tenant safety) `tickChecklistItemAction` has no explicit org-scope check** — unlike `markBatchReviewedAction`, the checklist-tick action doesn't verify the batch's client org matches `ctx.organizationDbId`. Not a regression (pre-existing) and only reachable from the org-scoped preview page + holder gate, but add `batch.client.organizationId` scoping for complete defense in depth. (surfaced in the P1 #12 review)
 
 From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done — full internal review parity):
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
-- [ ] **(cleanup) `FixWithAIButton` + `/api/posts/[id]/fix-with-ai` routes are now unused** — Fix-with-AI is fully unmounted from the UI (Regenerate-with-AI on the main relay page is the only AI caption tool). Remove the dead component + routes + their tests when convenient.
-- [ ] **(follow-up) Refresh the admin force-step list** (`admin-force-step-section.tsx` `STEP_ORDER`) to the live step set — it predates the 2026-06-22 rework (omits `client_review`/`scheduling`, lists their retirees). `design_revisions` already removed.
+- [ ] **(follow-up, force-step) Point the dashboard `AM_TRACK_STEPS` at `LIVE_PIPELINE_STEPS`** — `dashboard/page.tsx` still hand-maintains a second copy of the live-step list (matches today, but the same drift class #334 killed for the force-step dropdown). Dedup onto the derived const. (surfaced in the #334 review)
+- [ ] **(follow-up, force-step) Harden the `LIVE_PIPELINE_STEPS` client-import boundary** — `admin-force-step-section.tsx` (client) imports it from `@/server/lib/relay-state-machine`. Safe today (the module has only type-only db imports), but relocating `LIVE_PIPELINE_STEPS` + the transition tables to a non-`@/server` module (or prop-passing the list from the server parent) would remove the latent risk of a future runtime server import breaking the client bundle. (surfaced in the #334 review)
 - [ ] **(follow-up, designer flags) DB unique constraint on `DesignerFlag(postId, threadId, reviewItemId)`** to harden the flag find-then-create against a same-instant duplicate. Idempotent today (note gets updated); a partial unique index would make it airtight.
 - [ ] **(cleanup, designer flags) Stale JSDoc on `AdvanceFromClientReviewInput.reviewSessionId`** still references the removed designer deep-link rationale (the auto `revision_images_requested` ping was deleted in #303). Tidy the comment.
 - [ ] **(follow-up, designer gate) Page test for the archived-batch skip** — the designer onboarding gate correctly skips archived relays (`!batch.deletedAt`), but that specific guard has no page-layer test. Cheap add; guard is correct today.
@@ -34,6 +33,37 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 ---
 
 ## Shipped
+
+- [x] **2026-07-09 — Remove dead Fix-with-AI code** (WORKLOG cleanup, PR #335)
+  Fix-with-AI was fully unmounted from the UI (redoPost / Regenerate-with-AI is the only AI caption tool now).
+  Removed the orphaned chain: `fix-with-ai-button.tsx`, `diff-modal.tsx` (only the button used it), both
+  `/api/posts/[id]/fix-with-ai` routes (`route.ts` + `accept/route.ts`), `services/fixWithAi.ts` (only the
+  routes used it), `prompts/fixWithAiPrompt.ts` (only fixWithAi used it), their 5 test files, and the vestigial
+  "never renders Fix with AI" absence-test block in `review-feedback-rail.test.tsx`. **Kept (verified live):**
+  `redoPost`, `text-diff` (used by the digest email + review rail + caption-diff-view; has its own test), and
+  the whole `post_caption_ai_fixed` RENDER path (event-renderer branch, `caption-ai-fixed-row`,
+  notification-copy, `ActivityKind` enum) so historical events fixWithAi once wrote still render — fixWithAi was
+  only the writer. Reworded three comments that referenced the deleted service. Net **-2167 lines**. Recon
+  traced every importer + confirmed no runtime/string route references; the compiler (tsc + `next build`, clean
+  after `rm -rf .next` to clear stale route-manifest types) proves nothing dangles. 2525 unit tests. No
+  `src/server/jobs/**` change → Trigger.dev deploy SKIPPED.
+
+- [x] **2026-07-09 — Refresh admin force-step dropdown to the live step set** (WORKLOG cleanup, PR #334, `892787e`)
+  The admin "Force step" dropdown hand-maintained a `STEP_ORDER` list that drifted through three pipeline
+  reworks: it listed 5 retired steps + `onboarding_gate` and OMITTED the two live steps `client_review` +
+  `scheduling`, so an admin could not force a relay to either current step and could strand one on a dead-end.
+  Derived the offerable steps from the state machine instead: new `LIVE_PIPELINE_STEPS` in
+  `relay-state-machine.ts` = the ordered set of every step with an outgoing transition in either track
+  (`copy → in_design → am_review_design → client_review → implementing_revisions → scheduling → completed`),
+  structurally drift-proof. `admin-force-step-section.tsx` imports it and offers all-but-current-step; dropped
+  the redundant `designs_completed` filter. No server-action change (`forceStepAction` already validates the
+  target + `relay.forceStep` server-side; this strictly reduces the footgun surface). Adversarial review
+  READY_TO_MERGE, 0 blocking defects; took its test-honesty nit (dropped a tautological drift-guard test — the
+  exact-order `toEqual` is the real guard). TDD: state-machine describe (exact ordered set, includes the 2 live
+  steps, excludes every retired step) + component test (offers the live steps incl. client_review/scheduling,
+  never a retiree, excludes current). 2560 unit tests, tsc + `next build` clean. No `src/server/jobs/**` change
+  → Trigger.dev deploy SKIPPED. Design: vault `projects/relay-app/2026-07-09-admin-force-step-live-steps-design.md`.
+  Follow-ups logged above (dashboard `AM_TRACK_STEPS` dedup; client-import boundary).
 
 - [x] **2026-07-09 — White-label client review email + review page** (P2 #21, PR #333, `b3483b1`)
   Org-level white-label for the client-facing surfaces. Admin-only `/settings/org` sets a logo URL + one

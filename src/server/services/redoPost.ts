@@ -5,9 +5,7 @@
  * candidates), but only for the one Post's date. Captures the prior state
  * as a PostVersion snapshot so the AM can revert if the redo is worse.
  *
- * Distinct from `fixWithAi`, which requires a feedback thread and rewrites
- * just the caption based on reviewer comments. Distinct from
- * `generateContent`, which produces a whole batch.
+ * Distinct from `generateContent`, which produces a whole batch.
  *
  * Spec: Phase 2 item 13 (per-post regenerate button).
  */
