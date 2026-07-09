@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createAndSendMagicLinkAction } from '@/server/actions/magicLink'
+import { parseRecipientEmails } from '@/lib/recipient-emails'
 
 interface Props {
   batchId: string
@@ -29,6 +30,7 @@ interface SuccessState {
   reviewUrl: string
   emailSent: boolean
   emailError: string | null
+  recipients: { email: string; sent: boolean; error: string | null }[]
 }
 
 const MIN_DAYS = 1
@@ -63,12 +65,12 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
     onOpenChange(next)
   }
 
-  function validate(): string | null {
+  function validate(parsed: { emails: string[]; invalid: string[] }): string | null {
     if (!name.trim()) return 'Recipient name is required'
-    if (!email.trim()) return 'Recipient email is required'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      return 'Recipient email is not a valid address'
+    if (parsed.invalid.length > 0) {
+      return `Not a valid email address: ${parsed.invalid.join(', ')}`
     }
+    if (parsed.emails.length === 0) return 'At least one recipient email is required'
     const d = Number(days)
     if (!Number.isFinite(d) || d < MIN_DAYS || d > MAX_DAYS) {
       return `Expiry must be between ${MIN_DAYS} and ${MAX_DAYS} days`
@@ -78,7 +80,8 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const err = validate()
+    const parsed = parseRecipientEmails(email)
+    const err = validate(parsed)
     if (err) {
       setError(err)
       return
@@ -90,13 +93,14 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
         const result = await createAndSendMagicLinkAction({
           batchId,
           recipientName: name.trim(),
-          recipientEmail: email.trim(),
+          recipientEmails: parsed.emails,
           expiresInDays: Number(days),
         })
         setSuccess({
           reviewUrl: result.reviewUrl,
           emailSent: result.emailSent,
           emailError: result.emailError,
+          recipients: result.recipients,
         })
         onSent?.()
       } catch (err) {
@@ -134,13 +138,31 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
               data-testid="send-link-success"
             >
               <p className="text-sm font-medium">
-                {success.emailSent
-                  ? 'Link created and emailed.'
-                  : 'Link created. Email failed; copy and send manually.'}
+                {(() => {
+                  const total = success.recipients.length
+                  const sent = success.recipients.filter((r) => r.sent).length
+                  if (success.emailSent) {
+                    return `Link created and emailed to ${total} recipient${total === 1 ? '' : 's'}.`
+                  }
+                  if (sent > 0) {
+                    return `Link created. Emailed ${sent} of ${total}; ${total - sent} failed — copy and send manually.`
+                  }
+                  return 'Link created. Email failed; copy and send manually.'
+                })()}
               </p>
-              {!success.emailSent && success.emailError && (
-                <p className="text-xs text-destructive">{success.emailError}</p>
-              )}
+              {!success.emailSent &&
+                (() => {
+                  const failed = success.recipients.filter((r) => !r.sent)
+                  const failedList =
+                    failed.length > 0 ? failed.map((r) => r.email).join(', ') : null
+                  return (
+                    <p className="text-xs text-destructive">
+                      {failedList
+                        ? `Failed: ${failedList}`
+                        : success.emailError}
+                    </p>
+                  )
+                })()}
               <div className="flex items-center gap-2">
                 <Input
                   readOnly
@@ -190,16 +212,21 @@ export function SendLinkModal({ batchId, clientName, clientReviewEmail, open, on
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="send-link-email">Recipient email</Label>
+              <Label htmlFor="send-link-email">Recipient email(s)</Label>
               <Input
                 id="send-link-email"
-                type="email"
+                type="text"
+                inputMode="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="jane@client.com"
+                placeholder="jane@client.com, bob@client.com"
                 disabled={isPending}
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Separate multiple recipients with commas. One link is emailed to
+                each.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="send-link-days">Expires in (days)</Label>

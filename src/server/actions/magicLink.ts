@@ -45,15 +45,26 @@ function isValidEmail(email: string): boolean {
 export interface CreateAndSendMagicLinkInput {
   batchId: string
   recipientName: string
-  recipientEmail: string
+  /** One or more recipient addresses; one shared link is emailed to each. */
+  recipientEmails: string[]
   expiresInDays?: number
+}
+
+export interface MagicLinkRecipientResult {
+  email: string
+  sent: boolean
+  error: string | null
 }
 
 export interface CreateAndSendMagicLinkResult {
   magicLinkId: string
   reviewUrl: string
   expiresAt: Date
+  /** Per-recipient send outcome, in the order they were emailed. */
+  recipients: MagicLinkRecipientResult[]
+  /** True iff every recipient's email was sent. */
   emailSent: boolean
+  /** The first send error, or null. Kept for the existing single-line UI. */
   emailError: string | null
 }
 
@@ -76,11 +87,32 @@ export async function createAndSendMagicLinkAction(
   const ctx = await requireClientEditor()
 
   const name = input.recipientName?.trim()
-  const email = input.recipientEmail?.trim()
   if (!name) throw new Error('Recipient name is required')
-  if (!email || !isValidEmail(email)) {
-    throw new Error('Recipient email is required and must be a valid address')
+
+  // Normalize + validate the recipient list (defense in depth on top of the
+  // modal's own parse). Dedupe case-insensitively, order preserved.
+  const emails: string[] = []
+  const invalid: string[] = []
+  const seen = new Set<string>()
+  for (const raw of input.recipientEmails ?? []) {
+    const e = raw?.trim()
+    if (!e) continue
+    if (!isValidEmail(e)) {
+      invalid.push(e)
+      continue
+    }
+    const key = e.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    emails.push(e)
   }
+  if (invalid.length > 0) {
+    throw new Error(`Not a valid email address: ${invalid.join(', ')}`)
+  }
+  if (emails.length === 0) {
+    throw new Error('At least one recipient email is required')
+  }
+  const primaryEmail = emails[0]
 
   const days = clampDays(input.expiresInDays ?? DEFAULT_EXPIRY_DAYS)
 
@@ -105,7 +137,7 @@ export async function createAndSendMagicLinkAction(
   const { link, token } = await createMagicLink({
     batchId: batch.id,
     defaultReviewerName: name,
-    defaultReviewerEmail: email,
+    defaultReviewerEmail: primaryEmail,
     expiresAt,
     createdBy: ctx.userDbId,
   })
@@ -113,7 +145,8 @@ export async function createAndSendMagicLinkAction(
   const reviewUrl = `${appBaseUrl()}/review/${token}`
 
   // ActivityEvent first so the audit trail records "link generated" even
-  // if the email later fails.
+  // if the email later fails. `recipientEmail` stays the primary address for
+  // back-compat; `recipientEmails` + `recipientCount` carry the full list.
   await recordActivity({
     clientId: batch.clientId,
     actorId: ctx.userDbId,
@@ -123,7 +156,9 @@ export async function createAndSendMagicLinkAction(
       magicLinkId: link.id,
       batchId: batch.id,
       recipientName: name,
-      recipientEmail: email,
+      recipientEmail: primaryEmail,
+      recipientEmails: emails,
+      recipientCount: emails.length,
       expiresAt: expiresAt.toISOString(),
     },
   })
@@ -135,33 +170,41 @@ export async function createAndSendMagicLinkAction(
   })
   const senderName = am?.name?.trim() || am?.email || 'Your Five One Nine team'
 
-  let emailSent = false
-  let emailError: string | null = null
-  try {
-    await sendMagicLinkEmail({
-      recipientName: name,
-      recipientEmail: email,
-      senderName,
-      clientName: client.name,
-      monthLabel: monthLabel(batch.scheduledAt ?? batch.createdAt),
-      reviewUrl,
-      expiresAt,
-    })
-    emailSent = true
-  } catch (err) {
-    emailError = err instanceof Error ? err.message : String(err)
-    console.error('[magic-link] sendMagicLinkEmail failed', {
-      magicLinkId: link.id,
-      err: emailError,
-    })
+  // One shared link, emailed to each recipient. A single failure does not roll
+  // back the link (the AM can still copy the URL) — we record which addresses
+  // failed so the UI can flag them.
+  const recipients: MagicLinkRecipientResult[] = []
+  for (const email of emails) {
+    try {
+      await sendMagicLinkEmail({
+        recipientName: name,
+        recipientEmail: email,
+        senderName,
+        clientName: client.name,
+        monthLabel: monthLabel(batch.scheduledAt ?? batch.createdAt),
+        reviewUrl,
+        expiresAt,
+      })
+      recipients.push({ email, sent: true, error: null })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[magic-link] sendMagicLinkEmail failed', {
+        magicLinkId: link.id,
+        email,
+        err: msg,
+      })
+      recipients.push({ email, sent: false, error: msg })
+    }
   }
+  const emailSent = recipients.every((r) => r.sent)
+  const emailError = recipients.find((r) => !r.sent)?.error ?? null
 
-  // Keep the client's stored review email in sync with the latest send so the
-  // profile field + pass-time modal share one source of truth.
-  if (client.clientReviewEmail !== email) {
+  // Keep the client's stored review email in sync with the primary recipient so
+  // the profile field + pass-time modal share one source of truth.
+  if (client.clientReviewEmail !== primaryEmail) {
     await db.client.update({
       where: { id: client.id },
-      data: { clientReviewEmail: email },
+      data: { clientReviewEmail: primaryEmail },
     })
   }
 
@@ -171,6 +214,7 @@ export async function createAndSendMagicLinkAction(
     magicLinkId: link.id,
     reviewUrl,
     expiresAt,
+    recipients,
     emailSent,
     emailError,
   }
