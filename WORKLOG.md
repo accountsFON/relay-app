@@ -31,7 +31,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
-- [x] **2026-07-13 — Copy-step onboarding gate for AMs + admins** (PR TBD)
+- [x] **2026-07-13 — Copy-step onboarding gate for AMs + admins** (PR #339, `f34adc6`)
   Mirrored the shipped designer onboarding gate onto the `copy` step. An AM or admin opening a relay at `copy`
   now gets the workspace masked behind a one-item review card (open the client-profile modal → **Enter
   workspace**), recorded once per `(batch, user)`. New `CopyGateAck` model + additive migration
