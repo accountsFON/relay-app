@@ -36,6 +36,14 @@ vi.mock('@/components/relay/designer-onboarding-gate', () => ({
   DesignerOnboardingGate: () => <div data-testid="designer-gate" />,
 }))
 
+vi.mock('@/server/repositories/copyGateAcks', () => ({
+  hasCopyGateAck: vi.fn(),
+}))
+
+vi.mock('@/components/relay/copy-onboarding-gate', () => ({
+  CopyOnboardingGate: () => <div data-testid="copy-gate" />,
+}))
+
 vi.mock('@/components/onboarding/tour-autostart', () => ({
   TourAutostart: () => <div data-testid="tour-autostart" />,
 }))
@@ -244,6 +252,7 @@ import {
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { hasDesignerGateAck } from '@/server/repositories/designerGateAcks'
+import { hasCopyGateAck } from '@/server/repositories/copyGateAcks'
 import { listSessionsForBatch } from '@/server/repositories/reviewSessions'
 import { findRunForBatch } from '@/server/repositories/contentRuns'
 import { can } from '@/server/auth/permissions'
@@ -335,6 +344,10 @@ describe('BatchDetailPage', () => {
     // designer-role NextActionBoard cases at designer steps) renders the
     // workspace. Gate-specific tests opt in by overriding to false.
     vi.mocked(hasDesignerGateAck).mockResolvedValue(true)
+    // Copy-step gate: default to acknowledged so the default AM-at-copy context
+    // (mockCtx role account_manager + mockBatch currentStep copy) renders the
+    // workspace in every pre-existing test. Gate-specific tests override false.
+    vi.mocked(hasCopyGateAck).mockResolvedValue(true)
     vi.mocked(listSessionsForBatch).mockResolvedValue([])
     vi.mocked(db.post.findMany).mockResolvedValue([] as never)
     vi.mocked(db.magicLink.findMany).mockResolvedValue([] as never)
@@ -925,6 +938,74 @@ describe('BatchDetailPage', () => {
       const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
       expect(queryByTestId('designer-gate')).toBeNull()
       expect(queryByTestId('relay-track-stub')).not.toBeNull()
+    })
+  })
+
+  // ---- Copy-step onboarding gate ----
+
+  describe('Copy-step onboarding gate', () => {
+    it('renders the gate instead of the workspace for an account manager at copy who has not acknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'account_manager' })
+      vi.mocked(findBatch).mockResolvedValue({ ...mockBatch, currentStep: 'copy' } as never)
+      vi.mocked(hasCopyGateAck).mockResolvedValue(false)
+
+      const { getByTestId, queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(getByTestId('copy-gate')).not.toBeNull()
+      // Workspace short-circuited.
+      expect(queryByTestId('relay-track-stub')).toBeNull()
+    })
+
+    it('renders the gate for an admin at copy who has not acknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'admin' })
+      vi.mocked(findBatch).mockResolvedValue({ ...mockBatch, currentStep: 'copy' } as never)
+      vi.mocked(hasCopyGateAck).mockResolvedValue(false)
+
+      const { getByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(getByTestId('copy-gate')).not.toBeNull()
+    })
+
+    it('renders the workspace (no gate) for an account manager at copy who already acknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'account_manager' })
+      vi.mocked(findBatch).mockResolvedValue({ ...mockBatch, currentStep: 'copy' } as never)
+      vi.mocked(hasCopyGateAck).mockResolvedValue(true)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('copy-gate')).toBeNull()
+      expect(queryByTestId('relay-track-stub')).not.toBeNull()
+    })
+
+    it('does not gate a designer at copy even when unacknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'designer' })
+      vi.mocked(findBatch).mockResolvedValue({ ...mockBatch, currentStep: 'copy' } as never)
+      vi.mocked(hasCopyGateAck).mockResolvedValue(false)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('copy-gate')).toBeNull()
+      expect(queryByTestId('relay-track-stub')).not.toBeNull()
+    })
+
+    it('does not gate an account manager on a non-copy step (scheduling) even when unacknowledged', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'account_manager' })
+      vi.mocked(findBatch).mockResolvedValue({ ...mockBatch, currentStep: 'scheduling' } as never)
+      vi.mocked(hasCopyGateAck).mockResolvedValue(false)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('copy-gate')).toBeNull()
+      expect(queryByTestId('relay-track-stub')).not.toBeNull()
+    })
+
+    it('does not gate an account manager on an archived relay at copy', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'account_manager' })
+      vi.mocked(findBatch).mockResolvedValue({
+        ...mockBatch,
+        currentStep: 'copy',
+        deletedAt: new Date('2026-07-01T00:00:00Z'),
+        deletedBy: 'user_x',
+      } as never)
+      vi.mocked(hasCopyGateAck).mockResolvedValue(false)
+
+      const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(queryByTestId('copy-gate')).toBeNull()
     })
   })
 
