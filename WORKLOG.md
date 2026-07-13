@@ -31,6 +31,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-13 — Copy-step onboarding gate for AMs + admins** (PR TBD)
+  Mirrored the shipped designer onboarding gate onto the `copy` step. An AM or admin opening a relay at `copy`
+  now gets the workspace masked behind a one-item review card (open the client-profile modal → **Enter
+  workspace**), recorded once per `(batch, user)`. New `CopyGateAck` model + additive migration
+  `20260713120000_add_copy_gate_acks`, `copyGateAcks` repo, org-scoped `acknowledgeCopyGateAction`
+  (`account_manager`/`admin` only, rejects designer/client + cross-org), single-item `CopyOnboardingGate`, and a
+  page mount short-circuit right after the designer gate (fires only for AM/admin at `RelayStep.copy`, skips
+  archived). Storage = dedicated model (zero touch to the shipped designer gate). Adversarial review
+  READY_TO_MERGE 0 findings. TDD, 17 new tests, 2567 unit tests, tsc + `next build` clean. No `src/server/jobs/**`
+  change so Trigger.dev deploy skips.
+
 - [x] **2026-07-09 — Tenant-scope the thread action surface** (SECURITY, PR #338, `07fcee7`)
   Closed a CONFIRMED cross-tenant / cross-batch gap on `src/server/actions/threads.ts` (traced from the #336
   follow-up). Every thread action operated on the caller-supplied `postId`/`threadId`/`batchId`/`reviewItemId`

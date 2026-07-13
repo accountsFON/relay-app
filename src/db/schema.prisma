@@ -190,6 +190,7 @@ model Organization {
   trashAuditLogs      TrashAuditLog[]
   impersonationLogs   ImpersonationLog[]
   designerGateAcks    DesignerGateAck[]
+  copyGateAcks        CopyGateAck[]
 
   @@map("organizations")
 }
@@ -249,6 +250,7 @@ model User {
   designerFlagsCreated   DesignerFlag[]       @relation("DesignerFlagCreator")
   designerFlagsDone      DesignerFlag[]       @relation("DesignerFlagDoneBy")
   designerGateAcks       DesignerGateAck[]
+  copyGateAcks           CopyGateAck[]
 
   @@index([organizationId])
   @@index([linkedClientId])
@@ -519,16 +521,17 @@ model Batch {
   deletedAt             DateTime?
   deletedBy             String?
 
-  client                Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  holder                User            @relation("BatchHolder", fields: [currentHolder], references: [id])
+  client                Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  holder                User              @relation("BatchHolder", fields: [currentHolder], references: [id])
   posts                 Post[]
   checklists            ChecklistItem[]
   relayEvents           RelayEvent[]
-  targetedByContentRuns ContentRun[]    @relation("ContentRunTargetBatch")
+  targetedByContentRuns ContentRun[]      @relation("ContentRunTargetBatch")
   magicLinks            MagicLink[]
   reviewSessions        ReviewSession[]
   designerFlags         DesignerFlag[]
   designerGateAcks      DesignerGateAck[]
+  copyGateAcks          CopyGateAck[]
 
   @@index([clientId, currentStep])
   @@index([currentHolder, currentStep])
@@ -926,4 +929,20 @@ model DesignerGateAck {
   @@unique([batchId, userId])
   @@index([organizationId])
   @@map("designer_gate_acks")
+}
+
+model CopyGateAck {
+  id             String   @id @default(cuid())
+  organizationId String
+  batchId        String
+  userId         String
+  acknowledgedAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  batch        Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, userId])
+  @@index([organizationId])
+  @@map("copy_gate_acks")
 }

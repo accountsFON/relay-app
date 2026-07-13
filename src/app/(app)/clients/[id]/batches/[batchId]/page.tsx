@@ -4,6 +4,7 @@ import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
 import { hasDesignerGateAck } from '@/server/repositories/designerGateAcks'
+import { hasCopyGateAck } from '@/server/repositories/copyGateAcks'
 import {
   listActivityForClient,
   visibilityForViewer,
@@ -66,6 +67,7 @@ import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
 import { RelayCompletedBanner } from '@/components/relay/relay-completed-banner'
 import { isRelayLocked } from '@/lib/relay-lock'
 import { DesignerOnboardingGate } from '@/components/relay/designer-onboarding-gate'
+import { CopyOnboardingGate } from '@/components/relay/copy-onboarding-gate'
 import { TourAutostart } from '@/components/onboarding/tour-autostart'
 import { cn } from '@/lib/utils'
 import { Palette, ExternalLink, Eye } from 'lucide-react'
@@ -119,6 +121,20 @@ export default async function BatchDetailPage({
     !(await hasDesignerGateAck(ctx.organizationDbId, batch.id, ctx.userDbId))
   ) {
     return <DesignerOnboardingGate client={client} batchId={batch.id} />
+  }
+
+  // Copy-step onboarding gate: an AM (or admin) opening a relay at the copy step
+  // must review the client profile once per relay before the workspace unlocks.
+  // Acknowledged state lives in CopyGateAck. Same short-circuit placement as the
+  // designer gate, before the client auto-advance block and the expensive
+  // Promise.all.
+  if (
+    (ctx.role === 'account_manager' || ctx.role === 'admin') &&
+    !batch.deletedAt &&
+    batch.currentStep === RelayStep.copy &&
+    !(await hasCopyGateAck(ctx.organizationDbId, batch.id, ctx.userDbId))
+  ) {
+    return <CopyOnboardingGate client={client} batchId={batch.id} />
   }
 
   // Spec § Verification step 9: client opening at sent_to_client auto-advances
