@@ -77,7 +77,7 @@ export function CopyOnboardingGate({
                 >
                   <FileText className="size-4" /> Review client profile
                 </DialogTrigger>
-                <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+                <DialogContent className="max-h-[85vh] sm:max-w-3xl overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{client.name} profile</DialogTitle>
                   </DialogHeader>
