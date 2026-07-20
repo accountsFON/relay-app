@@ -157,20 +157,36 @@ describe('tour-registry', () => {
   describe('designer-batch-detail-v1 tour', () => {
     const BATCH_PATH = '/clients/abc/batches/xyz'
 
-    it('defines designer-batch-detail-v1 as a manual, designer-only 5-stop tour', () => {
+    it('defines designer-batch-detail-v1 as a manual, designer-only 7-stop tour matching the real page order', () => {
       const t = getTourById('designer-batch-detail-v1')
       expect(t).toBeDefined()
       expect(t!.roles).toEqual(['designer'])
       expect(t!.trigger).toBe('manual')
       const stops = t!.stopsForRole('designer')
+      // Natural work order: orient on the track, understand the post (copy ->
+      // hook -> notes), upload the designs, run the checklist, hand it back.
       expect(stops.map((s) => s.anchorSelector)).toEqual([
-        '[data-tour-anchor="relay-actions"]',
+        '[data-tour-anchor="relay-track"]',
         '[data-tour-anchor="relay-posts"]',
         '[data-tour-anchor="relay-graphic-hook"]',
         '[data-tour-anchor="relay-designer-notes"]',
+        '[data-tour-anchor="relay-upload-images"]',
+        '[data-tour-anchor="relay-actions"]',
         '[data-tour-anchor="relay-actions"]',
       ])
       expect(isValidTourId('designer-batch-detail-v1')).toBe(true)
+    })
+
+    it('spotlights the Upload images section and explains both bulk and single upload', () => {
+      const stops = getTourById('designer-batch-detail-v1')!.stopsForRole('designer')
+      const uploadStop = stops.find(
+        (s) => s.anchorSelector === '[data-tour-anchor="relay-upload-images"]',
+      )
+      expect(uploadStop).toBeDefined()
+      const body = uploadStop!.body.toLowerCase()
+      expect(body).toContain('bulk')
+      // "one at a time" is how the copy describes the per-post single upload.
+      expect(body).toContain('one at a time')
     })
 
     it('removes designer from the shared batch-detail-v1 tour', () => {

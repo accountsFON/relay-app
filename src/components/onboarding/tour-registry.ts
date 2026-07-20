@@ -114,22 +114,24 @@ const BATCH_DETAIL_STOPS: TourStop[] = [
   },
 ]
 
-// Designer-only coachmarks for the relay detail page: anchored to the specific
-// elements a designer interacts with (checklist, posts, graphic hook, notes,
-// and handback). Fired programmatically by TourAutostart after the onboarding
+// Designer-only coachmarks for the relay detail page. Walks the page in the
+// order a designer actually works it: orient on the track, understand the post
+// (copy -> hook -> notes), upload the finished designs (bulk or single), run
+// the checklist, hand it back. Anchored to the real elements a designer sees at
+// the design step. Fired programmatically by TourAutostart after the onboarding
 // gate — NOT via eligibleAutoTours (trigger: 'manual' keeps it out of
 // auto-fire so it never double-fires alongside overview-v1).
 const DESIGNER_BATCH_DETAIL_STOPS: TourStop[] = [
   {
-    id: 'designer-checklist',
-    anchorSelector: '[data-tour-anchor="relay-actions"]',
-    title: 'Your checklist',
-    body: 'Run through this as you design, it is what the account manager expects done before the relay moves on.',
+    id: 'designer-track',
+    anchorSelector: '[data-tour-anchor="relay-track"]',
+    title: 'Where this relay is',
+    body: 'Initial Design, and it is yours. This track shows every stage from copy to scheduling, the highlighted step is where the relay sits right now.',
   },
   {
     id: 'designer-posts',
     anchorSelector: '[data-tour-anchor="relay-posts"]',
-    title: 'The post you are designing',
+    title: 'What you are designing',
     body: 'Each post shows the approved caption and hashtags. Design your graphic to match this copy.',
   },
   {
@@ -145,10 +147,22 @@ const DESIGNER_BATCH_DETAIL_STOPS: TourStop[] = [
     body: 'Specific art direction for this post. Read these before you start.',
   },
   {
+    id: 'designer-upload',
+    anchorSelector: '[data-tour-anchor="relay-upload-images"]',
+    title: 'Upload your designs',
+    body: 'Two ways to add your graphics: drop them all into Upload images and Relay auto matches each file to its post by filename (the fast bulk way), or click the image box on any single post to upload it one at a time.',
+  },
+  {
+    id: 'designer-checklist',
+    anchorSelector: '[data-tour-anchor="relay-actions"]',
+    title: 'Your checklist',
+    body: 'Work through this as you design, it is what the account manager expects done before the relay moves on.',
+  },
+  {
     id: 'designer-handback',
     anchorSelector: '[data-tour-anchor="relay-actions"]',
-    title: 'Upload, then hand it back',
-    body: 'Add your finished design to each post, then pass the relay back to the account manager for review.',
+    title: 'Hand it back',
+    body: 'Once every design is uploaded and the checklist is done, hit Pass to Design Review to send the relay to the account manager.',
   },
 ]
 
