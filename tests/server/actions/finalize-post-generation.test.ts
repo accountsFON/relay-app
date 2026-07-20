@@ -22,6 +22,10 @@ vi.mock('@/db/client', () => ({
     client: {
       findUnique: vi.fn(),
     },
+    checklistItem: {
+      createMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
   },
 }))
 
@@ -226,6 +230,61 @@ describe('createBatchForRun currentRole pinning (Phase 2 item 8 regression)', ()
     const createCall = vi.mocked(db.batch.create).mock.calls[0][0]
     expect(createCall.data.currentStep).toBe('copy')
     expect(createCall.data.currentRole).toBe('am')
+  })
+})
+
+describe('createBatchForRun copy-checklist seeding (workflow-test #8)', () => {
+  // The bug: createBatchForRun creates the batch at currentStep='copy' but
+  // never seeded the checklist, so pipeline-generated batches sat on Copy
+  // Review with zero checklist rows (and an incorrectly-enabled Pass button,
+  // since an empty required set makes allRequiredChecked vacuously true).
+  // The fix seeds the copy checklist right after create, mirroring the admin
+  // create-batch path.
+  const COPY_LABELS = [
+    'Content has been reviewed for clarity, brand alignment, and messaging consistency',
+    'CTAs and hashtags have been verified',
+    'Copy edits have been finalized',
+  ]
+
+  type SeedRow = { batchId: string; step: string; label: string; required: boolean; checked: boolean }
+  // createMany's `data` is `Input | Input[]`; the seed always passes an array.
+  const seededRows = (): SeedRow[] =>
+    vi.mocked(db.checklistItem.createMany).mock.calls[0][0].data as SeedRow[]
+
+  beforeEach(() => {
+    vi.mocked(db.batch.create).mockResolvedValue({ id: 'batch_new' } as never)
+    vi.mocked(db.batch.findFirst).mockResolvedValue(null)
+  })
+
+  it("seeds the 3 copy checklist rows when 'new' creates a batch", async () => {
+    await finalizePostGenerationAction({
+      choice: 'new',
+      runId: 'run_1',
+      label: 'July 2026',
+    })
+
+    expect(db.checklistItem.createMany).toHaveBeenCalledTimes(1)
+    const data = seededRows()
+    expect(data).toHaveLength(3)
+    expect(data.map((r) => r.label)).toEqual(COPY_LABELS)
+    for (const row of data) {
+      expect(row.batchId).toBe('batch_new')
+      expect(row.step).toBe('copy')
+      expect(row.required).toBe(true)
+      expect(row.checked).toBe(false)
+    }
+  })
+
+  it("seeds the copy checklist on the 'auto-new' path too", async () => {
+    await finalizePostGenerationAction({
+      choice: 'auto-new',
+      runId: 'run_1',
+    })
+
+    expect(db.checklistItem.createMany).toHaveBeenCalledTimes(1)
+    const data = seededRows()
+    expect(data).toHaveLength(3)
+    expect(data.every((r) => r.step === 'copy')).toBe(true)
   })
 })
 

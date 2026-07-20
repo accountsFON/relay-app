@@ -1,6 +1,7 @@
+import { RelayStep } from '@prisma/client'
 import { db } from '@/db/client'
 import { findContentRunForOrg } from '@/server/repositories/contentRuns'
-import { HOLDER_ROLE } from '@/server/lib/relay-state-machine'
+import { HOLDER_ROLE, seedChecklistForStep } from '@/server/lib/relay-state-machine'
 import { parseLabel, buildBatchLabel } from '@/lib/batch-target-month'
 
 export type FinalizeChoice =
@@ -148,6 +149,14 @@ async function createBatchForRun(
       clientReviewEnabled: client.clientReviewEnabled,
     },
   })
+  // Seed the copy-step checklist. A pipeline-created batch starts AT `copy`
+  // (the first working step), so no later Pass/Send-back ever transitions
+  // INTO copy to trigger a reseed -- without this the batch sits on Copy
+  // Review with zero checklist rows (and an incorrectly-enabled Pass, since
+  // an empty required set is vacuously "all checked"). Mirrors the admin
+  // create-batch path in relay-admin.ts. Sequential (no $transaction) to match
+  // this file's create-then-attach style. (workflow-test #8)
+  await seedChecklistForStep(db, newBatch.id, RelayStep.copy, client.clientReviewEnabled)
   return newBatch.id
 }
 
