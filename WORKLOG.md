@@ -31,6 +31,22 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-20 — Seed the Copy Review checklist on pipeline batch creation + backfill** (PR #342, `f631d73`)
+  Finished workflow-test **#8** properly. The Copy Review checklist rendered empty on real
+  (AI-pipeline-generated) batches with Pass wrongly enabled. Root cause: checklist items are persisted
+  `checklist_items` rows, seeded only on a transition INTO a step or in the admin create-batch path.
+  The pipeline path `createBatchForRun` (`services/finalize-post-generation.ts`) created the batch at
+  `currentStep:'copy'` but never seeded, and `copy` is the first step so nothing ever transitions into
+  it to reseed. PR #320 shipped the UI + `CHECKLIST_SEED[copy]` but its tests fed items in directly,
+  masking the gap. **Fix:** (1) `createBatchForRun` now seeds the copy checklist right after create,
+  mirroring the admin path (covers `new` + `auto-new`); (2) data migration
+  `20260720120000_backfill_copy_checklists` seeds the 3 copy items for every live copy-step batch with
+  zero checklist rows — idempotent (deterministic `mig_ccb_` md5 ids + `NOT EXISTS` guard), skips
+  soft-deleted / non-copy / already-seeded batches; (3) 2 new TDD tests on both create paths.
+  Adversarial review READY_TO_MERGE, 0 critical/important. 2569 unit tests, tsc + `next build` + lint
+  clean. Migration validated on ephemeral Postgres (idempotent, correct skip logic). No
+  `src/server/jobs/**` change → Trigger.dev deploy skips.
+
 - [x] **2026-07-20 — Widen the designer-gate client-profile modal (mobile-safe)** (PR #341, `03e5c24`)
   Parity with #340. The designer onboarding gate's profile Dialog passed a base `max-w-2xl`, but the shared
   `DialogContent` default caps at `sm:max-w-sm` (384px) on desktop, so the responsive class won and the modal
