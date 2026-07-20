@@ -7,9 +7,10 @@
  * User row via getOrgContext). Returns 401 if there is no session.
  *
  * Fires when the user taps "Restart guided tour" in /settings/org.
- * Clears both User.onboardingTourSeenAt and User.launchPadDismissedAt
- * so the (app) layout redirects to /welcome on the next request and
- * the tour can auto fire again.
+ * Clears User.onboardingTourSeenAt, User.launchPadDismissedAt, and the
+ * User.seenTours coachmark list so the (app) layout redirects to /welcome
+ * on the next request and BOTH the overview tour and the page coachmark
+ * tours can auto fire again.
  *
  * Phase 4 item 25. See
  * projects/relay-app/2026-06-01-phase-4-design-brief.md § Item 25.
