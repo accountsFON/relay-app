@@ -12,8 +12,8 @@
  *      step. Sets User.onboardingTourSeenAt = now(). Also stamps
  *      launchPadDismissedAt so the layout redirect predicate (both null)
  *      can never re fire after a completed tour.
- *   3. resetTour: clears both columns. Wired to the "Restart guided
- *      tour" control in /settings/org. Next /dashboard hit redirects
+ *   3. resetTour: clears both columns AND the seenTours coachmark list.
+ *      Wired to the "Restart guided tour" control in /settings/org. Next /dashboard hit redirects
  *      to /welcome and the tour can fire again.
  *
  * Auth note: all three are invoked from server actions or API routes
@@ -46,6 +46,7 @@ export interface ResetTourResult {
   userId: string
   onboardingTourSeenAt: null
   launchPadDismissedAt: null
+  seenTours: []
 }
 
 /**
@@ -107,9 +108,13 @@ export async function markSeenTour(
 }
 
 /**
- * Clear both onboarding columns so the user re lands on /welcome and
- * gets the tour again. Wired to the Settings "Restart guided tour"
- * control.
+ * Restart every guided tour for a user. Clears the two /welcome columns so
+ * the user re lands on /welcome and gets the overview tour again, AND empties
+ * the `seenTours` list so the page coachmark tours (batch-detail,
+ * designer-batch-detail, client-detail, inbox, scheduling, clients) auto fire
+ * again on their next visit. Those coachmarks gate on `seenTours` via
+ * startIfUnseen, so clearing only the two columns left them suppressed. Wired
+ * to the Settings "Restart guided tour" control.
  */
 export async function resetTour(userDbId: string): Promise<ResetTourResult> {
   await db.user.update({
@@ -117,11 +122,13 @@ export async function resetTour(userDbId: string): Promise<ResetTourResult> {
     data: {
       onboardingTourSeenAt: null,
       launchPadDismissedAt: null,
+      seenTours: [],
     },
   })
   return {
     userId: userDbId,
     onboardingTourSeenAt: null,
     launchPadDismissedAt: null,
+    seenTours: [],
   }
 }

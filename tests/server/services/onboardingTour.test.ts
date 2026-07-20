@@ -7,7 +7,7 @@
  *     touch onboardingTourSeenAt.
  *   - markTourSeen sets BOTH columns to the same now() so the layout
  *     redirect predicate (both null) can never re fire afterwards.
- *   - resetTour clears both columns.
+ *   - resetTour clears both columns and the seenTours coachmark list.
  *   - Returned timestamps are real Date instances (caller serializes).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -71,19 +71,25 @@ describe('markTourSeen', () => {
 })
 
 describe('resetTour', () => {
-  it('clears both columns to null', async () => {
+  it('clears the welcome columns AND the seenTours coachmark list', async () => {
     const result = await resetTour('user_3')
 
     expect(mocks.update).toHaveBeenCalledTimes(1)
     const call = mocks.update.mock.calls[0][0]
     expect(call.where).toEqual({ id: 'user_3' })
+    // seenTours must be cleared too, or the page coachmark tours
+    // (batch-detail, designer-batch-detail, client-detail, inbox, scheduling,
+    // clients) stay suppressed after "Restart guided tour" — they gate on
+    // seenTours via startIfUnseen, not the two welcome columns.
     expect(call.data).toEqual({
       onboardingTourSeenAt: null,
       launchPadDismissedAt: null,
+      seenTours: [],
     })
     expect(result.userId).toBe('user_3')
     expect(result.onboardingTourSeenAt).toBeNull()
     expect(result.launchPadDismissedAt).toBeNull()
+    expect(result.seenTours).toEqual([])
   })
 })
 
