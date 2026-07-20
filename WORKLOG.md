@@ -31,6 +31,13 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-20 — Widen the designer-gate client-profile modal (mobile-safe)** (PR #341, `03e5c24`)
+  Parity with #340. The designer onboarding gate's profile Dialog passed a base `max-w-2xl`, but the shared
+  `DialogContent` default caps at `sm:max-w-sm` (384px) on desktop, so the responsive class won and the modal
+  rendered narrow. Fixed with `sm:max-w-3xl` (768px at >=640px) + dropping the base max-w so the default
+  `max-w-[calc(100%-2rem)]` keeps 2rem mobile margins. Pure CSS: component test (5) passes, tsc + lint clean,
+  CI green, accountsFON prod deploy succeeded. No migration, no jobs change.
+
 - [x] **2026-07-13 — Copy-step onboarding gate for AMs + admins** (PR #339, `f34adc6`)
   Mirrored the shipped designer onboarding gate onto the `copy` step. An AM or admin opening a relay at `copy`
   now gets the workspace masked behind a one-item review card (open the client-profile modal → **Enter
