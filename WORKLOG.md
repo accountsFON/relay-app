@@ -31,6 +31,18 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-20 — Rework the designer relay tour to match the real page + spotlight uploads** (PR #343, `e72f288`)
+  The designer relay walkthrough (`DESIGNER_BATCH_DETAIL_STOPS`) opened with the checklist, never showed
+  the Upload images panel or the per-post image box, and merged "upload + hand back" into one coachmark.
+  Reworked to 7 stops that walk the page in the order a designer actually works it (grounded via View-as
+  on prod): track → posts → graphic hook → designer notes → **upload** → checklist → hand back. New
+  "Upload your designs" stop spotlights the Upload images panel and explains BOTH paths — bulk (drop all,
+  auto match by filename) and single (click the image box on any post). New
+  `data-tour-anchor="relay-upload-images"` on the `BulkMediaUploadPanel` root. Tour id kept
+  `designer-batch-detail-v1` (new designers only). TDD: 5-stop anchor assertion → 7-stop sequence + a
+  test that the upload stop mentions bulk + single. 2570 unit tests, tsc + `next build` + lint clean. No
+  migration, no `src/server/jobs/**` change.
+
 - [x] **2026-07-20 — Seed the Copy Review checklist on pipeline batch creation + backfill** (PR #342, `f631d73`)
   Finished workflow-test **#8** properly. The Copy Review checklist rendered empty on real
   (AI-pipeline-generated) batches with Pass wrongly enabled. Root cause: checklist items are persisted
