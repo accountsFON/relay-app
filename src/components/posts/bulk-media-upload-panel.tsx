@@ -27,6 +27,9 @@ export function BulkMediaUploadPanel({ batchId, posts }: BulkMediaUploadPanelPro
   return (
     <div
       data-testid="bulk-media-upload-panel"
+      // Onboarding tour anchor: the designer walkthrough spotlights this panel
+      // as the "upload your designs" step (bulk auto-match + per-post single).
+      data-tour-anchor="relay-upload-images"
       className="rounded-xl border border-border bg-card p-4"
     >
       <div className="flex items-center justify-between gap-3">
