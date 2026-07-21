@@ -31,6 +31,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Pin popover follows the pin via scroll-parent listeners** (PR #354, `95ae760`)
+  Third + correct take after #351/#352 were reverted. Relay's review canvas scrolls inside a NESTED
+  `main.overflow-y-auto` container, not the window — #351 listened only on window (nested scroll never
+  reached it), #352's perpetual rAF loop didn't reposition + risked a freeze. This attaches an
+  rAF-throttled reposition to the pin's actual scrollable ANCESTORS (Popper "scroll parents": walk up
+  from the pin badge collecting overflow auto/scroll els) + window + resize — no perpetual loop, no
+  freeze risk. Image pins only; listeners torn down on close. Also fixes the earlier mis-verification:
+  test with a REAL wheel scroll, not programmatic scrollTop. TDD (scroll event on the pin's scroll
+  parent re-anchors the popover). 2581 tests, tsc + `next build` clean. No migration, no jobs.
+
 - [x] **2026-07-21 — REVERTED pin-popover scroll tracking (#351 + #352)** (PR #353, `3ea4d61`)
   Both scroll-follow attempts failed to work on prod (sampled measurements: the popover stayed at its
   open-time position while the pin scrolled away in the nested `main.overflow-y-auto` container), and
