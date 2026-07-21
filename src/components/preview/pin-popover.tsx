@@ -132,46 +132,41 @@ export function PinPopover({
     setPosition(computePosition(anchor ?? null, height))
   }, [anchor])
 
-  // Keep the popover glued to its pin while the user scrolls/resizes. The
-  // popover is position:fixed, so without this it stays at its open-time
-  // viewport coordinate and drifts away from the pin as the page scrolls. For
-  // image pins we re-measure the live pin badge each frame; other pin kinds
-  // have no anchor element, so they fall back to the static open-time anchor
-  // (centered popovers just stay centered). rAF-throttled so a fast scroll does
-  // at most one measure+reposition per frame.
+  // Keep the popover glued to its pin. The popover is position:fixed, so
+  // without this it stays at its open-time viewport coordinate and drifts away
+  // from the pin as the content scrolls. Relay's review surfaces scroll inside a
+  // nested container (not the window), and element scroll events don't reliably
+  // reach a window listener, so we poll the live pin badge each animation frame
+  // (the Floating-UI `autoUpdate` pattern) and reposition only when it actually
+  // moves. Image pins only — they have a badge to track; other pin kinds have no
+  // anchor element and keep the static open-time position. The loop runs only
+  // while the popover is mounted (open) and is torn down on close.
   const pinThreadId = thread.id
   const isImagePin = thread.pin.kind === 'image'
   useEffect(() => {
-    const selector = isImagePin
-      ? `[data-testid="markup-overlay-pin"][data-thread-id="${pinThreadId}"]`
-      : null
+    if (!isImagePin) return
+    const selector = `[data-testid="markup-overlay-pin"][data-thread-id="${pinThreadId}"]`
     let raf = 0
-    function reposition() {
-      let live = anchor ?? null
-      if (selector) {
-        const rect = document.querySelector(selector)?.getBoundingClientRect()
-        if (rect) live = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    let lastX = NaN
+    let lastY = NaN
+    function tick() {
+      const rect = document.querySelector(selector)?.getBoundingClientRect()
+      if (rect) {
+        const x = rect.left + rect.width / 2
+        const y = rect.top + rect.height / 2
+        if (x !== lastX || y !== lastY) {
+          lastX = x
+          lastY = y
+          const height =
+            popoverRef.current?.getBoundingClientRect().height ?? POPOVER_HEIGHT_ESTIMATE
+          setPosition(computePosition({ x, y }, height))
+        }
       }
-      const height =
-        popoverRef.current?.getBoundingClientRect().height ?? POPOVER_HEIGHT_ESTIMATE
-      setPosition(computePosition(live, height))
+      raf = requestAnimationFrame(tick)
     }
-    function schedule() {
-      if (raf) return
-      raf = requestAnimationFrame(() => {
-        raf = 0
-        reposition()
-      })
-    }
-    // capture:true so scrolls inside nested scroll containers also fire.
-    window.addEventListener('scroll', schedule, true)
-    window.addEventListener('resize', schedule)
-    return () => {
-      if (raf) cancelAnimationFrame(raf)
-      window.removeEventListener('scroll', schedule, true)
-      window.removeEventListener('resize', schedule)
-    }
-  }, [anchor, isImagePin, pinThreadId])
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [isImagePin, pinThreadId])
 
   // Warn before navigating away while an unsaved reply draft exists.
   useUnsavedChanges(body.trim().length > 0 || attachedImage !== null)
