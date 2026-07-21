@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Open the rail-focused pin popover AT the pin (not centered)** (PR #349, `7fc99eb`)
+  Follow-up to #348. Opening a pin from the rail used a null anchor (centered popover). Now the rail
+  measures the pin badge's post-scroll viewport position (`internal-review-shell` scroll is instant;
+  `selectThread` rAF-measures `[data-testid="markup-overlay-pin"][data-thread-id=…]`) and threads it as
+  `focusRequest.anchor` → `focusThread.anchor` → IG/FB `setPopoverAnchor`, so the popover opens next to
+  the pin on the image (matching a direct pin click). Image pins only; caption/post-level pins have no
+  badge → null → centered (unchanged). 2580 unit tests, tsc + `next build` clean. No migration, no jobs.
+
 - [x] **2026-07-21 — Clicking a rail comment opens its pin on the internal review canvas** (PR #348, `1d814c0`)
   On `/preview`, clicking a feedback comment in the left rail now scrolls the canvas to its post AND
   opens that pin's popover (was post-level scroll only). Rail comment click → shell `selectThread`
