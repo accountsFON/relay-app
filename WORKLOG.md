@@ -31,6 +31,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Platform-aware "⌘↵ / Ctrl+↵ to send" hint on comment composers** (PR #345, `45d837b`)
+  The pin comment composers had the Cmd/Ctrl+Enter submit shortcut wired (PR #327) but no visible hint.
+  Added a muted `⌘↵ to send` affordance to all three client-review composers (new-pin `PinDraftComposer`,
+  pin-reply `PinPopover`, post-level `CommentThread`) via a new reusable `<SubmitCombo/>` that renders the
+  platform-correct combo (`⌘↵` on macOS, `Ctrl+↵` on Windows/Linux) using `useSyncExternalStore` so SSR
+  hydration matches (Mac default) then corrects on the client. Also swapped the two existing hardcoded
+  `⌘↵` hints (activity comment composer + client-profile editors) onto it, fixing the wrong symbol shown
+  to Windows users. TDD (SubmitCombo mac/win/linux/userAgentData tests). 2574 unit tests, tsc + `next build`
+  clean. No migration, no jobs change.
+
 - [x] **2026-07-20 — "Restart guided tour" now clears seenTours (replays all coachmarks)** (PR #344, `e8d4550`)
   `resetTour` cleared only `onboardingTourSeenAt` + `launchPadDismissedAt`, never the `seenTours` array —
   but the page coachmark tours (batch-detail, designer-batch-detail, client-detail, inbox, scheduling,
