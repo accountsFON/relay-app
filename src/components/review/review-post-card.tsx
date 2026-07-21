@@ -95,6 +95,11 @@ export type ReviewPostCardProps = {
    */
   mentionRoster?: MentionTarget[]
   /**
+   * Inbound focus request from the review rail: open this post's given thread
+   * popover when the nonce changes. Forwarded to the IG/FB chrome.
+   */
+  focusThread?: FeedPostProps['focusThread']
+  /**
    * AM-only (internal mode). When true, the inline "Edit copy" affordance is
    * offered; when false, it is hidden. Only relevant in mode='internal'.
    * Defaults to true so existing callers that do not pass it retain the
@@ -193,6 +198,7 @@ export function ReviewPostCard({
   onResolveThread,
   onUseAsPostImage,
   mentionRoster,
+  focusThread,
   disabled,
   locked,
   hasNewReply,
@@ -408,6 +414,7 @@ export function ReviewPostCard({
         onResolveThread={onResolveThread}
         onUseAsPostImage={onUseAsPostImage}
         mentionRoster={mentionRoster}
+        focusThread={focusThread}
         editing={isEditing}
         captionDraft={isEditing ? captionDraft : undefined}
         onCaptionDraftChange={isEditing ? setCaptionDraft : undefined}

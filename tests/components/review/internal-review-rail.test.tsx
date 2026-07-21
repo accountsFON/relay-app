@@ -33,6 +33,7 @@ const defaultProps = {
   onResolveThread: vi.fn(() => Promise.resolve()),
   onUnresolveThread: vi.fn(() => Promise.resolve()),
   onScrollToPost: vi.fn(),
+  onSelectThread: vi.fn(),
 }
 
 describe('InternalReviewRail', () => {
@@ -113,6 +114,7 @@ describe('InternalReviewRail', () => {
         onResolveThread={onResolveThread}
         onUnresolveThread={vi.fn(() => Promise.resolve())}
         onScrollToPost={vi.fn()}
+        onSelectThread={vi.fn()}
       />,
     )
     const checkbox = screen.getByTestId('internal-rail-resolve-thread-abc')
@@ -296,5 +298,30 @@ describe('InternalReviewRail', () => {
       />,
     )
     expect(screen.getByText(longLabel)).toBeInTheDocument()
+  })
+
+  it('calls onSelectThread with (threadId, postId) when a comment is clicked', () => {
+    const onSelectThread = vi.fn()
+    const rowsWithThread: InternalRailRow[] = [
+      {
+        postId: 'p9',
+        postNumber: 9,
+        thumbnailUrl: null,
+        pinStatus: 'open',
+        openCount: 1,
+        threads: [{ id: 't9', label: 'change this image', status: 'open' }],
+      },
+    ]
+    render(
+      <InternalReviewRail
+        rows={rowsWithThread}
+        selectedPostId={null}
+        onSelectPost={vi.fn()}
+        {...defaultProps}
+        onSelectThread={onSelectThread}
+      />,
+    )
+    fireEvent.click(screen.getByTestId('internal-rail-resolve-t9-label'))
+    expect(onSelectThread).toHaveBeenCalledWith('t9', 'p9')
   })
 })
