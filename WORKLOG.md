@@ -31,6 +31,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Populate completion-lap avatars with an initials fallback** (PR #356, `5961d0d`)
+  The final completion celebration (`BatchCompletionLap`) resolves each racer's avatar (uploaded photo →
+  real Clerk photo → fallback), but the fallback was a generic gray `UserCircle2` icon, so photo-less
+  participants (common on prod's Clerk DEV keys, where auto-initials avatars are excluded) rendered as
+  blank gray circles. Fallback now shows the participant's `initials()` on a brand-color circle
+  (matching the app's avatar fallbacks) — always populated + identifiable; real photos still take
+  precedence. TDD (photo-less → initials). 2584 tests, tsc + `next build` clean. No migration, no jobs.
+  Note: real profile photos appear once team members upload avatars or after the prod Clerk keys cutover.
+
 - [x] **2026-07-21 — Auto-close the pin popover when its post scrolls out of view** (PR #355, `6da5e98`)
   Follow-up to #354. The popover follows its pin; when the pin scrolled off it clamped to the viewport
   edge. Now, once you scroll BEYOND the post it originates from, it auto-dismisses: an
