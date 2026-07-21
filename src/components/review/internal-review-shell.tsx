@@ -139,11 +139,27 @@ export function InternalReviewShell({
   // --- Markup-layout scroll sync ---
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const canvasRefs = useRef<Record<string, HTMLElement | null>>({})
+  // Rail -> canvas thread focus: bumping the nonce tells the matching post to
+  // open that thread's pin popover (see ReviewPostCard `focusThread`).
+  const [focusRequest, setFocusRequest] = useState<{
+    threadId: string
+    postId: string
+    nonce: number
+  } | null>(null)
 
   const selectPost = useCallback((postId: string) => {
     setSelectedPostId(postId)
     canvasRefs.current[postId]?.scrollIntoView({ block: 'center' })
   }, [])
+
+  // Clicking a comment in the rail: scroll to its post AND open its pin.
+  const selectThread = useCallback(
+    (threadId: string, postId: string) => {
+      selectPost(postId)
+      setFocusRequest((prev) => ({ threadId, postId, nonce: (prev?.nonce ?? 0) + 1 }))
+    },
+    [selectPost],
+  )
 
   const railRows: InternalRailRow[] = useMemo(
     () =>
@@ -296,6 +312,7 @@ export function InternalReviewShell({
             onResolveThread={handleResolveThread}
             onUnresolveThread={handleUnresolveThread}
             onScrollToPost={selectPost}
+            onSelectThread={selectThread}
           />
         </div>
 
@@ -322,6 +339,11 @@ export function InternalReviewShell({
                       threads={threads}
                       platform={platform}
                       mode="internal"
+                      focusThread={
+                        focusRequest?.postId === post.id
+                          ? { threadId: focusRequest.threadId, nonce: focusRequest.nonce }
+                          : null
+                      }
                       canEditCaption={canEditCaption && !locked}
                       allowPostPins={allowPostPins}
                       canReplaceImage={canReplaceImage}

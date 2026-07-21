@@ -72,6 +72,11 @@ export type FeedPostProps = {
   // onOpenThread: optional external open-callback fired in addition to the
   // post component's internal openThreadId state (legacy hook for tests).
   onOpenThread?: (threadId: string) => void;
+  // focusThread: an INBOUND request from a parent (the review rail) to open a
+  // specific thread's pin popover. The `nonce` makes each request distinct so
+  // the same thread can be re-focused; the post opens the thread when the
+  // nonce changes (render-time reconcile), then leaves it under user control.
+  focusThread?: { threadId: string; nonce: number } | null;
 
   // Inline caption-edit (v2 client review surface only). When `editing` is
   // true the caption text inside the chrome is replaced by a textarea bound

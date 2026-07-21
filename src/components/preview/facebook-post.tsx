@@ -68,11 +68,26 @@ export function FacebookPost(props: FeedPostProps) {
     suppressInlinePopover = false,
     mentionRoster = [],
     canReplaceImage,
+    focusThread,
   } = props
   const imageReplace = usePostImageReplace({ postId: post.id })
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
+
+  // Inbound focus from the review rail: open that thread's popover on a new
+  // nonce (mirrors openThreadAt(id, null)). Render-time reconcile, same as the
+  // Instagram post — see that component for the rationale.
+  const [focusNonce, setFocusNonce] = useState<number | null>(focusThread?.nonce ?? null)
+  if (focusThread && focusThread.nonce !== focusNonce) {
+    setFocusNonce(focusThread.nonce)
+    if (!suppressInlinePopover) {
+      setOpenThreadId(focusThread.threadId)
+      setPopoverAnchor(null)
+    }
+    // NB: no onOpenThread here — see the Instagram post for why (no render-time
+    // parent callback).
+  }
   const [draftPin, setDraftPin] = useState<DraftPin | null>(null)
   const [naturalAspectRatio, setNaturalAspectRatio] = useState<number | null>(null)
   // `view original / back to your edit` peek toggle when captionOverride is set.

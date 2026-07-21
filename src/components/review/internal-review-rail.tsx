@@ -30,6 +30,8 @@ export type InternalReviewRailProps = {
   onResolveThread: (threadId: string) => Promise<void>
   onUnresolveThread: (threadId: string) => Promise<void>
   onScrollToPost: (postId: string) => void
+  /** Clicking a comment (not its checkbox) opens that pin on the canvas. */
+  onSelectThread: (threadId: string, postId: string) => void
 }
 
 export function InternalReviewRail({
@@ -39,6 +41,7 @@ export function InternalReviewRail({
   onResolveThread,
   onUnresolveThread,
   onScrollToPost,
+  onSelectThread,
 }: InternalReviewRailProps) {
   const [filterOn, setFilterOn] = useState(false)
 
@@ -110,6 +113,7 @@ export function InternalReviewRail({
                       resolved={t.status === 'resolved'}
                       onResolve={() => onResolveThread(t.id)}
                       onUnresolve={() => onUnresolveThread(t.id)}
+                      onSelect={() => onSelectThread(t.id, row.postId)}
                       disabled={false}
                       testId={`internal-rail-resolve-${t.id}`}
                     />

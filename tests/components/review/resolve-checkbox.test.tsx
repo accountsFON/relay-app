@@ -49,4 +49,63 @@ describe('ResolveCheckbox', () => {
     )
     expect(screen.getByTestId('cb-4').getAttribute('aria-checked')).toBe('true')
   })
+
+  // ---- onSelect: clicking the comment row opens the pin (rail -> canvas) ----
+
+  it('calls onSelect when the comment row is clicked', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    render(
+      <ResolveCheckbox
+        label="change this image"
+        resolved={false}
+        onResolve={vi.fn()}
+        onUnresolve={vi.fn()}
+        onSelect={onSelect}
+        testId="cb-5"
+      />,
+    )
+    await user.click(screen.getByTestId('cb-5-label'))
+    expect(onSelect).toHaveBeenCalledOnce()
+  })
+
+  it('clicking the checkbox resolves WITHOUT also firing onSelect (siblings, no cross-fire)', async () => {
+    const user = userEvent.setup()
+    const onResolve = vi.fn().mockResolvedValue(undefined)
+    const onSelect = vi.fn()
+    render(
+      <ResolveCheckbox
+        label="change this image"
+        resolved={false}
+        onResolve={onResolve}
+        onUnresolve={vi.fn()}
+        onSelect={onSelect}
+        testId="cb-6"
+      />,
+    )
+    await user.click(screen.getByTestId('cb-6'))
+    expect(onResolve).toHaveBeenCalledOnce()
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('keyboard-activating the checkbox resolves WITHOUT firing onSelect', async () => {
+    const user = userEvent.setup()
+    const onResolve = vi.fn().mockResolvedValue(undefined)
+    const onSelect = vi.fn()
+    render(
+      <ResolveCheckbox
+        label="change this image"
+        resolved={false}
+        onResolve={onResolve}
+        onUnresolve={vi.fn()}
+        onSelect={onSelect}
+        testId="cb-7"
+      />,
+    )
+    const checkbox = screen.getByTestId('cb-7')
+    checkbox.focus()
+    await user.keyboard(' ')
+    expect(onResolve).toHaveBeenCalledOnce()
+    expect(onSelect).not.toHaveBeenCalled()
+  })
 })

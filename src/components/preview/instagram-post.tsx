@@ -84,11 +84,28 @@ export function InstagramFeedPost({
   suppressInlinePopover = false,
   mentionRoster = [],
   canReplaceImage,
+  focusThread,
 }: FeedPostProps) {
   const imageReplace = usePostImageReplace({ postId: post.id })
   const [expanded, setExpanded] = useState(false)
   const [openThreadId, setOpenThreadId] = useState<string | null>(null)
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null)
+
+  // Inbound focus from the review rail: when the parent bumps the nonce, open
+  // that thread's popover (centered, null anchor) — mirrors openThreadAt(id,
+  // null). Render-time reconcile (the "adjust state when a prop changes"
+  // pattern, like ResolveCheckbox's `seeded`), so it never re-opens after the
+  // user closes it unless a fresh request arrives. Avoids a set-state effect.
+  const [focusNonce, setFocusNonce] = useState<number | null>(focusThread?.nonce ?? null)
+  if (focusThread && focusThread.nonce !== focusNonce) {
+    setFocusNonce(focusThread.nonce)
+    if (!suppressInlinePopover) {
+      setOpenThreadId(focusThread.threadId)
+      setPopoverAnchor(null)
+    }
+    // NB: no onOpenThread here — firing a parent callback during render can
+    // warn/throw; opening the local popover is all the rail focus needs.
+  }
   const [draftPin, setDraftPin] = useState<DraftPin | null>(null)
   const [naturalAspectRatio, setNaturalAspectRatio] = useState<number | null>(null)
   // Local toggle for `view original / back to your edit` when captionOverride

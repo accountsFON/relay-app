@@ -345,6 +345,52 @@ describe('InstagramFeedPost', () => {
     expect(popover.getAttribute('data-thread-id')).toBe('thread-xyz')
   })
 
+  it('opens the PinPopover when focusThread targets a thread (rail -> canvas)', () => {
+    const props = baseProps({
+      post: {
+        id: 'p',
+        caption: 'Image with a pin.',
+        hashtags: [],
+        mediaUrl: 'https://example.com/img.jpg',
+      },
+      threads: [
+        {
+          id: 'thread-focus',
+          status: 'open',
+          pin: { kind: 'image', x: 25, y: 75 },
+          firstComment: {
+            id: 'c-focus',
+            author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+            body: 'Tighten the crop.',
+            createdAt: new Date('2026-05-16T12:00:00Z'),
+          },
+          comments: [
+            {
+              id: 'c-focus',
+              author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+              body: 'Tighten the crop.',
+              createdAt: new Date('2026-05-16T12:00:00Z'),
+            },
+          ],
+          commentCount: 1,
+        },
+      ],
+      onComment: async () => {},
+      onResolveThread: async () => {},
+    })
+
+    // Mounts with no focus request -> no popover.
+    const { rerender } = render(<InstagramFeedPost {...props} />)
+    expect(screen.queryByTestId('pin-popover')).not.toBeInTheDocument()
+
+    // A focus request from the rail opens that thread's popover.
+    rerender(
+      <InstagramFeedPost {...props} focusThread={{ threadId: 'thread-focus', nonce: 1 }} />,
+    )
+    const popover = screen.getByTestId('pin-popover')
+    expect(popover.getAttribute('data-thread-id')).toBe('thread-focus')
+  })
+
   describe('suppressInlinePopover', () => {
     const imageThread = {
       id: 'thread-img',
