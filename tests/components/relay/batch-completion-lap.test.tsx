@@ -36,6 +36,18 @@ describe('BatchCompletionLap', () => {
     expect(screen.getByTitle('Riley')).toBeInTheDocument()
   })
 
+  it('shows the participant initials in the fallback avatar (not a blank icon)', () => {
+    render(
+      <BatchCompletionLap
+        batchId="batch-1"
+        participants={[morgan, dakota, client]}
+      />,
+    )
+    // Photo-less participants render their initials so the lap is never blank.
+    expect(screen.getByText('MO')).toBeInTheDocument() // Morgan
+    expect(screen.getByText('RI')).toBeInTheDocument() // Riley
+  })
+
   it('does not render twice — localStorage flag suppresses repeat visits', () => {
     const { unmount } = render(
       <BatchCompletionLap batchId="batch-1" participants={[morgan]} />,
