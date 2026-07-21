@@ -705,10 +705,10 @@ describe('PinPopover follows its image pin on scroll', () => {
     const pop = screen.getByTestId('pin-popover')
     const topBefore = pop.style.top
 
-    // The pin badge scrolls up ~300px; a scroll event should re-anchor the
-    // popover to its new live position rather than leaving it where it opened.
+    // The pin badge scrolls up ~300px. The rAF tracking loop re-measures the
+    // live badge each frame, so the popover re-anchors to its new position
+    // rather than staying where it opened — no scroll event needed.
     badgeRect = rect(300, 100)
-    fireEvent.scroll(window)
 
     await waitFor(() => {
       expect(pop.style.top).not.toBe(topBefore)
