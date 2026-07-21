@@ -85,7 +85,14 @@ export function RequestChangesButton({
         </p>
       )}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        {/*
+          Widen past the shared DialogContent default (sm:max-w-sm = 384px):
+          the two long footer buttons ("No, go back and add notes" + "Yes,
+          request changes") overflow it. A RESPONSIVE sm:max-w-* override
+          widens desktop while twMerge keeps the mobile max-w-[calc(100%-2rem)]
+          margin (matches the #340/#341 gate-modal fix).
+        */}
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Request changes?</DialogTitle>
             <DialogDescription>
