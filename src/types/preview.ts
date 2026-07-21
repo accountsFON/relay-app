@@ -76,7 +76,14 @@ export type FeedPostProps = {
   // specific thread's pin popover. The `nonce` makes each request distinct so
   // the same thread can be re-focused; the post opens the thread when the
   // nonce changes (render-time reconcile), then leaves it under user control.
-  focusThread?: { threadId: string; nonce: number } | null;
+  // `anchor` is the pin badge's viewport position (measured by the rail after
+  // scroll) so the popover opens AT the pin on the image; null -> centered
+  // (e.g. caption/post-level pins that have no image badge).
+  focusThread?: {
+    threadId: string
+    nonce: number
+    anchor?: { x: number; y: number } | null
+  } | null;
 
   // Inline caption-edit (v2 client review surface only). When `editing` is
   // true the caption text inside the chrome is replaced by a textarea bound

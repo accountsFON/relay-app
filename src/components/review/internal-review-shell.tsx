@@ -140,11 +140,13 @@ export function InternalReviewShell({
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const canvasRefs = useRef<Record<string, HTMLElement | null>>({})
   // Rail -> canvas thread focus: bumping the nonce tells the matching post to
-  // open that thread's pin popover (see ReviewPostCard `focusThread`).
+  // open that thread's pin popover (see ReviewPostCard `focusThread`). `anchor`
+  // is the pin badge's viewport position so the popover opens AT the pin.
   const [focusRequest, setFocusRequest] = useState<{
     threadId: string
     postId: string
     nonce: number
+    anchor: { x: number; y: number } | null
   } | null>(null)
 
   const selectPost = useCallback((postId: string) => {
@@ -152,11 +154,31 @@ export function InternalReviewShell({
     canvasRefs.current[postId]?.scrollIntoView({ block: 'center' })
   }, [])
 
-  // Clicking a comment in the rail: scroll to its post AND open its pin.
+  // Clicking a comment in the rail: scroll to its post AND open its pin. The
+  // scroll above is instant, so on the next frame we measure the pin badge's
+  // post-scroll viewport position and pass it as the popover anchor (image
+  // pins only; caption/post-level pins have no badge -> null -> centered).
   const selectThread = useCallback(
     (threadId: string, postId: string) => {
       selectPost(postId)
-      setFocusRequest((prev) => ({ threadId, postId, nonce: (prev?.nonce ?? 0) + 1 }))
+      requestAnimationFrame(() => {
+        const el =
+          typeof document !== 'undefined'
+            ? document.querySelector(
+                `[data-testid="markup-overlay-pin"][data-thread-id="${threadId}"]`,
+              )
+            : null
+        const rect = el?.getBoundingClientRect() ?? null
+        const anchor = rect
+          ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+          : null
+        setFocusRequest((prev) => ({
+          threadId,
+          postId,
+          nonce: (prev?.nonce ?? 0) + 1,
+          anchor,
+        }))
+      })
     },
     [selectPost],
   )
@@ -341,7 +363,11 @@ export function InternalReviewShell({
                       mode="internal"
                       focusThread={
                         focusRequest?.postId === post.id
-                          ? { threadId: focusRequest.threadId, nonce: focusRequest.nonce }
+                          ? {
+                              threadId: focusRequest.threadId,
+                              nonce: focusRequest.nonce,
+                              anchor: focusRequest.anchor,
+                            }
                           : null
                       }
                       canEditCaption={canEditCaption && !locked}
