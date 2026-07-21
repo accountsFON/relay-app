@@ -31,6 +31,19 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Clicking a rail comment opens its pin on the internal review canvas** (PR #348, `1d814c0`)
+  On `/preview`, clicking a feedback comment in the left rail now scrolls the canvas to its post AND
+  opens that pin's popover (was post-level scroll only). Rail comment click → shell `selectThread`
+  (scroll + bump a `focusRequest {threadId,postId,nonce}`) → per-post `focusThread` → IG/FB post opens
+  the thread's `PinPopover` via a render-time reconcile (mirrors `openThreadAt(id,null)`, centered
+  popover; works for image/caption/post pins). `ResolveCheckbox` gained an optional `onSelect`: the
+  comment becomes its own button, a SIBLING of the resolve checkbox — resolving and opening are two
+  independent, keyboard-accessible controls (no nested-interactive, no keydown cross-fire). Adversarial
+  review CHANGES_REQUESTED → all findings fixed (keyboard Space/Enter on the checkbox no longer opens
+  the pin; no button-in-button; dropped render-time `onOpenThread`). Cross-surface safe (focusThread
+  undefined → reconcile never fires; onSelect absent → plain text). TDD mouse + keyboard. 2580 unit
+  tests, tsc + `next build` clean. No migration, no jobs change.
+
 - [x] **2026-07-21 — Widen the "Request changes?" modal further (md → lg)** (PR #347, `4c60274`)
   Follow-up to #346: `sm:max-w-md` (448px) still left the two long buttons edge-to-edge with a slight
   overrun. Bumped to `sm:max-w-lg` (512px) for breathing room (still a mobile-safe responsive override).
