@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { PinPopover, type PinPopoverThread } from '@/components/preview/pin-popover'
 
 describe('PinPopover comment image rendering', () => {
@@ -717,5 +718,103 @@ describe('PinPopover follows its image pin when a scroll parent scrolls', () => 
     await waitFor(() => {
       expect(pop.style.top).not.toBe(topBefore)
     })
+  })
+})
+
+describe('PinPopover auto-closes when its post scrolls out of view', () => {
+  let ioCallback: IntersectionObserverCallback | null = null
+  const observe = vi.fn()
+  const disconnect = vi.fn()
+
+  afterEach(() => {
+    cleanup()
+    ioCallback = null
+    observe.mockClear()
+    disconnect.mockClear()
+    vi.unstubAllGlobals()
+    document.querySelectorAll('[data-scroll-parent-fixture]').forEach((n) => n.remove())
+  })
+
+  function mockIntersectionObserver() {
+    vi.stubGlobal(
+      'IntersectionObserver',
+      vi.fn(function (this: unknown, cb: IntersectionObserverCallback) {
+        ioCallback = cb
+        return { observe, disconnect, unobserve: vi.fn(), takeRecords: vi.fn() }
+      }),
+    )
+  }
+
+  function mountWithPostFixture(threadId: string) {
+    const post = document.createElement('div')
+    post.setAttribute('data-scroll-parent-fixture', '1')
+    post.setAttribute('data-post-id', 'post-x')
+    const badge = document.createElement('div')
+    badge.setAttribute('data-testid', 'markup-overlay-pin')
+    badge.setAttribute('data-thread-id', threadId)
+    post.appendChild(badge)
+    document.body.appendChild(post)
+    return post
+  }
+
+  const thread = (id: string): PinPopoverThread => ({
+    id,
+    pin: { kind: 'image', x: 30, y: 40 },
+    status: 'open',
+    firstComment: {
+      id: 'c1',
+      author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+      body: 'fix this',
+      createdAt: new Date('2026-06-01T10:00:00Z'),
+    },
+    comments: [
+      {
+        id: 'c1',
+        author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+        body: 'fix this',
+        createdAt: new Date('2026-06-01T10:00:00Z'),
+      },
+    ],
+    commentCount: 1,
+  })
+
+  it('calls onClose when the post leaves the viewport (no draft)', () => {
+    mockIntersectionObserver()
+    const post = mountWithPostFixture('t-close')
+    const onClose = vi.fn()
+    render(
+      <PinPopover
+        thread={thread('t-close')}
+        anchor={{ x: 10, y: 10 }}
+        mode="internal"
+        onComment={async () => {}}
+        onClose={onClose}
+      />,
+    )
+    expect(observe).toHaveBeenCalledWith(post)
+
+    // Simulate the post fully scrolling out of view.
+    ioCallback?.([{ isIntersecting: false } as IntersectionObserverEntry], {} as IntersectionObserver)
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('does NOT auto-close while an unsaved reply draft exists', async () => {
+    const user = userEvent.setup()
+    mockIntersectionObserver()
+    mountWithPostFixture('t-draft')
+    const onClose = vi.fn()
+    render(
+      <PinPopover
+        thread={thread('t-draft')}
+        anchor={{ x: 10, y: 10 }}
+        mode="internal"
+        onComment={async () => {}}
+        onClose={onClose}
+      />,
+    )
+    await user.type(screen.getByTestId('pin-popover-input'), 'wait, my reply')
+
+    ioCallback?.([{ isIntersecting: false } as IntersectionObserverEntry], {} as IntersectionObserver)
+    expect(onClose).not.toHaveBeenCalled()
   })
 })
