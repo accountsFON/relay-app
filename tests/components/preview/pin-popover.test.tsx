@@ -639,3 +639,73 @@ describe('PinPopover Cmd/Ctrl+Enter submits the reply', () => {
     expect(onComment).not.toHaveBeenCalled()
   })
 })
+
+describe('PinPopover follows its image pin on scroll', () => {
+  afterEach(() => {
+    cleanup()
+    document.querySelectorAll('[data-testid="markup-overlay-pin"]').forEach((n) => n.remove())
+  })
+
+  function rect(left: number, top: number): DOMRect {
+    return {
+      left,
+      top,
+      width: 20,
+      height: 20,
+      right: left + 20,
+      bottom: top + 20,
+      x: left,
+      y: top,
+      toJSON() {
+        return {}
+      },
+    } as DOMRect
+  }
+
+  it('repositions to track the live pin badge when the user scrolls', async () => {
+    const threadId = 'thread-scroll'
+    const badge = document.createElement('div')
+    badge.setAttribute('data-testid', 'markup-overlay-pin')
+    badge.setAttribute('data-thread-id', threadId)
+    let badgeRect = rect(300, 400)
+    badge.getBoundingClientRect = () => badgeRect
+    document.body.appendChild(badge)
+
+    const thread: PinPopoverThread = {
+      id: threadId,
+      pin: { kind: 'image', x: 30, y: 40 },
+      status: 'open',
+      firstComment: {
+        id: 'c1',
+        author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+        body: 'fix this',
+        createdAt: new Date('2026-06-01T10:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c1',
+          author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+          body: 'fix this',
+          createdAt: new Date('2026-06-01T10:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    render(
+      <PinPopover thread={thread} anchor={{ x: 310, y: 410 }} mode="internal" onClose={() => {}} />,
+    )
+
+    const pop = screen.getByTestId('pin-popover')
+    const topBefore = pop.style.top
+
+    // The pin badge scrolls up ~300px; a scroll event should re-anchor the
+    // popover to its new live position rather than leaving it where it opened.
+    badgeRect = rect(300, 100)
+    fireEvent.scroll(window)
+
+    await waitFor(() => {
+      expect(pop.style.top).not.toBe(topBefore)
+    })
+  })
+})
