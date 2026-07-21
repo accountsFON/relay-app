@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Auto-close the pin popover when its post scrolls out of view** (PR #355, `6da5e98`)
+  Follow-up to #354. The popover follows its pin; when the pin scrolled off it clamped to the viewport
+  edge. Now, once you scroll BEYOND the post it originates from, it auto-dismisses: an
+  `IntersectionObserver` on the post (`pinEl.closest('[data-post-id]')`) fires when the post fully leaves
+  the viewport and calls `onClose`. Image pins only. Guarded by a draft ref so an in-progress reply is
+  never silently discarded — a drafting user keeps the popover open. TDD (post-leaves → onClose; draft →
+  stays). 2583 tests, tsc + `next build` clean. No migration, no jobs.
+
 - [x] **2026-07-21 — Pin popover follows the pin via scroll-parent listeners** (PR #354, `95ae760`)
   Third + correct take after #351/#352 were reverted. Relay's review canvas scrolls inside a NESTED
   `main.overflow-y-auto` container, not the window — #351 listened only on window (nested scroll never
