@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Fix: pin popover actually tracks its pin, via rAF polling** (PR #352, `5918161`)
+  #351's window `scroll`/`resize` listeners did NOT work: Relay's review surfaces scroll inside a nested
+  `main.overflow-y-auto` container whose scroll events don't reach a window listener (verified on prod —
+  popover stayed put while the pin scrolled away). Replaced with an animation-frame polling loop (the
+  Floating-UI `autoUpdate` pattern): while open, re-measure the live pin badge each frame and reposition
+  only when it moves, so the popover stays glued to the pin regardless of what scrolls. Image pins only;
+  loop torn down on close. 2581 tests, tsc + `next build` clean. No migration, no jobs.
+
 - [x] **2026-07-21 — Pin popover stays glued to its pin while scrolling** (PR #351, `1c09e92`)
   The `PinPopover` is `position:fixed` at its open-time viewport coordinate, so scrolling left it behind
   while the pin moved with the content. It now re-measures the live pin badge on `scroll` (capture-phase,
