@@ -48,7 +48,7 @@ describe('RequestChangesButton', () => {
     )
     await user.click(screen.getByTestId('request-changes-button'))
     const dialog = await screen.findByRole('dialog')
-    expect(dialog).toHaveClass('sm:max-w-md')
+    expect(dialog).toHaveClass('sm:max-w-lg')
   })
 
   it('shows designer name in modal body when designerName is passed', async () => {
