@@ -184,6 +184,40 @@ export function PinPopover({
     }
   }, [isImagePin, pinThreadId])
 
+  // Auto-close when the pin's post is scrolled out of view: once you scroll
+  // beyond the post the popover originates from, dismiss it (rather than
+  // clamping it to the viewport edge). An IntersectionObserver on the post
+  // fires when it fully leaves the viewport (through the nested scroll
+  // container's clip). Guarded by hasDraftRef so an in-progress reply is never
+  // silently discarded — a drafting user keeps the popover until they act.
+  const hasDraftRef = useRef(false)
+  useEffect(() => {
+    hasDraftRef.current = body.trim().length > 0 || attachedImage !== null
+  }, [body, attachedImage])
+  useEffect(() => {
+    if (
+      !isImagePin ||
+      !onClose ||
+      typeof document === 'undefined' ||
+      typeof IntersectionObserver === 'undefined'
+    )
+      return
+    const pinEl = document.querySelector(
+      `[data-testid="markup-overlay-pin"][data-thread-id="${pinThreadId}"]`,
+    )
+    if (!pinEl) return
+    const postEl = pinEl.closest('[data-post-id]') ?? pinEl
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (entry && !entry.isIntersecting && !hasDraftRef.current) onClose()
+      },
+      { threshold: 0 },
+    )
+    observer.observe(postEl)
+    return () => observer.disconnect()
+  }, [isImagePin, pinThreadId, onClose])
+
   // Warn before navigating away while an unsaved reply draft exists.
   useUnsavedChanges(body.trim().length > 0 || attachedImage !== null)
 
