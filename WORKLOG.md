@@ -31,6 +31,21 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — REVERTED pin-popover scroll tracking (#351 + #352)** (PR #353, `3ea4d61`)
+  Both scroll-follow attempts failed to work on prod (sampled measurements: the popover stayed at its
+  open-time position while the pin scrolled away in the nested `main.overflow-y-auto` container), and
+  #352's rAF polling loop coincided with a renderer freeze in testing — a real risk for every user who
+  opens a pin popover, including external clients on the review surface. Reverted to the stable #350
+  state (popover opens anchored at the pin; no scroll-follow). The rail→pin open (#348) and open-at-pin
+  anchoring (#349/#350) are UNAFFECTED. **Open follow-up: "popover follows the pin on scroll" is still
+  wanted** — needs a different approach (likely rendering the popover inside the scroll container so it
+  moves with CSS, or resolving why the rAF loop didn't take on prod). 2580 tests, tsc + `next build`
+  clean.
+
+- [ ] **(follow-up) Pin popover should stick to the pin on scroll** — reverted #351/#352 didn't work on
+  the nested-scroll-container review surface + risked a freeze. Revisit with the popover rendered inside
+  the scroll container (CSS-native follow) rather than fixed-position + JS tracking.
+
 - [x] **2026-07-21 — Fix: pin popover actually tracks its pin, via rAF polling** (PR #352, `5918161`)
   #351's window `scroll`/`resize` listeners did NOT work: Relay's review surfaces scroll inside a nested
   `main.overflow-y-auto` container whose scroll events don't reach a window listener (verified on prod —
