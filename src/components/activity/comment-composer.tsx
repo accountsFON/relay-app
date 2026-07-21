@@ -16,6 +16,7 @@ import { useState, useRef, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SubmitCombo } from '@/components/ui/submit-combo'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { postCommentAction } from '@/app/(app)/clients/[id]/activity/actions'
@@ -213,7 +214,7 @@ export function CommentComposer({
 
       <div className="flex items-center justify-between">
         <p className="text-[11px] text-muted-foreground">
-          ⌘↵ to send · @ to mention
+          <SubmitCombo /> to send · @ to mention
         </p>
         <div className="flex items-center gap-2">
           {error && <span className="text-[11px] text-destructive">{error}</span>}

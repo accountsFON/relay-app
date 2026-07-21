@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { cn } from '@/lib/utils'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
+import { SubmitCombo } from '@/components/ui/submit-combo'
 import {
   CommentImageAttachButton,
   type AttachedImage,
@@ -195,6 +196,9 @@ export function PinDraftComposer({
             disabled={submitting}
           />
         ) : null}
+        <p className="text-[11px] text-muted-foreground">
+          <SubmitCombo /> to send
+        </p>
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
