@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Widen the "Request changes?" modal so its buttons don't overflow** (PR #346, `d48a866`)
+  The confirmation modal used the shared `DialogContent` default (`sm:max-w-sm` = 384px), too narrow for
+  its two long footer buttons ("No, go back and add notes" + "Yes, request changes"), which overflowed the
+  box. Widened to `sm:max-w-md` via a responsive override (twMerge swaps the default, keeps the mobile
+  `max-w-[calc(100%-2rem)]` margin) — same mobile-safe pattern as the #340/#341 gate-modal fixes. TDD
+  (asserts the dialog carries `sm:max-w-md`). Pure CSS. 2575 unit tests, tsc + lint clean. No migration,
+  no jobs change.
+
 - [x] **2026-07-21 — Platform-aware "⌘↵ / Ctrl+↵ to send" hint on comment composers** (PR #345, `45d837b`)
   The pin comment composers had the Cmd/Ctrl+Enter submit shortcut wired (PR #327) but no visible hint.
   Added a muted `⌘↵ to send` affordance to all three client-review composers (new-pin `PinDraftComposer`,
