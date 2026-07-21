@@ -132,6 +132,58 @@ export function PinPopover({
     setPosition(computePosition(anchor ?? null, height))
   }, [anchor])
 
+  // Keep the popover glued to its pin while the content scrolls. The popover is
+  // position:fixed (it must escape the post card's rounded overflow-hidden), so
+  // it's positioned by viewport coordinate and has to be re-anchored to the pin
+  // as the page scrolls. Relay's review canvas scrolls inside a NESTED
+  // container (e.g. main.overflow-y-auto), not the window, so we attach a
+  // reposition to the pin's actual scrollable ancestors (Popper's "scroll
+  // parents" approach) plus window+resize — NOT a perpetual rAF loop. Image
+  // pins only (they have a badge to track); other kinds keep their static
+  // anchor. rAF-throttled so a fast scroll does at most one measure per frame.
+  const pinThreadId = thread.id
+  const isImagePin = thread.pin.kind === 'image'
+  useEffect(() => {
+    if (!isImagePin || typeof document === 'undefined') return
+    const selector = `[data-testid="markup-overlay-pin"][data-thread-id="${pinThreadId}"]`
+    const pinEl = document.querySelector(selector)
+    if (!pinEl) return
+
+    const targets: Array<Window | Element> = [window]
+    for (let node = pinEl.parentElement; node; node = node.parentElement) {
+      const overflowY = getComputedStyle(node).overflowY
+      if (overflowY === 'auto' || overflowY === 'scroll') targets.push(node)
+    }
+
+    let raf = 0
+    function reposition() {
+      const rect = document.querySelector(selector)?.getBoundingClientRect()
+      if (!rect) return
+      const height =
+        popoverRef.current?.getBoundingClientRect().height ?? POPOVER_HEIGHT_ESTIMATE
+      setPosition(
+        computePosition(
+          { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+          height,
+        ),
+      )
+    }
+    function schedule() {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        reposition()
+      })
+    }
+    for (const t of targets) t.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      if (raf) cancelAnimationFrame(raf)
+      for (const t of targets) t.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+    }
+  }, [isImagePin, pinThreadId])
+
   // Warn before navigating away while an unsaved reply draft exists.
   useUnsavedChanges(body.trim().length > 0 || attachedImage !== null)
 
