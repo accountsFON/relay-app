@@ -83,7 +83,8 @@ export function FacebookPost(props: FeedPostProps) {
     setFocusNonce(focusThread.nonce)
     if (!suppressInlinePopover) {
       setOpenThreadId(focusThread.threadId)
-      setPopoverAnchor(null)
+      // Anchor at the pin badge (rail measured it post-scroll); null -> centered.
+      setPopoverAnchor(focusThread.anchor ?? null)
     }
     // NB: no onOpenThread here — see the Instagram post for why (no render-time
     // parent callback).
