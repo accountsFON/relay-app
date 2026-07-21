@@ -37,6 +37,20 @@ describe('RequestChangesButton', () => {
     expect(onClick).not.toHaveBeenCalled()
   })
 
+  it('widens the dialog past the default so the two long action buttons do not overflow', async () => {
+    // The shared DialogContent defaults to sm:max-w-sm (384px); the two long
+    // buttons ("No, go back and add notes" + "Yes, request changes") overflow
+    // it. A responsive sm:max-w-* override widens it mobile-safely (matches the
+    // #340/#341 gate-modal fix).
+    const user = userEvent.setup()
+    render(
+      <RequestChangesButton onClick={vi.fn().mockResolvedValue(undefined)} designerName="Mollie Huebner" />,
+    )
+    await user.click(screen.getByTestId('request-changes-button'))
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveClass('sm:max-w-md')
+  })
+
   it('shows designer name in modal body when designerName is passed', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn().mockResolvedValue(undefined)
