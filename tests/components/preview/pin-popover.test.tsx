@@ -693,7 +693,13 @@ describe('PinPopover follows its image pin on scroll', () => {
     }
 
     render(
-      <PinPopover thread={thread} anchor={{ x: 310, y: 410 }} mode="internal" onClose={() => {}} />,
+      <PinPopover
+        thread={thread}
+        anchor={{ x: 310, y: 410 }}
+        mode="internal"
+        onComment={async () => {}}
+        onClose={() => {}}
+      />,
     )
 
     const pop = screen.getByTestId('pin-popover')
