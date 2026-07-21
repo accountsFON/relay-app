@@ -639,3 +639,83 @@ describe('PinPopover Cmd/Ctrl+Enter submits the reply', () => {
     expect(onComment).not.toHaveBeenCalled()
   })
 })
+
+describe('PinPopover follows its image pin when a scroll parent scrolls', () => {
+  afterEach(() => {
+    cleanup()
+    document.querySelectorAll('[data-scroll-parent-fixture]').forEach((n) => n.remove())
+  })
+
+  function rect(left: number, top: number): DOMRect {
+    return {
+      left,
+      top,
+      width: 20,
+      height: 20,
+      right: left + 20,
+      bottom: top + 20,
+      x: left,
+      y: top,
+      toJSON() {
+        return {}
+      },
+    } as DOMRect
+  }
+
+  it('re-anchors to the live badge on a scroll-parent scroll event', async () => {
+    const threadId = 'thread-scroll'
+    // A scrollable ancestor holding the pin badge (mirrors main.overflow-y-auto).
+    const scroller = document.createElement('div')
+    scroller.setAttribute('data-scroll-parent-fixture', '1')
+    scroller.style.overflowY = 'auto'
+    const badge = document.createElement('div')
+    badge.setAttribute('data-testid', 'markup-overlay-pin')
+    badge.setAttribute('data-thread-id', threadId)
+    let badgeRect = rect(300, 400)
+    badge.getBoundingClientRect = () => badgeRect
+    scroller.appendChild(badge)
+    document.body.appendChild(scroller)
+
+    const thread: PinPopoverThread = {
+      id: threadId,
+      pin: { kind: 'image', x: 30, y: 40 },
+      status: 'open',
+      firstComment: {
+        id: 'c1',
+        author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+        body: 'fix this',
+        createdAt: new Date('2026-06-01T10:00:00Z'),
+      },
+      comments: [
+        {
+          id: 'c1',
+          author: { kind: 'am', userId: 'u1', name: 'Mollie' },
+          body: 'fix this',
+          createdAt: new Date('2026-06-01T10:00:00Z'),
+        },
+      ],
+      commentCount: 1,
+    }
+
+    render(
+      <PinPopover
+        thread={thread}
+        anchor={{ x: 310, y: 410 }}
+        mode="internal"
+        onComment={async () => {}}
+        onClose={() => {}}
+      />,
+    )
+
+    const pop = screen.getByTestId('pin-popover')
+    const topBefore = pop.style.top
+
+    // Badge scrolls up; a scroll event on its scroll PARENT re-anchors it.
+    badgeRect = rect(300, 100)
+    fireEvent.scroll(scroller)
+
+    await waitFor(() => {
+      expect(pop.style.top).not.toBe(topBefore)
+    })
+  })
+})
