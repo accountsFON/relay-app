@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Fix: rail comment click again opens the pin popover (regression from #349)** (PR #350, `fcad6f6`)
+  #349 wrapped the shell's `setFocusRequest` in `requestAnimationFrame` to measure the pin badge
+  post-scroll; that deferral broke the OPEN entirely (popover never appeared on a rail click — caught on
+  prod). The open must fire in the React click handler (as in #348). Since `selectPost` scrolls
+  instantly, we read the badge's post-scroll `getBoundingClientRect` SYNCHRONOUSLY right after and set
+  the anchor in the same handler — restores the open AND keeps the pin-anchored popover. 2580 tests, tsc
+  + `next build` clean.
+
 - [x] **2026-07-21 — Open the rail-focused pin popover AT the pin (not centered)** (PR #349, `7fc99eb`)
   Follow-up to #348. Opening a pin from the rail used a null anchor (centered popover). Now the rail
   measures the pin badge's post-scroll viewport position (`internal-review-shell` scroll is instant;
