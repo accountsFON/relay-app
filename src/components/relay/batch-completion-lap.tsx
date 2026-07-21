@@ -9,7 +9,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Trophy, UserCircle2, X } from 'lucide-react'
+import { Trophy, X } from 'lucide-react'
+import { initials } from '@/lib/initials'
 
 export interface CelebrationParticipant {
   id: string
@@ -145,12 +146,15 @@ function Avatar({ participant }: { participant: CelebrationParticipant }) {
       />
     )
   }
+  // No photo -> show the participant's initials (matches the app's avatar
+  // fallbacks) so every racer is populated and identifiable, never a blank icon.
   return (
     <div
       title={participant.name}
-      className="flex size-12 items-center justify-center rounded-full border-2 border-background bg-neutral-100 text-muted-foreground shadow-md"
+      aria-label={participant.name}
+      className="flex size-12 items-center justify-center rounded-full border-2 border-background bg-primary text-sm font-semibold text-primary-foreground shadow-md"
     >
-      <UserCircle2 className="size-7" />
+      {initials(participant.name)}
     </div>
   )
 }
