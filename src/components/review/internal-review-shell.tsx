@@ -154,31 +154,32 @@ export function InternalReviewShell({
     canvasRefs.current[postId]?.scrollIntoView({ block: 'center' })
   }, [])
 
-  // Clicking a comment in the rail: scroll to its post AND open its pin. The
-  // scroll above is instant, so on the next frame we measure the pin badge's
-  // post-scroll viewport position and pass it as the popover anchor (image
-  // pins only; caption/post-level pins have no badge -> null -> centered).
+  // Clicking a comment in the rail: scroll to its post AND open its pin.
+  // `selectPost` scrolls INSTANTLY (no smooth behavior), so we can read the pin
+  // badge's post-scroll viewport position synchronously right after and pass it
+  // as the popover anchor — image pins only; caption/post-level pins have no
+  // badge -> null -> centered. Done synchronously inside the click handler (a
+  // deferred setFocusRequest via rAF did NOT open the popover — the open must
+  // happen in the React event handler).
   const selectThread = useCallback(
     (threadId: string, postId: string) => {
       selectPost(postId)
-      requestAnimationFrame(() => {
-        const el =
-          typeof document !== 'undefined'
-            ? document.querySelector(
-                `[data-testid="markup-overlay-pin"][data-thread-id="${threadId}"]`,
-              )
-            : null
-        const rect = el?.getBoundingClientRect() ?? null
-        const anchor = rect
-          ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      const el =
+        typeof document !== 'undefined'
+          ? document.querySelector(
+              `[data-testid="markup-overlay-pin"][data-thread-id="${threadId}"]`,
+            )
           : null
-        setFocusRequest((prev) => ({
-          threadId,
-          postId,
-          nonce: (prev?.nonce ?? 0) + 1,
-          anchor,
-        }))
-      })
+      const rect = el?.getBoundingClientRect() ?? null
+      const anchor = rect
+        ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+        : null
+      setFocusRequest((prev) => ({
+        threadId,
+        postId,
+        nonce: (prev?.nonce ?? 0) + 1,
+        anchor,
+      }))
     },
     [selectPost],
   )
