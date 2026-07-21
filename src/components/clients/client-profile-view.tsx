@@ -7,6 +7,7 @@ import type { Client } from '@prisma/client'
 import { ExternalLink, Link as LinkIcon, Pencil, Check, X } from 'lucide-react'
 import { PageSection } from '@/components/ui/page-section'
 import { Button } from '@/components/ui/button'
+import { SubmitCombo } from '@/components/ui/submit-combo'
 import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
@@ -440,7 +441,7 @@ function NarrativeField({
               }
             }}
           />
-          <p className="text-[11px] text-muted-foreground">⌘↵ to save · Esc to cancel</p>
+          <p className="text-[11px] text-muted-foreground"><SubmitCombo /> to save · Esc to cancel</p>
           <FieldError error={editor.error} />
         </>
       ) : value ? (
@@ -545,7 +546,7 @@ function FocusField({
               }
             }}
           />
-          <p className="text-[11px] text-muted-foreground">⌘↵ to save · Esc to cancel</p>
+          <p className="text-[11px] text-muted-foreground"><SubmitCombo /> to save · Esc to cancel</p>
           <FieldError error={editor.error} />
         </>
       ) : value ? (

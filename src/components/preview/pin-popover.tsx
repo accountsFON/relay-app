@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
 import { Button } from '@/components/ui/button'
+import { SubmitCombo } from '@/components/ui/submit-combo'
 import { Linkify } from '@/components/ui/linkify'
 import {
   CommentImageAttachButton,
@@ -342,6 +343,11 @@ export function PinPopover({
           />
         ) : null}
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {thread.status !== 'resolved' ? (
+            <p className="mr-auto text-[11px] text-muted-foreground">
+              <SubmitCombo /> to send
+            </p>
+          ) : null}
           {showResolveButton && onResolve ? (
             <Button
               type="button"

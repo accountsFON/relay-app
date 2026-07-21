@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { SubmitCombo } from '@/components/ui/submit-combo'
 import { Linkify } from '@/components/ui/linkify'
 import type { ThreadAuthor } from '@/types/preview'
 import { useMentionAutocomplete } from '@/lib/use-mention-autocomplete'
@@ -148,6 +149,9 @@ export function CommentThread({
             {mention.dropdown}
           </div>
           <div className="flex items-center justify-end">
+            <p className="mr-auto text-[11px] text-muted-foreground">
+              <SubmitCombo /> to send
+            </p>
             <Button
               type="submit"
               variant="default"
