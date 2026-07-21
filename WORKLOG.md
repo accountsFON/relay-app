@@ -31,6 +31,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-21 — Pin popover stays glued to its pin while scrolling** (PR #351, `1c09e92`)
+  The `PinPopover` is `position:fixed` at its open-time viewport coordinate, so scrolling left it behind
+  while the pin moved with the content. It now re-measures the live pin badge on `scroll` (capture-phase,
+  to catch nested scroll containers) + `resize`, rAF-throttled, and repositions — so it tracks the pin.
+  Image pins only (they have a `markup-overlay-pin` badge); caption/post-level pins keep their static
+  anchor. Applies to every pin-popover surface (rail open + direct pin click); listeners torn down on
+  close/unmount. TDD (moving the live badge + a scroll event repositions the popover). 2581 tests, tsc +
+  `next build` clean. No migration, no jobs.
+
 - [x] **2026-07-21 — Fix: rail comment click again opens the pin popover (regression from #349)** (PR #350, `fcad6f6`)
   #349 wrapped the shell's `setFocusRequest` in `requestAnimationFrame` to measure the pin badge
   post-scroll; that deferral broke the OPEN entirely (popover never appeared on a rail click — caught on
