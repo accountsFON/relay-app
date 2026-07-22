@@ -106,7 +106,10 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-2xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        // sm:flex-wrap lets long action buttons wrap to stacked rows instead of
+        // overflowing the popup: two whitespace-nowrap buttons can exceed the
+        // 384px dialog width, and without wrapping they spill past the edges.
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-2xl border-t bg-muted/50 p-4 sm:flex-row sm:flex-wrap sm:justify-end",
         className
       )}
       {...props}
