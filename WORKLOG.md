@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-22 — CSV import "Choose file" is now a real button** (PR #363, `999cf2b`)
+  The client CSV import (`/clients/import`) rendered a raw unstyled native `<input type="file">`, so
+  "Choose File" looked like browser default chrome, not a clickable button. Swapped to the app's standard
+  file-picker pattern (same as `media-upload`/`avatar-uploader`): a hidden ref'd input triggered by a real
+  outline `Button` labelled "Choose file", with the chosen filename (or "No file chosen") shown beside it.
+  Dropped the redundant "Selected:" line. TDD (button renders + filename appears on select). tsc +
+  `next build` clean. No migration, no jobs.
+
 - [x] **2026-07-22 — Remove dead component files + unused dependencies** (PR #362, `0d3425f`)
   Whole-repo dead-code sweep (knip + ts-prune + full-repo grep verification). Deleted 11 component files
   with zero imports (~764 LOC): `review-feed.tsx` (superseded by `ReviewSessionShell`), `batch-card`,
