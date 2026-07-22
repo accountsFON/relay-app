@@ -142,7 +142,10 @@ function Avatar({ participant }: { participant: CelebrationParticipant }) {
         src={participant.avatarUrl}
         alt={participant.name}
         title={participant.name}
-        className="size-12 rounded-full border-2 border-background shadow-md object-cover"
+        // max-w-none is load-bearing: the avatar sits in a zero-width orbit
+        // container, so Tailwind Preflight's `img { max-width: 100% }` would
+        // otherwise collapse the photo to ~0px wide and hide it from the lap.
+        className="size-12 max-w-none rounded-full border-2 border-background shadow-md object-cover"
       />
     )
   }

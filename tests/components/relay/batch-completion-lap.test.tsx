@@ -36,6 +36,19 @@ describe('BatchCompletionLap', () => {
     expect(screen.getByTitle('Riley')).toBeInTheDocument()
   })
 
+  it('gives the photo avatar max-w-none so it is not collapsed by the zero-width orbit', () => {
+    // Regression: Tailwind Preflight sets `img { max-width: 100% }`. The avatar
+    // lives in a 0px-wide orbit container, so without max-w-none the photo
+    // collapses to ~0px and never shows in the lap. See batch-completion-lap.tsx.
+    render(
+      <BatchCompletionLap
+        batchId="batch-1"
+        participants={[morgan, dakota, client]}
+      />,
+    )
+    expect(screen.getByAltText('Dakota')).toHaveClass('max-w-none')
+  })
+
   it('shows the participant initials in the fallback avatar (not a blank icon)', () => {
     render(
       <BatchCompletionLap
