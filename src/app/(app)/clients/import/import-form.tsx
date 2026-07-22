@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -16,6 +16,7 @@ export function ImportForm() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -84,21 +85,31 @@ export function ImportForm() {
 
       {/* File picker */}
       <Card className="p-4">
-        <label className="flex flex-col gap-2 text-sm">
+        <div className="flex flex-col gap-2 text-sm">
           <span className="font-medium">CSV file</span>
           <input
+            ref={fileInputRef}
             type="file"
             accept=".csv,text/csv"
             onChange={onFileChange}
             disabled={isPending}
-            className="text-sm"
+            className="hidden"
           />
-          {fileName && (
-            <span className="text-xs text-muted-foreground">
-              Selected: {fileName}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isPending}
+            >
+              Choose file
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {fileName ?? 'No file chosen'}
             </span>
-          )}
-        </label>
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground mt-3">
           Need a starting point?{' '}
           <a
