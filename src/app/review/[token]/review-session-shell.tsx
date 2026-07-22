@@ -100,7 +100,9 @@ export function ReviewSessionShell({
   sessionStatus,
 }: ReviewSessionShellProps) {
   const router = useRouter()
-  const [platform, setPlatform] = useState<Platform>('instagram')
+  // Previews are Facebook-only; Instagram chrome is left dormant. Add setPlatform
+  // back + the FeedShell PlatformToggle to re-enable Instagram/Facebook switching.
+  const [platform] = useState<Platform>('facebook')
   const [pending, startTransition] = useTransition()
 
   // Per-post review state, keyed by postId. Hydrated from server then mutated
@@ -538,7 +540,7 @@ export function ReviewSessionShell({
       </div>
 
       <div ref={postsContainerRef}>
-        <FeedShell platform={platform} onPlatformChange={setPlatform}>
+        <FeedShell>
           {posts.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-600">
               No posts in this relay yet.

@@ -106,15 +106,15 @@ beforeEach(() => {
 })
 
 // ---------------------------------------------------------------------------
-// Helper: find the post-level pin badge rendered by the faithful post
-// InstagramFeedPost renders post-level pins as [data-testid="instagram-post-pin"]
-// with [data-thread-id=<id>]. This locator searches within the full document
-// since the badge is nested inside the post component.
+// Helper: find the post-level pin badge rendered by the faithful post.
+// Previews are Facebook-only, so FacebookPost renders post-level pins as
+// [data-testid="fb-pin-badge"] with [data-thread-id=<id>]. This locator
+// searches the full document since the badge is nested inside the post.
 // ---------------------------------------------------------------------------
 
 function findPostPinBadge(threadId: string) {
   return document.querySelector(
-    `[data-testid="instagram-post-pin"][data-thread-id="${threadId}"]`,
+    `[data-testid="fb-pin-badge"][data-thread-id="${threadId}"]`,
   ) as HTMLElement | null
 }
 
@@ -138,15 +138,16 @@ describe('ReviewFeedbackShell — zone rendering', () => {
     expect(screen.queryByTestId('review-internal-rail')).toBeNull()
   })
 
-  it('renders the PlatformToggle above the canvas', () => {
+  it('renders the "Social Preview" heading above the canvas (no platform toggle)', () => {
     render(
       <ReviewFeedbackShell
         {...baseProps}
         posts={[vm()]}
       />,
     )
-    // PlatformToggle renders a radiogroup labelled "Preview platform"
-    expect(screen.getByRole('radiogroup', { name: 'Preview platform' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Social Preview' })).toBeTruthy()
+    // The Instagram/Facebook toggle (a radiogroup) has been retired.
+    expect(screen.queryByRole('radiogroup', { name: 'Preview platform' })).toBeNull()
   })
 
   it('P2 #29: shows an empty state (and no rail/canvas) when there are no posts', () => {
@@ -159,7 +160,7 @@ describe('ReviewFeedbackShell — zone rendering', () => {
 })
 
 describe('ReviewFeedbackShell — canvas pin → rail expand', () => {
-  it('clicking canvas instagram-post-pin expands the matching pin row in the rail', () => {
+  it('clicking a canvas post-pin badge expands the matching pin row in the rail', () => {
     render(
       <ReviewFeedbackShell
         {...baseProps}
@@ -170,7 +171,7 @@ describe('ReviewFeedbackShell — canvas pin → rail expand', () => {
     // Before click, pin row is collapsed
     expect(screen.getByTestId('pin-comment-row-t1').getAttribute('data-expanded')).toBe('false')
 
-    // Click the post-level pin badge rendered by InstagramFeedPost
+    // Click the post-level pin badge rendered by FacebookPost
     const pinBadge = findPostPinBadge('t1')
     expect(pinBadge).toBeTruthy()
     fireEvent.click(pinBadge!)
