@@ -41,7 +41,9 @@ export function ReviewFeed({
   posts,
 }: ReviewFeedProps) {
   const router = useRouter()
-  const [platform, setPlatform] = useState<Platform>('instagram')
+  // Previews are Facebook-only; Instagram chrome is left dormant. Add setPlatform
+  // back + the FeedShell PlatformToggle to re-enable Instagram/Facebook switching.
+  const [platform] = useState<Platform>('facebook')
 
   function buildPostCallbacks(postId: string) {
     return {
@@ -67,7 +69,7 @@ export function ReviewFeed({
         </div>
       </div>
 
-      <FeedShell platform={platform} onPlatformChange={setPlatform}>
+      <FeedShell>
         {posts.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
             No posts in this relay yet.

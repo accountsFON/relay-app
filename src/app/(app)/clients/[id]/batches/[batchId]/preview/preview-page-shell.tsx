@@ -74,7 +74,9 @@ export function PreviewPageShell({
   mentionRoster = [],
 }: PreviewPageShellProps) {
   const router = useRouter()
-  const [platform, setPlatform] = useState<Platform>('instagram')
+  // Previews are Facebook-only; Instagram chrome is left dormant. Add setPlatform
+  // back + the FeedShell PlatformToggle to re-enable Instagram/Facebook switching.
+  const [platform] = useState<Platform>('facebook')
 
   const handleRefresh = () => {
     router.refresh()
@@ -104,7 +106,7 @@ export function PreviewPageShell({
 
   return (
     <div className="flex flex-col gap-6" data-testid="preview-page-shell">
-      <FeedShell platform={platform} onPlatformChange={setPlatform}>
+      <FeedShell>
         {posts.length === 0 ? (
           <div
             data-testid="preview-page-empty"

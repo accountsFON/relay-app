@@ -3,7 +3,8 @@
 import { useState, useRef } from 'react'
 import { ReviewFeedbackRail } from '@/components/review/review-feedback-rail'
 import { ReviewPostsCanvas } from '@/components/review/review-posts-canvas'
-import { PlatformToggle, type Platform } from '@/components/preview/platform-toggle'
+import { SocialPreviewHeading } from '@/components/preview/social-preview-heading'
+import type { Platform } from '@/components/preview/platform-toggle'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
 import type { FeedbackPostVM, FeedbackActions } from '@/app/(app)/clients/[id]/batches/[batchId]/review-sessions/[sessionId]/review-feedback-types'
 
@@ -63,7 +64,9 @@ export function ReviewFeedbackShell({
 
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
-  const [platform, setPlatform] = useState<Platform>('instagram')
+  // Previews are Facebook-only; Instagram chrome is left dormant. Add setPlatform
+  // back + the PlatformToggle (below) to re-enable Instagram/Facebook switching.
+  const [platform] = useState<Platform>('facebook')
 
   const threadRefs = useRef<Record<string, HTMLElement | null>>({})
   const canvasRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -144,7 +147,7 @@ export function ReviewFeedbackShell({
       {/* Column 2: posts canvas */}
       <div className="lg:order-2">
         <div className="mb-4 flex justify-center">
-          <PlatformToggle platform={platform} onChange={setPlatform} />
+          <SocialPreviewHeading />
         </div>
         <ReviewPostsCanvas
           posts={posts}
