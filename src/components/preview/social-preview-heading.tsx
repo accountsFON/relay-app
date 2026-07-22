@@ -5,17 +5,17 @@ export type SocialPreviewHeadingProps = {
 }
 
 /**
- * Small muted "Social Preview" label that sits above the feed, in the spot
- * the Instagram/Facebook PlatformToggle used to occupy. The toggle was retired
- * when previews went Facebook-only; the Instagram chrome is left dormant (see
- * platform-toggle.tsx + instagram-post.tsx). Restore the PlatformToggle here to
- * re-enable platform switching.
+ * Small muted "Social Preview" pill that sits above the feed, in the spot the
+ * Instagram/Facebook PlatformToggle used to occupy (and matching its pill
+ * footprint). The toggle was retired when previews went Facebook-only; the
+ * Instagram chrome is left dormant (see platform-toggle.tsx + instagram-post.tsx).
+ * Restore the PlatformToggle here to re-enable platform switching.
  */
 export function SocialPreviewHeading({ className }: SocialPreviewHeadingProps) {
   return (
     <h2
       className={cn(
-        'text-[13px] font-medium text-neutral-500',
+        'inline-flex items-center rounded-full bg-neutral-100 px-4 py-1.5 text-[13px] font-medium text-neutral-500',
         className,
       )}
     >
