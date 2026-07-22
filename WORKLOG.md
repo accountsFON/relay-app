@@ -31,6 +31,13 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-22 — "Social Preview" heading rendered as a muted pill** (PR #361, `91b6a2a`)
+  Follow-up to #360. Styled the Social Preview heading as a rounded muted pill (`bg-neutral-100`,
+  `rounded-full`, `px-4 py-1.5`) matching the retired PlatformToggle's footprint, instead of plain
+  muted text. Shows on all 5 preview/review surfaces via `FeedShell` + `review-feedback-shell`.
+  className-only change; `SocialPreviewHeading` + `FeedShell` tests pass, tsc + lint clean. No migration,
+  no jobs.
+
 - [x] **2026-07-22 — Facebook-only post previews with a "Social Preview" heading** (PR #360, `1e7bceb`)
   Retired the Instagram/Facebook platform toggle across all five preview/review surfaces (`/preview`,
   internal review, both client magic-link review surfaces, and the AM review-session detail) — every
