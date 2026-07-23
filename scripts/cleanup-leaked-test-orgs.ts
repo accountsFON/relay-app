@@ -5,32 +5,47 @@
  * tests/server/jobs/*.integration.test.ts, tests/db/soft-delete-extension.integration.test.ts)
  * create Organizations with names prefixed `test-*` in beforeEach and clean
  * them up in afterEach. When a run is cancelled or a teardown fails partway,
- * those orgs leak — and because prod and dev share the same Neon endpoint,
- * the leaks surface in the prod platform-owner agency dropdown.
+ * those orgs leak, and because dev branches are seeded from the same data the
+ * leaks surface in the platform-owner agency dropdown.
  *
  * This script lists every Organization where `name STARTS WITH 'test-'`
  * and (in --confirm mode) deletes them.
  *
- * Deletion order matters because several FKs default to RESTRICT (not
- * Cascade): Batch.currentHolder → User, ContentRun.triggeredById → User,
- * Client.assignedAmId/Designer → User, PermissionAuditLog.actorUserId →
- * User, User.linkedClientId → Client. Relying on `Organization.deleteMany`
- * to cascade fails with P2003 because Postgres tries to delete Users before
- * PermissionAuditLogs / ContentRuns / Batches that reference them.
+ * Why raw SQL. Two things break the "just use the Prisma client" approach:
  *
- * The order below mirrors the test's afterEach pattern, scoped to all
- * matched orgs at once, in one transaction per org so a single failure
- * doesn't roll back the whole sweep.
+ *   1. Schema drift. A dev branch can be behind `main` (e.g. missing
+ *      `organizations.reviewWindowDays`). `organization.delete()` returns the
+ *      full row, so the generated client SELECTs a column the DB lacks and
+ *      throws P2022. Raw DELETEs name only the columns we filter on, so they
+ *      are immune to drift.
+ *
+ *   2. FK ordering. Four FKs into `users` are RESTRICT, so every row that
+ *      references a user we are about to delete must go first:
+ *        - content_runs.triggeredById        → users  [RESTRICT]
+ *        - batches.currentHolder              → users  [RESTRICT]
+ *        - magic_links.createdBy              → users  [RESTRICT]
+ *        - permission_audit_logs.actorUserId  → users  [RESTRICT]
+ *      Crucially these must be cleared by *user*, not only by client: a
+ *      content_run triggered by an org user can point at a client outside the
+ *      org, so a client-scoped delete misses it (this is the bug that made the
+ *      old per-client sweep fail with P2003 on content_runs_triggeredById_fkey).
+ *      Everything else (clients, memberships, posts, batches' children, ...)
+ *      is ON DELETE CASCADE from organizations/clients, so the final
+ *      `DELETE FROM organizations` cleans the rest.
+ *
+ * Deletes run in one transaction for the whole matched set (all-or-nothing);
+ * on any failure nothing changes and the script can simply be re-run.
  *
  * Usage:
  *   npx tsx scripts/cleanup-leaked-test-orgs.ts            # dry run (default)
  *   npx tsx scripts/cleanup-leaked-test-orgs.ts --confirm  # actually delete
  *
- * Defensive: refuses to act on any org whose name does not start with
- * `test-`. Does NOT touch Clerk (test orgs were never created in Clerk).
+ * Defensive: only ever deletes orgs whose name starts with `test-`, and
+ * refuses the designated prod host (assertNotProdDb). Does NOT touch Clerk
+ * (test orgs were never created in Clerk).
  */
 import path from 'node:path'
-import { PrismaClient } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import dotenv from 'dotenv'
@@ -54,6 +69,8 @@ async function main() {
 
   const leakedOrgs = await db.organization.findMany({
     where: { name: { startsWith: TEST_ORG_PREFIX } },
+    // NB: select only drift-safe columns. Do NOT select `*` / the whole model,
+    // or a dev branch missing a newer column (e.g. reviewWindowDays) throws.
     select: {
       id: true,
       name: true,
@@ -77,7 +94,7 @@ async function main() {
 
   console.log(`Found ${leakedOrgs.length} leaked test Org(s).`)
 
-  // Defensive guard
+  // Defensive guard: never act on anything that is not a test org.
   for (const o of leakedOrgs) {
     if (!o.name.startsWith(TEST_ORG_PREFIX)) {
       throw new Error(
@@ -100,64 +117,29 @@ async function main() {
     return
   }
 
-  console.log('\n--- Deleting (one org per transaction) ---')
-  let succeeded = 0
-  let failed = 0
-  const failures: { org: string; error: string }[] = []
+  const orgIds = leakedOrgs.map((o) => o.id)
+  const inOrgs = Prisma.sql`IN (${Prisma.join(orgIds)})`
+  const usersOfOrgs = Prisma.sql`SELECT id FROM users WHERE "organizationId" ${inOrgs}`
+  const clientsOfOrgs = Prisma.sql`SELECT id FROM clients WHERE "organizationId" ${inOrgs}`
+  const batchesOfOrgs = Prisma.sql`SELECT id FROM batches WHERE "clientId" IN (${clientsOfOrgs})`
 
-  for (const org of leakedOrgs) {
-    try {
-      await db.$transaction(async (tx) => {
-        const clients = await tx.client.findMany({
-          where: { organizationId: org.id },
-          select: { id: true },
-        })
-        const clientIds = clients.map((c) => c.id)
+  console.log('\n--- Deleting (raw SQL, FK-safe order, one transaction) ---')
 
-        // Children of Clients first (Batch/CR/Post). Soft-delete extension does
-        // not intercept delete methods, so this clears archived rows too.
-        if (clientIds.length > 0) {
-          await tx.post.deleteMany({ where: { clientId: { in: clientIds } } })
-          await tx.contentRun.deleteMany({ where: { clientId: { in: clientIds } } })
-          await tx.batch.deleteMany({ where: { clientId: { in: clientIds } } })
-        }
+  // Order: clear every RESTRICT reference into `users` (scoped by user, not
+  // just by client), then delete the orgs and let CASCADE handle the rest.
+  const [contentRuns, magicLinks, batches, permissionAuditLogs, organizations] =
+    await db.$transaction([
+      db.$executeRaw`DELETE FROM content_runs WHERE "clientId" IN (${clientsOfOrgs}) OR "triggeredById" IN (${usersOfOrgs})`,
+      db.$executeRaw`DELETE FROM magic_links WHERE "createdBy" IN (${usersOfOrgs}) OR "batchId" IN (${batchesOfOrgs})`,
+      db.$executeRaw`DELETE FROM batches WHERE "clientId" IN (${clientsOfOrgs}) OR "currentHolder" IN (${usersOfOrgs})`,
+      db.$executeRaw`DELETE FROM permission_audit_logs WHERE "organizationId" ${inOrgs} OR "actorUserId" IN (${usersOfOrgs})`,
+      db.$executeRaw`DELETE FROM organizations WHERE id ${inOrgs}`,
+    ])
 
-        // Org-scoped audit + permission tables (PAL → User is RESTRICT, must
-        // delete before User).
-        await tx.trashAuditLog.deleteMany({ where: { organizationId: org.id } })
-        await tx.permissionAuditLog.deleteMany({ where: { organizationId: org.id } })
-        await tx.membership.deleteMany({ where: { organizationId: org.id } })
-
-        // Users (no remaining references at this point in test data).
-        await tx.user.deleteMany({ where: { organizationId: org.id } })
-
-        // Clients (Posts/Batches/CRs already gone; no User.linkedClientId in
-        // test fixtures).
-        await tx.client.deleteMany({ where: { organizationId: org.id } })
-
-        // Finally the Organization itself.
-        await tx.organization.delete({ where: { id: org.id } })
-      })
-      succeeded++
-    } catch (err) {
-      failed++
-      failures.push({
-        org: `${org.id} (${org.name})`,
-        error: err instanceof Error ? err.message : String(err),
-      })
-    }
-  }
-
-  console.log(`  deleted ${succeeded} / ${leakedOrgs.length} Organizations`)
-  if (failed > 0) {
-    console.log(`  ${failed} failure(s):`)
-    for (const f of failures.slice(0, 10)) {
-      console.log(`    ${f.org}: ${f.error}`)
-    }
-    if (failures.length > 10) {
-      console.log(`    ... and ${failures.length - 10} more`)
-    }
-  }
+  console.log(
+    `  content_runs=${contentRuns} magic_links=${magicLinks} batches=${batches} ` +
+      `permission_audit_logs=${permissionAuditLogs} organizations=${organizations}`,
+  )
 
   console.log('\n--- Final audit ---')
   const finalOrgs = await db.organization.findMany({
