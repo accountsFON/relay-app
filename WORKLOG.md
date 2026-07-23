@@ -31,6 +31,12 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-23 — Opaque sticky header in the CSV import mapping table** (PR #366, `6c5dc2a`)
+  The mapping table's sticky `<thead>` used `bg-muted/40` (40% opacity), so scrolled rows showed through
+  and overlapped the "FIELD / YOUR CSV COLUMN" labels. Switched to a solid `bg-neutral-100`. className-only;
+  import-form tests pass, tsc + lint clean. Verified live on prod (mapping table scrolled under the now-opaque
+  header, no bleed-through). No migration, no jobs.
+
 - [x] **2026-07-22 — Column-mapping step in the client CSV import** (PR #365, `aa592d0`)
   Auto-detection was invisible, so a mis/unmatched column couldn't be corrected. After choosing a file, a
   new `analyzeClientsCsv` action reads the header row + row count and auto-suggests a field→column mapping;
