@@ -31,6 +31,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-23 — Client CSV import upsert (dedupe by phone/URL) + preview step** (PR #367, `acf89cc`)
+  The importer duplicated a client when a row matched an existing one. Now it upserts: a row matching an
+  existing client (by phone OR any URL host, normalized) UPDATES it (fill-only-provided — blank cells never
+  wipe existing data); unmatched rows create. New preview→confirm flow: "Preview import" runs a server
+  dry-run that matches every row and returns a create/update/error plan ("N new · M update <client> · K
+  errors"), shown in a table; nothing writes until Confirm, which recomputes the plan server-side.
+  Ambiguous matches blocked (row matching >1 client, or 2 rows matching the same client → error). Org-scoped
+  (only live same-agency clients) so updates can't cross tenants; all-or-nothing. TDD (14 tests: matchClients
+  normalize/match/plan + form preview flow). tsc + 2619 tests + `next build` clean. No migration, no jobs.
+  Note: update-via-import inherits the `client.create` (admin-only) gate.
+
 - [x] **2026-07-23 — Opaque sticky header in the CSV import mapping table** (PR #366, `6c5dc2a`)
   The mapping table's sticky `<thead>` used `bg-muted/40` (40% opacity), so scrolled rows showed through
   and overlapped the "FIELD / YOUR CSV COLUMN" labels. Switched to a solid `bg-neutral-100`. className-only;
