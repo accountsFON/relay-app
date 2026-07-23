@@ -173,7 +173,7 @@ export function ImportForm() {
 
           <div className="max-h-96 overflow-y-auto rounded-lg border border-border">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="sticky top-0 bg-neutral-100 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 font-medium">Field</th>
                   <th className="px-3 py-2 font-medium">Your CSV column</th>
