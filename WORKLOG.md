@@ -31,6 +31,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-22 — Column-mapping step in the client CSV import** (PR #365, `aa592d0`)
+  Auto-detection was invisible, so a mis/unmatched column couldn't be corrected. After choosing a file, a
+  new `analyzeClientsCsv` action reads the header row + row count and auto-suggests a field→column mapping;
+  the form shows a "Map your columns" table (22 target fields, each a dropdown of your CSV's columns,
+  pre-filled with the guess, "— Ignore —" to skip). Name is required + gates Import. On submit the mapping
+  is passed to `importClientsCsv` → `parseClientsCsvWithMapping` (auto-detection stays the fallback). Field
+  metadata + FieldMapping/ClientField types moved to a pure module (`src/lib/client-import-fields.ts`) so
+  the client UI imports them without pulling `csv-parse` into the client bundle. TDD (8 tests). tsc + 2605
+  tests + `next build` clean. No migration, no jobs.
+
 - [x] **2026-07-22 — Tolerant client CSV import (case-insensitive + Airtable headers)** (PR #364, `f48b72d`)
   The importer required exact lowercase/camelCase headers from its own template, so a real Airtable
   grid-view export (`Name`, `Business Summary`, `City/Region`) failed every row with "missing required
