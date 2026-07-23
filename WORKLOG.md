@@ -31,6 +31,18 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-22 — Tolerant client CSV import (case-insensitive + Airtable headers)** (PR #364, `f48b72d`)
+  The importer required exact lowercase/camelCase headers from its own template, so a real Airtable
+  grid-view export (`Name`, `Business Summary`, `City/Region`) failed every row with "missing required
+  column: name". `parseClientsCsv` now normalizes headers (lowercase + strip non-alphanumeric) so case/
+  spacing/punctuation don't matter and most Airtable display names auto-match, plus a small alias map for
+  the genuinely different ones (City/Region→location, Business Phone Number→phone, Do/Don't→dos/donts,
+  Google Drive Link (Assets Folder)→assetsFolderUrl). List fields (urls/excludedDates) now split on the
+  template pipe OR Airtable's newlines. Unknown columns dropped; AMID/DESIGNERID deliberately NOT aliased
+  (Airtable record ids ≠ Relay user ids — ignored so import succeeds, assign in-app). Verified the real
+  30-row export parses with 0 failures. TDD (6 tests). tsc + 2597 tests + `next build` clean. No migration,
+  no jobs.
+
 - [x] **2026-07-22 — CSV import "Choose file" is now a real button** (PR #363, `999cf2b`)
   The client CSV import (`/clients/import`) rendered a raw unstyled native `<input type="file">`, so
   "Choose File" looked like browser default chrome, not a clickable button. Swapped to the app's standard
