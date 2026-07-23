@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { parseClientsCsv, CLIENT_CSV_TEMPLATE } from '@/server/csv/parseClientsCsv'
+import {
+  parseClientsCsv,
+  parseClientsCsvWithMapping,
+  suggestFieldMapping,
+  readCsvHeaders,
+  CLIENT_CSV_TEMPLATE,
+} from '@/server/csv/parseClientsCsv'
 
 describe('parseClientsCsv — canonical template format (regression)', () => {
   it('parses the shipped template with all fields mapped', () => {
@@ -60,5 +66,53 @@ describe('parseClientsCsv — Airtable-style display headers', () => {
     expect(rows[0].ok).toBe(true)
     expect(rows[0].data?.assignedAmId).toBeUndefined()
     expect(rows[0].data?.assignedDesignerId).toBeUndefined()
+  })
+})
+
+describe('readCsvHeaders', () => {
+  it('returns the header row in order, trimmed', () => {
+    expect(readCsvHeaders('Name, Business Summary ,AMID\nAkkoo,x,1\n')).toEqual([
+      'Name', 'Business Summary', 'AMID',
+    ])
+  })
+})
+
+describe('suggestFieldMapping', () => {
+  it('auto-suggests fields from Airtable-style headers', () => {
+    const s = suggestFieldMapping(['Name', 'City/Region', 'Business Phone Number', 'AMID'])
+    expect(s.name).toBe('Name')
+    expect(s.location).toBe('City/Region')
+    expect(s.phone).toBe('Business Phone Number')
+    // AMID is a foreign id — must NOT be auto-mapped to assignedAmId.
+    expect(s.assignedAmId).toBeNull()
+    expect(s.industry).toBeNull()
+  })
+})
+
+describe('parseClientsCsvWithMapping — explicit column mapping', () => {
+  it('maps fields from arbitrary column names per the mapping', () => {
+    const csv = 'Client,Notes,Town\nAkkoo Coffee,Premium cafe,Addis Ababa\n'
+    const rows = parseClientsCsvWithMapping(csv, {
+      name: 'Client',
+      businessSummary: 'Notes',
+      location: 'Town',
+    })
+    expect(rows[0].ok).toBe(true)
+    expect(rows[0].data?.name).toBe('Akkoo Coffee')
+    expect(rows[0].data?.businessSummary).toBe('Premium cafe')
+    expect(rows[0].data?.location).toBe('Addis Ababa')
+  })
+
+  it('flags a missing name when the mapping leaves it unmapped', () => {
+    const csv = 'Client,Town\nAkkoo,Addis\n'
+    const rows = parseClientsCsvWithMapping(csv, { location: 'Town' })
+    expect(rows[0].ok).toBe(false)
+    expect(rows[0].errors.join()).toContain('missing required column: name')
+  })
+
+  it('an explicit mapping can override auto-detection (map name from a non-name column)', () => {
+    const csv = 'name,Legal Name\nignore-me,Acme LLC\n'
+    const rows = parseClientsCsvWithMapping(csv, { name: 'Legal Name' })
+    expect(rows[0].data?.name).toBe('Acme LLC')
   })
 })

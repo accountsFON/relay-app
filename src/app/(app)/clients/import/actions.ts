@@ -6,7 +6,12 @@ import { db } from '@/db/client'
 import { listMembershipsForOrg } from '@/server/repositories/memberships'
 import {
   parseClientsCsv,
+  parseClientsCsvWithMapping,
+  readCsvHeaders,
+  suggestFieldMapping,
   type ParsedClientRow,
+  type FieldMapping,
+  type ClientField,
 } from '@/server/csv/parseClientsCsv'
 
 export type ImportResult = {
@@ -14,6 +19,40 @@ export type ImportResult = {
   rows: ParsedClientRow[]
   error?: string
   createdCount?: number
+}
+
+export type ImportAnalysis = {
+  ok: boolean
+  headers: string[]
+  suggested: Record<ClientField, string | null>
+  rowCount: number
+  error?: string
+}
+
+/**
+ * Read a CSV's header row + row count and auto-suggest a field->column mapping,
+ * so the import UI can show a column-mapping step the user can review/correct
+ * before importing.
+ */
+export async function analyzeClientsCsv(csvText: string): Promise<ImportAnalysis> {
+  await requireCan('client.create')
+  try {
+    const headers = readCsvHeaders(csvText)
+    const suggested = suggestFieldMapping(headers)
+    if (headers.length === 0) {
+      return { ok: false, headers, suggested, rowCount: 0, error: 'Could not read a header row from this CSV.' }
+    }
+    const rowCount = parseClientsCsv(csvText).filter((r) => r.rowIndex > 0).length
+    return { ok: true, headers, suggested, rowCount }
+  } catch (e) {
+    return {
+      ok: false,
+      headers: [],
+      suggested: suggestFieldMapping([]),
+      rowCount: 0,
+      error: e instanceof Error ? e.message : 'Failed to read CSV',
+    }
+  }
 }
 
 /**
@@ -26,10 +65,15 @@ export type ImportResult = {
 export async function importClientsCsv(input: {
   csvText: string
   mode: 'single' | 'bulk'
+  /** Explicit field->column mapping from the import UI. Falls back to
+   *  automatic header detection when omitted. */
+  mapping?: FieldMapping
 }): Promise<ImportResult> {
   const ctx = await requireCan('client.create')
 
-  const rows = parseClientsCsv(input.csvText)
+  const rows = input.mapping
+    ? parseClientsCsvWithMapping(input.csvText, input.mapping)
+    : parseClientsCsv(input.csvText)
 
   if (rows.length === 0) {
     return { ok: false, rows, error: 'CSV has no data rows.' }
