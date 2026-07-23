@@ -33,13 +33,75 @@ export type ParsedClientData = {
   assignedDesignerId?: string
 }
 
-/** Pipe-delimited list parser: `https://a|https://b` → `['https://a','https://b']` */
+/**
+ * List parser tolerant of both the template's pipe delimiter and the newline
+ * delimiter Airtable uses when exporting a multi-value cell:
+ * `https://a|https://b` or `https://a\nhttps://b` → `['https://a','https://b']`
+ */
 function splitPipeList(raw: string): string[] {
-  return raw.split('|').map((s) => s.trim()).filter(Boolean)
+  return raw.split(/[|\n\r]+/).map((s) => s.trim()).filter(Boolean)
 }
 
 const VALID_HOLIDAY_HANDLING = new Set(['Major-US', 'Off'])
 const VALID_AUTOCRAWL = new Set(['always', 'when_empty', 'never'])
+
+/** Header key normalizer: case- and punctuation-insensitive. */
+function normalizeHeader(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+/**
+ * Extra header aliases for the columns whose real-world (Airtable) display name
+ * differs from the canonical camelCase field. Most Airtable headers already
+ * match once normalized (e.g. "Business Summary" -> "businesssummary" ===
+ * normalize("businessSummary")), so only the genuinely different names are
+ * listed here. Values are normalized aliases -> canonical field.
+ *
+ * Intentionally NOT aliased: AMID / DESIGNERID. In an Airtable export those hold
+ * Airtable's own record ids, not Relay user ids, so they must be ignored (the
+ * import succeeds with no AM/designer) rather than mapped and rejected. The
+ * canonical assignedAmId / assignedDesignerId still work for template users.
+ */
+const HEADER_ALIASES: Record<string, string> = {
+  cityregion: 'location',
+  city: 'location',
+  region: 'location',
+  businessphonenumber: 'phone',
+  phonenumber: 'phone',
+  cta: 'mainCta',
+  do: 'dos',
+  dont: 'donts',
+  googledrivelinkassetsfolder: 'assetsFolderUrl',
+  googledrivelink: 'assetsFolderUrl',
+  assetsfolder: 'assetsFolderUrl',
+}
+
+const CANONICAL_FIELDS = [
+  'name', 'businessSummary', 'brandVoice', 'industry', 'location', 'phone',
+  'mainCta', 'focus1', 'focus2', 'focus3', 'dos', 'donts', 'postingDays',
+  'postLength', 'urls', 'targetAudience', 'holidayHandling', 'excludedDates',
+  'assetsFolderUrl', 'autoCrawl', 'assignedAmId', 'assignedDesignerId',
+] as const
+
+/** normalized header -> canonical field (canonical names + explicit aliases). */
+const HEADER_TO_FIELD: Record<string, string> = {
+  ...Object.fromEntries(CANONICAL_FIELDS.map((f) => [normalizeHeader(f), f])),
+  ...HEADER_ALIASES,
+}
+
+/**
+ * Remap a raw parsed row (keyed by the CSV's original headers) onto canonical
+ * field names, so case, spacing, punctuation, and known display-name aliases
+ * all resolve. Unknown columns are dropped; first matching header wins.
+ */
+function canonicalizeRow(row: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [rawKey, value] of Object.entries(row)) {
+    const field = HEADER_TO_FIELD[normalizeHeader(rawKey)]
+    if (field && !(field in out)) out[field] = value ?? ''
+  }
+  return out
+}
 
 export function parseClientsCsv(text: string): ParsedClientRow[] {
   // Strip BOM if present
@@ -66,7 +128,8 @@ export function parseClientsCsv(text: string): ParsedClientRow[] {
     ]
   }
 
-  return rows.map((row, i) => {
+  return rows.map((rawRow, i) => {
+    const row = canonicalizeRow(rawRow)
     const errors: string[] = []
     const rowIndex = i + 2 // header is row 1, first data row is row 2
 
