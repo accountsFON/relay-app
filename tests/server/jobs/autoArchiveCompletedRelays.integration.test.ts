@@ -269,9 +269,12 @@ describe('runAutoArchiveCompletedRelays — skip cases', () => {
 
 describe('runAutoArchiveCompletedRelays — no cascade to posts', () => {
   it('does not soft-delete posts under the auto-archived batch', async () => {
+    // completedAt must be older than AUTO_ARCHIVE_DAYS (37) for the batch to be
+    // swept. This was daysAgo(35) — stale since the cutoff moved 30 -> 37, so
+    // the batch was too recent to archive and the assertion below never held.
     const { client, batch } = await createBatchFixture({
       currentStep: 'completed',
-      completedAt: daysAgo(35),
+      completedAt: daysAgo(40),
     })
 
     // Add a post under this batch so we can assert it stays live.

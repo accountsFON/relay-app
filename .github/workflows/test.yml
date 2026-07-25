@@ -25,12 +25,89 @@ jobs:
 
       - run: npx tsc --noEmit
 
-      # Run only unit tests in CI. The *.integration.test.ts suites need a
-      # real Postgres (they hit the actual db via Prisma) which CI doesn't
-      # provision yet. Integration tests run locally via `npm run test:integration`.
-      # See PR #24 — follow-up: add a postgres service container so CI can run
-      # the full suite.
+      # Unit tests only. The *.integration.test.ts suites need a real Postgres
+      # and run in the separate `integration-tests` job below.
       - run: npm run test:unit
+
+  schema-drift:
+    # Guards against the "column does not exist" class of prod failure: catches
+    # when src/db/schema.prisma has changed without a matching migration (the
+    # Prisma client would then expect columns the DB never gets). Spins up a
+    # throwaway Postgres, applies every migration with `migrate deploy` (the
+    # same command prod uses — so this also proves the migrations apply cleanly),
+    # then fails if the migrated database differs from schema.prisma.
+    name: Schema drift check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: relay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/relay?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npx prisma generate --schema=src/db/schema.prisma
+
+      - name: Apply all migrations to a fresh database
+        run: npx prisma migrate deploy
+
+      - name: Fail if schema.prisma has drifted from the migrations
+        run: npx prisma migrate diff --from-config-datasource --to-schema src/db/schema.prisma --exit-code
+
+  integration-tests:
+    # The *.integration.test.ts suites hit a real Postgres via Prisma (unit
+    # tests stub it). They include the DB-level tenant-isolation proofs
+    # (e.g. cross-org findPostById returns null), so running them in CI turns
+    # data-privacy guarantees into a merge gate instead of a local-only check.
+    name: Integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: relay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # test:integration migrates TEST_DATABASE_URL then runs vitest against it.
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/relay_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npx prisma generate --schema=src/db/schema.prisma
+
+      - name: Run integration tests against a real Postgres
+        run: npm run test:integration
 
   detect-pipeline-changes:
     # Decide whether the Trigger.dev deploy needs to run. Skipped on PRs so

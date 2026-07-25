@@ -42,6 +42,28 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
   `NEXT_PUBLIC_SENTRY_DSN`/`SENTRY_DSN` in Vercel prod to turn it on; (2) instrument the Trigger.dev content
   pipeline (highest-value: unattended generation failures) as a separate change.
 
+- [x] **2026-07-25 — Run integration tests (incl. tenant-isolation proofs) in CI + fix a stale test** (PR #373)
+  The 19 `*.integration.test.ts` suites hit a real Postgres and were LOCAL-ONLY, so the DB-level
+  data-privacy proofs (cross-org `findPostById` returns null, etc.) never gated merges. New CI job
+  `integration-tests` runs a `postgres:16` service, migrates it, and runs `npm run test:integration`
+  (123 tests). Reuses the Postgres-service pattern from the schema-drift job. **Found + fixed a stale test
+  in the process** (exactly what CI-less tests hide): `autoArchiveCompletedRelays` used `completedAt:
+  daysAgo(35)` but `AUTO_ARCHIVE_DAYS` moved 30 -> 37 (commit `0982242`), so the batch was too recent to
+  archive and the assertion had been silently failing; bumped to `daysAgo(40)`. Validated locally against
+  Docker `postgres:16`: 19 files / 123 tests green on a fresh DB. Also updated the stale comment in the
+  `test` job. CI + one test-date fix; no app code, no migration.
+
+- [x] **2026-07-25 — CI schema-drift guard (catch "column does not exist" before prod)** (PR #372)
+  Guards the failure class that already caused a prod outage (`approvalStatus` column): `schema.prisma`
+  changed without a matching migration, so the Prisma client expects columns the DB never gets. New CI job
+  `schema-drift` spins up a throwaway `postgres:16`, runs `prisma migrate deploy` (the same command prod
+  uses, so it also proves the migrations apply cleanly), then `prisma migrate diff --from-config-datasource
+  --to-schema src/db/schema.prisma --exit-code` — exit 2 (drift) fails the job, exit 0 (in sync) passes.
+  Runs on every PR + push, so it gates merges. Added `npm run db:check-drift` for local use. Validated
+  locally against Docker `postgres:16`: exit 0 on clean main, exit 2 with an injected schema change. CI-only
+  (workflow + one npm script); no app code, no migration. Bonus: the Postgres service now makes running the
+  integration tests in CI a smaller follow-up.
+
 - [x] **2026-07-25 — Create organizations uncapped (maxAllowedMemberships: 0)** (PR #369)
   New agencies inherited Clerk's default `max_allowed_memberships: 5`, so no org could exceed 5 members
   (invite #6 failed as a masked 500). Neither org-creation path set the limit. Both now pass
