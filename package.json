@@ -17,6 +17,7 @@
     "test:integration": "tsx scripts/run-integration-tests.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --passWithNoTests",
+    "db:check-drift": "prisma migrate diff --from-config-datasource --to-schema src/db/schema.prisma --exit-code",
     "db:migrate-multi-tenant": "tsx scripts/migrate-to-multi-tenant.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "verify-demo-emails": "tsx scripts/verify-demo-emails.ts",
