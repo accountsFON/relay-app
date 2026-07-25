@@ -31,6 +31,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-25 — Error monitoring (Sentry) for the Trigger.dev pipeline** (PR #371, stacked on #370)
+  Extends Sentry to the Trigger.dev worker (content generation + crons) — the highest-value target since
+  those failures are unattended. `trigger.config.ts` inits `@sentry/node` once at worker startup (gated on
+  `SENTRY_DSN`, so INERT until set) and captures permanent task failures in a global `onFailure` hook, then
+  `flush()`es (the worker can recycle right after a run). Init uses `tracesSampleRate: 0` +
+  `skipOpenTelemetrySetup: true` so Sentry does error capture only and doesn't fight Trigger.dev's own OTEL.
+  Added `@sentry/node@^10.68`. tsc (app) + `trigger.config.ts` typecheck + 2622 tests + `next build` clean.
+  **Note:** the Trigger.dev bundle only builds on deploy (push to main, skipped on PRs); a failed deploy is
+  non-destructive (prior deployment keeps running). Merge when no generation is active (a redeploy briefly
+  holds in-flight runs). Activate with the same DSN as the web app.
+
 - [x] **2026-07-25 — Error monitoring (Sentry) for the web app** (PR #370)
   Relay had no external error alerting; a prod failure was only visible by opening /admin or Vercel logs
   (readiness-audit finding). Added `@sentry/nextjs` (v10, supports Next 16): client + server + edge init,
