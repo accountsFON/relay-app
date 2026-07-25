@@ -31,6 +31,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-25 — Error monitoring (Sentry) for the Trigger.dev pipeline** (PR #375)
+  Extends Sentry to the Trigger.dev worker (content generation + crons) — the highest-value target since
+  those failures are unattended. Recreated against main after the original stacked PR (#371) was auto-closed
+  when #370's branch was deleted. `trigger.config.ts` inits `@sentry/node` once at worker startup (gated on
+  `SENTRY_DSN`, so INERT until set on the Trigger.dev worker) and captures permanent task failures in a
+  global `onFailure` hook, then `flush()`es. Init uses `tracesSampleRate: 0` + `skipOpenTelemetrySetup: true`
+  so Sentry does error capture only and doesn't fight Trigger.dev's own OTEL. Added `@sentry/node@^10.68`.
+  tsc (app) + `trigger.config.ts` typecheck + 2622 tests + `next build` clean. **To activate:** set
+  `SENTRY_DSN` in the Trigger.dev worker env (separate from Vercel). **Merge when no generation is active**
+  (a redeploy briefly holds in-flight runs); the Trigger.dev deploy only builds on push to main.
+
 - [x] **2026-07-25 — Remove six decorative permission keys (make the permissions editor honest)** (PR #374)
   Six permission keys appeared as toggles in the role/user permission editors but were enforced NOWHERE
   in code (confirmed by full-repo grep + tsc after removal — only a test referenced them): `post.view`
