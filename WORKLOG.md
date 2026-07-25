@@ -31,6 +31,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-25 — Error monitoring (Sentry) for the web app** (PR #370)
+  Relay had no external error alerting; a prod failure was only visible by opening /admin or Vercel logs
+  (readiness-audit finding). Added `@sentry/nextjs` (v10, supports Next 16): client + server + edge init,
+  `instrumentation.ts` (`onRequestError`), `instrumentation-client.ts`, a root `global-error.tsx` that
+  reports, and the existing `(app)/error.tsx` now also `captureException`s. `next.config.ts` wrapped with
+  `withSentryConfig` (source-map upload only when `SENTRY_AUTH_TOKEN` is set). **Inert until a DSN is
+  provided** — all init is gated on the DSN, so this ships safely with capture off. tsc + 2622 tests +
+  `next build` (Next 16) clean. No migration, no jobs. **Follow-ups:** (1) create the Sentry project + set
+  `NEXT_PUBLIC_SENTRY_DSN`/`SENTRY_DSN` in Vercel prod to turn it on; (2) instrument the Trigger.dev content
+  pipeline (highest-value: unattended generation failures) as a separate change.
+
 - [x] **2026-07-25 — Run integration tests (incl. tenant-isolation proofs) in CI + fix a stale test** (PR #373)
   The 19 `*.integration.test.ts` suites hit a real Postgres and were LOCAL-ONLY, so the DB-level
   data-privacy proofs (cross-org `findPostById` returns null, etc.) never gated merges. New CI job
