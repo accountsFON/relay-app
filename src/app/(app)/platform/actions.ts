@@ -4,6 +4,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 import { findUserByClerkId } from '@/server/repositories/users'
 import { createOrganization } from '@/server/repositories/organizations'
+import { ORG_MAX_ALLOWED_MEMBERSHIPS } from '@/lib/org-membership'
 import type { Plan } from '@/lib/types'
 
 /**
@@ -30,6 +31,7 @@ export async function createAgency(input: { name: string; plan: Plan }) {
   const clerkOrg = await clerk.organizations.createOrganization({
     name,
     createdBy: userId,
+    maxAllowedMemberships: ORG_MAX_ALLOWED_MEMBERSHIPS,
   })
 
   const org = await createOrganization({
