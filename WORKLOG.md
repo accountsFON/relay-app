@@ -31,6 +31,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-25 — Create organizations uncapped (maxAllowedMemberships: 0)** (PR #369)
+  New agencies inherited Clerk's default `max_allowed_memberships: 5`, so no org could exceed 5 members
+  (invite #6 failed as a masked 500). Neither org-creation path set the limit. Both now pass
+  `maxAllowedMemberships: 0` (unlimited) via a shared `ORG_MAX_ALLOWED_MEMBERSHIPS` constant, so every
+  new org is born uncapped (matching the production tenant that already ran at 0). Not a Clerk plan/instance
+  wall — it was an unset field. TDD (onboarding asserts the Clerk create call gets `maxAllowedMemberships: 0`;
+  new platform `createAgency` test). tsc + 2621 tests + `next build` clean. No migration, no jobs. Existing
+  capped orgs raised to 0 out-of-band via the Clerk API (one-time, not code).
+
 - [x] **2026-07-23 — Client CSV import upsert (dedupe by phone/URL) + preview step** (PR #367, `acf89cc`)
   The importer duplicated a client when a row matched an existing one. Now it upserts: a row matching an
   existing client (by phone OR any URL host, normalized) UPDATES it (fill-only-provided — blank cells never

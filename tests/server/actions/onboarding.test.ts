@@ -81,14 +81,20 @@ describe('completeOnboarding invite-only gate', () => {
     vi.mocked(isAgencyCreationEnabled).mockReturnValue(true)
     vi.mocked(createOrganization).mockResolvedValue({ id: 'org_db' } as never)
     vi.mocked(createUser).mockResolvedValue({ id: 'u_db', platformOwner: false } as never)
+    const clerkCreateOrg = vi.fn().mockResolvedValue({ id: 'clerk_org_new' })
     vi.mocked(clerkClient).mockResolvedValue({
-      organizations: { createOrganization: vi.fn().mockResolvedValue({ id: 'clerk_org_new' }) },
+      organizations: { createOrganization: clerkCreateOrg },
     } as never)
 
     await expect(
       completeOnboarding(form({ displayName: 'New Person', agencyName: 'Acme Marketing' })),
     ).rejects.toThrow('NEXT_REDIRECT:/welcome')
 
+    // New orgs must be created uncapped (maxAllowedMemberships: 0) so an agency
+    // is never born with Clerk's default 5-member limit.
+    expect(clerkCreateOrg).toHaveBeenCalledWith(
+      expect.objectContaining({ maxAllowedMemberships: 0 }),
+    )
     expect(createOrganization).toHaveBeenCalledOnce()
     expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_db', role: 'admin' }),

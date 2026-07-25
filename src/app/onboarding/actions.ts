@@ -11,6 +11,7 @@ import {
 import { createMembership } from '@/server/repositories/memberships'
 import { isPlatformOwnerEmail } from '@/server/auth/platformOwner'
 import { isAgencyCreationEnabled } from '@/server/auth/agencyCreation'
+import { ORG_MAX_ALLOWED_MEMBERSHIPS } from '@/lib/org-membership'
 import type { UserRole } from '@/lib/types'
 
 /**
@@ -94,6 +95,7 @@ export async function completeOnboarding(formData: FormData) {
   const clerkOrg = await clerk.organizations.createOrganization({
     name: agencyName,
     createdBy: userId,
+    maxAllowedMemberships: ORG_MAX_ALLOWED_MEMBERSHIPS,
   })
 
   const org = await createOrganization({
