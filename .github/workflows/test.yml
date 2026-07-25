@@ -32,6 +32,48 @@ jobs:
       # the full suite.
       - run: npm run test:unit
 
+  schema-drift:
+    # Guards against the "column does not exist" class of prod failure: catches
+    # when src/db/schema.prisma has changed without a matching migration (the
+    # Prisma client would then expect columns the DB never gets). Spins up a
+    # throwaway Postgres, applies every migration with `migrate deploy` (the
+    # same command prod uses — so this also proves the migrations apply cleanly),
+    # then fails if the migrated database differs from schema.prisma.
+    name: Schema drift check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: relay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/relay?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npx prisma generate --schema=src/db/schema.prisma
+
+      - name: Apply all migrations to a fresh database
+        run: npx prisma migrate deploy
+
+      - name: Fail if schema.prisma has drifted from the migrations
+        run: npx prisma migrate diff --from-config-datasource --to-schema src/db/schema.prisma --exit-code
+
   detect-pipeline-changes:
     # Decide whether the Trigger.dev deploy needs to run. Skipped on PRs so
     # the deploy job below also skips. Output is consumed by deploy-trigger.
