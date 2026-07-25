@@ -52,7 +52,6 @@ describe('can() — system defaults', () => {
   it('client only views their own surfaces', () => {
     expect(can({ role: 'client' }, 'client.view')).toBe(true)
     expect(can({ role: 'client' }, 'client.edit')).toBe(false)
-    expect(can({ role: 'client' }, 'post.view')).toBe(true)
     expect(can({ role: 'client' }, 'post.edit')).toBe(false)
     expect(can({ role: 'client' }, 'admin.portal')).toBe(false)
   })
@@ -123,8 +122,8 @@ describe('can() — resolution priority', () => {
   })
 
   it('falls through to system default when no overrides set', () => {
-    expect(can({ role: 'admin' }, 'team.manage')).toBe(true)
-    expect(can({ role: 'designer' }, 'team.manage')).toBe(false)
+    expect(can({ role: 'admin' }, 'admin.portal')).toBe(true)
+    expect(can({ role: 'designer' }, 'admin.portal')).toBe(false)
   })
 
   it('a per-user deny override neuters an AM into read-only', () => {

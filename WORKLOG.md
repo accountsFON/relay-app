@@ -31,6 +31,18 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-07-25 — Remove six decorative permission keys (make the permissions editor honest)** (PR #374)
+  Six permission keys appeared as toggles in the role/user permission editors but were enforced NOWHERE
+  in code (confirmed by full-repo grep + tsc after removal — only a test referenced them): `post.view`
+  (covered by `client.view`), `run.rerun` (by `generation.trigger`), `designerNotes.edit` + `post.edit`-
+  adjacent (by `client.edit`), `csv.export` (client-side download of already-scoped data), `team.manage`
+  + `team.editPermissions` (by `admin.portal`). Toggling them did nothing, so an admin got false confidence.
+  Removed all six from `PERMISSION_KEYS`, `PERMISSION_LABELS`, `SYSTEM_DEFAULTS` (all 4 roles), and
+  `READ_ONLY_OVERRIDE`; the editors iterate `PERMISSION_KEYS` so the dead toggles just disappear. No
+  behavior change (nothing was enforced); stored `roleDefaults`/`permissionOverrides` JSON with the old
+  keys is inert and ignored (no migration needed). tsc + 2621 tests + `next build` clean. If real
+  export/notes gating is wanted later, that's a new feature (wire the key + gate the call site).
+
 - [x] **2026-07-25 — Error monitoring (Sentry) for the web app** (PR #370)
   Relay had no external error alerting; a prod failure was only visible by opening /admin or Vercel logs
   (readiness-audit finding). Added `@sentry/nextjs` (v10, supports Next 16): client + server + edge init,
