@@ -31,6 +31,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — First-visit tour on the internal preview/review surface** (PR #387)
+  The `/preview` review surface (`InternalReviewShell`) had no walkthrough — the highest-traffic staff view with
+  zero onboarding. Registered a new auto-fire tour `preview-review-v1` in the existing tour system (role-tailored:
+  AM/admin get rail → posts → comment → hand-off; designer gets rail → posts → upload/hand-back) and added
+  `review-rail` / `review-posts` / `review-actions` `data-tour-anchor`s to the shell. Reuses `User.seenTours`
+  (no schema change); auto-fire-on-first-visit only, not in the replay menu. Built subagent-driven (2 tasks,
+  per-task reviews + a whole-branch review, all clean; seam verified end-to-end, no double-fire with
+  `batch-detail-v1`). tsc + 2646 tests + `next build` clean. First slice of the onboarding-guidance spec
+  (`docs/superpowers/specs/2026-08-06-onboarding-guidance-design.md`); client-profile tour + always-on tooltips
+  are the fast-follows. From Rebecca's Sept 2026 QA test. Deploy verification pending merge.
+
 - [x] **2026-08-06 — Live-refresh the review surfaces for collaborators** (PR #386)
   A reviewer only saw a teammate's change (new comment, pin, reply, replaced image, caption edit) after a manual refresh —
   the review pages take a one-time server snapshot and only the actor's own actions triggered a `router.refresh()`. New

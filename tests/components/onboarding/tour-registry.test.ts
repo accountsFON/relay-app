@@ -65,8 +65,11 @@ describe('tour-registry', () => {
       expect(selectAutoTour(ROUTE, 'designer', [])).toBeNull()
     })
 
-    it('does not fire on the detail page child routes (preview, review-sessions)', () => {
-      expect(selectAutoTour(`${ROUTE}/preview`, 'account_manager', [])).toBeNull()
+    it('does not leak the relay-detail tour onto child routes (preview has its own, review-sessions none)', () => {
+      // /preview now has its own tour, but it must NOT be batch-detail-v1.
+      const previewTour = selectAutoTour(`${ROUTE}/preview`, 'account_manager', [])
+      expect(previewTour?.id).toBe('preview-review-v1')
+      expect(previewTour?.id).not.toBe('batch-detail-v1')
       expect(
         selectAutoTour(`${ROUTE}/review-sessions/s1`, 'account_manager', []),
       ).toBeNull()
@@ -235,6 +238,50 @@ describe('tour-registry', () => {
       expect(listToursForRole('account_manager').map((t) => t.id)).not.toContain(
         'scheduling-v1',
       )
+    })
+  })
+
+  describe('preview-review coachmark (internal review surface)', () => {
+    const PREVIEW = '/clients/abc/batches/xyz/preview'
+
+    it('auto-fires on /preview for admin, account_manager, and designer', () => {
+      expect(selectAutoTour(PREVIEW, 'admin', [])?.id).toBe('preview-review-v1')
+      expect(selectAutoTour(PREVIEW, 'account_manager', [])?.id).toBe('preview-review-v1')
+      expect(selectAutoTour(PREVIEW, 'designer', [])?.id).toBe('preview-review-v1')
+    })
+
+    it('never fires for the client role', () => {
+      expect(selectAutoTour(PREVIEW, 'client', [])).toBeNull()
+    })
+
+    it('does not fire once seen', () => {
+      expect(selectAutoTour(PREVIEW, 'account_manager', ['preview-review-v1'])).toBeNull()
+    })
+
+    it('gives the designer a shorter stop set than the AM', () => {
+      const t = getTourById('preview-review-v1')!
+      expect(t.stopsForRole('designer').length).toBeLessThan(
+        t.stopsForRole('account_manager').length,
+      )
+    })
+
+    it('anchors its stops to the review surface elements', () => {
+      const anchors = getTourById('preview-review-v1')!
+        .stopsForRole('account_manager')
+        .map((s) => s.anchorSelector)
+      expect(anchors).toContain('[data-tour-anchor="review-rail"]')
+      expect(anchors).toContain('[data-tour-anchor="review-posts"]')
+      expect(anchors).toContain('[data-tour-anchor="review-actions"]')
+    })
+
+    it('is auto-fire only — not in the replay menu (no homePath)', () => {
+      expect(listToursForRole('account_manager').map((t) => t.id)).not.toContain(
+        'preview-review-v1',
+      )
+    })
+
+    it('validates the new id', () => {
+      expect(isValidTourId('preview-review-v1')).toBe(true)
     })
   })
 })

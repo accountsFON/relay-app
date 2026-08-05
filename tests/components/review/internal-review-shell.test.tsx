@@ -130,6 +130,13 @@ describe('InternalReviewShell', () => {
     }
   })
 
+  it('exposes the tour anchors for the preview-review coachmark', () => {
+    render(<InternalReviewShell {...BASE_PROPS} posts={POSTS} />)
+    expect(document.querySelector('[data-tour-anchor="review-rail"]')).not.toBeNull()
+    expect(document.querySelector('[data-tour-anchor="review-posts"]')).not.toBeNull()
+    expect(document.querySelector('[data-tour-anchor="review-actions"]')).not.toBeNull()
+  })
+
   describe('locked relay (completed step)', () => {
     afterEach(() => {
       vi.restoreAllMocks()
