@@ -36,8 +36,10 @@ export default async function SignUpPage({
             // divider so "Continue with Google" is the only visible option.
             // Google supplies name/email, so no fields need collecting here;
             // our own /onboarding step gathers the display name afterward.
-            dividerRow: 'hidden',
-            form: 'hidden',
+            // Inline-style object (not a class): Clerk's cl-internal-* class
+            // sets display:flex and outranks a utility class; inline wins.
+            dividerRow: { display: 'none' },
+            form: { display: 'none' },
           },
         }}
       />
