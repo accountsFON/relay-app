@@ -24,8 +24,11 @@ export default function SignInPage() {
             // Email stays ENABLED in Clerk (needed for org invitations); we
             // just never surface it, rather than disabling auth methods
             // (which put the instance in an invalid, sign-up-breaking state).
-            dividerRow: 'hidden',
-            form: 'hidden',
+            // Must be an inline-style object, not a class: Clerk's own
+            // cl-internal-* class sets display:flex and outranks a utility
+            // class, but an inline style wins.
+            dividerRow: { display: 'none' },
+            form: { display: 'none' },
           },
         }}
       />
