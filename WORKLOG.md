@@ -31,6 +31,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-04 — Brand-new-signup landed on a dead /welcome (no buttons, no tour, needed a refresh)** (PR #376)
+  After signup, `/welcome` rendered but never hydrated: every button was dead and the launch-pad tour never fired until
+  a manual reload. Root cause: `completeOnboarding` (a server action) `redirect()`d to `/welcome`, and Next delivered
+  that landing via the server-action navigation, which never attached client interactivity. A plain refresh (a full
+  document load) fixed it, which proves a fresh load hydrates fine. Fix: the action RETURNS the destination and the
+  client (`onboarding-form.tsx`) does `window.location.assign` (full-document navigation) to it. Confirmed live: an
+  invited Designer signup (julygerman) hit the dead page pre-deploy exactly as diagnosed. tsc + 2624 tests + `next build`
+  clean.
+
 - [x] **2026-08-04 — Permanently deleting a user no longer throws (unhandled impersonation-log + designer-flag FKs)** (PR #378)
   Clicking Permanently delete threw a masked "An error occurred in the Server Components render" error and never
   completed. `db.user.delete` hit a FK violation: `reassignUserOwnedRecords` claims to move "every Restrict FK" off the

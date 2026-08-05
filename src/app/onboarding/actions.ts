@@ -17,17 +17,23 @@ import type { UserRole } from '@/lib/types'
 /**
  * Where a freshly onboarded user lands. Non-client roles get the /welcome
  * launch pad; clients skip it (the (app) layout never routes a client persona
- * to /welcome). Returning the final destination here keeps onboarding to a
- * SINGLE redirect: we used to redirect to /dashboard and let the (app) layout
- * bounce first-timers on to /welcome, but that second (nested) redirect during
- * a server-action navigation rendered the welcome page blank until a manual
- * reload. One hop from here avoids the chained redirect.
+ * to /welcome).
+ *
+ * This path is RETURNED to the client, not handed to redirect(). A
+ * server-action redirect() delivered the landing page (/welcome) as a soft
+ * navigation that never hydrated -- dead buttons, the launch-pad tour never
+ * fired -- until a manual reload. Collapsing an earlier /dashboard -> /welcome
+ * double redirect to one hop reduced but did not remove it. The client
+ * (onboarding-form.tsx) now does a full-document navigation to this path,
+ * which always hydrates (a plain refresh, itself a full load, was the fix).
  */
 function firstDestination(role: UserRole): string {
   return role === 'client' ? '/dashboard' : '/welcome'
 }
 
-export async function completeOnboarding(formData: FormData) {
+export async function completeOnboarding(
+  formData: FormData,
+): Promise<{ redirectTo: string }> {
   const { userId, orgId: clerkActiveOrgId } = await auth()
   const clerkUser = await currentUser()
   if (!userId || !clerkUser) throw new Error('Not authenticated')
@@ -129,16 +135,17 @@ export async function completeOnboarding(formData: FormData) {
     role: 'admin',
   })
 
-  // Brand-new agency creator is always an admin -> the /welcome launch pad,
-  // in a single redirect (see firstDestination).
-  redirect(firstDestination('admin'))
+  // Brand-new agency creator is always an admin -> the /welcome launch pad.
+  // Returned (not redirect()d) so the client does a full-document navigation
+  // that hydrates the landing page; see firstDestination + onboarding-form.tsx.
+  return { redirectTo: firstDestination('admin') }
 }
 
 async function handleInviteOnboarding(input: {
   clerkUserId: string
   email: string
   displayName: string
-}) {
+}): Promise<{ redirectTo: string }> {
   const { orgId: clerkActiveOrgId } = await auth()
   if (!clerkActiveOrgId) {
     throw new Error('Invite onboarding has no active org. Re-attempt invite.')
@@ -212,8 +219,8 @@ async function handleInviteOnboarding(input: {
     role,
   })
 
-  // One hop to the role-correct destination (clients skip /welcome). Avoids
-  // the onboarding -> /dashboard -> layout -> /welcome double redirect that
-  // rendered the welcome page blank on first sign up.
-  redirect(firstDestination(role))
+  // Role-correct destination (clients skip /welcome), returned so the client
+  // does a full-document navigation that hydrates the landing page (see
+  // firstDestination + onboarding-form.tsx).
+  return { redirectTo: firstDestination(role) }
 }
