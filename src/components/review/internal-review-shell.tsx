@@ -324,7 +324,7 @@ export function InternalReviewShell({
               Reviewing as{' '}
               <span className="font-medium text-neutral-900">{reviewerName}</span>
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-tour-anchor="review-actions">
               {designerControlsSlot}
               {amControlsSlot}
             </div>
@@ -334,7 +334,10 @@ export function InternalReviewShell({
 
       <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         {/* Left rail: sticky with its own scroll */}
-        <div className="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto">
+        <div
+          className="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-5rem)] lg:overflow-y-auto"
+          data-tour-anchor="review-rail"
+        >
           <InternalReviewRail
             rows={railRows}
             selectedPostId={selectedPostId}
@@ -347,7 +350,7 @@ export function InternalReviewShell({
         </div>
 
         {/* Right column: the canvas */}
-        <div className="min-w-0">
+        <div className="min-w-0" data-tour-anchor="review-posts">
           <FeedShell>
             {posts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-8 text-center text-sm text-neutral-600">
