@@ -12,11 +12,6 @@ vi.mock('next/navigation', () => ({
   usePathname: () => pathnameMock(),
 }))
 
-const start = vi.fn()
-vi.mock('@/components/onboarding/tour-provider', () => ({
-  useTourController: () => ({ start, active: false, activeTourId: null, currentIndex: 0, dismiss: vi.fn() }),
-}))
-
 const cards: LaunchPadCard[] = [
   { id: 'create-client', title: 'Create your first client', body: 'a', href: '/clients/new', cta: 'Add a client' },
   { id: 'generate-content', title: 'Generate a month of content', body: 'b', href: '/clients', cta: 'Open clients' },
@@ -35,7 +30,6 @@ beforeEach(() => {
   routerMock.push.mockReset()
   routerMock.refresh.mockReset()
   pathnameMock.mockReturnValue('/welcome')
-  start.mockClear()
   // The launch pad navigates via a full-document load (window.location) to
   // bypass the client route cache; jsdom's location is non-configurable, so
   // stub the whole object.
@@ -112,7 +106,7 @@ describe('WelcomeLaunchPad', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it('Take the tour fires onDismiss, starts overview-v1, and pushes /dashboard', async () => {
+  it('Take the tour fires onDismiss and navigates to /dashboard', async () => {
     const onDismiss = vi.fn().mockResolvedValue(undefined)
     render(<WelcomeLaunchPad cards={cards} onDismiss={onDismiss} />)
 
@@ -120,7 +114,6 @@ describe('WelcomeLaunchPad', () => {
     await waitFor(() =>
       expect(assign).toHaveBeenCalledWith('/dashboard'),
     )
-    expect(start).toHaveBeenCalledWith('overview-v1')
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
