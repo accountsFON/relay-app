@@ -734,3 +734,93 @@ describe('ReviewPostCard -- canReplaceImage forwarding', () => {
     ).not.toBeInTheDocument()
   })
 })
+
+describe('ReviewPostCard -- inline caption editor cancel guard', () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  function openEditorAndEdit(value: string) {
+    fireEvent.click(screen.getByTestId('instagram-post-edit-copy'))
+    const textarea = screen.getByTestId('caption-edit-inline-textarea')
+    fireEvent.change(textarea, { target: { value } })
+    return textarea
+  }
+
+  it('confirms before discarding a dirty draft and keeps the editor open when declined', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={vi.fn()}
+      />,
+    )
+    openEditorAndEdit('Edited caption draft')
+    fireEvent.click(screen.getByTestId('caption-edit-inline-cancel'))
+
+    expect(confirmSpy).toHaveBeenCalledWith('Discard unsaved changes?')
+    // Declined -> the edit is preserved, the editor stays open.
+    expect(
+      screen.getByTestId('caption-edit-inline-textarea'),
+    ).toBeInTheDocument()
+  })
+
+  it('discards the draft and closes the editor when the discard is confirmed', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={vi.fn()}
+      />,
+    )
+    openEditorAndEdit('Edited caption draft')
+    fireEvent.click(screen.getByTestId('caption-edit-inline-cancel'))
+
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(
+      screen.queryByTestId('caption-edit-inline-textarea'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not prompt when the caption draft is unchanged from the original', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(
+      <ReviewPostCard
+        post={POST}
+        clientName="Test Client"
+        reviewItem={makeItem()}
+        platform="instagram"
+        mode="review"
+        onDecisionChange={() => {}}
+        onCommentChange={vi.fn().mockResolvedValue(true)}
+        onCaptionEditSave={vi.fn()}
+      />,
+    )
+    // Open the editor but leave the draft equal to the original caption.
+    fireEvent.click(screen.getByTestId('instagram-post-edit-copy'))
+    expect(
+      screen.getByTestId('caption-edit-inline-textarea'),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('caption-edit-inline-cancel'))
+
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(
+      screen.queryByTestId('caption-edit-inline-textarea'),
+    ).not.toBeInTheDocument()
+  })
+})

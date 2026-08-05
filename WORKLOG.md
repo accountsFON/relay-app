@@ -31,6 +31,13 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Confirm before discarding a dirty inline caption edit** (PR #385)
+  The review workspace's inline caption editor Cancel dropped the reviewer's draft with no prompt (unlike the pin/comment
+  composer, which guards its discard). `handleCaptionEditCancel` now `window.confirm('Discard unsaved changes?')` when the
+  draft differs from the saved/original caption, and keeps the editor open if declined; an unchanged draft still cancels
+  silently. Single parent (`review-post-card`) covers both IG + FB. Scope deliberately narrow — no other cancels touched.
+  From Rebecca's Sept 2026 QA test. tsc + 2631 tests + `next build` clean. Deploy verification pending merge.
+
 - [x] **2026-08-05 — Remove dead tour.start() on the launch pad (cleanup)** (PR #384)
   The launch pad's "Take the tour" handler called `tour.start('overview-v1')`, but the handler now does a full-document
   navigation (#383), so that client state never survives; the tour appears via the TourProvider's auto-fire on /dashboard.

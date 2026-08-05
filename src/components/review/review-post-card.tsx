@@ -336,8 +336,15 @@ export function ReviewPostCard({
   }, [captionDraft, onCaptionEditSave, exitEditMode])
 
   const handleCaptionEditCancel = useCallback(() => {
+    // Guard the destructive Cancel: if the draft differs from the saved/original
+    // caption, confirm before discarding so a mis-click doesn't silently drop
+    // the reviewer's edit. Mirrors the pin-draft composer's discard guard.
+    const isDirty = captionDraft !== (savedSuggestion ?? post.caption)
+    if (isDirty && !window.confirm('Discard unsaved changes?')) {
+      return
+    }
     exitEditMode()
-  }, [exitEditMode])
+  }, [captionDraft, savedSuggestion, post.caption, exitEditMode])
 
   // Per Phase 4 item 22: unified placeholder regardless of decision.
   // The decision-specific "Tell the team what to change" placeholder is
