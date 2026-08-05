@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useTourController } from '@/components/onboarding/tour-provider'
 
 export type LaunchPadCard = {
   id: string
@@ -38,10 +37,11 @@ export type WelcomeLaunchPadProps = {
  * tapping Take the tour) POST /api/onboarding/launch-pad-dismissed so
  * the layout redirect predicate no longer matches on the next request.
  *
- * "Take the tour" additionally calls into the TourProvider via
- * useTourController().start() and navigates the user to /dashboard
- * where the tour anchors live. The TourProvider sees start() and
- * renders the popover on top of the dashboard.
+ * "Take the tour" navigates the user to /dashboard, where the tour's
+ * anchors live and the TourProvider AUTO-FIRES the overview tour for a
+ * first-time user. The navigation is a full-document load, so a client
+ * start() call here would not survive it; the auto-fire is what shows
+ * the popover.
  *
  * Phase 4 item 25.
  */
@@ -51,7 +51,6 @@ export function WelcomeLaunchPad({
   onDismiss,
   className,
 }: WelcomeLaunchPadProps) {
-  const tour = useTourController()
   const [dismissed, setDismissed] = useState(false)
 
   const persistDismiss = useCallback(async () => {
@@ -102,9 +101,11 @@ export function WelcomeLaunchPad({
 
   const handleTakeTour = useCallback(async () => {
     await persistDismiss()
-    tour.start('overview-v1')
+    // No client start() call: the full-document navigation below discards
+    // client state, and the TourProvider auto-fires the overview tour on
+    // /dashboard for a first-time user.
     window.location.assign('/dashboard')
-  }, [persistDismiss, tour])
+  }, [persistDismiss])
 
   const handleSkip = useCallback(async () => {
     await persistDismiss()
