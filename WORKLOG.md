@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Live-refresh the review surfaces for collaborators** (PR #386)
+  A reviewer only saw a teammate's change (new comment, pin, reply, replaced image, caption edit) after a manual refresh —
+  the review pages take a one-time server snapshot and only the actor's own actions triggered a `router.refresh()`. New
+  `useLiveRefresh()` hook fires `router.refresh()` on an 8s poll (paused while the tab is hidden) AND immediately on
+  focus / visibility-regained. Mounted in both `review-session-shell` (client magic-link) and `internal-review-shell`
+  (AM). `router.refresh()` preserves client state, so in-progress edits aren't clobbered — only the shared prop-driven
+  baseline updates. From Rebecca's Sept 2026 QA test. tsc + 2638 tests + `next build` clean. Deploy verification pending merge.
+
 - [x] **2026-08-06 — Confirm before discarding a dirty inline caption edit** (PR #385)
   The review workspace's inline caption editor Cancel dropped the reviewer's draft with no prompt (unlike the pin/comment
   composer, which guards its discard). `handleCaptionEditCancel` now `window.confirm('Discard unsaved changes?')` when the
