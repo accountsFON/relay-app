@@ -206,6 +206,8 @@ describe('reassignUserOwnedRecords', () => {
       contentRun: { updateMany: vi.fn() },
       magicLink: { updateMany: vi.fn() },
       permissionAuditLog: { updateMany: vi.fn() },
+      impersonationLog: { deleteMany: vi.fn() },
+      designerFlag: { updateMany: vi.fn() },
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,6 +240,17 @@ describe('reassignUserOwnedRecords', () => {
     expect(tx.permissionAuditLog.updateMany).toHaveBeenNthCalledWith(2, {
       where: { targetUserId: 'from_user' },
       data: { targetUserId: null },
+    })
+    // Impersonation logs have required actor+target FKs with no successor, so
+    // the deleted user's impersonation audit rows are removed, not reassigned.
+    expect(tx.impersonationLog.deleteMany).toHaveBeenCalledWith({
+      where: { OR: [{ realActorId: 'from_user' }, { targetUserId: 'from_user' }] },
+    })
+    // Designer flags they authored (required createdById FK) are reassigned
+    // like other owned work.
+    expect(tx.designerFlag.updateMany).toHaveBeenCalledWith({
+      where: { createdById: 'from_user' },
+      data: { createdById: 'to_user' },
     })
   })
 })
