@@ -236,6 +236,60 @@ const CLIENTS_STOPS: TourStop[] = [
   },
 ]
 
+// Exact internal preview/review route: /clients/:id/batches/:id/preview.
+const PREVIEW_ROUTE = /^\/clients\/[^/]+\/batches\/[^/]+\/preview$/
+
+// Page coachmark: the internal preview/review surface (InternalReviewShell).
+// AM/admin variant — they review, comment on the work, and hand it off.
+const PREVIEW_REVIEW_AM: TourStop[] = [
+  {
+    id: 'preview-rail',
+    anchorSelector: '[data-tour-anchor="review-rail"]',
+    title: 'Everything to review, in one list',
+    body: 'Every post and open comment thread is listed here. Click any row to jump straight to it.',
+  },
+  {
+    id: 'preview-posts',
+    anchorSelector: '[data-tour-anchor="review-posts"]',
+    title: 'The posts',
+    body: 'Each generated post shows here with its caption and design. Read it, then leave feedback.',
+  },
+  {
+    id: 'preview-comment',
+    anchorSelector: CONCEPT_ANCHOR,
+    title: 'Comment right on the work',
+    body: 'Click anywhere on an image to drop a pin, or select caption text, to leave a comment on that exact spot.',
+  },
+  {
+    id: 'preview-actions',
+    anchorSelector: '[data-tour-anchor="review-actions"]',
+    title: 'Send it on when you are done',
+    body: 'Use the controls up here to hand the relay back or move it to the next stage.',
+  },
+]
+
+// Designer variant — they read the approved copy and upload their designs.
+const PREVIEW_REVIEW_DESIGNER: TourStop[] = [
+  {
+    id: 'preview-rail',
+    anchorSelector: '[data-tour-anchor="review-rail"]',
+    title: 'Your feedback list',
+    body: 'Comments and change requests land here. Work through them top to bottom.',
+  },
+  {
+    id: 'preview-posts',
+    anchorSelector: '[data-tour-anchor="review-posts"]',
+    title: 'What you are designing',
+    body: 'Each post shows the approved caption your design should match.',
+  },
+  {
+    id: 'preview-actions',
+    anchorSelector: '[data-tour-anchor="review-actions"]',
+    title: 'Upload and hand back',
+    body: 'Add or replace a design from the controls up here, then hand the relay back.',
+  },
+]
+
 const TOURS: TourDef[] = [
   {
     id: 'overview-v1',
@@ -271,6 +325,16 @@ const TOURS: TourDef[] = [
     matchPath: (p) => BATCH_DETAIL_ROUTE.test(p),
     trigger: 'manual',
     stopsForRole: () => DESIGNER_BATCH_DETAIL_STOPS,
+  },
+  {
+    id: 'preview-review-v1',
+    labelForRole: () => 'Review page walkthrough',
+    roles: ['admin', 'account_manager', 'designer'],
+    // No homePath: dynamic route, auto-fire-on-first-visit only.
+    matchPath: (p) => PREVIEW_ROUTE.test(p),
+    trigger: 'auto',
+    stopsForRole: (role) =>
+      role === 'designer' ? PREVIEW_REVIEW_DESIGNER : PREVIEW_REVIEW_AM,
   },
   {
     id: 'scheduling-v1',
