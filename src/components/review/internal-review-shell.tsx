@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
@@ -133,6 +134,10 @@ export function InternalReviewShell({
   designerControlsSlot,
 }: InternalReviewShellProps) {
   const router = useRouter()
+  // Keep the AM review surface live: poll + refresh-on-focus so a collaborator's
+  // pins, comments, replies, and image/caption changes appear without a manual
+  // reload. router.refresh() preserves any in-progress edit.
+  useLiveRefresh()
   // Previews are Facebook-only; Instagram chrome is left dormant. Add setPlatform
   // back + the FeedShell PlatformToggle to re-enable Instagram/Facebook switching.
   const [platform] = useState<Platform>('facebook')

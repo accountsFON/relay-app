@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLiveRefresh } from '@/lib/use-live-refresh'
 import { Check } from 'lucide-react'
 import { FeedShell } from '@/components/preview/feed-shell'
 import type { Platform } from '@/components/preview/platform-toggle'
@@ -100,6 +101,10 @@ export function ReviewSessionShell({
   sessionStatus,
 }: ReviewSessionShellProps) {
   const router = useRouter()
+  // Keep the surface live for collaborators: poll + refresh-on-focus so another
+  // reviewer's comments, pins, replies, and image/caption changes appear without
+  // a manual reload. router.refresh() preserves any in-progress edit.
+  useLiveRefresh()
   // Previews are Facebook-only; Instagram chrome is left dormant. Add setPlatform
   // back + the FeedShell PlatformToggle to re-enable Instagram/Facebook switching.
   const [platform] = useState<Platform>('facebook')
