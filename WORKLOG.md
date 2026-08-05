@@ -31,6 +31,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-05 — /welcome no longer freezes for returning first-timers (hard-navigate the (app) gate)** (PR #381)
+  #376 fixed the onboarding-form -> /welcome hop (hard nav), but /welcome is ALSO reached by the (app) layout's
+  first-timer gate, which did `redirect('/welcome')`. When the (app) route was reached via a client navigation (Clerk's
+  post-sign-in router push), that chained server redirect delivered /welcome non-interactive (dead buttons + tour never
+  firing until a manual reload) — the freeze a returning first-timer (e.g. a user who onboarded but hasn't dismissed the
+  launch pad / seen the tour) still hit. Fix: the gate now returns a new `<HardRedirect to="/welcome">` client component
+  (window.location.replace) instead of `redirect()`, so the (app) route hydrates and then hard-navigates, and /welcome
+  always loads as a fresh, interactive document. tsc + 2627 tests + `next build` clean; verified live via a first-timer
+  login.
+
 - [x] **2026-08-04 — Google-only auth UI (hide email/password form on sign-in + sign-up)** (PR #379)
   Users saw both "Continue with Google" and an email/password form, confusing on first login. Rather than disabling
   Clerk's email/password auth methods (which put the instance in an invalid state and hung sign-up), the fix keeps email
