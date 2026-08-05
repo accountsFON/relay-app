@@ -29,8 +29,9 @@ vi.mock('sonner', () => ({
 }))
 
 const mockRefresh = vi.fn()
+const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: mockRefresh }),
+  useRouter: () => ({ refresh: mockRefresh, push: mockPush }),
 }))
 
 import { ManageUserAccessPanel } from '@/components/admin/manage-user-access-panel'
@@ -185,6 +186,45 @@ describe('ManageUserAccessPanel', () => {
         reassignToUserId: 'user-2',
       })
     })
+  })
+
+  it('returns to the Team list (push + refresh) after a successful permanent delete', async () => {
+    // Regression: the panel used to only router.refresh() after a hard delete,
+    // which refreshes THIS detail route (/admin/users/[id]) whose user no
+    // longer exists -> notFound(). The admin was never taken back to a fresh
+    // Team list, so the deleted account appeared to linger there. The fix
+    // navigates to /admin/users and forces a refetch.
+    mockHardDelete.mockResolvedValueOnce(undefined)
+    const user = userEvent.setup()
+    render(<ManageUserAccessPanel {...baseProps} isDeactivated canHardDelete />)
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /reassign to/i }),
+      'user-2',
+    )
+    await user.type(
+      screen.getByPlaceholderText(/type the email to confirm/i),
+      'target@example.com',
+    )
+    await user.click(screen.getByRole('button', { name: /permanently delete/i }))
+
+    await waitFor(() => expect(mockHardDelete).toHaveBeenCalled())
+    expect(mockPush).toHaveBeenCalledWith('/admin/users')
+    expect(mockRefresh).toHaveBeenCalled()
+  })
+
+  it('does NOT navigate away on deactivate (only refreshes the detail page)', async () => {
+    mockDeactivate.mockResolvedValueOnce(undefined)
+    const user = userEvent.setup()
+    render(<ManageUserAccessPanel {...baseProps} />)
+
+    await user.click(screen.getByRole('button', { name: /deactivate access/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: /^deactivate$/i }))
+
+    await waitFor(() => expect(mockDeactivate).toHaveBeenCalled())
+    expect(mockRefresh).toHaveBeenCalled()
+    expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('hides the permanently delete section when canHardDelete is false', () => {

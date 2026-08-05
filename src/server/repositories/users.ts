@@ -204,10 +204,18 @@ export async function findOrgsWhereLastActiveAdmin(
 }
 
 /**
- * Move every Restrict FK off `fromUserId` onto `toUserId`, and null any
- * audit rows that point at `fromUserId` as target (the AuditTarget FK is
- * Restrict and would otherwise block the row delete). Must run inside the
- * caller's transaction.
+ * Clear every required (Restrict) FK off `fromUserId` so the row delete can
+ * proceed. Owned work is reassigned onto `toUserId`; audit rows that only
+ * *target* the user are nulled; impersonation logs (which have required FKs on
+ * BOTH the actor and the target, so neither can be nulled) are deleted. Must
+ * run inside the caller's transaction.
+ *
+ * Every required User FK in the schema must be handled here, or `db.user.delete`
+ * throws a FK violation (surfaced in prod as a masked "Server Components render"
+ * error). The set: batch.currentHolder, client.assignedAmId/assignedDesignerId,
+ * contentRun.triggeredById, magicLink.createdBy, permissionAuditLog.actorUserId
+ * (+ targetUserId nulled), impersonationLog.realActorId/targetUserId,
+ * designerFlag.createdById.
  */
 export async function reassignUserOwnedRecords(
   tx: DbTx,
@@ -241,5 +249,17 @@ export async function reassignUserOwnedRecords(
   await tx.permissionAuditLog.updateMany({
     where: { targetUserId: fromUserId },
     data: { targetUserId: null },
+  })
+  // Impersonation logs reference the user as BOTH realActor and target via
+  // required FKs, so neither can be nulled and reassigning would falsify the
+  // audit trail. Remove the deleted user's impersonation rows outright.
+  await tx.impersonationLog.deleteMany({
+    where: { OR: [{ realActorId: fromUserId }, { targetUserId: fromUserId }] },
+  })
+  // Designer flags they authored carry a required createdById FK -> reassign
+  // like other owned work.
+  await tx.designerFlag.updateMany({
+    where: { createdById: fromUserId },
+    data: { createdById: toUserId },
   })
 }

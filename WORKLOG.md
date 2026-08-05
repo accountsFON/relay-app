@@ -34,6 +34,25 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-04 — Permanently deleting a user no longer throws (unhandled impersonation-log + designer-flag FKs)** (PR #378)
+  Clicking Permanently delete threw a masked "An error occurred in the Server Components render" error and never
+  completed. `db.user.delete` hit a FK violation: `reassignUserOwnedRecords` claims to move "every Restrict FK" off the
+  user but missed two required FKs, `impersonationLog` (realActorId + targetUserId) and `designerFlag.createdById`.
+  Confirmed on prod (read-only reference count): the QA account had 8 `impersonation_logs` rows as target (an admin had
+  used "View as" on it). Fix: `deleteMany` the user's impersonation rows (both FKs required, so can't null or reassign)
+  and reassign `designerFlag.createdById` like other owned work. tsc + 2624 tests + `next build` clean. This is the
+  actual delete failure; #377 (below) fixed only the stale Team-list view after a *successful* delete.
+
+- [x] **2026-08-04 — Permanently-deleted user no longer lingers in the Team list** (PR #377)
+  After a hard delete on `/admin/users/[id]`, the deleted account appeared to stay in the Team
+  list (`/admin/users`) until a manual reload. The manage-access panel only `router.refresh()`d
+  the detail route (whose user is now gone -> `notFound()`), leaning on the action's
+  `revalidatePath('/admin/users')` for the list, so the stale client view persisted. Fix: after
+  a successful delete, `router.push('/admin/users')` + `router.refresh()` so the admin lands on a
+  freshly-refetched Team list and the account is immediately gone. The DB was always correct
+  (`Membership` cascades on user delete); this was purely a stale-view bug. tsc + 2624 tests +
+  eslint + `next build` clean. (Found in the QA session; deploy verification pending.)
+
 - [x] **2026-07-25 — Error monitoring (Sentry) for the Trigger.dev pipeline** (PR #375)
   Extends Sentry to the Trigger.dev worker (content generation + crons) — the highest-value target since
   those failures are unattended. Recreated against main after the original stacked PR (#371) was auto-closed
