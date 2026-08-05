@@ -15,6 +15,7 @@ import { AppShell } from '@/components/app-shell'
 import { isArchiveViewer } from '@/lib/archive-access'
 import { canViewLibrary } from '@/lib/library-access'
 import { MaintenanceScreen } from '@/components/maintenance-screen'
+import { HardRedirect } from '@/components/hard-redirect'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -57,7 +58,7 @@ export async function AppChrome({
             className="text-2xl font-normal italic text-foreground"
             style={{ fontFamily: 'var(--font-serif)', letterSpacing: '-0.5px', lineHeight: 1.15 }}
           >
-            Something's off.
+            Something&apos;s off.
           </h1>
           <p className="mt-3 text-[15px] text-muted-foreground">
             Could not connect to the database. Usually this means DATABASE_URL is
@@ -156,7 +157,13 @@ export async function AppChrome({
   const launchPadDismissed = !!onboarding?.launchPadDismissedAt
   const isClientPersona = ctx.role === 'client'
   if (gateFirstTimers && !isClientPersona && !tourSeen && !launchPadDismissed) {
-    redirect('/welcome')
+    // Hard-navigate rather than redirect('/welcome'). This (app) route is
+    // often reached via a client navigation (e.g. Clerk's post-sign-in router
+    // push); a server redirect chained onto that soft nav delivered /welcome
+    // non-interactive (dead buttons + tour never firing until a manual
+    // reload). Returning HardRedirect lets this route hydrate, then does a
+    // full-document navigation so /welcome always loads fresh and interactive.
+    return <HardRedirect to="/welcome" />
   }
 
   const impersonation = ctx.impersonation ?? null
