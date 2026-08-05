@@ -31,7 +31,17 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
-- [x] **2026-08-06 — First-visit tour on the internal preview/review surface** (PR #387)
+- [x] **2026-08-05 — Client profile intro: one-time explainer atop the "Review client profile" modal** (PR #388)
+  The onboarding gates (copy + designer) open the client profile in a read-only modal, but nothing told a first-timer
+  what the profile is or why to read it. Added a small self-contained `ClientProfileIntro` callout at the top of the
+  profile modal in both gates: it explains the profile is the client's voice, audience, and do's and don'ts that Relay
+  writes from, with a "Got it" dismiss. Shown once per browser via a `localStorage` flag (a lightweight onboarding hint,
+  so no server round trip or prop threading through the gates). The route-tour engine was ruled out here: its popover
+  renders at app-shell level and a base-ui Dialog would inert it behind the modal. From Rebecca's Sept 2026 QA test
+  ("review the profile before entering the workspace"). Second slice of the onboarding-guidance spec (Piece A).
+  tsc + 2649 tests + `next build` clean. Deploy verification pending merge.
+
+- [x] **2026-08-05 — First-visit tour on the internal preview/review surface** (PR #387)
   The `/preview` review surface (`InternalReviewShell`) had no walkthrough — the highest-traffic staff view with
   zero onboarding. Registered a new auto-fire tour `preview-review-v1` in the existing tour system (role-tailored:
   AM/admin get rail → posts → comment → hand-off; designer gets rail → posts → upload/hand-back) and added
@@ -42,7 +52,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
   (`docs/superpowers/specs/2026-08-06-onboarding-guidance-design.md`); client-profile tour + always-on tooltips
   are the fast-follows. From Rebecca's Sept 2026 QA test. Deploy verification pending merge.
 
-- [x] **2026-08-06 — Live-refresh the review surfaces for collaborators** (PR #386)
+- [x] **2026-08-05 — Live-refresh the review surfaces for collaborators** (PR #386)
   A reviewer only saw a teammate's change (new comment, pin, reply, replaced image, caption edit) after a manual refresh —
   the review pages take a one-time server snapshot and only the actor's own actions triggered a `router.refresh()`. New
   `useLiveRefresh()` hook fires `router.refresh()` on an 8s poll (paused while the tab is hidden) AND immediately on
@@ -50,7 +60,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
   (AM). `router.refresh()` preserves client state, so in-progress edits aren't clobbered — only the shared prop-driven
   baseline updates. From Rebecca's Sept 2026 QA test. tsc + 2638 tests + `next build` clean. Deploy verification pending merge.
 
-- [x] **2026-08-06 — Confirm before discarding a dirty inline caption edit** (PR #385)
+- [x] **2026-08-05 — Confirm before discarding a dirty inline caption edit** (PR #385)
   The review workspace's inline caption editor Cancel dropped the reviewer's draft with no prompt (unlike the pin/comment
   composer, which guards its discard). `handleCaptionEditCancel` now `window.confirm('Discard unsaved changes?')` when the
   draft differs from the saved/original caption, and keeps the editor open if declined; an unchanged draft still cancels
