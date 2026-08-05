@@ -11,9 +11,6 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-09 QA session:
-- [ ] **(PR open) Permanently-deleted user lingers in the Team list** — after a hard delete on `/admin/users/[id]`, the panel only `router.refresh()`d the detail route (whose user is now gone -> notFound), leaning on `revalidatePath('/admin/users')` for the Team list, so the deleted account appeared to stay in Team until a manual reload. Fix: after a successful delete, `router.push('/admin/users')` + `router.refresh()` so the admin lands on a freshly-refetched Team list and the account is immediately gone. (branch `fix/admin-user-delete-returns-to-team`; membership already cascades on delete, so the DB was always correct — this was a stale-view bug)
-
 From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done — full internal review parity):
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
@@ -33,6 +30,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 ---
 
 ## Shipped
+
+- [x] **2026-08-04 — Permanently-deleted user no longer lingers in the Team list** (PR #377)
+  After a hard delete on `/admin/users/[id]`, the deleted account appeared to stay in the Team
+  list (`/admin/users`) until a manual reload. The manage-access panel only `router.refresh()`d
+  the detail route (whose user is now gone -> `notFound()`), leaning on the action's
+  `revalidatePath('/admin/users')` for the list, so the stale client view persisted. Fix: after
+  a successful delete, `router.push('/admin/users')` + `router.refresh()` so the admin lands on a
+  freshly-refetched Team list and the account is immediately gone. The DB was always correct
+  (`Membership` cascades on user delete); this was purely a stale-view bug. tsc + 2624 tests +
+  eslint + `next build` clean. (Found in the QA session; deploy verification pending.)
 
 - [x] **2026-07-25 — Error monitoring (Sentry) for the Trigger.dev pipeline** (PR #375)
   Extends Sentry to the Trigger.dev worker (content generation + crons) — the highest-value target since
