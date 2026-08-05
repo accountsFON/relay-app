@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTourController } from '@/components/onboarding/tour-provider'
@@ -52,7 +51,6 @@ export function WelcomeLaunchPad({
   onDismiss,
   className,
 }: WelcomeLaunchPadProps) {
-  const router = useRouter()
   const tour = useTourController()
   const [dismissed, setDismissed] = useState(false)
 
@@ -80,13 +78,16 @@ export function WelcomeLaunchPad({
     }
   }, [dismissed, onDismiss])
 
-  // AWAIT the dismiss before navigating. The launch pad's destinations are
-  // (app) routes, whose first-timer gate redirects the user back to /welcome
-  // until launchPadDismissed is persisted. Firing the POST without awaiting it
-  // (the old `void persistDismiss()`) raced that gate: the first click landed
-  // on the gate before the flag was written, got bounced back to /welcome, and
-  // only the second click (flag now persisted) stuck. Awaiting removes the
-  // race so a single click works.
+  // Await the dismiss, then do a FULL-DOCUMENT navigation (window.location).
+  // The launch pad's destinations are (app) routes whose first-timer gate
+  // redirects back to /welcome until launchPadDismissed is persisted. Two
+  // things were biting: (1) a fire-and-forget dismiss raced the gate, and
+  // (2) even after awaiting it, a soft router.push reused a STALE prefetched
+  // route-cache entry (the gate's redirect, cached while still a first-timer),
+  // so the first click did a full refresh back to /welcome and only the second
+  // click stuck. A full-document navigation ignores the client route cache and
+  // hits the server fresh, which now sees the dismiss, so the first click goes
+  // straight to the destination.
   const handleCardClick = useCallback(
     async (card: LaunchPadCard) => {
       await persistDismiss()
@@ -94,21 +95,21 @@ export function WelcomeLaunchPad({
         designerJumpHref && (card.id === 'edit-graphic' || card.id === 'pass-to-am')
           ? designerJumpHref
           : card.href
-      router.push(href)
+      window.location.assign(href)
     },
-    [persistDismiss, designerJumpHref, router],
+    [persistDismiss, designerJumpHref],
   )
 
   const handleTakeTour = useCallback(async () => {
     await persistDismiss()
     tour.start('overview-v1')
-    router.push('/dashboard')
-  }, [persistDismiss, tour, router])
+    window.location.assign('/dashboard')
+  }, [persistDismiss, tour])
 
   const handleSkip = useCallback(async () => {
     await persistDismiss()
-    router.push('/dashboard')
-  }, [persistDismiss, router])
+    window.location.assign('/dashboard')
+  }, [persistDismiss])
 
   return (
     <div
