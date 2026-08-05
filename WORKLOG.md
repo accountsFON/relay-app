@@ -31,6 +31,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-04 — Google-only auth UI (hide email/password form on sign-in + sign-up)** (PR #379)
+  Users saw both "Continue with Google" and an email/password form, confusing on first login. Rather than disabling
+  Clerk's email/password auth methods (which put the instance in an invalid state and hung sign-up), the fix keeps email
+  ENABLED in Clerk (needed for org invitations) and hides the email/password form + "or" divider in the `<SignIn>` /
+  `<SignUp>` appearance so "Continue with Google" is the only visible option. Google supplies name/email; our `/onboarding`
+  step gathers the display name. **Pairs with a Clerk setting:** email verification code must stay ON (a valid first
+  factor) so the OAuth-only config isn't invalid — the earlier method-disabling is what broke signup. tsc + eslint +
+  `next build` clean.
+
 - [x] **2026-08-04 — Brand-new-signup landed on a dead /welcome (no buttons, no tour, needed a refresh)** (PR #376)
   After signup, `/welcome` rendered but never hydrated: every button was dead and the launch-pad tour never fired until
   a manual reload. Root cause: `completeOnboarding` (a server action) `redirect()`d to `/welcome`, and Next delivered

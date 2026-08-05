@@ -19,6 +19,13 @@ export default function SignInPage() {
             headerTitle: 'font-bold text-foreground',
             formButtonPrimary: 'bg-primary hover:bg-neutral-700 rounded-full',
             footerActionLink: 'text-foreground hover:text-neutral-700',
+            // Google-only UI: hide the email/password form and the "or"
+            // divider so "Continue with Google" is the only visible option.
+            // Email stays ENABLED in Clerk (needed for org invitations); we
+            // just never surface it, rather than disabling auth methods
+            // (which put the instance in an invalid, sign-up-breaking state).
+            dividerRow: 'hidden',
+            form: 'hidden',
           },
         }}
       />

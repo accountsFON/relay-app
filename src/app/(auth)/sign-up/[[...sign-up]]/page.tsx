@@ -32,6 +32,12 @@ export default async function SignUpPage({
             headerTitle: 'font-bold text-foreground',
             formButtonPrimary: 'bg-primary hover:bg-neutral-700 rounded-full',
             footerActionLink: 'text-foreground hover:text-neutral-700',
+            // Google-only UI: hide the email/password form and the "or"
+            // divider so "Continue with Google" is the only visible option.
+            // Google supplies name/email, so no fields need collecting here;
+            // our own /onboarding step gathers the display name afterward.
+            dividerRow: 'hidden',
+            form: 'hidden',
           },
         }}
       />
