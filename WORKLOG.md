@@ -11,6 +11,9 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
+From the 2026-09 QA session:
+- [ ] **(PR open) Permanently-deleted user lingers in the Team list** — after a hard delete on `/admin/users/[id]`, the panel only `router.refresh()`d the detail route (whose user is now gone -> notFound), leaning on `revalidatePath('/admin/users')` for the Team list, so the deleted account appeared to stay in Team until a manual reload. Fix: after a successful delete, `router.push('/admin/users')` + `router.refresh()` so the admin lands on a freshly-refetched Team list and the account is immediately gone. (branch `fix/admin-user-delete-returns-to-team`; membership already cascades on delete, so the DB was always correct — this was a stale-view bug)
+
 From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done — full internal review parity):
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).

@@ -117,11 +117,22 @@ export function ManageUserAccessPanel({
       : null
   const blocked = blockReason !== null
 
-  function runAction(fn: () => Promise<unknown>, fallbackMessage: string) {
+  function runAction(
+    fn: () => Promise<unknown>,
+    fallbackMessage: string,
+    options?: { navigateTo?: string },
+  ) {
     startTransition(async () => {
       try {
         await fn()
         toast.success('Done.')
+        if (options?.navigateTo) {
+          // A hard-deleted user no longer exists, so refreshing THIS detail
+          // route (/admin/users/[id]) would notFound(). Send the admin back to
+          // the Team list, then refresh so the deleted account is immediately
+          // gone from it (rather than lingering until a manual reload).
+          router.push(options.navigateTo)
+        }
         router.refresh()
       } catch (err) {
         const message = err instanceof Error ? err.message : fallbackMessage
@@ -157,6 +168,7 @@ export function ManageUserAccessPanel({
     runAction(
       () => hardDeleteUserAction({ userId, reassignToUserId }),
       'Could not delete the user',
+      { navigateTo: '/admin/users' },
     )
   }
 
