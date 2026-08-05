@@ -56,8 +56,11 @@ describe('WelcomeLaunchPad', () => {
       screen.getByTestId('welcome-launch-pad-card-create-client'),
     )
 
-    expect(routerMock.push).toHaveBeenCalledWith('/clients/new')
-    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1))
+    // Navigation happens AFTER the dismiss persists (awaited).
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/clients/new'),
+    )
+    expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
   it('uses designerJumpHref for the edit-graphic and pass-to-am cards', async () => {
@@ -71,14 +74,20 @@ describe('WelcomeLaunchPad', () => {
     )
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-card-edit-graphic'))
-    expect(routerMock.push).toHaveBeenLastCalledWith('/batches/cuid_batch_1')
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenLastCalledWith('/batches/cuid_batch_1'),
+    )
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-card-pass-to-am'))
-    expect(routerMock.push).toHaveBeenLastCalledWith('/batches/cuid_batch_1')
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenLastCalledWith('/batches/cuid_batch_1'),
+    )
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-card-open-queue'))
     // open-queue is NOT overridden; should use its own href
-    expect(routerMock.push).toHaveBeenLastCalledWith('/dashboard')
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenLastCalledWith('/dashboard'),
+    )
   })
 
   it('Skip fires onDismiss and pushes /dashboard', async () => {
@@ -86,8 +95,10 @@ describe('WelcomeLaunchPad', () => {
     render(<WelcomeLaunchPad cards={cards} onDismiss={onDismiss} />)
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-skip'))
-    expect(routerMock.push).toHaveBeenCalledWith('/dashboard')
-    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/dashboard'),
+    )
+    expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
   it('Take the tour fires onDismiss, starts overview-v1, and pushes /dashboard', async () => {
@@ -95,9 +106,33 @@ describe('WelcomeLaunchPad', () => {
     render(<WelcomeLaunchPad cards={cards} onDismiss={onDismiss} />)
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-take-tour'))
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/dashboard'),
+    )
     expect(start).toHaveBeenCalledWith('overview-v1')
-    expect(routerMock.push).toHaveBeenCalledWith('/dashboard')
-    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1))
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+  })
+
+  it('awaits the dismiss BEFORE navigating (single click), so the first-timer gate sees it', async () => {
+    // Regression: the dismiss POST used to be fire-and-forget, so the first
+    // click navigated before launchPadDismissed persisted, the (app) gate
+    // bounced it back to /welcome, and only a second click worked.
+    const order: string[] = []
+    const onDismiss = vi.fn(() => {
+      order.push('dismiss')
+      return Promise.resolve()
+    })
+    routerMock.push.mockImplementation(() => {
+      order.push('push')
+    })
+    render(<WelcomeLaunchPad cards={cards} onDismiss={onDismiss} />)
+
+    fireEvent.click(screen.getByTestId('welcome-launch-pad-take-tour'))
+
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/dashboard'),
+    )
+    expect(order).toEqual(['dismiss', 'push'])
   })
 
   it('dismiss runs at most once across rapid clicks', async () => {

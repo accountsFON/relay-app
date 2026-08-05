@@ -80,9 +80,16 @@ export function WelcomeLaunchPad({
     }
   }, [dismissed, onDismiss])
 
+  // AWAIT the dismiss before navigating. The launch pad's destinations are
+  // (app) routes, whose first-timer gate redirects the user back to /welcome
+  // until launchPadDismissed is persisted. Firing the POST without awaiting it
+  // (the old `void persistDismiss()`) raced that gate: the first click landed
+  // on the gate before the flag was written, got bounced back to /welcome, and
+  // only the second click (flag now persisted) stuck. Awaiting removes the
+  // race so a single click works.
   const handleCardClick = useCallback(
-    (card: LaunchPadCard) => {
-      void persistDismiss()
+    async (card: LaunchPadCard) => {
+      await persistDismiss()
       const href =
         designerJumpHref && (card.id === 'edit-graphic' || card.id === 'pass-to-am')
           ? designerJumpHref
@@ -92,14 +99,14 @@ export function WelcomeLaunchPad({
     [persistDismiss, designerJumpHref, router],
   )
 
-  const handleTakeTour = useCallback(() => {
-    void persistDismiss()
+  const handleTakeTour = useCallback(async () => {
+    await persistDismiss()
     tour.start('overview-v1')
     router.push('/dashboard')
   }, [persistDismiss, tour, router])
 
-  const handleSkip = useCallback(() => {
-    void persistDismiss()
+  const handleSkip = useCallback(async () => {
+    await persistDismiss()
     router.push('/dashboard')
   }, [persistDismiss, router])
 

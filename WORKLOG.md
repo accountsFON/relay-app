@@ -31,6 +31,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-05 — Launch pad "Take the tour" (+ Skip / cards) work on the FIRST click** (PR #382)
+  The welcome launch pad fired its `launch-pad-dismissed` POST fire-and-forget (`void persistDismiss()`) and then
+  immediately `router.push`ed to an (app) route. That raced the first-timer gate: on the first click the flag wasn't
+  persisted yet, so the gate bounced the navigation back to /welcome (a full reload after #381), and only the SECOND
+  click — flag now persisted — stuck and let the tour auto-fire on /dashboard. Fix: `await persistDismiss()` before
+  navigating in all three handlers (Take the tour, Skip, card click) so the gate sees `launchPadDismissed` on the very
+  next request. (Also noted: `tour.start()` here is effectively a no-op — /welcome and /dashboard are separate layout
+  segments so the TourProvider state doesn't carry; the tour shows via auto-fire on /dashboard.) tsc + 2628 tests +
+  `next build` clean.
+
 - [x] **2026-08-05 — /welcome no longer freezes for returning first-timers (hard-navigate the (app) gate)** (PR #381)
   #376 fixed the onboarding-form -> /welcome hop (hard nav), but /welcome is ALSO reached by the (app) layout's
   first-timer gate, which did `redirect('/welcome')`. When the (app) route was reached via a client navigation (Clerk's
