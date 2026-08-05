@@ -31,6 +31,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-05 — Launch pad first click no longer full-refreshes (full-document nav bypasses stale route cache)** (PR #383)
+  Follow-up to #382. Even after awaiting the dismiss, the first click on any launch pad button did a full refresh back to
+  /welcome and only the second click stuck. Root cause: the soft `router.push` to an (app) route reused a STALE prefetched
+  route-cache entry — Next prefetches the sidebar routes while the user is still a first-timer, caching the (app) gate's
+  HardRedirect (#381); the first push replayed that cached redirect (a full reload), then the reload refreshed the cache so
+  the second click worked. Fix: the launch pad handlers (Take the tour / Skip / cards) now do a full-document navigation
+  (`window.location.assign`) after awaiting the dismiss, which ignores the client route cache and hits the server fresh —
+  the gate sees launchPadDismissed and the first click lands on the destination. Removed the now-unused `useRouter`. tsc +
+  2628 tests + `next build` clean.
+
 - [x] **2026-08-05 — Launch pad "Take the tour" (+ Skip / cards) work on the FIRST click** (PR #382)
   The welcome launch pad fired its `launch-pad-dismissed` POST fire-and-forget (`void persistDismiss()`) and then
   immediately `router.push`ed to an (app) route. That raced the first-timer gate: on the first click the flag wasn't

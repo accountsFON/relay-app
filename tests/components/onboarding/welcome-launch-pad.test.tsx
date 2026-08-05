@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import {
   WelcomeLaunchPad,
@@ -29,11 +29,22 @@ const designerCards: LaunchPadCard[] = [
   { id: 'pass-to-am', title: 'Pass to AM review', body: 'p', href: '/dashboard', cta: 'View batches' },
 ]
 
+let assign: ReturnType<typeof vi.fn>
+
 beforeEach(() => {
   routerMock.push.mockReset()
   routerMock.refresh.mockReset()
   pathnameMock.mockReturnValue('/welcome')
   start.mockClear()
+  // The launch pad navigates via a full-document load (window.location) to
+  // bypass the client route cache; jsdom's location is non-configurable, so
+  // stub the whole object.
+  assign = vi.fn()
+  vi.stubGlobal('location', { assign, href: '', origin: 'http://localhost' })
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('WelcomeLaunchPad', () => {
@@ -58,7 +69,7 @@ describe('WelcomeLaunchPad', () => {
 
     // Navigation happens AFTER the dismiss persists (awaited).
     await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/clients/new'),
+      expect(assign).toHaveBeenCalledWith('/clients/new'),
     )
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
@@ -75,18 +86,18 @@ describe('WelcomeLaunchPad', () => {
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-card-edit-graphic'))
     await waitFor(() =>
-      expect(routerMock.push).toHaveBeenLastCalledWith('/batches/cuid_batch_1'),
+      expect(assign).toHaveBeenLastCalledWith('/batches/cuid_batch_1'),
     )
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-card-pass-to-am'))
     await waitFor(() =>
-      expect(routerMock.push).toHaveBeenLastCalledWith('/batches/cuid_batch_1'),
+      expect(assign).toHaveBeenLastCalledWith('/batches/cuid_batch_1'),
     )
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-card-open-queue'))
     // open-queue is NOT overridden; should use its own href
     await waitFor(() =>
-      expect(routerMock.push).toHaveBeenLastCalledWith('/dashboard'),
+      expect(assign).toHaveBeenLastCalledWith('/dashboard'),
     )
   })
 
@@ -96,7 +107,7 @@ describe('WelcomeLaunchPad', () => {
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-skip'))
     await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/dashboard'),
+      expect(assign).toHaveBeenCalledWith('/dashboard'),
     )
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
@@ -107,32 +118,32 @@ describe('WelcomeLaunchPad', () => {
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-take-tour'))
     await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/dashboard'),
+      expect(assign).toHaveBeenCalledWith('/dashboard'),
     )
     expect(start).toHaveBeenCalledWith('overview-v1')
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it('awaits the dismiss BEFORE navigating (single click), so the first-timer gate sees it', async () => {
-    // Regression: the dismiss POST used to be fire-and-forget, so the first
-    // click navigated before launchPadDismissed persisted, the (app) gate
-    // bounced it back to /welcome, and only a second click worked.
+  it('awaits the dismiss BEFORE navigating, via a full-document load (single click)', async () => {
+    // Regression: the dismiss used to be fire-and-forget + a soft router.push,
+    // so the first click navigated before launchPadDismissed persisted (and
+    // reused a stale prefetched redirect), the (app) gate bounced it back to
+    // /welcome, and only a second click worked. Now: await dismiss, then a
+    // full-document navigation that ignores the client route cache.
     const order: string[] = []
     const onDismiss = vi.fn(() => {
       order.push('dismiss')
       return Promise.resolve()
     })
-    routerMock.push.mockImplementation(() => {
-      order.push('push')
+    assign.mockImplementation(() => {
+      order.push('nav')
     })
     render(<WelcomeLaunchPad cards={cards} onDismiss={onDismiss} />)
 
     fireEvent.click(screen.getByTestId('welcome-launch-pad-take-tour'))
 
-    await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/dashboard'),
-    )
-    expect(order).toEqual(['dismiss', 'push'])
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/dashboard'))
+    expect(order).toEqual(['dismiss', 'nav'])
   })
 
   it('dismiss runs at most once across rapid clicks', async () => {
