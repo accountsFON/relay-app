@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 export interface ResolveCheckboxProps {
   label: string
@@ -78,24 +79,28 @@ export function ResolveCheckbox({
 
   return (
     <div className="flex items-start gap-2">
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={checked}
-        aria-label={checked ? 'Mark unresolved' : 'Mark resolved'}
-        onClick={toggle}
-        disabled={disabled}
-        data-testid={testId}
-        className={cn(
-          'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
-          checked
-            ? 'border-primary bg-primary text-primary-foreground'
-            : 'border-border bg-background',
-          disabled && 'cursor-not-allowed opacity-60',
-        )}
+      <SimpleTooltip
+        content={checked ? 'Reopen this feedback' : 'Mark this feedback resolved'}
       >
-        {checked && <Check className="size-3" />}
-      </button>
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={checked}
+          aria-label={checked ? 'Mark unresolved' : 'Mark resolved'}
+          onClick={toggle}
+          disabled={disabled}
+          data-testid={testId}
+          className={cn(
+            'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border',
+            checked
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-border bg-background',
+            disabled && 'cursor-not-allowed opacity-60',
+          )}
+        >
+          {checked && <Check className="size-3" />}
+        </button>
+      </SimpleTooltip>
       {onSelect ? (
         // Sibling of the checkbox (not a wrapper) — clicking the comment opens
         // its pin; the checkbox next to it still resolves independently.

@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-05 — Tooltip on the review "resolve" control (first review-surface tooltip coverage)** (PR #389)
+  Wrapped the feedback resolve checkbox in the app's existing `SimpleTooltip` so hovering explains what resolving does
+  ("Mark this feedback resolved" / "Reopen this feedback") — the exact control Rebecca got wrong in QA (she marked resolved
+  instead of requesting a change). Finding: the tooltip layer (`SimpleTooltip`/`StepTooltip`/`RoleTooltip` over the base-ui
+  primitive, `relay-tooltips.tsx`) ALREADY exists and is used across post cards, checklists, archive/delete, step pills, and
+  role chips; Piece B is coverage of the review/preview surfaces, not a new build. First slice. tsc + 2649 tests +
+  `next build` clean. Deploy verification pending merge.
+
 - [x] **2026-08-05 — Client profile intro: one-time explainer atop the "Review client profile" modal** (PR #388)
   The onboarding gates (copy + designer) open the client profile in a read-only modal, but nothing told a first-timer
   what the profile is or why to read it. Added a small self-contained `ClientProfileIntro` callout at the top of the
