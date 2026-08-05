@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
+import { ClientProfileIntro } from '@/components/relay/client-profile-intro'
 import { acknowledgeCopyGateAction } from '@/server/actions/copyGateAck'
 import { cn } from '@/lib/utils'
 
@@ -81,6 +82,7 @@ export function CopyOnboardingGate({
                   <DialogHeader>
                     <DialogTitle>{client.name} profile</DialogTitle>
                   </DialogHeader>
+                  <ClientProfileIntro clientName={client.name} />
                   <ClientProfileView client={client} />
                 </DialogContent>
               </Dialog>
