@@ -2,11 +2,8 @@ import Image from 'next/image'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { findUserByClerkId } from '@/server/repositories/users'
-import { completeOnboarding } from './actions'
 import { isAgencyCreationEnabled } from '@/server/auth/agencyCreation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { OnboardingForm } from './onboarding-form'
 
 export default async function OnboardingPage({
   searchParams,
@@ -63,34 +60,11 @@ export default async function OnboardingPage({
           </p>
         </div>
 
-        <form action={completeOnboarding} className="space-y-5">
-          <input type="hidden" name="inviteTicket" value={inviteTicket} />
-          <div className="space-y-2">
-            <Label htmlFor="displayName">Your name</Label>
-            <Input
-              id="displayName"
-              name="displayName"
-              type="text"
-              required
-              placeholder="e.g. Julio Aleman"
-            />
-          </div>
-          {!isInvite && creationEnabled && (
-            <div className="space-y-2">
-              <Label htmlFor="agencyName">Agency name</Label>
-              <Input
-                id="agencyName"
-                name="agencyName"
-                type="text"
-                required
-                placeholder="e.g. Acme Marketing"
-              />
-            </div>
-          )}
-          <Button type="submit" size="lg" className="w-full">
-            Get started
-          </Button>
-        </form>
+        <OnboardingForm
+          isInvite={isInvite}
+          creationEnabled={creationEnabled}
+          inviteTicket={inviteTicket}
+        />
       </div>
     </div>
   )

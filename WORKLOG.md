@@ -11,6 +11,9 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
+From the 2026-09 QA session (Rebecca driving a full relay):
+- [ ] **(PR open) Fix brand-new-signup dead page** — after signup, `/welcome` loaded but every button was dead and the launch-pad tour never fired until a manual refresh. Root cause: the `completeOnboarding` server action `redirect()`d to `/welcome`, and that server-action navigation delivered the page non-interactive (never hydrated). Fix: the action now RETURNS the destination and the client (`onboarding-form.tsx`) does a full-document navigation (`window.location.assign`), which always hydrates — a plain refresh, itself a full load, was the proven workaround. Needs a live smoke test with a throwaway new signup after deploy. (branch `fix/onboarding-welcome-hydration`)
+
 From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done — full internal review parity):
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).

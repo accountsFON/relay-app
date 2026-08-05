@@ -88,7 +88,7 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'New Person', agencyName: 'Acme Marketing' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+    ).resolves.toEqual({ redirectTo: '/welcome' })
 
     // New orgs must be created uncapped (maxAllowedMemberships: 0) so an agency
     // is never born with Clerk's default 5-member limit.
@@ -134,7 +134,7 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'Invited Person' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+    ).resolves.toEqual({ redirectTo: '/welcome' })
 
     expect(createOrganization).not.toHaveBeenCalled()
     expect(createMembership).toHaveBeenCalledWith(
@@ -152,7 +152,7 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'AM Person' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+    ).resolves.toEqual({ redirectTo: '/welcome' })
 
     expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_admark', role: 'account_manager' }),
@@ -169,7 +169,7 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'Admin Person' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+    ).resolves.toEqual({ redirectTo: '/welcome' })
 
     expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_admark', role: 'admin' }),
@@ -186,7 +186,7 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'Client Person' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/dashboard')
+    ).resolves.toEqual({ redirectTo: '/dashboard' })
 
     expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_admark', role: 'client' }),
@@ -205,7 +205,7 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'Legacy Member' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+    ).resolves.toEqual({ redirectTo: '/welcome' })
 
     expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_admark', role: 'account_manager' }),
@@ -225,7 +225,7 @@ describe('completeOnboarding invite-only gate', () => {
 
     await expect(
       completeOnboarding(form({ displayName: 'Legacy Admin' })),
-    ).rejects.toThrow('NEXT_REDIRECT:/welcome')
+    ).resolves.toEqual({ redirectTo: '/welcome' })
 
     expect(createMembership).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_admark', role: 'admin' }),
