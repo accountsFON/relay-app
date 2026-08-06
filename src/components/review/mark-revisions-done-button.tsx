@@ -15,6 +15,8 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { REVIEW_TOOLTIP_COPY } from '@/lib/review-tooltip-copy'
 
 export interface MarkRevisionsDoneButtonProps {
   /** Server action that clears the sub-state + notifies the AM. */
@@ -52,15 +54,17 @@ export function MarkRevisionsDoneButton({
 
   return (
     <div className="mb-4 space-y-2">
-      <Button
-        variant="default"
-        size="default"
-        onClick={handleClick}
-        disabled={blocked || isPending}
-        data-testid="mark-revisions-done-button"
-      >
-        {isPending ? 'Submitting…' : 'Mark revisions done'}
-      </Button>
+      <SimpleTooltip content={REVIEW_TOOLTIP_COPY.markRevisionsDone}>
+        <Button
+          variant="default"
+          size="default"
+          onClick={handleClick}
+          disabled={blocked || isPending}
+          data-testid="mark-revisions-done-button"
+        >
+          {isPending ? 'Submitting…' : 'Mark revisions done'}
+        </Button>
+      </SimpleTooltip>
       {gatedByThreads && (
         <p
           data-testid="mark-revisions-done-hint"
