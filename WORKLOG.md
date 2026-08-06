@@ -31,7 +31,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
-- [x] **2026-08-06 — Phase 3 tooltip coverage: client review controls** (PR #TBD)
+- [x] **2026-08-06 — Phase 3 tooltip coverage: client review controls** (PR #392)
   Hover hints on the client magic-link review controls: Approve all, Submit Review, and the two
   per-post verdict pills (Approve / Changes, in the shared `DecisionButtonRow`). New
   `CLIENT_REVIEW_TOOLTIP_COPY` map with a Wave 4K copy-contract test. The inline "Edit copy" caption
