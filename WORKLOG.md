@@ -31,7 +31,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
-- [x] **2026-08-06 — Tooltip on the Generate content button** (PR #TBD)
+- [x] **2026-08-06 — Tooltip on the Generate content button** (PR #396)
   The client-header Generate content button (opens the generation dialog) now has a styled hover hint
   ("Generate a new batch of AI posts for this client") in place of its plain native `title`. Added
   `generateContent` to `CLIENT_PAGE_TOOLTIP_COPY` + contract test. The disabled variant keeps its native
