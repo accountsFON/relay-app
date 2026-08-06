@@ -12,6 +12,7 @@ export const PREVIEW_TOOLTIP_COPY = {
   bulkResolve: 'Mark every open feedback thread on this post resolved',
   markBatchReviewed: 'Finish your review and move this relay to the next step',
   commentImageRemove: 'Remove the attached image',
+  editCaption: 'Edit the written caption for this post',
 } as const
 
 export type PreviewTooltipKey = keyof typeof PREVIEW_TOOLTIP_COPY
