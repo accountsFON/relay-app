@@ -31,7 +31,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
-- [x] **2026-08-06 — Phase 2 tooltip coverage: staff review action buttons** (PR #TBD)
+- [x] **2026-08-06 — Phase 2 tooltip coverage: staff review action buttons** (PR #391)
   Hover hints on the four AM/designer jargon actions on the review surface: Request changes,
   Mark addressed, Mark revisions done, and Start next round. Copy lives in a centralized
   `REVIEW_TOOLTIP_COPY` map with a Wave 4K copy-contract test, mirroring Phase 1. The designer-flag
