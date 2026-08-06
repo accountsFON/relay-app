@@ -13,6 +13,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { bulkResolveOnPostAction } from '@/server/actions/threads'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { PREVIEW_TOOLTIP_COPY } from '@/lib/preview-tooltip-copy'
 
 export interface BulkResolveButtonProps {
   postId: string
@@ -79,18 +81,20 @@ export function BulkResolveButton({
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-        data-testid="bulk-resolve-button"
-        className={className}
-      >
-        <CheckCheck className="size-3.5 shrink-0" aria-hidden="true" />
-        <span>Resolve all{openThreadCount > 0 ? ` (${openThreadCount})` : ''}</span>
-      </Button>
+      <SimpleTooltip content={PREVIEW_TOOLTIP_COPY.bulkResolve}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() => setOpen(true)}
+          data-testid="bulk-resolve-button"
+          className={className}
+        >
+          <CheckCheck className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>Resolve all{openThreadCount > 0 ? ` (${openThreadCount})` : ''}</span>
+        </Button>
+      </SimpleTooltip>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>

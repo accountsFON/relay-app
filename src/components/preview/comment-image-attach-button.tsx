@@ -3,6 +3,8 @@
 import { useRef, useState } from 'react'
 import { Paperclip, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { PREVIEW_TOOLTIP_COPY } from '@/lib/preview-tooltip-copy'
 
 const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif'
@@ -70,19 +72,21 @@ export function CommentImageAttachButton({
             data-testid="comment-image-preview"
             className="h-16 w-auto max-w-[160px] rounded-md border border-[#dbdbdb] object-cover"
           />
-          <button
-            type="button"
-            data-testid="comment-image-remove"
-            aria-label="Remove attached image"
-            onClick={() => {
-              onChange(null)
-              setError(null)
-            }}
-            disabled={isDisabled}
-            className="absolute -right-2 -top-2 flex size-5 items-center justify-center rounded-full bg-[#262626] text-white hover:bg-black disabled:cursor-not-allowed"
-          >
-            <X className="size-3" strokeWidth={2.5} />
-          </button>
+          <SimpleTooltip content={PREVIEW_TOOLTIP_COPY.commentImageRemove}>
+            <button
+              type="button"
+              data-testid="comment-image-remove"
+              aria-label="Remove attached image"
+              onClick={() => {
+                onChange(null)
+                setError(null)
+              }}
+              disabled={isDisabled}
+              className="absolute -right-2 -top-2 flex size-5 items-center justify-center rounded-full bg-[#262626] text-white hover:bg-black disabled:cursor-not-allowed"
+            >
+              <X className="size-3" strokeWidth={2.5} />
+            </button>
+          </SimpleTooltip>
         </div>
       ) : (
         <button
