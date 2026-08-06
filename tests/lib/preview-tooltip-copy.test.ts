@@ -6,6 +6,7 @@ const REQUIRED_KEYS = [
   'bulkResolve',
   'markBatchReviewed',
   'commentImageRemove',
+  'editCaption',
 ] as const
 
 describe('PREVIEW_TOOLTIP_COPY', () => {

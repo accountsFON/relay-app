@@ -12,6 +12,8 @@ import { MessageSquare, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { clampInstagramAspectRatio } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { PREVIEW_TOOLTIP_COPY } from '@/lib/preview-tooltip-copy'
 import { MarkupOverlay, type OverlayPin } from './markup-overlay'
 import { CaptionMarkup, type CaptionPin } from './caption-markup'
 import { PinPopover, type PinPopoverThread } from './pin-popover'
@@ -438,15 +440,17 @@ export function InstagramFeedPost({
         )}
 
         {!editing && onEditCaption && (
-          <button
-            type="button"
-            data-testid="instagram-post-edit-copy"
-            onClick={onEditCaption}
-            className="mt-2 inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-[#00376b] bg-white px-4 py-1.5 text-[13px] font-semibold text-[#00376b] hover:bg-[#00376b] hover:text-white transition-colors"
-          >
-            <Pencil aria-hidden className="h-3.5 w-3.5" />
-            Edit copy
-          </button>
+          <SimpleTooltip content={PREVIEW_TOOLTIP_COPY.editCaption}>
+            <button
+              type="button"
+              data-testid="instagram-post-edit-copy"
+              onClick={onEditCaption}
+              className="mt-2 inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-[#00376b] bg-white px-4 py-1.5 text-[13px] font-semibold text-[#00376b] hover:bg-[#00376b] hover:text-white transition-colors"
+            >
+              <Pencil aria-hidden className="h-3.5 w-3.5" />
+              Edit copy
+            </button>
+          </SimpleTooltip>
         )}
 
         {!editing && captionOverride !== undefined && (
