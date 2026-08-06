@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Phase 4 tooltip coverage: client page actions** (PR #TBD)
+  Hover hints on the bare client-page action controls: Send to Client Review (`send-to-client-review-button`)
+  and the client decision panel's Approve & schedule / Request changes buttons (`client-decision-panel`).
+  New `CLIENT_PAGE_TOOLTIP_COPY` map with a Wave 4K copy-contract test. `archive-client-button` already had a
+  tooltip (skipped); the profile inline-edit pencils (self-evident, aria-labeled, many) and the restore banner
+  (button lives in shared `ArchivedBanner`) were deferred. tsc + 2659 unit tests + `next build` + eslint clean.
+  Fourth phase of the full-journey tooltip rollout. Deploy verification pending merge.
+
 - [x] **2026-08-06 — Phase 3 tooltip coverage: client review controls** (PR #392)
   Hover hints on the client magic-link review controls: Approve all, Submit Review, and the two
   per-post verdict pills (Approve / Changes, in the shared `DecisionButtonRow`). New
