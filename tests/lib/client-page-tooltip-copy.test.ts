@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { CLIENT_PAGE_TOOLTIP_COPY } from '@/lib/client-page-tooltip-copy'
 
-const REQUIRED_KEYS = ['sendToReview', 'approveSchedule', 'requestChanges'] as const
+const REQUIRED_KEYS = ['sendToReview', 'approveSchedule', 'requestChanges', 'generateContent'] as const
 
 describe('CLIENT_PAGE_TOOLTIP_COPY', () => {
   it('has non-empty copy for every required control', () => {

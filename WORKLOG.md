@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Tooltip on the Generate content button** (PR #396)
+  The client-header Generate content button (opens the generation dialog) now has a styled hover hint
+  ("Generate a new batch of AI posts for this client") in place of its plain native `title`. Added
+  `generateContent` to `CLIENT_PAGE_TOOLTIP_COPY` + contract test. The disabled variant keeps its native
+  `title` (shows the disabledReason; SimpleTooltip does not fire on a disabled button). Verified the
+  SimpleTooltip + DialogTrigger composition still opens the dialog (10 dialog tests green). tsc + 2661 unit +
+  build + eslint clean. Requested by Julio from a prod screenshot.
+
 - [x] **2026-08-06 — Tooltip coverage: deferred slices (Edit copy link + profile edit pencils)** (PR #395)
   Closed out the two deferred tooltip targets. (1) The client's inline "Edit copy" caption link on both the
   Instagram and Facebook post previews now explains on hover that it edits the written caption ("copy" is
