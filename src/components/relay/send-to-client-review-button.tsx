@@ -16,6 +16,8 @@ import {
   FinalQaOnceOver,
   allQaOnceOverChecked,
 } from '@/components/relay/final-qa-once-over'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { CLIENT_PAGE_TOOLTIP_COPY } from '@/lib/client-page-tooltip-copy'
 
 export interface SendToClientReviewButtonProps {
   batchId: string
@@ -70,15 +72,17 @@ export function SendToClientReviewButton({
 
   return (
     <>
-      <Button
-        type="button"
-        className="w-full"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-      >
-        {label}
-        <ArrowRight />
-      </Button>
+      <SimpleTooltip content={CLIENT_PAGE_TOOLTIP_COPY.sendToReview}>
+        <Button
+          type="button"
+          className="w-full"
+          disabled={disabled}
+          onClick={() => setOpen(true)}
+        >
+          {label}
+          <ArrowRight />
+        </Button>
+      </SimpleTooltip>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
