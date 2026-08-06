@@ -8,6 +8,7 @@ import { ExternalLink, Link as LinkIcon, Pencil, Check, X } from 'lucide-react'
 import { PageSection } from '@/components/ui/page-section'
 import { Button } from '@/components/ui/button'
 import { SubmitCombo } from '@/components/ui/submit-combo'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
@@ -266,14 +267,16 @@ function FieldHeader({
         )}
       </div>
       {canEdit && !editing && (
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label={`Edit ${label}`}
-          className="inline-flex items-center justify-center size-7 rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-foreground transition-colors shrink-0"
-        >
-          <Pencil className="size-3.5" />
-        </button>
+        <SimpleTooltip content={`Edit ${label}`}>
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={`Edit ${label}`}
+            className="inline-flex items-center justify-center size-7 rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-foreground transition-colors shrink-0"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+        </SimpleTooltip>
       )}
       {editing && (
         <div className="flex items-center gap-1 shrink-0">
@@ -499,14 +502,16 @@ function FocusField({
           )}
         </div>
         {canEdit && !editor.editing && (
-          <button
-            type="button"
-            onClick={editor.startEdit}
-            aria-label={`Edit Focus ${index}`}
-            className="inline-flex items-center justify-center size-7 rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-foreground transition-colors shrink-0"
-          >
-            <Pencil className="size-3.5" />
-          </button>
+          <SimpleTooltip content="Edit this focus area">
+            <button
+              type="button"
+              onClick={editor.startEdit}
+              aria-label={`Edit Focus ${index}`}
+              className="inline-flex items-center justify-center size-7 rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-foreground transition-colors shrink-0"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          </SimpleTooltip>
         )}
         {editor.editing && (
           <div className="flex items-center gap-1 shrink-0">
