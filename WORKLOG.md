@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Phase 1 tooltip coverage: shared /preview controls** (PR #TBD)
+  Hover hints on the four non-obvious shared /preview controls: image replace (plus a new aria-label),
+  per-post resolve-all, mark-relay-reviewed, and the icon-only remove-attached-image button. Copy lives
+  in a centralized `PREVIEW_TOOLTIP_COPY` map guarded by a Wave 4K copy-contract test (no dashes, under
+  80 chars). First phase of the full-journey tooltip rollout (spec + plan under docs/superpowers/).
+  Coverage rule: icon-only or non-obvious controls only; the Instagram/Facebook platform toggle stayed
+  bare as self-evident. tsc + 2652 unit tests + `next build` + eslint clean. Deploy verification pending merge.
+
 - [x] **2026-08-05 — Tooltip on the review "resolve" control (first review-surface tooltip coverage)** (PR #389)
   Wrapped the feedback resolve checkbox in the app's existing `SimpleTooltip` so hovering explains what resolving does
   ("Mark this feedback resolved" / "Reopen this feedback") — the exact control Rebecca got wrong in QA (she marked resolved
