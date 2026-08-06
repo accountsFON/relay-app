@@ -13,7 +13,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { REVIEW_TOOLTIP_COPY } from '@/lib/review-tooltip-copy'
 
 export interface StartNextRoundButtonProps {
@@ -77,6 +77,7 @@ export function StartNextRoundButton({
           data-next-round={nextRound}
         >
           {isPending ? 'Starting…' : `Start Round ${nextRound}`}
+          <InfoHint />
         </Button>
       </SimpleTooltip>
       {error && (

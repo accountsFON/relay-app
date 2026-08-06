@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { REVIEW_TOOLTIP_COPY } from '@/lib/review-tooltip-copy'
 
 export interface RequestChangesButtonProps {
@@ -67,6 +67,7 @@ export function RequestChangesButton({
           data-testid="request-changes-button"
         >
           {isPending ? 'Requesting...' : 'Request changes'}
+          <InfoHint />
         </Button>
       </SimpleTooltip>
       {sent && (

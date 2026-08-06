@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils'
 import { STEP_LABEL } from './labels'
 import { relayStepLabel } from '@/lib/relay-step-labels'
 import type { BatchSummary, ChecklistItem } from './types'
-import { SimpleTooltip } from './relay-tooltips'
+import { SimpleTooltip, InfoHint } from './relay-tooltips'
 import { AdminForceStepSection } from './admin-force-step-section'
 import { SendToClientReviewButton } from './send-to-client-review-button'
 import {
@@ -311,6 +311,7 @@ export function ChecklistPanel({
               >
                 {isActing ? 'Finishing…' : 'Finish'}
                 <Check />
+                <InfoHint />
               </Button>
             </SimpleTooltip>
           ) : nextStep && batch.currentStep === RelayStep.am_review_design ? (
@@ -333,6 +334,7 @@ export function ChecklistPanel({
               >
                 {isActing ? 'Passing…' : passButtonLabel()}
                 <ArrowRight />
+                <InfoHint />
               </Button>
             </SimpleTooltip>
           ) : null}
@@ -348,6 +350,7 @@ export function ChecklistPanel({
                 data-testid="request-design-changes"
               >
                 {isActing ? 'Requesting…' : 'Request changes'}
+                <InfoHint />
               </Button>
             </SimpleTooltip>
           )}

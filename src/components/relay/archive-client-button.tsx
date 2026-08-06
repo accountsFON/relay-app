@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { archiveClientAction } from '@/app/(app)/trash/actions'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 
 interface Props {
   clientId: string
@@ -61,6 +61,7 @@ export function ArchiveClientButton({ clientId, clientName }: Props) {
       <SimpleTooltip content="Archive this client and every relay, run, and post under it.">
         <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
           Archive client
+          <InfoHint />
         </Button>
       </SimpleTooltip>
 

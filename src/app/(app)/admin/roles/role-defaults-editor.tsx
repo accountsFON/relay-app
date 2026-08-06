@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { updateRoleDefaults } from './actions'
 import {
   PERMISSION_KEYS,
@@ -133,8 +133,9 @@ export function RoleDefaultsEditor({ role, initialOverrides }: Props) {
                 >
                   <td className="px-4 py-3">
                     <SimpleTooltip content={PERMISSION_DESCRIPTIONS[key]}>
-                      <div className="font-medium text-foreground w-fit">
+                      <div className="font-medium text-foreground w-fit inline-flex items-center gap-1">
                         {PERMISSION_LABELS[key]}
+                        <InfoHint />
                       </div>
                     </SimpleTooltip>
                     <div className="text-xs text-muted-foreground font-mono">

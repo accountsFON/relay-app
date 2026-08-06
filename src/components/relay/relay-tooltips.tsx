@@ -14,6 +14,8 @@
 
 import type { ReactElement, ReactNode } from 'react'
 import { RelayRole, RelayStep } from '@prisma/client'
+import { Info } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   Tooltip,
   TooltipContent,
@@ -73,6 +75,22 @@ export function SimpleTooltip({
         <TooltipContent side={side}>{content}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  )
+}
+
+/**
+ * Small muted info glyph that signals a hover tooltip is available. Drop it
+ * after a button label or heading text (inside the same element that is
+ * wrapped in a tooltip) so users know there is more to read on hover. Purely
+ * decorative: it is aria-hidden, and the tooltip content is the real payload.
+ */
+export function InfoHint({ className }: { className?: string }) {
+  return (
+    <Info
+      aria-hidden
+      data-testid="tooltip-info-hint"
+      className={cn('inline-block size-3 shrink-0 opacity-50', className)}
+    />
   )
 }
 

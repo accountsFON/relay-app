@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { bulkResolveOnPostAction } from '@/server/actions/threads'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { PREVIEW_TOOLTIP_COPY } from '@/lib/preview-tooltip-copy'
 
 export interface BulkResolveButtonProps {
@@ -93,6 +93,7 @@ export function BulkResolveButton({
         >
           <CheckCheck className="size-3.5 shrink-0" aria-hidden="true" />
           <span>Resolve all{openThreadCount > 0 ? ` (${openThreadCount})` : ''}</span>
+          <InfoHint />
         </Button>
       </SimpleTooltip>
 

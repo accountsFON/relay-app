@@ -15,7 +15,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { REVIEW_TOOLTIP_COPY } from '@/lib/review-tooltip-copy'
 
 export interface MarkRevisionsDoneButtonProps {
@@ -63,6 +63,7 @@ export function MarkRevisionsDoneButton({
           data-testid="mark-revisions-done-button"
         >
           {isPending ? 'Submitting…' : 'Mark revisions done'}
+          <InfoHint />
         </Button>
       </SimpleTooltip>
       {gatedByThreads && (
