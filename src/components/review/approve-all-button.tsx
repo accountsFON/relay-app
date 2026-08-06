@@ -1,6 +1,8 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { CLIENT_REVIEW_TOOLTIP_COPY } from '@/lib/client-review-tooltip-copy'
 
 /**
  * Bulk-approve CTA for the client review surface. Presentational: the shell
@@ -21,16 +23,18 @@ export function ApproveAllButton({
 }) {
   if (totalPosts <= 1) return null
   return (
-    <Button
-      type="button"
-      variant="default"
-      size="sm"
-      data-testid="approve-all-button"
-      disabled={pending || allApproved}
-      onClick={onApproveAll}
-      className="self-start"
-    >
-      {pending ? 'Approving…' : `Approve all ${totalPosts} posts`}
-    </Button>
+    <SimpleTooltip content={CLIENT_REVIEW_TOOLTIP_COPY.approveAll}>
+      <Button
+        type="button"
+        variant="default"
+        size="sm"
+        data-testid="approve-all-button"
+        disabled={pending || allApproved}
+        onClick={onApproveAll}
+        className="self-start"
+      >
+        {pending ? 'Approving…' : `Approve all ${totalPosts} posts`}
+      </Button>
+    </SimpleTooltip>
   )
 }

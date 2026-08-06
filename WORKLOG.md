@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Phase 3 tooltip coverage: client review controls** (PR #392)
+  Hover hints on the client magic-link review controls: Approve all, Submit Review, and the two
+  per-post verdict pills (Approve / Changes, in the shared `DecisionButtonRow`). New
+  `CLIENT_REVIEW_TOOLTIP_COPY` map with a Wave 4K copy-contract test. The inline "Edit copy" caption
+  link inside the 549-line ReviewPostCard is deferred to a dedicated shared-card slice (needs a focused
+  read, not wrapped blindly). tsc + 2656 unit tests + `next build` + eslint clean. Third phase of the
+  full-journey tooltip rollout. Deploy verification pending merge.
+
 - [x] **2026-08-06 — Phase 2 tooltip coverage: staff review action buttons** (PR #391)
   Hover hints on the four AM/designer jargon actions on the review surface: Request changes,
   Mark addressed, Mark revisions done, and Start next round. Copy lives in a centralized
