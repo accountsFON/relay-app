@@ -3,6 +3,8 @@
 import { Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ReviewDecisionType } from '@/types/review-session'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { CLIENT_REVIEW_TOOLTIP_COPY } from '@/lib/client-review-tooltip-copy'
 
 export type DecisionButtonRowProps = {
   value: ReviewDecisionType
@@ -82,26 +84,34 @@ export function DecisionButtonRow({
             ? value === 'changes_requested' || value === 'caption_edited'
             : value === cfg.decision
         return (
-          <button
+          <SimpleTooltip
             key={cfg.decision}
-            type="button"
-            aria-label={cfg.ariaLabel}
-            aria-pressed={isActive}
-            data-decision={cfg.decision}
-            data-active={isActive ? 'true' : 'false'}
-            data-testid={`decision-button-${cfg.decision}`}
-            onClick={() => onChange(cfg.decision)}
-            disabled={disabled}
-            className={cn(
-              'inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-              // 44pt touch target
-              'min-h-[44px] min-w-[44px]',
-              isActive ? cfg.filledClass : cfg.outlineClass,
-            )}
+            content={
+              cfg.decision === 'approved'
+                ? CLIENT_REVIEW_TOOLTIP_COPY.decisionApprove
+                : CLIENT_REVIEW_TOOLTIP_COPY.decisionChanges
+            }
           >
-            <Icon aria-hidden className="h-4 w-4" />
-            <span>{cfg.label}</span>
-          </button>
+            <button
+              type="button"
+              aria-label={cfg.ariaLabel}
+              aria-pressed={isActive}
+              data-decision={cfg.decision}
+              data-active={isActive ? 'true' : 'false'}
+              data-testid={`decision-button-${cfg.decision}`}
+              onClick={() => onChange(cfg.decision)}
+              disabled={disabled}
+              className={cn(
+                'inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                // 44pt touch target
+                'min-h-[44px] min-w-[44px]',
+                isActive ? cfg.filledClass : cfg.outlineClass,
+              )}
+            >
+              <Icon aria-hidden className="h-4 w-4" />
+              <span>{cfg.label}</span>
+            </button>
+          </SimpleTooltip>
         )
       })}
     </div>

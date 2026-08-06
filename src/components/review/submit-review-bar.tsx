@@ -2,6 +2,8 @@
 
 import { cn } from '@/lib/utils'
 import type { ReviewSessionSummary } from '@/types/review-session'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { CLIENT_REVIEW_TOOLTIP_COPY } from '@/lib/client-review-tooltip-copy'
 
 export type SubmitReviewBarProps = {
   summary: ReviewSessionSummary
@@ -49,18 +51,20 @@ export function SubmitReviewBar({
           <span aria-hidden>·</span>
           <span data-testid="counter-edits">{captionEdited} edits</span>
         </div>
-        <button
-          type="button"
-          data-testid="submit-review-bar-button"
-          onClick={onSubmit}
-          disabled={submitting}
-          className={cn(
-            'inline-flex w-full items-center justify-center rounded-full bg-primary px-6 text-[14px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60',
-            'min-h-[44px]',
-          )}
-        >
-          {submitting ? 'Submitting...' : 'Submit Review'}
-        </button>
+        <SimpleTooltip content={CLIENT_REVIEW_TOOLTIP_COPY.submitReview}>
+          <button
+            type="button"
+            data-testid="submit-review-bar-button"
+            onClick={onSubmit}
+            disabled={submitting}
+            className={cn(
+              'inline-flex w-full items-center justify-center rounded-full bg-primary px-6 text-[14px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60',
+              'min-h-[44px]',
+            )}
+          >
+            {submitting ? 'Submitting...' : 'Submit Review'}
+          </button>
+        </SimpleTooltip>
       </div>
     </div>
   )
