@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { ReviewSessionSummary } from '@/types/review-session'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { CLIENT_REVIEW_TOOLTIP_COPY } from '@/lib/client-review-tooltip-copy'
 
 export type SubmitReviewBarProps = {
@@ -63,6 +63,7 @@ export function SubmitReviewBar({
             )}
           >
             {submitting ? 'Submitting...' : 'Submit Review'}
+            <InfoHint />
           </button>
         </SimpleTooltip>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { REVIEW_TOOLTIP_COPY } from '@/lib/review-tooltip-copy'
 
 /**
@@ -45,6 +45,7 @@ export function MarkAddressedButton({
           }}
         >
           {isPending ? 'Saving…' : label}
+          <InfoHint />
         </Button>
       </SimpleTooltip>
       {error && (

@@ -12,7 +12,7 @@ import { Globe, Pencil, ThumbsUp, MessageCircle, MessageSquare, Share2 } from 'l
 import { cn } from '@/lib/utils'
 import { facebookAspectRatio } from '@/lib/feed-aspect-ratio'
 import type { FeedPostProps, PinLocation } from '@/types/preview'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { PREVIEW_TOOLTIP_COPY } from '@/lib/preview-tooltip-copy'
 import { MarkupOverlay, type OverlayPin } from './markup-overlay'
 import { CaptionMarkup, type CaptionPin } from './caption-markup'
@@ -349,6 +349,7 @@ export function FacebookPost(props: FeedPostProps) {
             >
               <Pencil aria-hidden className="h-3.5 w-3.5" />
               Edit copy
+              <InfoHint />
             </button>
           </SimpleTooltip>
         )}

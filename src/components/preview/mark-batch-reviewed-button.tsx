@@ -18,7 +18,7 @@ import {
   allQaOnceOverChecked,
 } from '@/components/relay/final-qa-once-over'
 import { SendLinkModal } from '@/components/batch/send-link-modal'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { PREVIEW_TOOLTIP_COPY } from '@/lib/preview-tooltip-copy'
 
 export interface MarkReviewedChecklistItem {
@@ -143,6 +143,7 @@ export function MarkBatchReviewedButton({
         >
           <CheckCircle2 className="size-3.5 shrink-0" aria-hidden="true" />
           <span>{isPending ? 'Advancing...' : 'Mark relay reviewed'}</span>
+          <InfoHint />
         </Button>
       </SimpleTooltip>
       {blocked && (

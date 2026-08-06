@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { CLIENT_REVIEW_TOOLTIP_COPY } from '@/lib/client-review-tooltip-copy'
 
 /**
@@ -34,6 +34,7 @@ export function ApproveAllButton({
         className="self-start"
       >
         {pending ? 'Approving…' : `Approve all ${totalPosts} posts`}
+        <InfoHint />
       </Button>
     </SimpleTooltip>
   )

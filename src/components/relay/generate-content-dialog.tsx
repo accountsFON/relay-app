@@ -19,7 +19,7 @@ import { generateContentAction } from '@/server/actions/generate-content'
 import type { GenerateContentResult } from '@/server/actions/generate-content'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { formatMonthYear } from '@/lib/batch-target-month'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { CLIENT_PAGE_TOOLTIP_COPY } from '@/lib/client-page-tooltip-copy'
 
 type View =
@@ -189,6 +189,7 @@ export function GenerateContentDialog({
           }
         >
           Generate content
+          <InfoHint />
         </DialogTrigger>
       </SimpleTooltip>
       <DialogContent>

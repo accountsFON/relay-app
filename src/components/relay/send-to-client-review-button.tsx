@@ -16,7 +16,7 @@ import {
   FinalQaOnceOver,
   allQaOnceOverChecked,
 } from '@/components/relay/final-qa-once-over'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { CLIENT_PAGE_TOOLTIP_COPY } from '@/lib/client-page-tooltip-copy'
 
 export interface SendToClientReviewButtonProps {
@@ -81,6 +81,7 @@ export function SendToClientReviewButton({
         >
           {label}
           <ArrowRight />
+          <InfoHint />
         </Button>
       </SimpleTooltip>
 

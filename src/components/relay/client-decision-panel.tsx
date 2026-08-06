@@ -18,7 +18,7 @@ import { Check, MessageSquareWarning } from 'lucide-react'
 import { RelayStep } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { CLIENT_PAGE_TOOLTIP_COPY } from '@/lib/client-page-tooltip-copy'
 import { passBatonAction } from '@/server/actions/relay'
 import { postCommentAction } from '@/app/(app)/clients/[id]/activity/actions'
@@ -94,6 +94,7 @@ export function ClientDecisionPanel({ batch }: ClientDecisionPanelProps) {
             <Button onClick={approve} disabled={isPending} className="w-full">
               <Check />
               {isPending ? 'Approving…' : 'Approve & schedule'}
+              <InfoHint />
             </Button>
           </SimpleTooltip>
           <SimpleTooltip content={CLIENT_PAGE_TOOLTIP_COPY.requestChanges}>
@@ -105,6 +106,7 @@ export function ClientDecisionPanel({ batch }: ClientDecisionPanelProps) {
             >
               <MessageSquareWarning />
               Request changes
+              <InfoHint />
             </Button>
           </SimpleTooltip>
         </div>
