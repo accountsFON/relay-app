@@ -19,6 +19,8 @@ import { generateContentAction } from '@/server/actions/generate-content'
 import type { GenerateContentResult } from '@/server/actions/generate-content'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { formatMonthYear } from '@/lib/batch-target-month'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { CLIENT_PAGE_TOOLTIP_COPY } from '@/lib/client-page-tooltip-copy'
 
 type View =
   | { kind: 'picker' }
@@ -177,17 +179,18 @@ export function GenerateContentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger
-        render={
-          <Button
-            variant="accent"
-            title="Generate next period's content for this client"
-            data-tour-anchor="generate-content"
-          />
-        }
-      >
-        Generate content
-      </DialogTrigger>
+      <SimpleTooltip content={CLIENT_PAGE_TOOLTIP_COPY.generateContent}>
+        <DialogTrigger
+          render={
+            <Button
+              variant="accent"
+              data-tour-anchor="generate-content"
+            />
+          }
+        >
+          Generate content
+        </DialogTrigger>
+      </SimpleTooltip>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>

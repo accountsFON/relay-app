@@ -11,6 +11,7 @@ export const CLIENT_PAGE_TOOLTIP_COPY = {
   sendToReview: 'Run the final QA before this relay moves on',
   approveSchedule: 'Approve this relay and send it straight to scheduling',
   requestChanges: 'Send this back to your team with notes on what to fix',
+  generateContent: 'Generate a new batch of AI posts for this client',
 } as const
 
 export type ClientPageTooltipKey = keyof typeof CLIENT_PAGE_TOOLTIP_COPY
