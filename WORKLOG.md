@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Phase 2 tooltip coverage: staff review action buttons** (PR #TBD)
+  Hover hints on the four AM/designer jargon actions on the review surface: Request changes,
+  Mark addressed, Mark revisions done, and Start next round. Copy lives in a centralized
+  `REVIEW_TOOLTIP_COPY` map with a Wave 4K copy-contract test, mirroring Phase 1. The designer-flag
+  toggle and the changes-navigator prev/next chevrons were intentionally left bare (visible labels /
+  obvious stepper, a tooltip would be noise). tsc + 2654 unit tests + `next build` + eslint clean.
+  Second phase of the full-journey tooltip rollout. Deploy verification pending merge.
+
 - [x] **2026-08-06 — Phase 1 tooltip coverage: shared /preview controls** (PR #390)
   Hover hints on the four non-obvious shared /preview controls: image replace (plus a new aria-label),
   per-post resolve-all, mark-relay-reviewed, and the icon-only remove-attached-image button. Copy lives
