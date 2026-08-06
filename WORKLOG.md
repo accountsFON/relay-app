@@ -29,15 +29,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ---
 
-## Open / in progress
-
-- [ ] **Info glyph on tooltipped controls (PR #397) — needs visual review before merge.** Added a muted
-  info icon (`InfoHint`) inside every tooltipped text button + the permission-editor labels so users know a
-  hover hint exists. Held back from the dense shared badges (step pills via `StepTooltip`, role chips via
-  `RoleTooltip`) pending Julio's call, since an icon on every micro-pill could clutter dense screens. Preview
-  deploy is the right place to eyeball it before it hits prod.
-
 ## Shipped
+
+- [x] **2026-08-06 — Info glyph on tooltipped buttons + headings** (PR #397)
+  Added a muted info icon (`InfoHint`, aria-hidden) inside every tooltipped text button and the
+  permission-editor labels so users know a hover hint is there: the review / client-review / client-page
+  action buttons, Generate content, Archive client, the pipeline checklist actions (Finish / Pass / Request
+  changes), Edit copy, and every permission row. Icon-only controls stay bare. Julio reviewed the Vercel
+  preview before merge. Dense shared badges (step pills via `StepTooltip`, role chips via `RoleTooltip`) were
+  held back to avoid clutter on kanban / cards. tsc + 2662 unit + build + eslint clean.
 
 - [x] **2026-08-06 — Tooltip on the Generate content button** (PR #396)
   The client-header Generate content button (opens the generation dialog) now has a styled hover hint
