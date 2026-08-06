@@ -13,6 +13,8 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { REVIEW_TOOLTIP_COPY } from '@/lib/review-tooltip-copy'
 
 export interface StartNextRoundButtonProps {
   /**
@@ -64,17 +66,19 @@ export function StartNextRoundButton({
 
   return (
     <div className="space-y-2">
-      <Button
-        variant="default"
-        size="default"
-        onClick={handleClick}
-        disabled={disabled || isPending}
-        data-testid="start-next-round-button"
-        data-magic-link-id={magicLinkId}
-        data-next-round={nextRound}
-      >
-        {isPending ? 'Starting…' : `Start Round ${nextRound}`}
-      </Button>
+      <SimpleTooltip content={REVIEW_TOOLTIP_COPY.startNextRound}>
+        <Button
+          variant="default"
+          size="default"
+          onClick={handleClick}
+          disabled={disabled || isPending}
+          data-testid="start-next-round-button"
+          data-magic-link-id={magicLinkId}
+          data-next-round={nextRound}
+        >
+          {isPending ? 'Starting…' : `Start Round ${nextRound}`}
+        </Button>
+      </SimpleTooltip>
       {error && (
         <p
           role="alert"

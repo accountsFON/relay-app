@@ -20,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { REVIEW_TOOLTIP_COPY } from '@/lib/review-tooltip-copy'
 
 export interface RequestChangesButtonProps {
   /** Server action that sets awaiting_design_revisions + notifies designer. */
@@ -56,15 +58,17 @@ export function RequestChangesButton({
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button
-        variant="outline"
-        size="default"
-        onClick={() => setOpen(true)}
-        disabled={disabled || isPending || sent}
-        data-testid="request-changes-button"
-      >
-        {isPending ? 'Requesting...' : 'Request changes'}
-      </Button>
+      <SimpleTooltip content={REVIEW_TOOLTIP_COPY.requestChanges}>
+        <Button
+          variant="outline"
+          size="default"
+          onClick={() => setOpen(true)}
+          disabled={disabled || isPending || sent}
+          data-testid="request-changes-button"
+        >
+          {isPending ? 'Requesting...' : 'Request changes'}
+        </Button>
+      </SimpleTooltip>
       {sent && (
         <p
           data-testid="request-changes-success"
