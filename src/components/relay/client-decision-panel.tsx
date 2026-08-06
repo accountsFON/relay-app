@@ -18,6 +18,8 @@ import { Check, MessageSquareWarning } from 'lucide-react'
 import { RelayStep } from '@prisma/client'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { CLIENT_PAGE_TOOLTIP_COPY } from '@/lib/client-page-tooltip-copy'
 import { passBatonAction } from '@/server/actions/relay'
 import { postCommentAction } from '@/app/(app)/clients/[id]/activity/actions'
 import type { BatchSummary } from './types'
@@ -88,19 +90,23 @@ export function ClientDecisionPanel({ batch }: ClientDecisionPanelProps) {
 
       {mode === 'idle' && (
         <div className="flex flex-col gap-2 pt-2">
-          <Button onClick={approve} disabled={isPending} className="w-full">
-            <Check />
-            {isPending ? 'Approving…' : 'Approve & schedule'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setMode('request_changes')}
-            disabled={isPending}
-            className="w-full"
-          >
-            <MessageSquareWarning />
-            Request changes
-          </Button>
+          <SimpleTooltip content={CLIENT_PAGE_TOOLTIP_COPY.approveSchedule}>
+            <Button onClick={approve} disabled={isPending} className="w-full">
+              <Check />
+              {isPending ? 'Approving…' : 'Approve & schedule'}
+            </Button>
+          </SimpleTooltip>
+          <SimpleTooltip content={CLIENT_PAGE_TOOLTIP_COPY.requestChanges}>
+            <Button
+              variant="outline"
+              onClick={() => setMode('request_changes')}
+              disabled={isPending}
+              className="w-full"
+            >
+              <MessageSquareWarning />
+              Request changes
+            </Button>
+          </SimpleTooltip>
         </div>
       )}
 
