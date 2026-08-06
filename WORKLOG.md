@@ -31,7 +31,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
-- [x] **2026-08-06 — Phase 4 tooltip coverage: client page actions** (PR #TBD)
+- [x] **2026-08-06 — Phase 4 tooltip coverage: client page actions** (PR #393)
   Hover hints on the bare client-page action controls: Send to Client Review (`send-to-client-review-button`)
   and the client decision panel's Approve & schedule / Request changes buttons (`client-decision-panel`).
   New `CLIENT_PAGE_TOOLTIP_COPY` map with a Wave 4K copy-contract test. `archive-client-button` already had a
