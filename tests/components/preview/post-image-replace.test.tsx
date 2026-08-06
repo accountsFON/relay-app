@@ -30,7 +30,9 @@ describe('usePostImageReplace', () => {
 
   it('renders a corner Replace button that opens the file picker', () => {
     render(<Harness />)
-    expect(screen.getByTestId('post-image-replace-button')).toBeInTheDocument()
+    const replaceButton = screen.getByTestId('post-image-replace-button')
+    expect(replaceButton).toBeInTheDocument()
+    expect(replaceButton).toHaveAttribute('aria-label', 'Replace image')
     expect(screen.queryByTestId('post-image-pick')).not.toBeInTheDocument()
   })
 

@@ -4,6 +4,8 @@ import { useRef, type ReactNode } from 'react'
 import { ImageIcon, Loader2 } from 'lucide-react'
 import { useReplacePostImage } from '@/components/posts/use-replace-post-image'
 import { useImageDrop, type ImageDropProps } from '@/components/preview/use-image-drop'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
+import { PREVIEW_TOOLTIP_COPY } from '@/lib/preview-tooltip-copy'
 
 /**
  * In-place image replace for a /preview post. The caller spreads `dragProps`
@@ -40,15 +42,18 @@ export function usePostImageReplace({
         }}
       />
 
-      <button
-        type="button"
-        data-testid="post-image-replace-button"
-        onClick={pick}
-        className="pointer-events-auto absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-[11px] font-medium text-white hover:bg-black/75"
-      >
-        {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <ImageIcon className="size-3.5" />}
-        {isPending ? 'Uploading…' : 'Replace'}
-      </button>
+      <SimpleTooltip content={PREVIEW_TOOLTIP_COPY.imageReplace}>
+        <button
+          type="button"
+          data-testid="post-image-replace-button"
+          aria-label="Replace image"
+          onClick={pick}
+          className="pointer-events-auto absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-[11px] font-medium text-white hover:bg-black/75"
+        >
+          {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <ImageIcon className="size-3.5" />}
+          {isPending ? 'Uploading…' : 'Replace'}
+        </button>
+      </SimpleTooltip>
 
       {isDragging && (
         <div
