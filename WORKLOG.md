@@ -31,6 +31,14 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Tooltip coverage: permission-editor key descriptions** (PR #394)
+  Every permission toggle in the role-defaults and per-user permission editors now explains, on hover, what
+  granting that permission actually does. New `PERMISSION_DESCRIPTIONS` map in `src/server/auth/permissions.ts`
+  (next to `PERMISSION_LABELS`, 17 keys) with a Wave 4K copy-contract test; the label cell in both editors is
+  wrapped in `SimpleTooltip`. Highest-clarity slice of the tooltip rollout (permissions are the most confusing
+  surface). Skipped Phase 5 onboarding gates: the gate controls are self-evident and the pipeline transition
+  controls in `checklist-panel` were already tooltipped. tsc + 2661 unit tests + `next build` + eslint clean.
+
 - [x] **2026-08-06 — Phase 4 tooltip coverage: client page actions** (PR #393)
   Hover hints on the bare client-page action controls: Send to Client Review (`send-to-client-review-button`)
   and the client decision panel's Approve & schedule / Request changes buttons (`client-decision-panel`).

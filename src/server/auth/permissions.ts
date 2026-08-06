@@ -42,6 +42,36 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   'user.hardDelete': 'Permanently delete a user',
 }
 
+/**
+ * One-line plain-English description of what granting each permission lets a
+ * user do. Surfaced as hover hints in the role-defaults and per-user
+ * permission editors so an admin knows the consequence of each toggle.
+ *
+ * Voice-owned. Obey the Wave 4K copy rules when editing:
+ *  - No em or en dashes.
+ *  - No compound hyphens in body copy.
+ *  - Keep each value under 80 characters.
+ */
+export const PERMISSION_DESCRIPTIONS: Record<PermissionKey, string> = {
+  'client.view': 'See client profiles, relays, posts, and review history',
+  'client.edit': "Change a client's profile, brand, and settings",
+  'client.create': 'Add brand new clients to the workspace',
+  'client.comment': 'Post internal comments and pings on a client',
+  'post.edit': 'Edit the caption and hashtags on a post',
+  'post.media.edit': 'Upload or replace the image on a post',
+  'generation.trigger': 'Start an AI content generation run for a client',
+  'run.delete': 'Delete a generation run and its posts',
+  'cost.viewAll': 'See the cost dashboard and spend across all clients',
+  'admin.portal': 'Open the admin portal to manage users and roles',
+  'relay.pass': 'Move a relay forward to the next step',
+  'relay.sendBack': 'Return a relay to an earlier step for more work',
+  'relay.takeOver': 'Take a stuck relay from whoever holds it now',
+  'relay.completeOnboarding': "Mark a client's onboarding gate finished",
+  'relay.forceStep': 'Jump a relay to any step, bypassing the flow',
+  'user.deactivate': "Turn off a user's access without deleting them",
+  'user.hardDelete': 'Permanently delete a user and all their records',
+}
+
 type PermissionMatrix = Record<UserRole, Record<PermissionKey, boolean>>
 
 export const SYSTEM_DEFAULTS: PermissionMatrix = {

@@ -2,10 +2,12 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { updateMembershipPermissions } from './actions'
 import {
   PERMISSION_KEYS,
   PERMISSION_LABELS,
+  PERMISSION_DESCRIPTIONS,
   READ_ONLY_OVERRIDE,
   type PermissionKey,
 } from '@/server/auth/permissions'
@@ -157,7 +159,9 @@ export function PermissionEditor({
                   className="border-b border-border last:border-b-0"
                 >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-foreground">{r.label}</div>
+                    <SimpleTooltip content={PERMISSION_DESCRIPTIONS[r.key]}>
+                      <div className="font-medium text-foreground w-fit">{r.label}</div>
+                    </SimpleTooltip>
                     <div className="text-xs text-muted-foreground font-mono">
                       {r.key}
                     </div>
