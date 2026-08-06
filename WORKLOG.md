@@ -31,6 +31,15 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Tooltip coverage: deferred slices (Edit copy link + profile edit pencils)** (PR #TBD)
+  Closed out the two deferred tooltip targets. (1) The client's inline "Edit copy" caption link on both the
+  Instagram and Facebook post previews now explains on hover that it edits the written caption ("copy" is
+  marketing jargon a client may not know); added `editCaption` to `PREVIEW_TOOLTIP_COPY` + contract test.
+  (2) The client-profile field edit pencils now show a hover hint: the shared FieldHeader pencil (`Edit {label}`,
+  covers all field types) and the FocusField pencil. tsc + 2661 unit tests + `next build` clean; the one eslint
+  error in client-profile-view.tsx is pre-existing (line 187 setState-in-effect), not from this change. This
+  completes the full-journey tooltip rollout.
+
 - [x] **2026-08-06 — Tooltip coverage: permission-editor key descriptions** (PR #394)
   Every permission toggle in the role-defaults and per-user permission editors now explains, on hover, what
   granting that permission actually does. New `PERMISSION_DESCRIPTIONS` map in `src/server/auth/permissions.ts`
