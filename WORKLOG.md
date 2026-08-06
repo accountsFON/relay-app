@@ -31,7 +31,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
-- [x] **2026-08-06 — Tooltip coverage: permission-editor key descriptions** (PR #TBD)
+- [x] **2026-08-06 — Tooltip coverage: permission-editor key descriptions** (PR #394)
   Every permission toggle in the role-defaults and per-user permission editors now explains, on hover, what
   granting that permission actually does. New `PERMISSION_DESCRIPTIONS` map in `src/server/auth/permissions.ts`
   (next to `PERMISSION_LABELS`, 17 keys) with a Wave 4K copy-contract test; the label cell in both editors is
