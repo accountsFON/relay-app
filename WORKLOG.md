@@ -31,7 +31,7 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
-- [x] **2026-08-06 — Phase 1 tooltip coverage: shared /preview controls** (PR #TBD)
+- [x] **2026-08-06 — Phase 1 tooltip coverage: shared /preview controls** (PR #390)
   Hover hints on the four non-obvious shared /preview controls: image replace (plus a new aria-label),
   per-post resolve-all, mark-relay-reviewed, and the icon-only remove-attached-image button. Copy lives
   in a centralized `PREVIEW_TOOLTIP_COPY` map guarded by a Wave 4K copy-contract test (no dashes, under
