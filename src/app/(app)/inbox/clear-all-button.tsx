@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import {
   Dialog,
   DialogContent,
@@ -40,15 +41,18 @@ export function ClearAllButton({
     <>
       {/* Secondary, de-emphasized: destructive (permanent), so it sits quietly
           next to the primary "Mark all as read" and warns coral on hover. */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="text-muted-foreground hover:text-destructive"
-        onClick={() => setOpen(true)}
-      >
-        Clear all
-      </Button>
+      <SimpleTooltip content="Permanently delete all notifications. Cannot be undone.">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-destructive"
+          onClick={() => setOpen(true)}
+        >
+          Clear all
+          <InfoHint />
+        </Button>
+      </SimpleTooltip>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>

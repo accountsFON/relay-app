@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/components/notifications/notification-provider'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import type { NotificationItemDTO } from '@/app/api/notifications/summary/route'
 import { formatRelative } from '@/lib/format-relative'
 
@@ -46,18 +47,20 @@ export function NotificationRow({ item }: { item: NotificationItemDTO }) {
           <p className="text-[11px] text-muted-foreground">{formatRelative(item.createdAt)}</p>
         </div>
       </button>
-      <button
-        type="button"
-        aria-label="Dismiss notification"
-        onClick={handleDismiss}
-        className={cn(
-          'mt-2 shrink-0 rounded-full p-1.5 text-neutral-400 transition-colors',
-          'hover:bg-neutral-200 hover:text-foreground focus:outline-none',
-          'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100',
-        )}
-      >
-        <X className="size-4" />
-      </button>
+      <SimpleTooltip content="Dismiss this notification">
+        <button
+          type="button"
+          aria-label="Dismiss notification"
+          onClick={handleDismiss}
+          className={cn(
+            'mt-2 shrink-0 rounded-full p-1.5 text-neutral-400 transition-colors',
+            'hover:bg-neutral-200 hover:text-foreground focus:outline-none',
+            'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100',
+          )}
+        >
+          <X className="size-4" />
+        </button>
+      </SimpleTooltip>
     </div>
   )
 }
