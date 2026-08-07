@@ -7,6 +7,7 @@
  * components only.
  */
 import { RelayStep, RelayRole } from '@prisma/client'
+import { daysSinceNow } from '@/lib/days'
 
 export const STEP_LABEL: Record<RelayStep, string> = {
   // Active pipeline steps (canonical rework names)
@@ -106,8 +107,5 @@ export const COPY_SUB_STATE_LABEL: Record<string, string> = {
  * creation. Matches the existing approximation in the batch detail page.
  */
 export function daysOnStep(batchCreatedAt: Date): number {
-  return Math.max(
-    0,
-    Math.floor((Date.now() - new Date(batchCreatedAt).getTime()) / (24 * 60 * 60 * 1000)),
-  )
+  return daysSinceNow(new Date(batchCreatedAt))
 }

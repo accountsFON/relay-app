@@ -29,6 +29,7 @@ import { ActivityThread } from '@/components/activity/activity-thread'
 import { MobileThreadFab } from '@/components/activity/mobile-thread-fab'
 import { STEP_LABEL } from '@/components/relay/labels'
 import { relayStepLabel } from '@/lib/relay-step-labels'
+import { daysSinceNow } from '@/lib/days'
 import { selectClientReviewPill } from '@/lib/client-review-pill'
 import { passBaton } from '@/server/services/relay'
 import { parseDateScope } from '@/lib/date-scope'
@@ -250,12 +251,7 @@ export default async function BatchDetailPage({
         }))
       : undefined
 
-  const daysOnCurrentStep = Math.max(
-    0,
-    Math.floor(
-      (Date.now() - batch.createdAt.getTime()) / (24 * 60 * 60 * 1000),
-    ),
-  )
+  const daysOnCurrentStep = daysSinceNow(batch.createdAt)
 
   const batchSummary = {
     id: batch.id,

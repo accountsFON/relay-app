@@ -21,6 +21,7 @@ import {
   type ClientKanbanColumn,
 } from '@/lib/batch-sub-status'
 import { KanbanCard } from '@/components/relay/kanban-card'
+import { daysSinceNow } from '@/lib/days'
 import { StatusPill } from '@/components/ui/status-pill'
 import {
   DashboardRelayTrack,
@@ -83,13 +84,6 @@ async function lastTransitionByBatch(
 
 type OrgBatch = Awaited<ReturnType<typeof listBatchesForOrg>>[number]
 
-function daysOnStep(createdAt: Date): number {
-  return Math.max(
-    0,
-    Math.floor((Date.now() - createdAt.getTime()) / (24 * 60 * 60 * 1000)),
-  )
-}
-
 function toRunner(
   batch: OrgBatch,
   lastTransitionAt: Date | null,
@@ -99,7 +93,7 @@ function toRunner(
     clientId: batch.clientId,
     clientName: batch.client?.name ?? '',
     label: batch.label,
-    daysOnStep: daysOnStep(batch.createdAt),
+    daysOnStep: daysSinceNow(batch.createdAt),
     holder: {
       id: batch.holder?.id ?? '',
       name: batch.holder?.name ?? '',
