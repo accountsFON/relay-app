@@ -5,6 +5,9 @@ import { MediaUpload } from '@/components/posts/media-upload'
 vi.mock('@vercel/blob/client', () => ({
   upload: vi.fn(),
 }))
+// MediaUpload now uses the shared useReplacePostImage hook, which reads
+// useRouter; refresh is off (refresh: false) but the hook still calls it.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 
 describe('MediaUpload remove button', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>

@@ -1,10 +1,10 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
-import { upload } from '@vercel/blob/client'
+import { useRef, useState } from 'react'
 import { Trash2, Upload, Loader2 } from 'lucide-react'
 import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { cn } from '@/lib/utils'
+import { useReplacePostImage } from '@/components/posts/use-replace-post-image'
 
 /**
  * Per-post drop zone for v1 (single image, mediaUrls[0]).
@@ -35,59 +35,19 @@ export function MediaUpload({
 }: MediaUploadProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [isDragging, setIsDragging] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  const handleFile = (file: File) => {
-    setError(null)
-    startTransition(async () => {
-      try {
-        // Step 1+2: SDK handshake (token request happens inside upload()),
-        // then direct upload to Blob. clientPayload carries postId so the
-        // route's onBeforeGenerateToken can authorize the post.
-        const result = await upload(file.name, file, {
-          access: 'public',
-          handleUploadUrl: '/api/media/upload',
-          clientPayload: postId,
-        })
-
-        // Step 3: persist the URL on the post.
-        const persistRes = await fetch(`/api/posts/${postId}/media`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: result.url }),
-        })
-        if (!persistRes.ok) {
-          const text = await persistRes.text()
-          throw new Error(`Persist URL failed: ${text}`)
-        }
-
-        onUploaded(result.url)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e))
-      }
-    })
-  }
-
-  const handleClear = () => {
-    setError(null)
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/posts/${postId}/media`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: '' }),
-        })
-        if (!res.ok) {
-          const text = await res.text()
-          throw new Error(`Clear failed: ${text}`)
-        }
-        onUploaded('')
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e))
-      }
-    })
-  }
+  // Shared upload flow (blob upload -> POST /media). refresh is off here: the
+  // parent re-renders from the onUploaded callback, so a router.refresh() would
+  // be redundant. clear() posts an empty url; onCleared reports '' to the parent.
+  const {
+    replace: handleFile,
+    clear: handleClear,
+    isPending,
+    error,
+  } = useReplacePostImage(postId, {
+    onUploaded,
+    onCleared: () => onUploaded(''),
+    refresh: false,
+  })
 
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
