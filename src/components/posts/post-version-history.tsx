@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { History, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { Card } from '@/components/ui/card'
 import { restorePostVersionAction } from '@/server/actions/posts'
 import { formatRelative } from '@/lib/format-relative'
@@ -62,16 +63,18 @@ export function PostVersionHistory({
 
   return (
     <div className="px-5">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[12px] text-muted-foreground hover:bg-neutral-100 hover:text-foreground"
-        aria-expanded={open}
-        aria-controls={`versions-${postId}`}
-      >
-        <History className="h-3.5 w-3.5" />
-        {open ? 'Hide history' : `${versions.length} version${versions.length === 1 ? '' : 's'}`}
-      </button>
+      <SimpleTooltip content="Show earlier saved versions of this post">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[12px] text-muted-foreground hover:bg-neutral-100 hover:text-foreground"
+          aria-expanded={open}
+          aria-controls={`versions-${postId}`}
+        >
+          <History className="h-3.5 w-3.5" />
+          {open ? 'Hide history' : `${versions.length} version${versions.length === 1 ? '' : 's'}`}
+        </button>
+      </SimpleTooltip>
       {open && (
         <Card id={`versions-${postId}`} className="mt-2 p-0">
           <ul className="divide-y divide-border">
@@ -109,17 +112,20 @@ export function PostVersionHistory({
                       )}
                     </button>
                     {canEdit && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRestore(v.id)}
-                        disabled={pendingId === v.id || locked}
-                        className="shrink-0"
-                        aria-label={`Restore version from ${formatRelative(v.createdAt)}`}
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        {pendingId === v.id ? 'Restoring…' : 'Restore'}
-                      </Button>
+                      <SimpleTooltip content="Replace the current caption with this saved version">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRestore(v.id)}
+                          disabled={pendingId === v.id || locked}
+                          className="shrink-0"
+                          aria-label={`Restore version from ${formatRelative(v.createdAt)}`}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          {pendingId === v.id ? 'Restoring…' : 'Restore'}
+                          <InfoHint />
+                        </Button>
+                      </SimpleTooltip>
                     )}
                   </div>
 
