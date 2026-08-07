@@ -13,6 +13,7 @@ import { useClerk } from '@clerk/nextjs'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import {
   Dialog,
   DialogContent,
@@ -73,14 +74,17 @@ export function CloseAccountPanel({
         <p className="text-[13px] text-muted-foreground">{inventoryText}</p>
       )}
 
-      <Button
-        type="button"
-        variant="destructive"
-        onClick={() => setOpen(true)}
-        disabled={blocked || isPending}
-      >
-        Delete my account
-      </Button>
+      <SimpleTooltip content="Close your account, sign out, and lock access until an admin restores it">
+        <Button
+          type="button"
+          variant="destructive"
+          onClick={() => setOpen(true)}
+          disabled={blocked || isPending}
+        >
+          Delete my account
+          <InfoHint />
+        </Button>
+      </SimpleTooltip>
 
       {blockReason && (
         <p className="text-[13px] text-muted-foreground">{blockReason}</p>
