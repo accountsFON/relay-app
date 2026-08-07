@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { RelayStep } from '@prisma/client'
 import { FolderOpen, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 
 interface Props {
   currentStep: RelayStep
@@ -32,6 +33,7 @@ export function OpenClientContentButton({ currentStep, assetsFolderUrl }: Props)
     return null
   }
   return (
+    <SimpleTooltip content="Open the client's content folder in Google Drive">
     <Button
       variant="secondary"
       size="sm"
@@ -47,6 +49,8 @@ export function OpenClientContentButton({ currentStep, assetsFolderUrl }: Props)
       <FolderOpen className="text-muted-foreground" />
       <span>Open client content</span>
       <ExternalLink className="opacity-60" />
+      <InfoHint />
     </Button>
+    </SimpleTooltip>
   )
 }
