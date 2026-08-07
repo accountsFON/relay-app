@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { MailOpen, Trash2 } from 'lucide-react'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { cn } from '@/lib/utils'
 import type { MentionInboxRow } from '@/components/activity/types'
 import {
@@ -191,31 +192,35 @@ export function InboxRow({ row }: { row: MentionInboxRow }) {
       )}
       <span className="-mr-1 -mt-1 flex shrink-0 items-center gap-0.5">
         {unread && (
+          <SimpleTooltip content="Mark this notification as read without opening it">
+            <button
+              type="button"
+              aria-label="Mark as read"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                markReadInPlace()
+              }}
+              className="rounded-full p-1.5 text-neutral-400 opacity-100 transition-colors hover:bg-neutral-200 hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+            >
+              <MailOpen className="size-4" />
+            </button>
+          </SimpleTooltip>
+        )}
+        <SimpleTooltip content="Remove this notification from your inbox">
           <button
             type="button"
-            aria-label="Mark as read"
+            aria-label="Clear notification"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              markReadInPlace()
+              clear()
             }}
             className="rounded-full p-1.5 text-neutral-400 opacity-100 transition-colors hover:bg-neutral-200 hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
           >
-            <MailOpen className="size-4" />
+            <Trash2 className="size-4" />
           </button>
-        )}
-        <button
-          type="button"
-          aria-label="Clear notification"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            clear()
-          }}
-          className="rounded-full p-1.5 text-neutral-400 opacity-100 transition-colors hover:bg-neutral-200 hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
-        >
-          <Trash2 className="size-4" />
-        </button>
+        </SimpleTooltip>
       </span>
     </Link>
   )

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { requireOrgContext } from '@/server/middleware/auth'
 import { getClientScopeFilter } from '@/server/auth/scope'
 import {
@@ -91,14 +92,17 @@ export default async function InboxPage({
               await markAllMentionsReadAction()
             }}
           >
-            <Button
-              type="submit"
-              variant="accent"
-              size="sm"
-              disabled={unreadCount === 0}
-            >
-              Mark all as read
-            </Button>
+            <SimpleTooltip content="Mark every unread mention in your inbox as read">
+              <Button
+                type="submit"
+                variant="accent"
+                size="sm"
+                disabled={unreadCount === 0}
+              >
+                Mark all as read
+                <InfoHint />
+              </Button>
+            </SimpleTooltip>
           </form>
         )}
         {totalCount > 0 && (

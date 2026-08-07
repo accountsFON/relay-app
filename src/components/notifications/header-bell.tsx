@@ -3,12 +3,14 @@
 import { Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotifications } from '@/components/notifications/notification-provider'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 export function HeaderBell({ mountId = 'default' }: { mountId?: string } = {}) {
   const { count, isOpen, toggleDropdown, error } = useNotifications()
   const display = count >= 10 ? '9+' : count > 0 ? String(count) : null
 
   return (
+    <SimpleTooltip content="Open notifications">
     <button
       type="button"
       onClick={toggleDropdown}
@@ -42,5 +44,6 @@ export function HeaderBell({ mountId = 'default' }: { mountId?: string } = {}) {
         />
       )}
     </button>
+    </SimpleTooltip>
   )
 }
