@@ -67,6 +67,7 @@ import { BatchCompletionLap } from '@/components/relay/batch-completion-lap'
 import { RelayCompletedBanner } from '@/components/relay/relay-completed-banner'
 import { isRelayLocked } from '@/lib/relay-lock'
 import { DesignerOnboardingGate } from '@/components/relay/designer-onboarding-gate'
+import { designerGateApplies } from '@/lib/designer-gate'
 import { CopyOnboardingGate } from '@/components/relay/copy-onboarding-gate'
 import { TourAutostart } from '@/components/onboarding/tour-autostart'
 import { cn } from '@/lib/utils'
@@ -75,13 +76,6 @@ import { Palette, ExternalLink, Eye } from 'lucide-react'
 import Link from 'next/link'
 
 // Designer onboarding gate (P0 #1): the two designer-held steps where a
-// designer must review the client profile + brand guide once per relay before
-// the workspace unlocks.
-const DESIGNER_GATE_STEPS: RelayStep[] = [
-  RelayStep.in_design,
-  RelayStep.implementing_revisions,
-]
-
 export default async function BatchDetailPage({
   params,
   searchParams,
@@ -116,9 +110,7 @@ export default async function BatchDetailPage({
   // workspace unlocks. Acknowledged state lives in DesignerGateAck. Short-circuit
   // here, before the client auto-advance block and the expensive Promise.all.
   if (
-    ctx.role === 'designer' &&
-    !batch.deletedAt &&
-    DESIGNER_GATE_STEPS.includes(batch.currentStep) &&
+    designerGateApplies(ctx.role, batch.deletedAt, batch.currentStep) &&
     !(await hasDesignerGateAck(ctx.organizationDbId, batch.id, ctx.userDbId))
   ) {
     return <DesignerOnboardingGate client={client} batchId={batch.id} />
