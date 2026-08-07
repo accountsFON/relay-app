@@ -26,15 +26,19 @@ vi.mock('@/server/repositories/designerFlags', () => ({
   setDesignerFlagDone: vi.fn(),
 }))
 
-vi.mock('@/db/client', () => ({
-  db: {
+vi.mock('@/db/client', () => {
+  const db: Record<string, unknown> = {
     post: { findUnique: vi.fn() },
     postThread: { findUnique: vi.fn() },
     reviewItem: { findUnique: vi.fn() },
     designerFlag: { findFirst: vi.fn(), findUnique: vi.fn() },
     batch: { findUnique: vi.fn() },
-  },
-}))
+    // The flag write now runs in a transaction with a per-target advisory lock.
+    $executeRaw: vi.fn(),
+  }
+  db.$transaction = vi.fn((fn: (tx: unknown) => unknown) => fn(db))
+  return { db }
+})
 
 vi.mock('@/server/services/relay', () => ({
   sendFlaggedFeedbackToDesigner: vi.fn(),
@@ -194,7 +198,7 @@ describe('flagFeedbackForDesignerAction — happy path with threadId', () => {
       reviewItemId: null,
       note: 'please fix the colours',
       createdById: AM_USER_DB_ID,
-    })
+    }, expect.anything())
     expect(updateDesignerFlagNote).not.toHaveBeenCalled()
     expect(revalidatePath).toHaveBeenCalled()
   })
@@ -220,7 +224,7 @@ describe('flagFeedbackForDesignerAction — happy path with reviewItemId', () =>
       reviewItemId: REVIEW_ITEM_ID,
       note: null,
       createdById: AM_USER_DB_ID,
-    })
+    }, expect.anything())
   })
 })
 
@@ -320,7 +324,7 @@ describe('flagFeedbackForDesignerAction — upsert behaviour', () => {
 
     expect(result).toEqual({ ok: true, flagId: FLAG_ID })
     expect(createDesignerFlag).not.toHaveBeenCalled()
-    expect(updateDesignerFlagNote).toHaveBeenCalledWith(FLAG_ID, 'updated note')
+    expect(updateDesignerFlagNote).toHaveBeenCalledWith(FLAG_ID, 'updated note', expect.anything())
   })
 })
 

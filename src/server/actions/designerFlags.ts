@@ -81,30 +81,44 @@ export async function flagFeedbackForDesignerAction(input: {
     }
   }
 
-  const existing = await db.designerFlag.findFirst({
-    where: {
-      postId: input.postId,
-      threadId: input.threadId ?? null,
-      reviewItemId: input.reviewItemId ?? null,
-    },
-    select: { id: true },
-  })
+  // Find-then-create the flag inside a transaction guarded by a per-target
+  // advisory lock, so two concurrent submits for the same
+  // (post, thread, reviewItem) target can't race past the find and create two
+  // rows. This gives the "one flag per target" guarantee a null-aware unique
+  // index would, which Prisma's schema can't express. The lock releases at
+  // transaction end; the second submit then sees the row and updates its note.
+  // Captured out here so the non-null narrowing from the `!post.batchId` guard
+  // above survives into the transaction closure.
+  const batchId = post.batchId
+  const flagId: string = await db.$transaction(async (tx) => {
+    const lockKey = `designer_flag:${input.postId}:${input.threadId ?? ''}:${input.reviewItemId ?? ''}`
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`
 
-  let flagId: string
-  if (existing) {
-    await updateDesignerFlagNote(existing.id, input.note ?? null)
-    flagId = existing.id
-  } else {
-    const created = await createDesignerFlag({
-      batchId: post.batchId,
-      postId: post.id,
-      threadId: input.threadId ?? null,
-      reviewItemId: input.reviewItemId ?? null,
-      note: input.note ?? null,
-      createdById: ctx.userDbId,
+    const existing = await tx.designerFlag.findFirst({
+      where: {
+        postId: input.postId,
+        threadId: input.threadId ?? null,
+        reviewItemId: input.reviewItemId ?? null,
+      },
+      select: { id: true },
     })
-    flagId = created.id
-  }
+    if (existing) {
+      await updateDesignerFlagNote(existing.id, input.note ?? null, tx)
+      return existing.id
+    }
+    const created = await createDesignerFlag(
+      {
+        batchId,
+        postId: post.id,
+        threadId: input.threadId ?? null,
+        reviewItemId: input.reviewItemId ?? null,
+        note: input.note ?? null,
+        createdById: ctx.userDbId,
+      },
+      tx,
+    )
+    return created.id
+  })
 
   revalidateReviewPaths(post.clientId, post.batchId, input.reviewSessionId)
   return { ok: true, flagId }
