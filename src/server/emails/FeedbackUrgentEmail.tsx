@@ -16,6 +16,8 @@ import {
   Head,
   Hr,
   Html,
+  Img,
+  Link,
   Preview,
   Section,
   Text,
@@ -26,6 +28,24 @@ export interface FeedbackUrgentEmailProps {
   submitterEmail: string
   bodyText: string
   submittedAt: Date
+  /// App path the reporter was on, if captured.
+  pageUrl?: string | null
+  /// Blob URL of an attached screenshot, if any.
+  imageUrl?: string | null
+}
+
+const pageLineStyle: React.CSSProperties = {
+  margin: '0 0 12px',
+  fontSize: 13,
+  color: '#444',
+  wordBreak: 'break-all',
+}
+
+const screenshotStyle: React.CSSProperties = {
+  maxWidth: '100%',
+  borderRadius: 10,
+  border: '1px solid #efefee',
+  marginTop: 12,
 }
 
 const bodyStyle: React.CSSProperties = {
@@ -122,7 +142,8 @@ function formatTimestamp(d: Date): string {
 export function FeedbackUrgentEmail(
   props: FeedbackUrgentEmailProps,
 ): React.ReactElement {
-  const { submitterName, submitterEmail, bodyText, submittedAt } = props
+  const { submitterName, submitterEmail, bodyText, submittedAt, pageUrl, imageUrl } =
+    props
 
   const preview = `URGENT: bug report from ${submitterName}`
 
@@ -142,9 +163,17 @@ export function FeedbackUrgentEmail(
             <Text style={metaStyle}>
               {submitterEmail} , {formatTimestamp(submittedAt)} UTC
             </Text>
+            {pageUrl ? (
+              <Text style={pageLineStyle}>Page: {pageUrl}</Text>
+            ) : null}
             <Section style={reportBlockStyle}>
               <Text style={reportBodyStyle}>{bodyText}</Text>
             </Section>
+            {imageUrl ? (
+              <Link href={imageUrl}>
+                <Img src={imageUrl} alt="Screenshot" style={screenshotStyle} />
+              </Link>
+            ) : null}
           </Section>
 
           <Section style={footerSectionStyle}>

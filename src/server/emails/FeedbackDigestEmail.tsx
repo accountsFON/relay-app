@@ -21,6 +21,7 @@ import {
   Head,
   Hr,
   Html,
+  Link,
   Preview,
   Section,
   Text,
@@ -35,6 +36,8 @@ export interface FeedbackDigestItem {
   createdAt: Date
   submitterName: string
   submitterEmail: string
+  pageUrl?: string | null
+  imageUrl?: string | null
 }
 
 export interface FeedbackDigestEmailProps {
@@ -216,8 +219,14 @@ export function FeedbackDigestEmail(
                       <Text style={itemMetaStyle}>
                         {item.submitterName} ({item.submitterEmail}) ,{' '}
                         {formatTimestamp(item.createdAt)} UTC
+                        {item.pageUrl ? ` , ${item.pageUrl}` : ''}
                       </Text>
                       <Text style={itemBodyStyle}>{item.bodyText}</Text>
+                      {item.imageUrl ? (
+                        <Text style={itemBodyStyle}>
+                          <Link href={item.imageUrl}>View screenshot</Link>
+                        </Text>
+                      ) : null}
                     </Section>
                   ))}
                 </Section>

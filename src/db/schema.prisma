@@ -191,6 +191,7 @@ model Organization {
   impersonationLogs   ImpersonationLog[]
   designerGateAcks    DesignerGateAck[]
   copyGateAcks        CopyGateAck[]
+  feedback            Feedback[]           @relation("OrganizationFeedback")
 
   @@map("organizations")
 }
@@ -246,6 +247,7 @@ model User {
   commentsAuthored       PostComment[]        @relation("CommentAuthor")
   magicLinksCreated      MagicLink[]          @relation("MagicLinkCreator")
   feedback               Feedback[]           @relation("FeedbackSubmitter")
+  feedbackResolved       Feedback[]           @relation("FeedbackResolver")
   internalReviewSessions ReviewSession[]      @relation("InternalReviewer")
   designerFlagsCreated   DesignerFlag[]       @relation("DesignerFlagCreator")
   designerFlagsDone      DesignerFlag[]       @relation("DesignerFlagDoneBy")
@@ -872,6 +874,16 @@ model Feedback {
   bodyText       String           @db.Text
   severity       FeedbackSeverity @default(medium)
   createdAt      DateTime         @default(now())
+  /// App path the reporter was on when they submitted (pathname + search),
+  /// captured client-side. Null for rows created before this was added.
+  pageUrl        String?
+  /// Vercel Blob URL of an optional screenshot the reporter attached.
+  imageUrl       String?
+  /// Org the reporter belonged to at submit time. Scopes the admin
+  /// feedback dashboard (platform owners see all; org admins see their own).
+  /// Nullable: platform-owner submitters have no active org, and legacy rows
+  /// predate this column.
+  organizationId String?
   /// Set by the sendFeedbackDigest cron when the row is included in a
   /// weekly digest send. Null = not yet digested.
   sentInDigestAt DateTime?
@@ -879,11 +891,18 @@ model Feedback {
   /// admin email fires. Null for low/medium rows and for any high row
   /// where the urgent send failed (the digest still picks it up).
   sentUrgentAt   DateTime?
+  /// Set when an admin marks the report handled on the dashboard. Null = open.
+  resolvedAt     DateTime?
+  resolvedById   String?
 
-  user User @relation("FeedbackSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation("FeedbackSubmitter", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation("OrganizationFeedback", fields: [organizationId], references: [id], onDelete: SetNull)
+  resolvedBy   User?         @relation("FeedbackResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
 
   @@index([sentInDigestAt])
   @@index([userId])
+  @@index([organizationId])
+  @@index([resolvedAt])
   @@map("feedback")
 }
 
