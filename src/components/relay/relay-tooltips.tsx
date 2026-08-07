@@ -125,10 +125,7 @@ export function StepTooltip({ step, children, side = 'top' }: StepTooltipProps) 
         </span>
       }
     >
-      <span className="inline-flex items-center gap-1">
-        {children}
-        <InfoHint />
-      </span>
+      {children}
     </SimpleTooltip>
   )
 }
@@ -147,10 +144,7 @@ export function RoleTooltip({ role, children, side = 'top' }: RoleTooltipProps) 
   if (!description) return children
   return (
     <SimpleTooltip side={side} content={description}>
-      <span className="inline-flex items-center gap-1">
-        {children}
-        <InfoHint />
-      </span>
+      {children}
     </SimpleTooltip>
   )
 }
