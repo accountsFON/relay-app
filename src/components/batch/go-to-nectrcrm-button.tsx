@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { RelayStep } from '@prisma/client'
 import { CalendarClock, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { NECTR_CRM_URL } from '@/lib/nectr'
 
 interface Props {
@@ -38,22 +39,25 @@ const SCHEDULING_STEPS: ReadonlySet<RelayStep> = new Set([
 export function GoToNectrCrmButton({ currentStep }: Props) {
   if (!SCHEDULING_STEPS.has(currentStep)) return null
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      render={
-        <Link
-          href={NECTR_CRM_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          data-testid="go-to-nectrcrm-link"
-          data-tour-anchor="schedule-nectrcrm"
-        />
-      }
-    >
-      <CalendarClock className="text-muted-foreground" />
-      <span>Go to NectrCRM</span>
-      <ExternalLink className="opacity-60" />
-    </Button>
+    <SimpleTooltip content="Open NectrCRM in a new tab to upload the CSV and schedule">
+      <Button
+        variant="secondary"
+        size="sm"
+        render={
+          <Link
+            href={NECTR_CRM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="go-to-nectrcrm-link"
+            data-tour-anchor="schedule-nectrcrm"
+          />
+        }
+      >
+        <CalendarClock className="text-muted-foreground" />
+        <span>Go to NectrCRM</span>
+        <ExternalLink className="opacity-60" />
+        <InfoHint />
+      </Button>
+    </SimpleTooltip>
   )
 }

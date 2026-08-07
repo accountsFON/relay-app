@@ -3,6 +3,7 @@
 import { useTransition, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2, Copy, Mail, ExternalLink, Check } from 'lucide-react'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { Button } from '@/components/ui/button'
 import {
   revokeMagicLinkAction,
@@ -255,52 +256,58 @@ export function MagicLinkRow(props: MagicLinkRowProps) {
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleCopy}
-          disabled={isBusy}
-          title="Copy a fresh URL"
-          aria-label="Copy URL"
-          data-testid={`copy-link-button-${props.id}`}
-        >
-          <Copy className="size-3.5" />
-          <span className="sr-only">Copy URL</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleResend}
-          disabled={isBusy}
-          title="Resend the email"
-          aria-label="Resend Email"
-          data-testid={`resend-link-button-${props.id}`}
-        >
-          <Mail className="size-3.5" />
-          <span className="sr-only">Resend Email</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleOpenPreview}
-          disabled={isBusy}
-          title="Open the client review page in a new tab"
-          aria-label="Open client review"
-          data-testid={`open-link-button-${props.id}`}
-        >
-          <ExternalLink className="size-3.5" />
-          <span className="sr-only">Open client review</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRevoke}
-          disabled={isBusy}
-          data-testid={`revoke-link-button-${props.id}`}
-        >
-          <Trash2 className="size-3.5" />
-          <span>{pendingAction === 'revoke' ? 'Revoking…' : 'Revoke'}</span>
-        </Button>
+        <SimpleTooltip content="Copy a fresh review link URL to your clipboard">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            disabled={isBusy}
+            aria-label="Copy URL"
+            data-testid={`copy-link-button-${props.id}`}
+          >
+            <Copy className="size-3.5" />
+            <span className="sr-only">Copy URL</span>
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip content="Email the client a new review link and expire the old one">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResend}
+            disabled={isBusy}
+            aria-label="Resend Email"
+            data-testid={`resend-link-button-${props.id}`}
+          >
+            <Mail className="size-3.5" />
+            <span className="sr-only">Resend Email</span>
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip content="Open the client review page in a new tab">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleOpenPreview}
+            disabled={isBusy}
+            aria-label="Open client review"
+            data-testid={`open-link-button-${props.id}`}
+          >
+            <ExternalLink className="size-3.5" />
+            <span className="sr-only">Open client review</span>
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip content="Kill this link so the client sees an expired page">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRevoke}
+            disabled={isBusy}
+            data-testid={`revoke-link-button-${props.id}`}
+          >
+            <Trash2 className="size-3.5" />
+            <span>{pendingAction === 'revoke' ? 'Revoking…' : 'Revoke'}</span>
+            <InfoHint />
+          </Button>
+        </SimpleTooltip>
       </div>
     </div>
   )
