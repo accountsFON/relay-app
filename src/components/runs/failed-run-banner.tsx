@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 
 interface ErrorContext {
   name?: string
@@ -86,12 +87,15 @@ export function FailedRunBanner({
           )}
 
           <div className="flex items-center gap-2 pt-1">
-            <Link
-              href={reRunHref}
-              className="inline-flex items-center rounded-md bg-foreground px-3 py-1.5 text-[12px] font-medium text-background hover:bg-foreground/90"
-            >
-              Re-run this month
-            </Link>
+            <SimpleTooltip content="Start a fresh generation for this month">
+              <Link
+                href={reRunHref}
+                className="inline-flex items-center gap-1 rounded-md bg-foreground px-3 py-1.5 text-[12px] font-medium text-background hover:bg-foreground/90"
+              >
+                Re-run this month
+                <InfoHint />
+              </Link>
+            </SimpleTooltip>
           </div>
         </div>
       </div>

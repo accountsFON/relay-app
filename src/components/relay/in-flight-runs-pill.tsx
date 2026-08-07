@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { INTENT_PRIORITY } from '@/components/relay/in-flight-runs-utils'
 import { RunProgressLine } from '@/components/relay/run-progress-line'
@@ -66,18 +67,20 @@ export function InFlightRunsPill() {
 
   return (
     <div ref={containerRef} className="relative">
-      <Button
-        variant="ghost"
-        size="default"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={label}
-        aria-expanded={open}
-        aria-controls="inflight-runs-popover"
-        className="gap-1.5"
-      >
-        <Sparkles className="size-4" />
-        <span>{label}</span>
-      </Button>
+      <SimpleTooltip content="Generations currently running across your clients">
+        <Button
+          variant="ghost"
+          size="default"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={label}
+          aria-expanded={open}
+          aria-controls="inflight-runs-popover"
+          className="gap-1.5"
+        >
+          <Sparkles className="size-4" />
+          <span>{label}</span>
+        </Button>
+      </SimpleTooltip>
       {open && (
         <div
           id="inflight-runs-popover"
@@ -117,17 +120,19 @@ export function InFlightRunsPill() {
                     {rowBody}
                   </Link>
                   {run.intent === 'active' && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="shrink-0 mr-2 text-muted-foreground hover:text-foreground"
-                      aria-label={`Cancel generation for ${run.clientName}`}
-                      disabled={cancellingId === run.id}
-                      onClick={() => onCancelPill(run.id, run.clientName)}
-                    >
-                      {cancellingId === run.id ? 'Cancelling…' : 'Cancel'}
-                    </Button>
+                    <SimpleTooltip content="Stop this running generation and discard its progress">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 mr-2 text-muted-foreground hover:text-foreground"
+                        aria-label={`Cancel generation for ${run.clientName}`}
+                        disabled={cancellingId === run.id}
+                        onClick={() => onCancelPill(run.id, run.clientName)}
+                      >
+                        {cancellingId === run.id ? 'Cancelling…' : 'Cancel'}
+                      </Button>
+                    </SimpleTooltip>
                   )}
                 </li>
               )

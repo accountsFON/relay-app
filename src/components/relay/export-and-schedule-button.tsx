@@ -2,6 +2,7 @@
 
 import { CalendarClock, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { toSocialPlannerCsv, type SocialPlannerPost } from '@/lib/social-planner-csv'
 import { NECTR_CRM_URL } from '@/lib/nectr'
 
@@ -31,10 +32,13 @@ export function ExportAndScheduleButton({
   }
 
   return (
-    <Button onClick={handleClick} data-tour-anchor="schedule-export">
-      <CalendarClock />
-      <span>Export CSV &amp; go to NectrCRM</span>
-      <ExternalLink className="opacity-60" />
-    </Button>
+    <SimpleTooltip content="Download the Social Planner CSV and open NectrCRM to schedule">
+      <Button onClick={handleClick} data-tour-anchor="schedule-export">
+        <CalendarClock />
+        <span>Export CSV &amp; go to NectrCRM</span>
+        <ExternalLink className="opacity-60" />
+        <InfoHint />
+      </Button>
+    </SimpleTooltip>
   )
 }

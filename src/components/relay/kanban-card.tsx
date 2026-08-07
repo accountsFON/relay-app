@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import {
   Dialog,
   DialogContent,
@@ -100,14 +101,16 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
               </span>
             )}
             <DropdownMenu>
-              <DropdownMenuTrigger
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-                aria-label="Relay options"
-                className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <MoreHorizontal className="size-4" />
-              </DropdownMenuTrigger>
+              <SimpleTooltip content="Relay options like archive or restore">
+                <DropdownMenuTrigger
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  aria-label="Relay options"
+                  className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <MoreHorizontal className="size-4" />
+                </DropdownMenuTrigger>
+              </SimpleTooltip>
               <DropdownMenuContent
                 align="end"
                 onClick={(e) => e.stopPropagation()}

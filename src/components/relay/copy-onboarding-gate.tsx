@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import type { Client } from '@prisma/client'
 import { Check, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
@@ -73,11 +74,14 @@ export function CopyOnboardingGate({
                   if (open) setProfileSeen(true)
                 }}
               >
-                <DialogTrigger
-                  render={<Button variant="outline" size="sm" className="gap-2" />}
-                >
-                  <FileText className="size-4" /> Review client profile
-                </DialogTrigger>
+                <SimpleTooltip content="Open the profile. Viewing it checks this step off">
+                  <DialogTrigger
+                    render={<Button variant="outline" size="sm" className="gap-2" />}
+                  >
+                    <FileText className="size-4" /> Review client profile
+                    <InfoHint />
+                  </DialogTrigger>
+                </SimpleTooltip>
                 <DialogContent className="max-h-[85vh] sm:max-w-3xl overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{client.name} profile</DialogTitle>
@@ -89,13 +93,16 @@ export function CopyOnboardingGate({
             </GateRow>
           </ul>
 
-          <Button
-            className="mt-6 w-full"
-            disabled={!canEnter || pending}
-            onClick={enter}
-          >
-            {pending ? 'Opening…' : 'Enter workspace'}
-          </Button>
+          <SimpleTooltip content="Confirm you reviewed the profile and open the editor">
+            <Button
+              className="mt-6 w-full"
+              disabled={!canEnter || pending}
+              onClick={enter}
+            >
+              {pending ? 'Opening…' : 'Enter workspace'}
+              <InfoHint />
+            </Button>
+          </SimpleTooltip>
         </div>
       </div>
     </div>

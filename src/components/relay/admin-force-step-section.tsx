@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import {
   Dialog,
   DialogContent,
@@ -132,14 +133,17 @@ export function AdminForceStepSection({
             />
           </label>
 
-          <Button
-            type="button"
-            size="sm"
-            onClick={openConfirm}
-            disabled={toStep === '' || isPending}
-          >
-            Force step
-          </Button>
+          <SimpleTooltip content="Admin override that jumps this relay to any step">
+            <Button
+              type="button"
+              size="sm"
+              onClick={openConfirm}
+              disabled={toStep === '' || isPending}
+            >
+              Force step
+              <InfoHint />
+            </Button>
+          </SimpleTooltip>
         </div>
       )}
 
