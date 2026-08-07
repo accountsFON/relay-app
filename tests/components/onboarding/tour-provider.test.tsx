@@ -122,6 +122,17 @@ function StartConsumer({ id }: { id: string }) {
   )
 }
 
+function StartThenIfUnseen() {
+  const { activeTourId, start, startIfUnseen } = useTourController()
+  return (
+    <div>
+      <span data-testid="active">{activeTourId ?? 'none'}</span>
+      <button onClick={() => start('overview-v1')}>start-a</button>
+      <button onClick={() => startIfUnseen('batch-detail-v1')}>if-unseen-b</button>
+    </div>
+  )
+}
+
 describe('startIfUnseen', () => {
   it('starts an unseen tour', () => {
     // Use a pathname that matches no auto-fire tour so nothing fires on mount
@@ -147,5 +158,20 @@ describe('startIfUnseen', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'go' }))
     expect(screen.getByTestId('active')).toHaveTextContent('none')
+  })
+
+  it('is a no-op when another tour is already active', () => {
+    // No auto-fire here; we start one tour manually, then a second unseen tour
+    // must NOT interrupt it (the activeTourId guard branch).
+    pathname = '/settings/account'
+    render(
+      <TourProvider role="account_manager" seenTours={[]} onMarkSeen={() => {}}>
+        <StartThenIfUnseen />
+      </TourProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'start-a' }))
+    expect(screen.getByTestId('active')).toHaveTextContent('overview-v1')
+    fireEvent.click(screen.getByRole('button', { name: 'if-unseen-b' }))
+    expect(screen.getByTestId('active')).toHaveTextContent('overview-v1')
   })
 })
