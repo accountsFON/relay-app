@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import {
   Dialog,
   DialogContent,
@@ -129,9 +130,12 @@ export function AvatarUploader({ userDbId, name, avatarUrl }: AvatarUploaderProp
             {avatarUrl ? 'Change photo' : 'Upload photo'}
           </Button>
           {avatarUrl && (
-            <Button type="button" variant="ghost" onClick={remove} disabled={pending}>
-              Remove
-            </Button>
+            <SimpleTooltip content="Delete your profile photo and revert to initials">
+              <Button type="button" variant="ghost" onClick={remove} disabled={pending}>
+                Remove
+                <InfoHint />
+              </Button>
+            </SimpleTooltip>
           )}
         </div>
         <p className="text-[12px] text-muted-foreground">

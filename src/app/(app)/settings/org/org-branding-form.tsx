@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updateOrgBrandingAction } from './actions'
@@ -100,9 +101,12 @@ export function OrgBrandingForm({
       )}
 
       <div>
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Save branding'}
-        </Button>
+        <SimpleTooltip content="Apply this logo and accent color across the agency workspace">
+          <Button type="submit" disabled={pending}>
+            {pending ? 'Saving…' : 'Save branding'}
+            <InfoHint />
+          </Button>
+        </SimpleTooltip>
       </div>
     </form>
   )
