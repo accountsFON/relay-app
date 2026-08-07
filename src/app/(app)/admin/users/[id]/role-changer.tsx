@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { changeMembershipRole } from './actions'
 import type { UserRole } from '@/lib/types'
 
@@ -54,14 +55,17 @@ export function RoleChanger({ userId, currentRole, isSelf }: Props) {
           </option>
         ))}
       </select>
-      <Button
-        size="sm"
-        variant={dirty ? 'default' : 'outline'}
-        onClick={onSave}
-        disabled={!dirty || isPending}
-      >
-        {isPending ? 'Saving…' : 'Change role'}
-      </Button>
+      <SimpleTooltip content="Save the selected role and update this member's permissions">
+        <Button
+          size="sm"
+          variant={dirty ? 'default' : 'outline'}
+          onClick={onSave}
+          disabled={!dirty || isPending}
+        >
+          {isPending ? 'Saving…' : 'Change role'}
+          <InfoHint />
+        </Button>
+      </SimpleTooltip>
       {isSelf && (
         <span className="text-xs text-muted-foreground">
           (Cannot demote yourself)

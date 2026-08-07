@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -54,7 +55,12 @@ export function InviteMemberButton() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>Invite member</DialogTrigger>
+      <SimpleTooltip content="Email an invite; they join this agency on first sign in">
+        <DialogTrigger render={<Button />}>
+          Invite member
+          <InfoHint />
+        </DialogTrigger>
+      </SimpleTooltip>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Invite team member</DialogTitle>

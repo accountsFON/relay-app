@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { setClientAssignment } from './actions'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 
 type Props = {
   userId: string
@@ -65,14 +66,17 @@ export function AssignmentToggle({
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button
-        size="sm"
-        variant={variant}
-        onClick={handleToggle}
-        disabled={isPending}
-      >
-        {isPending ? '...' : label}
-      </Button>
+      <SimpleTooltip content="Assign or reassign this client to the user in this role">
+        <Button
+          size="sm"
+          variant={variant}
+          onClick={handleToggle}
+          disabled={isPending}
+        >
+          {isPending ? '...' : label}
+          <InfoHint />
+        </Button>
+      </SimpleTooltip>
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   )

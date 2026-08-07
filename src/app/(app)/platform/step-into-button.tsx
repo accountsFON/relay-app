@@ -4,6 +4,7 @@ import { useTransition } from 'react'
 import { useOrganizationList } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { setStepIntoOrgCookie } from '@/components/org-switcher-actions'
 
 /**
@@ -44,8 +45,11 @@ export function StepIntoAgencyButton({
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={onClick} disabled={isPending}>
-      {isPending ? 'Stepping in...' : 'Step in'}
-    </Button>
+    <SimpleTooltip content="Enter this agency as a platform owner to view its data">
+      <Button variant="outline" size="sm" onClick={onClick} disabled={isPending}>
+        {isPending ? 'Stepping in...' : 'Step in'}
+        <InfoHint />
+      </Button>
+    </SimpleTooltip>
   )
 }
