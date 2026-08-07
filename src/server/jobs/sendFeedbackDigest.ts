@@ -84,6 +84,8 @@ export async function runSendFeedbackDigest(
     createdAt: it.createdAt,
     submitterName: it.submitter.name,
     submitterEmail: it.submitter.email,
+    pageUrl: it.pageUrl,
+    imageUrl: it.imageUrl,
   }))
 
   // Digest window is the 7 days ending at "now". Used for the intro

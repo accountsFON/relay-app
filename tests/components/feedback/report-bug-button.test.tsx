@@ -24,16 +24,26 @@ vi.mock('sonner', () => ({
   },
 }))
 
+vi.mock('@/lib/upload-feedback-image', () => ({
+  uploadFeedbackImage: vi.fn(),
+}))
+
 import { ReportBugButton } from '@/components/feedback/report-bug-button'
 import { submitFeedbackAction } from '@/server/actions/feedback'
+import { uploadFeedbackImage } from '@/lib/upload-feedback-image'
 import { toast } from 'sonner'
 
 const mockSubmit = submitFeedbackAction as unknown as ReturnType<typeof vi.fn>
+const mockUpload = uploadFeedbackImage as unknown as ReturnType<typeof vi.fn>
 const mockToastSuccess = toast.success as unknown as ReturnType<typeof vi.fn>
 const mockToastError = toast.error as unknown as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  URL.createObjectURL = vi.fn(
+    () => 'blob:mock',
+  ) as unknown as typeof URL.createObjectURL
+  URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL
 })
 
 describe('ReportBugButton', () => {
@@ -85,6 +95,9 @@ describe('ReportBugButton', () => {
       expect(mockSubmit).toHaveBeenCalledWith({
         bodyText: 'page goes blank',
         severity: 'medium',
+        // jsdom's default location is http://localhost/ , pathname '/'.
+        pageUrl: '/',
+        imageUrl: undefined,
       })
     })
     expect(mockToastSuccess).toHaveBeenCalledWith("Thanks, we'll look at this.")
@@ -119,6 +132,40 @@ describe('ReportBugButton', () => {
 
     await waitFor(() => {
       expect(mockToastSuccess).toHaveBeenCalledWith("Got it. We've been paged.")
+    })
+  })
+
+  it('uploads an attached screenshot and submits its blob URL as imageUrl', async () => {
+    mockSubmit.mockResolvedValue({ feedbackId: 'fb-img', urgentEmailSent: false })
+    const blobUrl =
+      'https://x.public.blob.vercel-storage.com/feedback-images/1-shot.png'
+    mockUpload.mockResolvedValue({ url: blobUrl })
+
+    const user = userEvent.setup()
+    render(<ReportBugButton />)
+    await user.click(screen.getByRole('button', { name: /report a bug/i }))
+    await user.type(
+      await screen.findByLabelText(/what happened\?/i),
+      'see the screenshot',
+    )
+
+    const file = new File([new Uint8Array(10)], 'shot.png', {
+      type: 'image/png',
+    })
+    await user.upload(screen.getByLabelText('Attach a screenshot'), file)
+
+    // Preview + remove affordance appears once a file is chosen.
+    expect(
+      await screen.findByRole('button', { name: /remove/i }),
+    ).toBeInTheDocument()
+
+    await user.click(await screen.findByRole('button', { name: /^submit$/i }))
+
+    await waitFor(() => {
+      expect(mockUpload).toHaveBeenCalledWith(file)
+      expect(mockSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ imageUrl: blobUrl, bodyText: 'see the screenshot' }),
+      )
     })
   })
 

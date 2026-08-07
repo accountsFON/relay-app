@@ -27,6 +27,8 @@ export interface FeedbackWithSubmitter {
   bodyText: string
   severity: FeedbackSeverity
   createdAt: Date
+  pageUrl: string | null
+  imageUrl: string | null
   sentInDigestAt: Date | null
   sentUrgentAt: Date | null
   submitter: {
@@ -42,6 +44,13 @@ export interface CreateFeedbackInput {
   userId: string
   bodyText: string
   severity: FeedbackSeverity
+  /// App path the reporter was on (pathname + search), captured client-side.
+  pageUrl?: string | null
+  /// Vercel Blob URL of an attached screenshot.
+  imageUrl?: string | null
+  /// The reporter's org at submit time; scopes the admin dashboard. Null for
+  /// platform-owner submitters (no active org).
+  organizationId?: string | null
 }
 
 /**
@@ -58,6 +67,9 @@ export async function createFeedback(
       userId: input.userId,
       bodyText: input.bodyText,
       severity: input.severity,
+      pageUrl: input.pageUrl ?? null,
+      imageUrl: input.imageUrl ?? null,
+      organizationId: input.organizationId ?? null,
     },
   })
 }
@@ -84,6 +96,8 @@ export async function findUndigested(): Promise<FeedbackWithSubmitter[]> {
     bodyText: r.bodyText,
     severity: r.severity,
     createdAt: r.createdAt,
+    pageUrl: r.pageUrl,
+    imageUrl: r.imageUrl,
     sentInDigestAt: r.sentInDigestAt,
     sentUrgentAt: r.sentUrgentAt,
     submitter: {
@@ -126,5 +140,104 @@ export async function markUrgentSent(input: MarkUrgentSentInput): Promise<void> 
   await db.feedback.update({
     where: { id: input.id },
     data: { sentUrgentAt: input.at },
+  })
+}
+
+// ---- Admin dashboard ----
+
+/// A feedback row hydrated for the admin dashboard: submitter, org name,
+/// and who (if anyone) resolved it.
+export interface FeedbackForAdmin {
+  id: string
+  bodyText: string
+  severity: FeedbackSeverity
+  createdAt: Date
+  pageUrl: string | null
+  imageUrl: string | null
+  sentUrgentAt: Date | null
+  sentInDigestAt: Date | null
+  resolvedAt: Date | null
+  submitter: { id: string; name: string; email: string }
+  organizationName: string | null
+  resolvedByName: string | null
+}
+
+/// Scope for the admin feedback list. Platform owners see every org's
+/// feedback; a regular org admin sees only their own org's rows.
+export interface AdminFeedbackScope {
+  organizationDbId: string
+  platformOwner: boolean
+}
+
+/**
+ * List feedback for the admin dashboard, newest first with OPEN (unresolved)
+ * rows floated above resolved ones. Platform owners see all rows; org admins
+ * are scoped to their org (rows whose submitter had no org — platform-owner
+ * submissions — are visible only to platform owners).
+ */
+export async function listFeedbackForAdmin(
+  scope: AdminFeedbackScope,
+): Promise<FeedbackForAdmin[]> {
+  const rows = await db.feedback.findMany({
+    where: scope.platformOwner
+      ? undefined
+      : { organizationId: scope.organizationDbId },
+    orderBy: [
+      { resolvedAt: { sort: 'asc', nulls: 'first' } },
+      { createdAt: 'desc' },
+    ],
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      organization: { select: { name: true } },
+      resolvedBy: { select: { name: true } },
+    },
+  })
+  return rows.map((r) => ({
+    id: r.id,
+    bodyText: r.bodyText,
+    severity: r.severity,
+    createdAt: r.createdAt,
+    pageUrl: r.pageUrl,
+    imageUrl: r.imageUrl,
+    sentUrgentAt: r.sentUrgentAt,
+    sentInDigestAt: r.sentInDigestAt,
+    resolvedAt: r.resolvedAt,
+    submitter: { id: r.user.id, name: r.user.name, email: r.user.email },
+    organizationName: r.organization?.name ?? null,
+    resolvedByName: r.resolvedBy?.name ?? null,
+  }))
+}
+
+/// Minimal row for the resolve action's org-scope check.
+export async function findFeedbackForResolve(
+  id: string,
+): Promise<{ id: string; organizationId: string | null } | null> {
+  return db.feedback.findUnique({
+    where: { id },
+    select: { id: true, organizationId: true },
+  })
+}
+
+export interface SetFeedbackResolvedInput {
+  id: string
+  resolvedById: string
+  at: Date
+}
+
+/// Mark a report handled: stamp resolvedAt + who resolved it.
+export async function setFeedbackResolved(
+  input: SetFeedbackResolvedInput,
+): Promise<void> {
+  await db.feedback.update({
+    where: { id: input.id },
+    data: { resolvedAt: input.at, resolvedById: input.resolvedById },
+  })
+}
+
+/// Reopen a report: clear resolvedAt + resolvedById.
+export async function reopenFeedback(id: string): Promise<void> {
+  await db.feedback.update({
+    where: { id },
+    data: { resolvedAt: null, resolvedById: null },
   })
 }

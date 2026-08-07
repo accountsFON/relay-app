@@ -29,6 +29,20 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-07 — Feedback channel v2: page-URL capture, screenshot upload, admin dashboard**
+  Overhauled the in-app "Report a bug" channel. (1) **Bug fix:** the modal claimed "Page URL … auto
+  attached" but nothing captured it — now the reporter's app path (`pathname + search`) is sent as
+  `pageUrl` and shown in the urgent email, the weekly digest, and the dashboard. (2) **Screenshots:** the
+  reporter can attach an image (`feedback-images/` Vercel Blob prefix, own upload route mirroring the
+  comment-image pattern, 5 MB cap); the URL is validated server-side (`isFeedbackImageBlobUrl`) and
+  rendered in the emails + dashboard. (3) **Admin dashboard** at `/admin/feedback` (new "Feedback" tab in
+  the admin pill row, gated on `admin.portal`): lists reports open-first then newest, with a Resolve /
+  Reopen toggle. Tenant-safe: rows carry `organizationId`, platform owners see all orgs, a regular org
+  admin is scoped to their own org (cross-org resolve returns "not found"). Additive Prisma migration
+  `add_feedback_fields` (pageUrl, imageUrl, organizationId, resolvedAt/By — all nullable). TDD: new
+  feedback-image lib + upload-route tests, repo scoping + resolve tests, action gate/scope + imageUrl
+  validation tests, button image-upload test. Green gate: tsc + 2704 unit + `next build` + eslint clean.
+
 - [x] **2026-08-07 — Fix the three impure-in-render eslint errors (react-hooks/purity)**
   Cleared the last cleanup item from the tooltip rollout. Two were the same "read the clock during
   render" bug (`Date.now()` inline in a component): consolidated the six copy-pasted "days since batch

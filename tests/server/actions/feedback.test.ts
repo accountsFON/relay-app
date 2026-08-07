@@ -18,10 +18,21 @@ vi.mock('@/server/middleware/auth', () => ({
 vi.mock('@/server/repositories/feedback', () => ({
   createFeedback: vi.fn(),
   markUrgentSent: vi.fn(),
+  findFeedbackForResolve: vi.fn(),
+  setFeedbackResolved: vi.fn(),
+  reopenFeedback: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/users', () => ({
   findAdminRecipients: vi.fn(),
+}))
+
+vi.mock('@/server/auth/permissions', () => ({
+  can: vi.fn(),
+}))
+
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
 }))
 
 vi.mock('@/lib/resend', () => ({
@@ -36,13 +47,20 @@ vi.mock('@/db/client', () => ({
   },
 }))
 
-import { submitFeedbackAction } from '@/server/actions/feedback'
+import {
+  submitFeedbackAction,
+  resolveFeedbackAction,
+} from '@/server/actions/feedback'
 import { requireOrgContext } from '@/server/middleware/auth'
 import {
   createFeedback,
   markUrgentSent,
+  findFeedbackForResolve,
+  setFeedbackResolved,
+  reopenFeedback,
 } from '@/server/repositories/feedback'
 import { findAdminRecipients } from '@/server/repositories/users'
+import { can } from '@/server/auth/permissions'
 import { sendEmail } from '@/lib/resend'
 import { db } from '@/db/client'
 
@@ -51,6 +69,12 @@ const mockCreate = createFeedback as unknown as ReturnType<typeof vi.fn>
 const mockMarkUrgent = markUrgentSent as unknown as ReturnType<typeof vi.fn>
 const mockAdmins = findAdminRecipients as unknown as ReturnType<typeof vi.fn>
 const mockSend = sendEmail as unknown as ReturnType<typeof vi.fn>
+const mockCan = can as unknown as ReturnType<typeof vi.fn>
+const mockFindForResolve = findFeedbackForResolve as unknown as ReturnType<
+  typeof vi.fn
+>
+const mockSetResolved = setFeedbackResolved as unknown as ReturnType<typeof vi.fn>
+const mockReopen = reopenFeedback as unknown as ReturnType<typeof vi.fn>
 const mockFbFindUnique = db.feedback.findUnique as unknown as ReturnType<
   typeof vi.fn
 >
@@ -124,6 +148,9 @@ describe('submitFeedbackAction , happy paths', () => {
       userId: 'u-1',
       bodyText: 'minor',
       severity: 'low',
+      pageUrl: null,
+      imageUrl: null,
+      organizationId: 'org-1',
     })
     expect(mockSend).not.toHaveBeenCalled()
     expect(mockMarkUrgent).not.toHaveBeenCalled()
@@ -252,5 +279,114 @@ describe('submitFeedbackAction , happy paths', () => {
     expect(result.urgentEmailSent).toBe(false)
     expect(mockSend).not.toHaveBeenCalled()
     expect(mockMarkUrgent).not.toHaveBeenCalled()
+  })
+})
+
+describe('submitFeedbackAction , pageUrl + imageUrl', () => {
+  it('rejects an imageUrl that is not a feedback-images blob URL', async () => {
+    await expect(
+      submitFeedbackAction({
+        bodyText: 'has bad image',
+        severity: 'low',
+        imageUrl: 'https://evil.com/x.png',
+      }),
+    ).rejects.toThrow(/feedback-images blob URL/)
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('forwards a valid pageUrl + feedback-images imageUrl to createFeedback', async () => {
+    mockCreate.mockResolvedValue({
+      id: 'fb-img',
+      severity: 'low',
+      bodyText: 'x',
+      user: { id: 'u-1', name: 'J', email: 'j@x.com' },
+    })
+
+    await submitFeedbackAction({
+      bodyText: 'see shot',
+      severity: 'low',
+      pageUrl: '/clients/abc',
+      imageUrl:
+        'https://x.public.blob.vercel-storage.com/feedback-images/1-shot.png',
+    })
+
+    expect(mockCreate).toHaveBeenCalledWith({
+      userId: 'u-1',
+      bodyText: 'see shot',
+      severity: 'low',
+      pageUrl: '/clients/abc',
+      imageUrl:
+        'https://x.public.blob.vercel-storage.com/feedback-images/1-shot.png',
+      organizationId: 'org-1',
+    })
+  })
+})
+
+describe('resolveFeedbackAction', () => {
+  it('throws Forbidden when the caller lacks admin.portal', async () => {
+    mockCan.mockReturnValue(false)
+    await expect(
+      resolveFeedbackAction({ feedbackId: 'fb-1', resolved: true }),
+    ).rejects.toThrow('Forbidden')
+    expect(mockFindForResolve).not.toHaveBeenCalled()
+  })
+
+  it('throws not found when the row does not exist', async () => {
+    mockCan.mockReturnValue(true)
+    mockFindForResolve.mockResolvedValue(null)
+    await expect(
+      resolveFeedbackAction({ feedbackId: 'missing', resolved: true }),
+    ).rejects.toThrow('Feedback not found')
+    expect(mockSetResolved).not.toHaveBeenCalled()
+  })
+
+  it('refuses to resolve another org’s row for a non-platform-owner admin', async () => {
+    mockCan.mockReturnValue(true)
+    mockFindForResolve.mockResolvedValue({
+      id: 'fb-x',
+      organizationId: 'org-OTHER',
+    })
+    await expect(
+      resolveFeedbackAction({ feedbackId: 'fb-x', resolved: true }),
+    ).rejects.toThrow('Feedback not found')
+    expect(mockSetResolved).not.toHaveBeenCalled()
+  })
+
+  it('resolves an own-org row and records the resolver', async () => {
+    mockCan.mockReturnValue(true)
+    mockFindForResolve.mockResolvedValue({ id: 'fb-1', organizationId: 'org-1' })
+    mockSetResolved.mockResolvedValue(undefined)
+
+    const res = await resolveFeedbackAction({ feedbackId: 'fb-1', resolved: true })
+    expect(res).toEqual({ resolved: true })
+    expect(mockSetResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'fb-1', resolvedById: 'u-1' }),
+    )
+    expect(mockReopen).not.toHaveBeenCalled()
+  })
+
+  it('lets a platform owner resolve any org’s row', async () => {
+    mockRequireOrg.mockResolvedValueOnce({ ...ctx, platformOwner: true })
+    mockCan.mockReturnValue(true)
+    mockFindForResolve.mockResolvedValue({
+      id: 'fb-x',
+      organizationId: 'org-OTHER',
+    })
+    mockSetResolved.mockResolvedValue(undefined)
+
+    const res = await resolveFeedbackAction({ feedbackId: 'fb-x', resolved: true })
+    expect(res).toEqual({ resolved: true })
+    expect(mockSetResolved).toHaveBeenCalledOnce()
+  })
+
+  it('reopens when resolved is false', async () => {
+    mockCan.mockReturnValue(true)
+    mockFindForResolve.mockResolvedValue({ id: 'fb-1', organizationId: 'org-1' })
+    mockReopen.mockResolvedValue(undefined)
+
+    const res = await resolveFeedbackAction({ feedbackId: 'fb-1', resolved: false })
+    expect(res).toEqual({ resolved: false })
+    expect(mockReopen).toHaveBeenCalledWith('fb-1')
+    expect(mockSetResolved).not.toHaveBeenCalled()
   })
 })

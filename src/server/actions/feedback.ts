@@ -10,14 +10,20 @@
  */
 
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { requireOrgContext } from '@/server/middleware/auth'
+import { can } from '@/server/auth/permissions'
 import {
   createFeedback,
   markUrgentSent,
+  findFeedbackForResolve,
+  setFeedbackResolved,
+  reopenFeedback,
 } from '@/server/repositories/feedback'
 import { findAdminRecipients } from '@/server/repositories/users'
 import { sendEmail } from '@/lib/resend'
 import { FeedbackUrgentEmail } from '@/server/emails/FeedbackUrgentEmail'
+import { isFeedbackImageBlobUrl } from '@/lib/feedback-image'
 import { db } from '@/db/client'
 import type { FeedbackSeverity } from '@prisma/client'
 
@@ -27,6 +33,8 @@ import type { FeedbackSeverity } from '@prisma/client'
 // reject if the body balloons further.
 const MAX_BODY_CHARS = 4000
 
+const MAX_URL_CHARS = 2048
+
 const submitSchema = z.object({
   bodyText: z
     .string()
@@ -34,11 +42,26 @@ const submitSchema = z.object({
     .min(1, 'bodyText cannot be empty')
     .max(MAX_BODY_CHARS, `bodyText cannot exceed ${MAX_BODY_CHARS} chars`),
   severity: z.enum(['low', 'medium', 'high']),
+  // App path (pathname + search) captured client-side. Free-form but capped.
+  pageUrl: z.string().trim().max(MAX_URL_CHARS).optional(),
+  // Optional screenshot: must be a feedback-images blob URL if present (an
+  // empty string is treated as "no image").
+  imageUrl: z
+    .string()
+    .trim()
+    .max(MAX_URL_CHARS)
+    .optional()
+    .refine(
+      (v) => v === undefined || v === '' || isFeedbackImageBlobUrl(v),
+      'imageUrl must be a feedback-images blob URL',
+    ),
 })
 
 export interface SubmitFeedbackInput {
   bodyText: string
   severity: FeedbackSeverity
+  pageUrl?: string
+  imageUrl?: string
 }
 
 export interface SubmitFeedbackResult {
@@ -66,10 +89,17 @@ export async function submitFeedbackAction(
 
   const ctx = await requireOrgContext()
 
+  const pageUrl = parsed.data.pageUrl ? parsed.data.pageUrl : null
+  const imageUrl = parsed.data.imageUrl ? parsed.data.imageUrl : null
+
   const created = await createFeedback({
     userId: ctx.userDbId,
     bodyText: parsed.data.bodyText,
     severity: parsed.data.severity,
+    pageUrl,
+    imageUrl,
+    // ctx.organizationDbId is '' for a platform owner with no active org.
+    organizationId: ctx.organizationDbId || null,
   })
 
   let urgentEmailSent = false
@@ -118,6 +148,8 @@ async function sendUrgentEmail(feedbackId: string): Promise<boolean> {
           submitterEmail: row.user.email,
           bodyText: row.bodyText,
           submittedAt: row.createdAt,
+          pageUrl: row.pageUrl,
+          imageUrl: row.imageUrl,
         }),
       })
       anySent = true
@@ -141,4 +173,48 @@ async function sendUrgentEmail(feedbackId: string): Promise<boolean> {
   }
 
   return anySent
+}
+
+export interface ResolveFeedbackInput {
+  feedbackId: string
+  /// true = mark resolved, false = reopen.
+  resolved: boolean
+}
+
+/**
+ * Admin dashboard action: mark a bug report resolved (or reopen it).
+ *
+ * Gated on `admin.portal`. Org-scoped: a non-platform-owner admin may only
+ * act on feedback from their own org; a cross-org id returns "not found" (no
+ * leak). Platform owners may resolve anything.
+ */
+export async function resolveFeedbackAction(
+  input: ResolveFeedbackInput,
+): Promise<{ resolved: boolean }> {
+  const ctx = await requireOrgContext()
+  if (!can(ctx, 'admin.portal')) {
+    throw new Error('Forbidden')
+  }
+
+  const row = await findFeedbackForResolve(input.feedbackId)
+  if (!row) {
+    throw new Error('Feedback not found')
+  }
+  if (!ctx.platformOwner && row.organizationId !== ctx.organizationDbId) {
+    // Do not reveal that the row exists in another org.
+    throw new Error('Feedback not found')
+  }
+
+  if (input.resolved) {
+    await setFeedbackResolved({
+      id: row.id,
+      resolvedById: ctx.userDbId,
+      at: new Date(),
+    })
+  } else {
+    await reopenFeedback(row.id)
+  }
+
+  revalidatePath('/admin/feedback')
+  return { resolved: input.resolved }
 }
