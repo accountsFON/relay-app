@@ -5,6 +5,7 @@ import { listClientsForUser } from '@/server/repositories/clients'
 import { db } from '@/db/client'
 import { BulkGenerateList } from './bulk-generate'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { HeroBand } from '@/components/hero-band'
 import { EmptyStateCard } from '@/components/ui/empty-state-card'
 import { ShowArchivedToggle } from '@/components/relay/show-archived-toggle'
@@ -58,7 +59,12 @@ export default async function ClientsPage({
             <Button variant="accent">New client</Button>
           </Link>
           <Link href="/clients/import">
-            <Button variant="outline">Import CSV</Button>
+            <SimpleTooltip content="Bulk add or update clients from a CSV file">
+              <Button variant="outline">
+                Import CSV
+                <InfoHint />
+              </Button>
+            </SimpleTooltip>
           </Link>
         </div>
       )}

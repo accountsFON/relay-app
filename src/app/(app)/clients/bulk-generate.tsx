@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { Card } from '@/components/ui/card'
 import { Badge, StatusDot } from '@/components/ui/badge'
 import { BrandCheckbox } from '@/components/ui/brand-checkbox'
@@ -125,9 +126,12 @@ export function BulkGenerateList({
                 onChange={(e) => setTargetMonth(e.target.value)}
                 className="h-10 rounded-xl border border-input bg-card px-3 text-[14px]"
               />
-              <Button variant="accent" size="sm" onClick={handleBulkGenerate} disabled={isPending}>
-                {isPending ? 'Submitting…' : `Generate ${formatMonthYear(targetMonth)} for ${selected.size}`}
-              </Button>
+              <SimpleTooltip content="Start paid content generation for every selected client">
+                <Button variant="accent" size="sm" onClick={handleBulkGenerate} disabled={isPending}>
+                  {isPending ? 'Submitting…' : `Generate ${formatMonthYear(targetMonth)} for ${selected.size}`}
+                  <InfoHint />
+                </Button>
+              </SimpleTooltip>
               <Button variant="ghost" size="sm" onClick={() => setSelected(new Map())}>
                 Clear
               </Button>
@@ -163,13 +167,15 @@ export function BulkGenerateList({
             {allSelected ? 'Deselect all' : 'Select all active'}
           </button>
           <span className="text-muted-foreground/40">·</span>
-          <button
-            onClick={toggleReCrawlAll}
-            disabled={selected.size === 0}
-            className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
-          >
-            {allSelectedReCrawl ? 'Re-crawl none' : 'Re-crawl all'}
-          </button>
+          <SimpleTooltip content="Rescrape every selected client website before generating">
+            <button
+              onClick={toggleReCrawlAll}
+              disabled={selected.size === 0}
+              className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
+            >
+              {allSelectedReCrawl ? 'Re-crawl none' : 'Re-crawl all'}
+            </button>
+          </SimpleTooltip>
         </div>
       )}
 
@@ -201,15 +207,17 @@ export function BulkGenerateList({
                   <div className="size-4" />
                 )}
                 {isSelected && selection !== undefined && (
-                  <label className="flex items-center gap-1 text-[12px] text-muted-foreground">
-                    <BrandCheckbox
-                      checked={selection.reCrawl}
-                      onChange={() => toggleReCrawl(client.id)}
-                      className="size-3.5"
-                      aria-label={`Re-crawl ${client.name}`}
-                    />
-                    Re-crawl
-                  </label>
+                  <SimpleTooltip content="Rescrape this client website before generating">
+                    <label className="flex items-center gap-1 text-[12px] text-muted-foreground">
+                      <BrandCheckbox
+                        checked={selection.reCrawl}
+                        onChange={() => toggleReCrawl(client.id)}
+                        className="size-3.5"
+                        aria-label={`Re-crawl ${client.name}`}
+                      />
+                      Re-crawl
+                    </label>
+                  </SimpleTooltip>
                 )}
               </div>
               <Link

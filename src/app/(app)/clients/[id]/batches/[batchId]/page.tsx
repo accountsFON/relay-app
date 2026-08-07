@@ -70,6 +70,7 @@ import { DesignerOnboardingGate } from '@/components/relay/designer-onboarding-g
 import { CopyOnboardingGate } from '@/components/relay/copy-onboarding-gate'
 import { TourAutostart } from '@/components/onboarding/tour-autostart'
 import { cn } from '@/lib/utils'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { Palette, ExternalLink, Eye } from 'lucide-react'
 import Link from 'next/link'
 
@@ -477,19 +478,22 @@ export default async function BatchDetailPage({
       {/* Mobile: one horizontal swipe bar so the actions never stack into
           several rows and eat vertical space. Desktop (sm+): wrap normally. */}
       <div className={cn("mt-5 flex items-center gap-2 overflow-x-auto pb-1 [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible sm:pb-0", isLocked && 'grayscale opacity-70')}>
-        <Button
-          variant="secondary"
-          size="sm"
-          render={
-            <Link
-              href={`/clients/${client.id}/batches/${batch.id}/preview`}
-              data-testid="batch-preview-link"
-            />
-          }
-        >
-          <Eye className="text-muted-foreground" />
-          <span>Internal Review</span>
-        </Button>
+        <SimpleTooltip content="Open the internal markup surface to review posts before the client">
+          <Button
+            variant="secondary"
+            size="sm"
+            render={
+              <Link
+                href={`/clients/${client.id}/batches/${batch.id}/preview`}
+                data-testid="batch-preview-link"
+              />
+            }
+          >
+            <Eye className="text-muted-foreground" />
+            <span>Internal Review</span>
+            <InfoHint />
+          </Button>
+        </SimpleTooltip>
         <Button
           variant="secondary"
           size="sm"

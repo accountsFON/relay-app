@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { PageSection } from '@/components/ui/page-section'
 import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { Label } from '@/components/ui/label'
 import {
   setClientOnboardingItemAction,
@@ -64,9 +65,12 @@ export function ClientOnboardingChecklist({
         ))}
       </ul>
       <div className="mt-5">
-        <Button variant="accent" disabled={!allChecked || pending} onClick={complete}>
-          Complete onboarding
-        </Button>
+        <SimpleTooltip content="Mark setup done and unlock content generation for this client">
+          <Button variant="accent" disabled={!allChecked || pending} onClick={complete}>
+            Complete onboarding
+            <InfoHint />
+          </Button>
+        </SimpleTooltip>
       </div>
     </PageSection>
   )

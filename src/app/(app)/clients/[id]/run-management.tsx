@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { deleteContentRun } from '../run-actions'
 
 export function DeleteRunButton({ runId, status }: { runId: string; status: string }) {
@@ -78,9 +79,12 @@ export function RegenRunButton({
       href={`/clients/${clientId}/generate?month=${targetMonth}`}
       onClick={(e) => e.stopPropagation()}
     >
-      <Button variant="ghost" size="sm">
-        Re-run
-      </Button>
+      <SimpleTooltip content="Start a fresh generation run for this month and use credits">
+        <Button variant="ghost" size="sm">
+          Re-run
+          <InfoHint />
+        </Button>
+      </SimpleTooltip>
     </Link>
   )
 }
