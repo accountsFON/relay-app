@@ -7,54 +7,70 @@ import {
   designerKanbanColumn,
 } from '@/lib/batch-sub-status'
 
-const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+const NOW = new Date('2026-08-07T12:00:00Z').getTime()
+const threeDaysAgo = new Date(NOW - 3 * 24 * 60 * 60 * 1000)
 
 describe('deriveSubStatus', () => {
-  it('reports days here', () => {
-    const result = deriveSubStatus({
-      currentStep: RelayStep.copy,
-      currentSubState: 'generating',
-      createdAt: yesterday,
-    })
-    expect(result.daysHere).toBeGreaterThanOrEqual(1)
+  it('reports an exact, deterministic days-here from the supplied now', () => {
+    const result = deriveSubStatus(
+      {
+        currentStep: RelayStep.copy,
+        currentSubState: 'generating',
+        createdAt: threeDaysAgo,
+      },
+      NOW,
+    )
+    expect(result.daysHere).toBe(3)
   })
 
   it('reports a static label for implementing_revisions', () => {
-    const result = deriveSubStatus({
-      currentStep: RelayStep.implementing_revisions,
-      currentSubState: null,
-      createdAt: new Date(),
-    })
+    const result = deriveSubStatus(
+      {
+        currentStep: RelayStep.implementing_revisions,
+        currentSubState: null,
+        createdAt: new Date(NOW),
+      },
+      NOW,
+    )
     expect(result.label).toBe('Implementing revisions')
     expect(result.tone).toBe('progress')
   })
 
   it('reports "Awaiting design revisions" on am_review_design with that sub-state (merge design steps)', () => {
-    const result = deriveSubStatus({
-      currentStep: RelayStep.am_review_design,
-      currentSubState: 'awaiting_design_revisions',
-      createdAt: new Date(),
-    })
+    const result = deriveSubStatus(
+      {
+        currentStep: RelayStep.am_review_design,
+        currentSubState: 'awaiting_design_revisions',
+        createdAt: new Date(NOW),
+      },
+      NOW,
+    )
     expect(result.label).toBe('Awaiting design revisions')
     expect(result.tone).toBe('attention')
   })
 
   it('reports "Ready for review" on am_review_design with no sub-state', () => {
-    const result = deriveSubStatus({
-      currentStep: RelayStep.am_review_design,
-      currentSubState: null,
-      createdAt: new Date(),
-    })
+    const result = deriveSubStatus(
+      {
+        currentStep: RelayStep.am_review_design,
+        currentSubState: null,
+        createdAt: new Date(NOW),
+      },
+      NOW,
+    )
     expect(result.label).toBe('Ready for review')
   })
 
   it('reports a static label for copy regardless of sub-state', () => {
     for (const sub of ['generating', 'drafted', 'approved', null]) {
-      const result = deriveSubStatus({
-        currentStep: RelayStep.copy,
-        currentSubState: sub,
-        createdAt: new Date(),
-      })
+      const result = deriveSubStatus(
+        {
+          currentStep: RelayStep.copy,
+          currentSubState: sub,
+          createdAt: new Date(NOW),
+        },
+        NOW,
+      )
       expect(result.label).toBe('Reviewing copy')
       expect(result.tone).toBe('progress')
     }

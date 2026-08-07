@@ -182,10 +182,17 @@ function useFieldEditor<T>({
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  // When the upstream value changes (after a save), refresh the draft baseline.
-  useEffect(() => {
-    if (!editing) setDraft(initial)
-  }, [initial, editing])
+  // Keep the draft baseline in sync with the upstream value during render, not
+  // in an effect: an effect resyncs after paint, so the stale value can flash
+  // for a frame. When `initial` changes while the field is not being edited,
+  // reset the draft to it. `syncedInitial` guards this so it runs only on an
+  // actual change (adjust-state-during-render pattern), never every render, and
+  // never clobbers an in-progress edit.
+  const [syncedInitial, setSyncedInitial] = useState(initial)
+  if (!editing && !equal(initial, syncedInitial)) {
+    setSyncedInitial(initial)
+    setDraft(initial)
+  }
 
   const isDirty = editing && !equal(draft, initial)
   useUnsavedChanges(isDirty)

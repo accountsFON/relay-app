@@ -1,4 +1,5 @@
 import { RelayStep } from '@prisma/client'
+import { daysSince } from '@/lib/days'
 
 export interface BatchForSubStatus {
   currentStep: RelayStep
@@ -16,14 +17,12 @@ export interface SubStatus {
 }
 
 /**
- * Derive a per-batch sub-status chip for kanban cards. Pure function;
- * UI maps `tone` to color tokens.
+ * Derive a per-batch sub-status chip for kanban cards. Pure function; `now`
+ * (ms) is supplied by the caller so `daysHere` is deterministic and stable
+ * across re-renders. UI maps `tone` to color tokens.
  */
-export function deriveSubStatus(batch: BatchForSubStatus): SubStatus {
-  const daysHere = Math.max(
-    0,
-    Math.floor((Date.now() - batch.createdAt.getTime()) / (24 * 60 * 60 * 1000)),
-  )
+export function deriveSubStatus(batch: BatchForSubStatus, now: number): SubStatus {
+  const daysHere = daysSince(batch.createdAt, now)
 
   switch (batch.currentStep) {
     case RelayStep.copy:

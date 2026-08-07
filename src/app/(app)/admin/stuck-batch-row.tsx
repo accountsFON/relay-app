@@ -7,6 +7,7 @@ import type { RelayStep } from '@prisma/client'
 import { Bell, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
+import { daysSince } from '@/lib/days'
 import {
   nudgeStuckBatchAction,
   takeOverBatchAction,
@@ -38,6 +39,9 @@ export function StuckBatchRow({
 }: StuckBatchRowProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  // Capture the clock once at mount so the day count is stable across re-renders
+  // (react-hooks/purity: no clock reads during render).
+  const [now] = useState(() => Date.now())
   const [done, setDone] = useState(false)
   const [showTakeOver, setShowTakeOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -76,9 +80,7 @@ export function StuckBatchRow({
     })
   }
 
-  const days = Math.floor(
-    (Date.now() - new Date(batch.createdAt).getTime()) / 86_400_000,
-  )
+  const days = daysSince(new Date(batch.createdAt), now)
 
   return (
     <div className="flex items-center justify-between gap-4 px-3 py-3">

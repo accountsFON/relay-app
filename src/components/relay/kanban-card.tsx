@@ -49,7 +49,10 @@ export function KanbanCard({ batch }: { batch: KanbanCardData }) {
   const router = useRouter()
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const sub = deriveSubStatus(batch)
+  // Capture the clock once at mount so daysHere is stable across re-renders
+  // (react-hooks/purity: no clock reads during render).
+  const [now] = useState(() => Date.now())
+  const sub = deriveSubStatus(batch, now)
   const isArchived = Boolean(batch.deletedAt)
   const href = `/clients/${batch.clientId}/batches/${batch.id}`
   const accentBorder = STEP_COLOR_CLASSES[getStepColor(batch.currentStep)].leftBorder
