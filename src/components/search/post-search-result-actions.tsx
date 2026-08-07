@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { archivePostAction } from '@/app/(app)/trash/actions'
 
 interface Props {
@@ -40,12 +41,14 @@ export function PostSearchResultActions({ postId }: Props) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger
-          className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Post options"
-        >
-          <MoreHorizontal className="size-4" />
-        </DropdownMenuTrigger>
+        <SimpleTooltip content="More actions for this post">
+          <DropdownMenuTrigger
+            className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Post options"
+          >
+            <MoreHorizontal className="size-4" />
+          </DropdownMenuTrigger>
+        </SimpleTooltip>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             variant="destructive"
