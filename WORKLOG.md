@@ -12,7 +12,7 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 ## Open / in progress
 
 From the 2026-08-06 tooltip clarity rollout (all 8 slices shipped: hover hints + the ⓘ discoverability glyph across every tooltipped control, PRs #390-#399):
-- [ ] **(cleanup, profile) Pre-existing eslint error in `client-profile-view.tsx`** — line 187 flags "Calling setState synchronously within an effect can trigger cascading renders". Not from the tooltip work (surfaced when linting the file for #395); left untouched as out of scope. Real cleanup: move the setState out of the effect or adopt the adjust-state-during-render pattern used elsewhere in the file.
+- [ ] **(cleanup) Pre-existing impure-in-render eslint errors** — surfaced (not caused) while linting files during the tooltip work, left untouched as out of scope: `client-profile-view.tsx:187` (setState in effect), `stuck-batch-row.tsx:80` (`Date.now()` in render), `clients/[id]/batches/[batchId]/page.tsx:264` (impure call in render). Each is a real cleanup: move the impure call out of render / adopt the adjust-state-during-render pattern.
 - [ ] **(optional, tooltips) Extend hover hints to any surfaces added later** — the rollout covered the current control set; new action buttons / permission keys / review controls should follow the same pattern (per-surface copy map + `SimpleTooltip` + `InfoHint` on text-labeled controls, bare on icon-only).
 
 From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done — full internal review parity):
@@ -34,6 +34,16 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 ---
 
 ## Shipped
+
+- [x] **2026-08-06 — Site-wide tooltip sweep: 39 controls across 9 areas** (PRs #402-#410)
+  Audited the whole app for action buttons with no hover hint, then added tooltips to 39 of them, batched by
+  area into 9 PRs: nav/header (#402), inbox/notifications (#403), search (#404), admin/platform (#405),
+  clients (#406), settings (#407), relay pipeline (#408), batch/magic-link (#409), posts/media (#410). Text
+  buttons get a tooltip + the ⓘ glyph; icon-only buttons, dropdown triggers, pills, and cancels get a tooltip
+  only. In-menu dropdown item rows were skipped (tooltip-in-menu is finicky) and self-evident controls
+  (Save/Cancel/tabs/sign out) were left bare per the coverage rule. Verified the tooltip-wrapped
+  DropdownMenuTrigger still opens its menu (smoke test in #404). Every batch: tsc + 2663 unit + `next build`
+  clean, merged on a CLEAN mergeState (GitHub Actions CI still down from the afternoon incident).
 
 - [x] **2026-08-06 — Extend info glyph to step pills + role chips** (PR #399)
   Extended the `InfoHint` glyph to the dense shared badges via one change to the shared `StepTooltip` /
