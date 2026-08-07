@@ -1,10 +1,9 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
-import { upload } from '@vercel/blob/client'
-import { useRouter } from 'next/navigation'
+import { useRef } from 'react'
 import { Upload, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useReplacePostImage } from '@/components/posts/use-replace-post-image'
 
 /**
  * Compact per-post revised-image upload for the designer branch of the
@@ -37,44 +36,13 @@ export function DesignerRevisionUpload({
   currentMediaUrl,
   onUploaded,
 }: DesignerRevisionUploadProps) {
-  const router = useRouter()
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  const handleFile = (file: File) => {
-    setError(null)
-    startTransition(async () => {
-      try {
-        // Step 1+2: SDK handshake (token request happens inside upload()),
-        // then direct upload to Blob. clientPayload carries postId so the
-        // route's onBeforeGenerateToken can authorize the post.
-        const result = await upload(file.name, file, {
-          access: 'public',
-          handleUploadUrl: '/api/media/upload',
-          clientPayload: postId,
-        })
-
-        // Step 3: persist the URL on the post.
-        const persistRes = await fetch(`/api/posts/${postId}/media`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: result.url }),
-        })
-        if (!persistRes.ok) {
-          const text = await persistRes.text()
-          throw new Error(`Persist URL failed: ${text}`)
-        }
-
-        onUploaded?.(result.url)
-        // Server revalidates other surfaces but not this review-session path,
-        // so refresh here to render the new mediaUrls.
-        router.refresh()
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e))
-      }
-    })
-  }
+  // Shared upload flow (blob upload -> POST /media -> onUploaded -> refresh).
+  // refresh defaults on: the server revalidates other surfaces but not this
+  // review-session path, so we need the refresh to render the new mediaUrls.
+  const { replace: handleFile, isPending, error } = useReplacePostImage(postId, {
+    onUploaded,
+  })
 
   const label = currentMediaUrl ? 'Replace image' : 'Upload revised image'
 
