@@ -6,6 +6,7 @@ import Link from 'next/link'
 import type { RelayStep } from '@prisma/client'
 import { Bell, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import {
   nudgeStuckBatchAction,
   takeOverBatchAction,
@@ -94,27 +95,33 @@ export function StuckBatchRow({
         {error && <p className="text-[11px] text-destructive">{error}</p>}
       </div>
       <div className="flex items-center gap-1">
-        <Button
-          size="xs"
-          variant="outline"
-          onClick={handleNudge}
-          disabled={isPending || done}
-        >
-          <Bell />
-          {done ? 'Nudged ✓' : isPending ? 'Nudging…' : 'Nudge'}
-        </Button>
+        <SimpleTooltip content="Remind the current holder to move this batch forward">
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={handleNudge}
+            disabled={isPending || done}
+          >
+            <Bell />
+            {done ? 'Nudged ✓' : isPending ? 'Nudging…' : 'Nudge'}
+            <InfoHint />
+          </Button>
+        </SimpleTooltip>
 
         {roster.length > 0 && (
           <div className="relative">
-            <Button
-              size="xs"
-              variant="outline"
-              disabled={isPending}
-              onClick={() => setShowTakeOver((v) => !v)}
-            >
-              <UserPlus />
-              Take over
-            </Button>
+            <SimpleTooltip content="Reassign this stuck batch to a teammate in the same role">
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={isPending}
+                onClick={() => setShowTakeOver((v) => !v)}
+              >
+                <UserPlus />
+                Take over
+                <InfoHint />
+              </Button>
+            </SimpleTooltip>
             {showTakeOver && (
               <div className="absolute right-0 z-10 mt-1 w-48 rounded-xl border border-border bg-white p-1 shadow-lg">
                 {roster.map((u) => (

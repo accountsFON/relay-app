@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import {
   Dialog,
   DialogContent,
@@ -176,14 +177,17 @@ export function ManageUserAccessPanel({
     <div className="space-y-4">
       {!isDeactivated && (
         <div className="space-y-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setConfirmOpen(true)}
-            disabled={blocked || isPending}
-          >
-            Deactivate access
-          </Button>
+          <SimpleTooltip content="Sign the user out and block access. Reversible.">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmOpen(true)}
+              disabled={blocked || isPending}
+            >
+              Deactivate access
+              <InfoHint />
+            </Button>
+          </SimpleTooltip>
           {blockReason && (
             <p className="text-[13px] text-muted-foreground">{blockReason}</p>
           )}
@@ -221,6 +225,7 @@ export function ManageUserAccessPanel({
 
       {isDeactivated && (
         <div className="space-y-4">
+          <SimpleTooltip content="Restore this deactivated user's access to the agency">
           <Button
             type="button"
             variant="outline"
@@ -228,7 +233,9 @@ export function ManageUserAccessPanel({
             disabled={isPending}
           >
             Reactivate access
+            <InfoHint />
           </Button>
+          </SimpleTooltip>
 
           {canHardDelete && (
             <div className="space-y-3 rounded-md border border-destructive/30 bg-destructive/5 p-3">
@@ -269,14 +276,17 @@ export function ManageUserAccessPanel({
                 />
               </label>
 
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={hardDelete}
-                disabled={!canSubmitDelete}
-              >
-                {isPending ? 'Deleting…' : 'Permanently delete'}
-              </Button>
+              <SimpleTooltip content="Delete the user for good and reassign all their work">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={hardDelete}
+                  disabled={!canSubmitDelete}
+                >
+                  {isPending ? 'Deleting…' : 'Permanently delete'}
+                  <InfoHint />
+                </Button>
+              </SimpleTooltip>
               {blockReason && (
                 <p className="text-[13px] text-muted-foreground">
                   {blockReason}

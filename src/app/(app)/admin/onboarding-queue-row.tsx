@@ -4,6 +4,7 @@ import { useTransition, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { completeOnboardingAction } from '@/server/actions/relay-admin'
 import { formatRelativeDays } from '@/lib/format-relative'
 
@@ -51,13 +52,16 @@ export function OnboardingQueueRow({ client }: { client: OnboardingClient }) {
         </p>
         {error && <p className="mt-1 text-[11px] text-destructive">{error}</p>}
       </div>
-      <Button
-        size="sm"
-        onClick={handleComplete}
-        disabled={isPending}
-      >
-        {isPending ? 'Starting…' : 'Complete onboarding + open relay'}
-      </Button>
+      <SimpleTooltip content="Mark onboarding done and open this client's first relay">
+        <Button
+          size="sm"
+          onClick={handleComplete}
+          disabled={isPending}
+        >
+          {isPending ? 'Starting…' : 'Complete onboarding + open relay'}
+          <InfoHint />
+        </Button>
+      </SimpleTooltip>
     </div>
   )
 }
