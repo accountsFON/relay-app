@@ -317,8 +317,7 @@ export interface AdvanceFromClientReviewInput {
   /** A real org user used as RelayEvent.fromUser and as the holder fallback
    *  when the client has no assigned AM. In practice the magic link creator. */
   fallbackUserId: string
-  /** The review session being submitted. Threaded through so a designer
-   *  notification (image-pin revisions) can deep link to its detail page. */
+  /** The review session being submitted. */
   reviewSessionId: string
 }
 

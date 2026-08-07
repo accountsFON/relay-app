@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { relayStepLabel, RELAY_STEP_LABELS } from '@/lib/relay-step-labels'
-import { LIVE_PIPELINE_STEPS } from '@/server/lib/relay-state-machine'
+import { LIVE_PIPELINE_STEPS } from '@/lib/relay-transitions'
 import { forceStepAction } from '@/server/actions/relay'
 
 export interface AdminForceStepSectionProps {
