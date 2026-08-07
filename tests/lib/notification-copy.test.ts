@@ -33,6 +33,20 @@ function row(input: Record<string, unknown>, overrides: Partial<MentionInboxRow>
   } as MentionInboxRow
 }
 
+describe('renderSummary, post reference', () => {
+  it('renders "Post N" when postNumber rides in on the payload', () => {
+    expect(
+      renderSummary(row({ kind: 'post_thread_opened', postId: 'p1', postNumber: 3 })),
+    ).toBe('Cedar Creek · Mollie opened a thread on Post 3.')
+  })
+
+  it('falls back to the short post hash when postNumber is absent', () => {
+    expect(
+      renderSummary(row({ kind: 'post_thread_opened', postId: 'abcdef123456' })),
+    ).toBe('Cedar Creek · Mollie opened a thread on post abcdef.')
+  })
+})
+
 describe('renderSummary, existing kinds', () => {
   it('comment renders actor and trimmed body', () => {
     expect(renderSummary(row({ kind: 'comment', body: 'Looks great team' }))).toBe(

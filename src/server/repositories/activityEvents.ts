@@ -17,6 +17,7 @@
  */
 import { EventVisibility, Prisma } from '@prisma/client'
 import { db } from '@/db/client'
+import { buildPostNumberMap } from '@/lib/post-numbering'
 import type {
   ActivityEventView,
   ActivityPayload,
@@ -168,29 +169,61 @@ export async function listMentionsForUser(
     },
   })
 
-  return mentions.map((m) => ({
-    mentionId: m.id,
-    readAt: m.readAt,
-    client: { id: m.event.client.id, name: m.event.client.name },
-    postBatchId: m.event.post?.batchId ?? null,
-    event: {
-      id: m.event.id,
-      clientId: m.event.clientId,
-      runId: m.event.runId,
-      postId: m.event.postId,
-      kind: m.event.kind,
-      createdAt: m.event.createdAt,
-      actor: m.event.actor
-        ? {
-            id: m.event.actor.id,
-            name: m.event.actor.name,
-            avatarUrl: m.event.actor.avatarUrl,
-          }
-        : null,
-      payload: m.event.payload as unknown as ActivityPayload,
-      myMention: { id: m.id, readAt: m.readAt },
-    },
-  }))
+  // Cheap per-batch index so notification copy can render "Post N" (matching
+  // the review UI's postDate-asc ordering) instead of the postId short hash.
+  // One extra query, only when some mention targets a post.
+  const batchIds = [
+    ...new Set(
+      mentions
+        .map((m) => m.event.post?.batchId)
+        .filter((b): b is string => !!b),
+    ),
+  ]
+  let postNumberById = new Map<string, number>()
+  if (batchIds.length > 0) {
+    const posts = await db.post.findMany({
+      where: { batchId: { in: batchIds } },
+      select: { id: true, batchId: true },
+      orderBy: { postDate: 'asc' },
+    })
+    postNumberById = buildPostNumberMap(posts)
+  }
+
+  return mentions.map((m) => {
+    const postNumber = m.event.postId
+      ? postNumberById.get(m.event.postId)
+      : undefined
+    const payload =
+      postNumber != null
+        ? ({
+            ...(m.event.payload as Record<string, unknown>),
+            postNumber,
+          } as unknown as ActivityPayload)
+        : (m.event.payload as unknown as ActivityPayload)
+    return {
+      mentionId: m.id,
+      readAt: m.readAt,
+      client: { id: m.event.client.id, name: m.event.client.name },
+      postBatchId: m.event.post?.batchId ?? null,
+      event: {
+        id: m.event.id,
+        clientId: m.event.clientId,
+        runId: m.event.runId,
+        postId: m.event.postId,
+        kind: m.event.kind,
+        createdAt: m.event.createdAt,
+        actor: m.event.actor
+          ? {
+              id: m.event.actor.id,
+              name: m.event.actor.name,
+              avatarUrl: m.event.actor.avatarUrl,
+            }
+          : null,
+        payload,
+        myMention: { id: m.id, readAt: m.readAt },
+      },
+    }
+  })
 }
 
 export async function unreadMentionCount(
