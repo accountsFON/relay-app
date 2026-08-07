@@ -11,6 +11,10 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
+From the 2026-08-06 tooltip clarity rollout (all 8 slices shipped: hover hints + the ⓘ discoverability glyph across every tooltipped control, PRs #390-#399):
+- [ ] **(cleanup, profile) Pre-existing eslint error in `client-profile-view.tsx`** — line 187 flags "Calling setState synchronously within an effect can trigger cascading renders". Not from the tooltip work (surfaced when linting the file for #395); left untouched as out of scope. Real cleanup: move the setState out of the effect or adopt the adjust-state-during-render pattern used elsewhere in the file.
+- [ ] **(optional, tooltips) Extend hover hints to any surfaces added later** — the rollout covered the current control set; new action buttons / permission keys / review controls should follow the same pattern (per-surface copy map + `SimpleTooltip` + `InfoHint` on text-labeled controls, bare on icon-only).
+
 From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done — full internal review parity):
 - [ ] **(follow-up) Bell "Post N" copy** — the notification builder doesn't populate a per-post number (posts have no stored position); the copy ships fallback-safe. Add a cheap per-batch index map in `listMentionsForUser` to render true "Post N". (Batch B follow-up)
 - [ ] **(follow-up) Set `NEXT_PUBLIC_APP_URL` in prod** to the friendly domain so review links don't depend on the Vercel alias fallback (see PR #268).
