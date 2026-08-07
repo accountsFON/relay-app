@@ -31,6 +31,13 @@ From the 2026-06-26 triage (Batch A + B + C shipped; Batch D Phases 1+2+3 done �
 
 ## Shipped
 
+- [x] **2026-08-06 — Extend info glyph to step pills + role chips** (PR #399)
+  Extended the `InfoHint` glyph to the dense shared badges via one change to the shared `StepTooltip` /
+  `RoleTooltip` wrappers (they render the pill/chip + the glyph in an inline-flex span, only when a tooltip
+  actually renders). So every tooltipped control in the app now shows the discoverability glyph: buttons,
+  headings, and badges. Julio reviewed the Vercel preview of the dense screens (kanban, batch detail) before
+  merge. tsc + 2662 unit + build + eslint clean.
+
 - [x] **2026-08-06 — Info glyph on tooltipped buttons + headings** (PR #397)
   Added a muted info icon (`InfoHint`, aria-hidden) inside every tooltipped text button and the
   permission-editor labels so users know a hover hint is there: the review / client-review / client-page
