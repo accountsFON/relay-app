@@ -3,6 +3,7 @@
 import { useTransition } from 'react'
 import { Eye } from 'lucide-react'
 import { stopViewAs } from '@/components/view-as-actions'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import type { UserRole } from '@/lib/types'
 
 const ROLE_LABEL: Record<UserRole, string> = {
@@ -20,14 +21,17 @@ export function ImpersonationBanner({ targetName, role }: { targetName: string; 
       <span>
         Acting as {targetName} ({ROLE_LABEL[role]})
       </span>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => startTransition(() => void stopViewAs())}
-        className="rounded-full bg-amber-950/15 px-3 py-0.5 text-amber-950 hover:bg-amber-950/25 disabled:opacity-60"
-      >
-        {pending ? 'Exiting…' : 'Exit'}
-      </button>
+      <SimpleTooltip content="Stop acting as this user and go back to yourself">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => startTransition(() => void stopViewAs())}
+          className="inline-flex items-center gap-1 rounded-full bg-amber-950/15 px-3 py-0.5 text-amber-950 hover:bg-amber-950/25 disabled:opacity-60"
+        >
+          {pending ? 'Exiting…' : 'Exit'}
+          <InfoHint />
+        </button>
+      </SimpleTooltip>
     </div>
   )
 }
