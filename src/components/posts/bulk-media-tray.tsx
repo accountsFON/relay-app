@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from 'react'
 import { upload } from '@vercel/blob/client'
 import { Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import {
   matchFilenameToPost,
   fillEmptyPostSlots,
@@ -233,15 +234,18 @@ export function BulkMediaTray({
           >
             Add files
           </Button>
-          <Button
-            variant="accent"
-            size="sm"
-            onClick={handleApply}
-            disabled={isApplying || files.length === 0}
-            data-testid="bulk-media-apply"
-          >
-            {isApplying ? 'Applying…' : 'Apply'}
-          </Button>
+          <SimpleTooltip content="Save every image to its assigned post">
+            <Button
+              variant="accent"
+              size="sm"
+              onClick={handleApply}
+              disabled={isApplying || files.length === 0}
+              data-testid="bulk-media-apply"
+            >
+              {isApplying ? 'Applying…' : 'Apply'}
+              <InfoHint />
+            </Button>
+          </SimpleTooltip>
         </div>
       </div>
 

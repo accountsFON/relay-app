@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { upload } from '@vercel/blob/client'
 import { Trash2, Upload, Loader2 } from 'lucide-react'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { cn } from '@/lib/utils'
 
 /**
@@ -117,16 +118,18 @@ export function MediaUpload({
           devices (which have no hover state) can still find the delete
           affordance. Brightens to full opacity on hover or keyboard focus.
         */}
-        <button
-          type="button"
-          onClick={handleClear}
-          disabled={isPending}
-          aria-label="Remove image"
-          data-testid="media-upload-remove"
-          className="absolute top-2 right-2 inline-flex items-center justify-center rounded-md bg-black/60 text-white p-2 opacity-80 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity disabled:opacity-50"
-        >
-          <Trash2 className="size-4" />
-        </button>
+        <SimpleTooltip content="Remove this image from the post">
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={isPending}
+            aria-label="Remove image"
+            data-testid="media-upload-remove"
+            className="absolute top-2 right-2 inline-flex items-center justify-center rounded-md bg-black/60 text-white p-2 opacity-80 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity disabled:opacity-50"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </SimpleTooltip>
         {error && (
           <p className="text-[12px] text-destructive mt-1">{error}</p>
         )}
