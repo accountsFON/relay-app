@@ -1,4 +1,5 @@
 import { db } from '@/db/client'
+import type { DbClient, DbTx } from '@/db/client'
 
 export interface CreateDesignerFlagInput {
   batchId: string
@@ -11,8 +12,9 @@ export interface CreateDesignerFlagInput {
 
 export async function createDesignerFlag(
   input: CreateDesignerFlagInput,
+  client: DbClient | DbTx = db,
 ): Promise<{ id: string }> {
-  return db.designerFlag.create({
+  return client.designerFlag.create({
     data: {
       batchId: input.batchId,
       postId: input.postId,
@@ -28,8 +30,9 @@ export async function createDesignerFlag(
 export async function updateDesignerFlagNote(
   id: string,
   note: string | null,
+  client: DbClient | DbTx = db,
 ): Promise<void> {
-  await db.designerFlag.update({ where: { id }, data: { note } })
+  await client.designerFlag.update({ where: { id }, data: { note } })
 }
 
 export async function deleteDesignerFlag(id: string): Promise<void> {
