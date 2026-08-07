@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Globe2, Check, ChevronDown } from 'lucide-react'
 import { setStepIntoOrgCookie } from './org-switcher-actions'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 export type AgencyOption = {
   id: string
@@ -129,15 +130,17 @@ function AgencyDropdown({
 
   return (
     <div className="relative mx-3 my-2">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        disabled={isPending}
-        className="flex w-full items-center gap-2 rounded-full bg-neutral-900 px-3 py-2 text-white transition-colors hover:bg-neutral-900/90"
-      >
-        <AgencyPillLabel name={isPending ? 'Switching...' : activeAgencyName} />
-        <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />
-      </button>
+      <SimpleTooltip content="Switch the agency you're working inside">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          disabled={isPending}
+          className="flex w-full items-center gap-2 rounded-full bg-neutral-900 px-3 py-2 text-white transition-colors hover:bg-neutral-900/90"
+        >
+          <AgencyPillLabel name={isPending ? 'Switching...' : activeAgencyName} />
+          <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />
+        </button>
+      </SimpleTooltip>
       {open && (
         <>
           <div

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Eye } from 'lucide-react'
 import { listImpersonationTargets, startViewAs } from '@/components/view-as-actions'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 type Target = { userId: string; name: string; email: string; role: string }
 
@@ -63,15 +64,17 @@ export function ViewAsDropdown() {
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label="View as user"
-        className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
-      >
-        <Eye className="h-4 w-4 text-neutral-500" />
-        <span className="hidden sm:inline">View as</span>
-      </button>
+      <SimpleTooltip content="See Relay exactly as another user sees it">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label="View as user"
+          className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+        >
+          <Eye className="h-4 w-4 text-neutral-500" />
+          <span className="hidden sm:inline">View as</span>
+        </button>
+      </SimpleTooltip>
 
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
