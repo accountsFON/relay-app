@@ -12,7 +12,6 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 ## Open / in progress
 
 From the 2026-08-06 tooltip clarity rollout (all 8 slices shipped: hover hints + the ⓘ discoverability glyph across every tooltipped control, PRs #390-#399):
-- [ ] **(cleanup) Pre-existing impure-in-render eslint errors** — surfaced (not caused) while linting files during the tooltip work, left untouched as out of scope: `client-profile-view.tsx:187` (setState in effect), `stuck-batch-row.tsx:80` (`Date.now()` in render), `clients/[id]/batches/[batchId]/page.tsx:264` (impure call in render). Each is a real cleanup: move the impure call out of render / adopt the adjust-state-during-render pattern.
 - [ ] **(optional, tooltips) Extend hover hints to any surfaces added later** — the rollout covered the current control set; new action buttons / permission keys / review controls should follow the same pattern (per-surface copy map + `SimpleTooltip` + `InfoHint` on text-labeled controls, bare on icon-only).
 
 From the 2026-06-26 triage — most items cleared 2026-08-07 in the June-backlog stages (PRs #413-#417). Remaining:
@@ -29,6 +28,22 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 ---
 
 ## Shipped
+
+- [x] **2026-08-07 — Fix the three impure-in-render eslint errors (react-hooks/purity)**
+  Cleared the last cleanup item from the tooltip rollout. Two were the same "read the clock during
+  render" bug (`Date.now()` inline in a component): consolidated the six copy-pasted "days since batch
+  created" calcs onto one pure helper `src/lib/days.ts` — `daysSince(date, now)` (pure, caller-supplied
+  now, unit-tested) + `daysSinceNow(date)` (clock read lives in the helper, safe for server components that
+  render once per request). The client component (`admin/stuck-batch-row.tsx`) captures now once via
+  `useState(() => Date.now())` so its day count is stable across re-renders; the server page
+  (`clients/[id]/batches/[batchId]/page.tsx`) uses `daysSinceNow`. Also routed `labels.daysOnStep`,
+  `dashboard/page` (deleted its copy-paste), and `batch-sub-status.deriveSubStatus` (now genuinely pure,
+  matching its docstring; `kanban-card` captures now once) through the shared helper. Third error was a
+  setState-in-effect in the `useFieldEditor` hook (`clients/client-profile-view.tsx`, powers ~10 field
+  editors): replaced the post-paint `useEffect(setDraft)` with the adjust-state-during-render pattern
+  (no stale-value flash), guarded so it never clobbers an in-progress edit. TDD: new `days.test.ts`,
+  deterministic `batch-sub-status.test.ts`, + two draft-sync characterization tests. Green gate: tsc +
+  2679 unit + `next build` + eslint clean (the one `Button` unused-import warning is pre-existing).
 
 - [x] **2026-08-06 — Site-wide tooltip sweep: 39 controls across 9 areas** (PRs #402-#410)
   Audited the whole app for action buttons with no hover hint, then added tooltips to 39 of them, batched by

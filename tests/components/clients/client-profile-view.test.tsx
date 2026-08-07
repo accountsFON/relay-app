@@ -231,3 +231,42 @@ describe('ClientProfileView — client review email', () => {
     })
   })
 })
+
+describe('ClientProfileView — draft stays in sync with upstream value', () => {
+  beforeEach(() => {
+    updateClientAction.mockReset()
+  })
+
+  it('reflects a new upstream value when not editing (draft baseline resyncs)', () => {
+    const { rerender } = render(
+      <ClientProfileView client={makeClient({ industry: 'Plumbing' })} canEdit={true} />,
+    )
+    expect(screen.getByText('Plumbing')).toBeInTheDocument()
+
+    // Upstream value changes (e.g. after a save / another editor) while this
+    // field is not being edited.
+    rerender(
+      <ClientProfileView client={makeClient({ industry: 'HVAC' })} canEdit={true} />,
+    )
+    expect(screen.getByText('HVAC')).toBeInTheDocument()
+    expect(screen.queryByText('Plumbing')).not.toBeInTheDocument()
+  })
+
+  it('does NOT clobber an in-progress draft when the upstream value changes mid-edit', async () => {
+    const { rerender } = render(
+      <ClientProfileView client={makeClient({ industry: 'Plumbing' })} canEdit={true} />,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /Edit Industry/i }))
+    const input = screen.getByDisplayValue('Plumbing') as HTMLInputElement
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Roofing')
+
+    // Upstream value lands while the user is still editing.
+    rerender(
+      <ClientProfileView client={makeClient({ industry: 'HVAC' })} canEdit={true} />,
+    )
+
+    // The in-progress draft survives; it is not reset to the new upstream value.
+    expect(screen.getByDisplayValue('Roofing')).toBeInTheDocument()
+  })
+})
