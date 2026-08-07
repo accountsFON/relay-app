@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { RunProgressLine } from '@/components/relay/run-progress-line'
 import { formatMonthYear } from '@/lib/batch-target-month'
@@ -53,17 +54,19 @@ export function InFlightBanner({ clientId }: { clientId: string }) {
                 <RunProgressLine run={run} />
               </span>
               {run.intent === 'active' && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                  aria-label={`Cancel generation for ${formatMonthYear(run.targetMonth)}`}
-                  disabled={cancellingId === run.id}
-                  onClick={() => onCancel(run.id)}
-                >
-                  {cancellingId === run.id ? 'Cancelling…' : 'Cancel'}
-                </Button>
+                <SimpleTooltip content="Stop this running generation and discard its progress">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label={`Cancel generation for ${formatMonthYear(run.targetMonth)}`}
+                    disabled={cancellingId === run.id}
+                    onClick={() => onCancel(run.id)}
+                  >
+                    {cancellingId === run.id ? 'Cancelling…' : 'Cancel'}
+                  </Button>
+                </SimpleTooltip>
               )}
             </li>
           ))}

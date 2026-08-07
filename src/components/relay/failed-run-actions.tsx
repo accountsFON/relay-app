@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useInFlightRuns } from '@/components/relay/in-flight-runs-provider'
 import { retryFailedRunAction, acknowledgeFailedRunAction } from '@/server/actions/in-flight-runs'
+import { SimpleTooltip } from '@/components/relay/relay-tooltips'
 
 export interface FailedRunActionsProps {
   runId: string
@@ -44,21 +45,25 @@ export function FailedRunActions({ runId, onRetried, onDismissed }: FailedRunAct
   return (
     <>
       <div className="flex items-center gap-2 mt-1">
-        <button
-          onClick={handleRetry}
-          disabled={pending !== null}
-          className="text-[12px] text-foreground hover:underline disabled:opacity-50 disabled:no-underline"
-        >
-          {pending === 'retry' ? 'Retrying…' : 'Retry'}
-        </button>
+        <SimpleTooltip content="Run this failed generation again from the start">
+          <button
+            onClick={handleRetry}
+            disabled={pending !== null}
+            className="text-[12px] text-foreground hover:underline disabled:opacity-50 disabled:no-underline"
+          >
+            {pending === 'retry' ? 'Retrying…' : 'Retry'}
+          </button>
+        </SimpleTooltip>
         <span className="text-muted-foreground">·</span>
-        <button
-          onClick={handleDismiss}
-          disabled={pending !== null}
-          className="text-[12px] text-muted-foreground hover:underline disabled:opacity-50 disabled:no-underline"
-        >
-          {pending === 'dismiss' ? 'Dismissing…' : 'Dismiss'}
-        </button>
+        <SimpleTooltip content="Clear this failed run from your list without retrying">
+          <button
+            onClick={handleDismiss}
+            disabled={pending !== null}
+            className="text-[12px] text-muted-foreground hover:underline disabled:opacity-50 disabled:no-underline"
+          >
+            {pending === 'dismiss' ? 'Dismissing…' : 'Dismiss'}
+          </button>
+        </SimpleTooltip>
       </div>
       {error && <p className="text-[12px] text-destructive mt-1">{error}</p>}
     </>

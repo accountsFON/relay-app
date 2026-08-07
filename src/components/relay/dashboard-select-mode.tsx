@@ -29,6 +29,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { CheckSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import {
   Dialog,
   DialogContent,
@@ -127,15 +128,18 @@ export function DashboardSelectMode({
     <SelectModeContext.Provider value={value}>
       <div className="mb-3">
         {!isSelectMode ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsSelectMode(true)}
-            className="gap-1.5"
-          >
-            <CheckSquare className="size-4" />
-            Select
-          </Button>
+          <SimpleTooltip content="Turn on multi select to archive several relays at once">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSelectMode(true)}
+              className="gap-1.5"
+            >
+              <CheckSquare className="size-4" />
+              Select
+              <InfoHint />
+            </Button>
+          </SimpleTooltip>
         ) : (
           <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
             <span className="text-[13px] text-muted-foreground">
@@ -144,14 +148,17 @@ export function DashboardSelectMode({
             <Button variant="ghost" size="sm" onClick={selectAllVisible}>
               Select all visible
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={selectedIds.size === 0}
-              onClick={() => setConfirmOpen(true)}
-            >
-              Archive
-            </Button>
+            <SimpleTooltip content="Move all selected relays to trash for 30 days">
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={selectedIds.size === 0}
+                onClick={() => setConfirmOpen(true)}
+              >
+                Archive
+                <InfoHint />
+              </Button>
+            </SimpleTooltip>
             <Button variant="ghost" size="sm" onClick={exitSelectMode}>
               Cancel
             </Button>

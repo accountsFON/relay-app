@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip, InfoHint } from '@/components/relay/relay-tooltips'
 import { STEP_LABEL, daysOnStep } from '@/components/relay/labels'
 import type { RelayStep } from '@prisma/client'
 
@@ -30,9 +31,12 @@ export function ActiveBatchHero({
           </p>
         </div>
         <Link href={`/clients/${clientId}/batches/${batch.id}`}>
-          <Button variant="accent">
-            Open relay <ArrowRight className="ml-1 size-4" />
-          </Button>
+          <SimpleTooltip content="Open this batch's relay to see its step and posts">
+            <Button variant="accent">
+              Open relay <ArrowRight className="ml-1 size-4" />
+              <InfoHint />
+            </Button>
+          </SimpleTooltip>
         </Link>
       </div>
     </Card>
