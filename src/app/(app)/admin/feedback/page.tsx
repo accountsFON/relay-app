@@ -7,12 +7,13 @@ import { PageSection } from '@/components/ui/page-section'
 import { EmptyState } from '@/components/ui/empty-state'
 import { AdminTabs } from '../admin-tabs'
 import { FeedbackRow } from './feedback-row'
+import { DeleteAllTicketsButton } from './delete-all-tickets-button'
 
 /**
- * Admin-only bug report dashboard. Lists submissions from the in-app "Report
- * a bug" reporter, open (unresolved) first then newest. Platform owners see
- * every org's feedback; a regular org admin is scoped to their own org
- * (enforced in listFeedbackForAdmin).
+ * Admin-only Helpdesk Tickets dashboard. Lists submissions from the in-app
+ * "Report a bug" reporter, open (unresolved) first then newest. Platform
+ * owners see every org's tickets; a regular org admin is scoped to their own
+ * org (enforced in listFeedbackForAdmin).
  */
 export default async function AdminFeedbackPage() {
   const ctx = await getOrgContext()
@@ -27,8 +28,8 @@ export default async function AdminFeedbackPage() {
   return (
     <div className="px-6 py-10 md:px-12 md:py-14 max-w-5xl">
       <HeroBand
-        title="Feedback"
-        subtitle="Bug reports from the in-app reporter. Open items first, then newest."
+        title="Helpdesk Tickets"
+        subtitle="Tickets from the in-app Report a bug reporter. Open items first, then newest."
       />
 
       <div className="mt-6">
@@ -37,12 +38,13 @@ export default async function AdminFeedbackPage() {
 
       <div className="mt-10">
         <PageSection
-          title={`Bug reports · ${openCount} open`}
+          title={`Tickets · ${openCount} open`}
           description="High severity also pages admins immediately; the rest roll into the Monday digest."
+          action={<DeleteAllTicketsButton count={feedback.length} />}
         >
           {feedback.length === 0 ? (
             <EmptyState
-              title="No reports yet"
+              title="No tickets yet"
               description="Nothing has come in through the Report a bug button."
             />
           ) : (

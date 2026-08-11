@@ -7,17 +7,28 @@
  * (resolveFeedbackAction, org-scoped server side).
  */
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Check, RotateCcw } from 'lucide-react'
+import { Check, RotateCcw, Trash2 } from 'lucide-react'
 import type { FeedbackSeverity } from '@prisma/client'
 
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { formatRelative } from '@/lib/format-relative'
-import { resolveFeedbackAction } from '@/server/actions/feedback'
+import {
+  resolveFeedbackAction,
+  deleteFeedbackAction,
+} from '@/server/actions/feedback'
 
 export interface FeedbackRowData {
   id: string
@@ -49,6 +60,7 @@ const SEVERITY_LABEL: Record<FeedbackSeverity, string> = {
 export function FeedbackRow({ feedback }: { feedback: FeedbackRowData }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const resolved = feedback.resolvedAt !== null
 
   function toggleResolved() {
@@ -62,6 +74,20 @@ export function FeedbackRow({ feedback }: { feedback: FeedbackRowData }) {
         router.refresh()
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Action failed'
+        toast.error(message)
+      }
+    })
+  }
+
+  function deleteTicket() {
+    startTransition(async () => {
+      try {
+        await deleteFeedbackAction({ feedbackId: feedback.id })
+        setConfirmDeleteOpen(false)
+        toast.success('Ticket deleted')
+        router.refresh()
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Delete failed'
         toast.error(message)
       }
     })
@@ -138,26 +164,67 @@ export function FeedbackRow({ feedback }: { feedback: FeedbackRowData }) {
           </div>
         </div>
 
-        <Button
-          type="button"
-          variant={resolved ? 'outline' : 'default'}
-          size="sm"
-          onClick={toggleResolved}
-          disabled={pending}
-        >
-          {resolved ? (
-            <>
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-              Reopen
-            </>
-          ) : (
-            <>
-              <Check className="h-3.5 w-3.5" aria-hidden />
-              Resolve
-            </>
-          )}
-        </Button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button
+            type="button"
+            variant={resolved ? 'outline' : 'default'}
+            size="sm"
+            onClick={toggleResolved}
+            disabled={pending}
+          >
+            {resolved ? (
+              <>
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                Reopen
+              </>
+            ) : (
+              <>
+                <Check className="h-3.5 w-3.5" aria-hidden />
+                Resolve
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Delete ticket"
+            onClick={() => setConfirmDeleteOpen(true)}
+            disabled={pending}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </Button>
+        </div>
       </div>
+
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete this ticket?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the ticket. It cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmDeleteOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={deleteTicket}
+              disabled={pending}
+            >
+              {pending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

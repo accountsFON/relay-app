@@ -29,6 +29,16 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-11 — Helpdesk Tickets: rename + per-ticket delete + delete-all**
+  Renamed the admin Feedback dashboard to **Helpdesk Tickets** (tab + page headings; route/table/code stay
+  `feedback`). Added a trash-can delete on each ticket (confirm dialog, hard delete) and a **Delete all**
+  button in the section header (confirm dialog showing the count). Both are org-scoped like resolve: an org
+  admin only clears their own org, platform owners clear everything, cross-org delete returns "not found".
+  No DB migration (uses the existing table); no `src/server/jobs` change so no pipeline redeploy. New repo
+  `deleteFeedback` / `deleteAllFeedback` + `deleteFeedbackAction` / `deleteAllFeedbackAction`. TDD: repo
+  delete + scoped delete-many tests, action gate/scope tests. Green gate: tsc + 2712 unit + `next build` +
+  eslint clean. (NEXT_PUBLIC_APP_URL tabled until Relay moves to a real domain, per Julio.)
+
 - [x] **2026-08-07 — Feedback channel v2: page-URL capture, screenshot upload, admin dashboard**
   Overhauled the in-app "Report a bug" channel. (1) **Bug fix:** the modal claimed "Page URL … auto
   attached" but nothing captured it — now the reporter's app path (`pathname + search`) is sent as

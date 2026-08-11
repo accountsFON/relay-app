@@ -241,3 +241,24 @@ export async function reopenFeedback(id: string): Promise<void> {
     data: { resolvedAt: null, resolvedById: null },
   })
 }
+
+/// Hard-delete a single ticket. Nothing references a Feedback row, so the
+/// delete is clean (no cascade needed).
+export async function deleteFeedback(id: string): Promise<void> {
+  await db.feedback.delete({ where: { id } })
+}
+
+/**
+ * Hard-delete every ticket in scope. Platform owners clear all orgs; a
+ * regular org admin clears only their own org. Returns the number deleted.
+ */
+export async function deleteAllFeedback(
+  scope: AdminFeedbackScope,
+): Promise<number> {
+  const result = await db.feedback.deleteMany({
+    where: scope.platformOwner
+      ? {}
+      : { organizationId: scope.organizationDbId },
+  })
+  return result.count
+}
