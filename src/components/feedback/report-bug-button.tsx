@@ -160,7 +160,7 @@ export function ReportBugButton() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 grid gap-3">
+          <div className="mt-5 grid gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="feedback-body">What happened?</Label>
               <Textarea
@@ -218,7 +218,7 @@ export function ReportBugButton() {
                   <img
                     src={previewUrl}
                     alt="Screenshot preview"
-                    className="h-16 w-16 rounded-md border border-border object-cover"
+                    className="h-12 w-12 shrink-0 rounded-md border border-border object-cover"
                   />
                   <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">
                     {file?.name}
@@ -227,6 +227,7 @@ export function ReportBugButton() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="shrink-0"
                     onClick={clearImage}
                     disabled={pending}
                   >
@@ -250,7 +251,7 @@ export function ReportBugButton() {
             </div>
           </div>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-6">
             <DialogClose
               render={
                 <Button
