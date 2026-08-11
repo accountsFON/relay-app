@@ -15,6 +15,8 @@ vi.mock('@/db/client', () => ({
       findUnique: vi.fn(),
       updateMany: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
   },
 }))
@@ -29,6 +31,8 @@ import {
   findFeedbackForResolve,
   setFeedbackResolved,
   reopenFeedback,
+  deleteFeedback,
+  deleteAllFeedback,
 } from '@/server/repositories/feedback'
 
 const mockCreate = db.feedback.create as unknown as ReturnType<typeof vi.fn>
@@ -36,6 +40,8 @@ const mockFindMany = db.feedback.findMany as unknown as ReturnType<typeof vi.fn>
 const mockFindUnique = db.feedback.findUnique as unknown as ReturnType<typeof vi.fn>
 const mockUpdateMany = db.feedback.updateMany as unknown as ReturnType<typeof vi.fn>
 const mockUpdate = db.feedback.update as unknown as ReturnType<typeof vi.fn>
+const mockDelete = db.feedback.delete as unknown as ReturnType<typeof vi.fn>
+const mockDeleteMany = db.feedback.deleteMany as unknown as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -242,5 +248,35 @@ describe('setFeedbackResolved / reopenFeedback', () => {
       where: { id: 'fb-1' },
       data: { resolvedAt: null, resolvedById: null },
     })
+  })
+})
+
+describe('deleteFeedback / deleteAllFeedback', () => {
+  it('hard-deletes a single row by id', async () => {
+    mockDelete.mockResolvedValue({})
+    await deleteFeedback('fb-1')
+    expect(mockDelete).toHaveBeenCalledWith({ where: { id: 'fb-1' } })
+  })
+
+  it('deletes only the org’s rows for a non-platform-owner, returning the count', async () => {
+    mockDeleteMany.mockResolvedValue({ count: 3 })
+    const n = await deleteAllFeedback({
+      organizationDbId: 'org-1',
+      platformOwner: false,
+    })
+    expect(n).toBe(3)
+    expect(mockDeleteMany).toHaveBeenCalledWith({
+      where: { organizationId: 'org-1' },
+    })
+  })
+
+  it('deletes ALL rows (no where filter) for a platform owner', async () => {
+    mockDeleteMany.mockResolvedValue({ count: 9 })
+    const n = await deleteAllFeedback({
+      organizationDbId: '',
+      platformOwner: true,
+    })
+    expect(n).toBe(9)
+    expect(mockDeleteMany).toHaveBeenCalledWith({ where: {} })
   })
 })

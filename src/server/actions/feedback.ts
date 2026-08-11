@@ -19,6 +19,8 @@ import {
   findFeedbackForResolve,
   setFeedbackResolved,
   reopenFeedback,
+  deleteFeedback,
+  deleteAllFeedback,
 } from '@/server/repositories/feedback'
 import { findAdminRecipients } from '@/server/repositories/users'
 import { sendEmail } from '@/lib/resend'
@@ -217,4 +219,49 @@ export async function resolveFeedbackAction(
 
   revalidatePath('/admin/feedback')
   return { resolved: input.resolved }
+}
+
+/**
+ * Admin dashboard action: permanently delete a single ticket. Same gate +
+ * org scoping as resolve (platform owners any org; org admins own org only,
+ * cross-org returns "not found"). Hard delete, no undo.
+ */
+export async function deleteFeedbackAction(input: {
+  feedbackId: string
+}): Promise<{ deleted: true }> {
+  const ctx = await requireOrgContext()
+  if (!can(ctx, 'admin.portal')) {
+    throw new Error('Forbidden')
+  }
+
+  const row = await findFeedbackForResolve(input.feedbackId)
+  if (!row) {
+    throw new Error('Feedback not found')
+  }
+  if (!ctx.platformOwner && row.organizationId !== ctx.organizationDbId) {
+    throw new Error('Feedback not found')
+  }
+
+  await deleteFeedback(row.id)
+  revalidatePath('/admin/feedback')
+  return { deleted: true }
+}
+
+/**
+ * Admin dashboard action: permanently delete every ticket in the caller's
+ * scope (platform owners clear all orgs; an org admin clears only their own).
+ * Hard delete, no undo. Returns the count removed.
+ */
+export async function deleteAllFeedbackAction(): Promise<{ count: number }> {
+  const ctx = await requireOrgContext()
+  if (!can(ctx, 'admin.portal')) {
+    throw new Error('Forbidden')
+  }
+
+  const count = await deleteAllFeedback({
+    organizationDbId: ctx.organizationDbId,
+    platformOwner: ctx.platformOwner,
+  })
+  revalidatePath('/admin/feedback')
+  return { count }
 }

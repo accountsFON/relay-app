@@ -21,6 +21,8 @@ vi.mock('@/server/repositories/feedback', () => ({
   findFeedbackForResolve: vi.fn(),
   setFeedbackResolved: vi.fn(),
   reopenFeedback: vi.fn(),
+  deleteFeedback: vi.fn(),
+  deleteAllFeedback: vi.fn(),
 }))
 
 vi.mock('@/server/repositories/users', () => ({
@@ -50,6 +52,8 @@ vi.mock('@/db/client', () => ({
 import {
   submitFeedbackAction,
   resolveFeedbackAction,
+  deleteFeedbackAction,
+  deleteAllFeedbackAction,
 } from '@/server/actions/feedback'
 import { requireOrgContext } from '@/server/middleware/auth'
 import {
@@ -58,6 +62,8 @@ import {
   findFeedbackForResolve,
   setFeedbackResolved,
   reopenFeedback,
+  deleteFeedback,
+  deleteAllFeedback,
 } from '@/server/repositories/feedback'
 import { findAdminRecipients } from '@/server/repositories/users'
 import { can } from '@/server/auth/permissions'
@@ -75,6 +81,8 @@ const mockFindForResolve = findFeedbackForResolve as unknown as ReturnType<
 >
 const mockSetResolved = setFeedbackResolved as unknown as ReturnType<typeof vi.fn>
 const mockReopen = reopenFeedback as unknown as ReturnType<typeof vi.fn>
+const mockDelete = deleteFeedback as unknown as ReturnType<typeof vi.fn>
+const mockDeleteAll = deleteAllFeedback as unknown as ReturnType<typeof vi.fn>
 const mockFbFindUnique = db.feedback.findUnique as unknown as ReturnType<
   typeof vi.fn
 >
@@ -388,5 +396,57 @@ describe('resolveFeedbackAction', () => {
     expect(res).toEqual({ resolved: false })
     expect(mockReopen).toHaveBeenCalledWith('fb-1')
     expect(mockSetResolved).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteFeedbackAction', () => {
+  it('throws Forbidden without admin.portal', async () => {
+    mockCan.mockReturnValue(false)
+    await expect(
+      deleteFeedbackAction({ feedbackId: 'fb-1' }),
+    ).rejects.toThrow('Forbidden')
+    expect(mockDelete).not.toHaveBeenCalled()
+  })
+
+  it('refuses to delete another org’s row for a non-platform-owner', async () => {
+    mockCan.mockReturnValue(true)
+    mockFindForResolve.mockResolvedValue({
+      id: 'fb-x',
+      organizationId: 'org-OTHER',
+    })
+    await expect(
+      deleteFeedbackAction({ feedbackId: 'fb-x' }),
+    ).rejects.toThrow('Feedback not found')
+    expect(mockDelete).not.toHaveBeenCalled()
+  })
+
+  it('deletes an own-org row', async () => {
+    mockCan.mockReturnValue(true)
+    mockFindForResolve.mockResolvedValue({ id: 'fb-1', organizationId: 'org-1' })
+    mockDelete.mockResolvedValue(undefined)
+
+    const res = await deleteFeedbackAction({ feedbackId: 'fb-1' })
+    expect(res).toEqual({ deleted: true })
+    expect(mockDelete).toHaveBeenCalledWith('fb-1')
+  })
+})
+
+describe('deleteAllFeedbackAction', () => {
+  it('throws Forbidden without admin.portal', async () => {
+    mockCan.mockReturnValue(false)
+    await expect(deleteAllFeedbackAction()).rejects.toThrow('Forbidden')
+    expect(mockDeleteAll).not.toHaveBeenCalled()
+  })
+
+  it('passes the caller’s scope to the repo and returns the count', async () => {
+    mockCan.mockReturnValue(true)
+    mockDeleteAll.mockResolvedValue(4)
+
+    const res = await deleteAllFeedbackAction()
+    expect(res).toEqual({ count: 4 })
+    expect(mockDeleteAll).toHaveBeenCalledWith({
+      organizationDbId: 'org-1',
+      platformOwner: false,
+    })
   })
 })
