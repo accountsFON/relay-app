@@ -11,6 +11,10 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
+From the 2026-08-11 AM-team Relay launch meeting (awaiting Julio's Vercel-preview eyeball before merge — visual change):
+- [ ] **Client-review "Client feedback" rename + scheduling Drive checklist item** — (A) renamed the batch-page **feedback** section title "Client review" → "Client feedback" so it matches the "View client feedback" link + "Feedback" badge it contains. The separate "Review link" section (the outbound magic link) keeps its name, and the "Send review link" action strings stay. (C) added a 4th scheduling-step checklist item "Graphics have been uploaded to Google Drive" (`CHECKLIST_SEED[scheduling]`; new relays only). Gate: tsc + targeted tests (47) + `next build` + eslint clean.
+- [ ] **(B, needs design) Auto-upload post graphics to the client's Google Drive at scheduling** — create a `Month Year` folder first, then upload each post image into it via the Drive API. Blocked on: Google Cloud project + Drive auth model (service account vs OAuth), confirm final images live in Relay Blob at scheduling. Own spec/plan.
+
 From the 2026-08-06 tooltip clarity rollout (all 8 slices shipped: hover hints + the ⓘ discoverability glyph across every tooltipped control, PRs #390-#399):
 - [ ] **(optional, tooltips) Extend hover hints to any surfaces added later** — the rollout covered the current control set; new action buttons / permission keys / review controls should follow the same pattern (per-surface copy map + `SimpleTooltip` + `InfoHint` on text-labeled controls, bare on icon-only).
 

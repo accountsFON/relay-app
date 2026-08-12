@@ -730,10 +730,10 @@ describe('BatchDetailPage', () => {
     })
   })
 
-  // ---- Client review pill collapse + feedback badge ----
+  // ---- Client feedback pill collapse + feedback badge ----
 
   describe('client review pill collapse and feedback badge', () => {
-    it('collapses multiple sessions to one row, shows "Client review" title, and renders the feedback badge', async () => {
+    it('collapses multiple sessions to one row, shows "Client feedback" title, and renders the feedback badge', async () => {
       const supersededSession = {
         id: 'session_superseded_1',
         kind: 'client',
@@ -788,7 +788,7 @@ describe('BatchDetailPage', () => {
 
       const rows = getAllByTestId(/^review-session-list-row-/)
       expect(rows).toHaveLength(1)
-      expect(getByText('Client review')).toBeInTheDocument()
+      expect(getByText('Client feedback')).toBeInTheDocument()
       expect(getByTestId('review-feedback-badge')).toHaveTextContent('1 Feedback')
     })
   })

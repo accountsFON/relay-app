@@ -53,6 +53,7 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
     { label: 'All posts have been scheduled' },
     { label: 'All posting dates have been double checked' },
     { label: 'All caption and image pairings have been double checked' },
+    { label: 'Graphics have been uploaded to Google Drive' },
   ],
   // Retired steps, kept empty for totality + legacy batches before cutover.
   [RelayStep.sent_to_client]: [],
