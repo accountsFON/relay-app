@@ -26,6 +26,21 @@ three-way choice: **Cancel · Replace existing · Start a new batch**. A new bat
 is a fully separate relay with a distinct label, and its Drive graphics land in
 their own folder (no clobber of the first batch's archive).
 
+## Invariant: only the second-and-later batch of a month is affected
+
+The first batch for any client+month is completely unchanged: no pop-up (the
+probe finds no match, so generation fires straight through), the clean
+`buildBatchLabel` label with no suffix, and the base "Month Year" Drive folder.
+Every new behavior in this spec activates ONLY when an original populated batch
+already exists for that client+month:
+
+- The "Start a new batch" button appears only in the `confirm` view, which is
+  reached only on a `needs_confirm` probe result (a populated match exists).
+- The " (N)" label suffix is applied only when the auto-new scan finds an
+  existing same-month batch (sequence >= 2); sequence 1 stays clean.
+- The Drive folder suffix is applied only when the batch label carries a
+  suffix, which only a second-or-later batch has.
+
 ## Decision: shallow, no first-class identity
 
 We are NOT adding a `Batch.targetMonth` column or rewriting the label-parse
