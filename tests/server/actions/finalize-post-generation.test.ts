@@ -171,6 +171,40 @@ describe('finalizePostGenerationAction', () => {
   })
 })
 
+describe('finalizePostGenerationAction — auto-new distinct labels', () => {
+  beforeEach(() => {
+    vi.mocked(db.batch.findFirst).mockResolvedValue(null as never)
+    vi.mocked(db.batch.create).mockResolvedValue({ id: 'batch_auto' } as never)
+  })
+
+  it('first batch of a month keeps the clean label', async () => {
+    vi.mocked(db.batch.findMany).mockResolvedValue([] as never)
+    await finalizePostGenerationAction({ choice: 'auto-new', runId: 'run_1' })
+    expect(db.batch.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ label: 'Acme Co May 2026' }),
+    })
+  })
+
+  it('second same-month batch appends (2)', async () => {
+    vi.mocked(db.batch.findMany).mockResolvedValue([{ label: 'Acme Co May 2026' }] as never)
+    await finalizePostGenerationAction({ choice: 'auto-new', runId: 'run_1' })
+    expect(db.batch.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ label: 'Acme Co May 2026 (2)' }),
+    })
+  })
+
+  it('uses max existing suffix + 1 so a deleted middle batch does not collide', async () => {
+    vi.mocked(db.batch.findMany).mockResolvedValue([
+      { label: 'Acme Co May 2026' },
+      { label: 'Acme Co May 2026 (3)' },
+    ] as never)
+    await finalizePostGenerationAction({ choice: 'auto-new', runId: 'run_1' })
+    expect(db.batch.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ label: 'Acme Co May 2026 (4)' }),
+    })
+  })
+})
+
 describe('createBatchForRun currentRole pinning (Phase 2 item 8 regression)', () => {
   // The bug: createBatchForRun used to write
   //   currentRole: anyBatch?.currentRole ?? RelayRole.am

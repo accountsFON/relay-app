@@ -11,7 +11,8 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-_(nothing in flight)_
+From the 2026-08-11 AM-team Relay launch meeting:
+- [ ] **Separate batch for the same client+month (rerun)** (built, gate green, awaiting merge) — generate confirm pop-up now offers Cancel / Replace / **Start a new batch** (re-exposes the auto-new path). New `forceNewBatch` fire intent bypasses the null-path drift guard; auto-new gives reruns a distinct " (N)" label (max-suffix+1, base-label match); the Drive month folder carries the suffix so a rerun does not clobber the first batch's graphics. First batch of a month is untouched (no pop-up, clean label, base folder). No migration; matching functions unchanged. Spec: `docs/superpowers/specs/2026-08-12-multiple-batches-per-month-design.md`. Gate: tsc + 2744 unit (+9) + next build + eslint.
 
 From the 2026-08-06 tooltip clarity rollout (all 8 slices shipped: hover hints + the ⓘ discoverability glyph across every tooltipped control, PRs #390-#399):
 - [ ] **(optional, tooltips) Extend hover hints to any surfaces added later** — the rollout covered the current control set; new action buttons / permission keys / review controls should follow the same pattern (per-surface copy map + `SimpleTooltip` + `InfoHint` on text-labeled controls, bare on icon-only).

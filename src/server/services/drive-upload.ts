@@ -113,13 +113,19 @@ export async function uploadPostGraphicsToDrive(
     orderBy: { contentRun: { createdAt: 'desc' } },
     select: { contentRun: { select: { targetMonth: true } } },
   })
-  const month = formatMonthYear(
+  const monthBase = formatMonthYear(
     resolveBatchTargetMonth(
       { label: batch.label, createdAt: batch.createdAt },
       runPost?.contentRun ?? null,
       now,
     ),
   )
+  // Carry any rerun suffix ("... (2)") from the batch label into the folder
+  // name so a second same-month batch uploads into "August 2026 (2)" rather
+  // than overwriting the first batch's graphics in "August 2026". The first
+  // batch of a month has no suffix and keeps the clean "August 2026" folder.
+  const labelSuffix = batch.label.match(/\s(\(\d+\))\s*$/)
+  const month = labelSuffix ? `${monthBase} ${labelSuffix[1]}` : monthBase
 
   let uploaded = 0
   let overwritten = 0

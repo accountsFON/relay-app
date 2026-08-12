@@ -80,15 +80,18 @@ export async function finalizePostGeneration({
   } else {
     // auto-new: canonical "{Client Name} {Month Year}" label so batches read
     // consistently across the app (matches the format from buildBatchLabel).
+    // For a rerun (a same-month batch already exists) append a " (N)" suffix so
+    // the batches are distinct; the first batch of a month stays clean.
     const clientRow = await db.client.findUnique({
       where: { id: run.clientId },
       select: { name: true },
     })
-    targetBatchId = await createBatchForRun(
+    const label = await buildDistinctMonthLabel(
       run.clientId,
-      buildBatchLabel(clientRow?.name ?? 'Batch', run.targetMonth),
-      actorUserId,
+      clientRow?.name ?? 'Batch',
+      run.targetMonth,
     )
+    targetBatchId = await createBatchForRun(run.clientId, label, actorUserId)
   }
 
   // Attach the new posts to the target batch.
@@ -107,6 +110,41 @@ export async function finalizePostGeneration({
   }
 
   return { batchId: targetBatchId, clientId: run.clientId }
+}
+
+/**
+ * Build the auto-new batch label for a client + month, appending a " (N)"
+ * suffix when a same-month batch already exists (a rerun). The first batch of a
+ * month keeps the clean `buildBatchLabel` label.
+ *
+ * Matches existing batches by the base label STRING (exact, or the base plus
+ * " (" prefix), not by parseLabel: parseLabel anchors "Month Year" to the end
+ * of the string and so returns null for an already-suffixed "... (2)" label,
+ * which would let the scan miss suffixed siblings and reissue a colliding "(2)".
+ * The sequence is max(existing) + 1 (no suffix = 1), so deleting a middle batch
+ * never causes a collision.
+ */
+async function buildDistinctMonthLabel(
+  clientId: string,
+  clientName: string,
+  targetMonth: string,
+): Promise<string> {
+  const base = buildBatchLabel(clientName, targetMonth)
+  const siblings = await db.batch.findMany({
+    where: {
+      clientId,
+      OR: [{ label: base }, { label: { startsWith: `${base} (` } }],
+    },
+    select: { label: true },
+  })
+  if (siblings.length === 0) return base
+  let maxSeq = 1
+  for (const s of siblings) {
+    const m = s.label.match(/\((\d+)\)\s*$/)
+    const seq = m ? Number.parseInt(m[1], 10) : 1
+    if (seq > maxSeq) maxSeq = seq
+  }
+  return `${base} (${maxSeq + 1})`
 }
 
 async function createBatchForRun(

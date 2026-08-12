@@ -223,6 +223,52 @@ describe('generateContentAction — fire phase', () => {
     // we trust the mock, verifying the arg is sufficient.
   })
 
+  it('forceNewBatch=true with a populated match → does NOT drift, fires with targetBatchId=null', async () => {
+    vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue({
+      id: 'batch_existing',
+      label: 'May 2026',
+      postCount: 12,
+    })
+    vi.mocked(triggerGeneration).mockResolvedValue({ contentRunId: 'run_forced' })
+
+    const result = await generateContentAction({
+      kind: 'fire',
+      clientId: CLIENT_ID,
+      targetMonth: TARGET_MONTH,
+      targetBatchId: null,
+      recrawl: false,
+      forceNewBatch: true,
+    })
+
+    expect(result).toEqual({ kind: 'fired', runId: 'run_forced' })
+    expect(vi.mocked(triggerGeneration)).toHaveBeenCalledWith(CLIENT_ID, TARGET_MONTH, false, {
+      targetBatchId: null,
+    })
+  })
+
+  it('forceNewBatch=true never reuses an empty match → fires with targetBatchId=null', async () => {
+    vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue({
+      id: 'batch_empty',
+      label: 'May 2026',
+      postCount: 0,
+    })
+    vi.mocked(triggerGeneration).mockResolvedValue({ contentRunId: 'run_forced_2' })
+
+    const result = await generateContentAction({
+      kind: 'fire',
+      clientId: CLIENT_ID,
+      targetMonth: TARGET_MONTH,
+      targetBatchId: null,
+      recrawl: false,
+      forceNewBatch: true,
+    })
+
+    expect(result).toEqual({ kind: 'fired', runId: 'run_forced_2' })
+    expect(vi.mocked(triggerGeneration)).toHaveBeenCalledWith(CLIENT_ID, TARGET_MONTH, false, {
+      targetBatchId: null,
+    })
+  })
+
   it('drift: targetBatchId no longer matches current state → returns drift with current state', async () => {
     // Caller confirmed against 'batch_stale', but current match is 'batch_new'
     vi.mocked(findMatchingBatchForClientMonth).mockResolvedValue({

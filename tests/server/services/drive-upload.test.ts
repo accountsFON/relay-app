@@ -112,6 +112,28 @@ describe('uploadPostGraphicsToDrive', () => {
     expect(names).toEqual(['01.png', '02.png'])
   })
 
+  it('uploads a rerun batch into a suffixed month folder (no clobber of the first)', async () => {
+    vi.mocked(db.batch.findUnique).mockResolvedValue({
+      id: 'batch_1',
+      label: 'Puppy Avenue September 2026 (2)',
+      createdAt: NOW,
+      client: { assetsFolderUrl: 'https://drive.google.com/drive/folders/parent_1' },
+    } as never)
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      { id: 'p1', postDate: new Date('2026-09-01'), mediaUrls: ['https://blob/a'] },
+    ] as never)
+    stubImageFetch('image/png')
+
+    const res = await uploadPostGraphicsToDrive('batch_1', NOW)
+
+    if (res.status === 'skipped') throw new Error('unexpected skip')
+    expect(res.month).toBe('September 2026 (2)')
+    expect(findOrCreateFolder).toHaveBeenCalledWith(expect.anything(), {
+      parentId: 'parent_1',
+      name: 'September 2026 (2)',
+    })
+  })
+
   it('names multi-image posts with a per-image suffix', async () => {
     mockBatch('https://drive.google.com/drive/folders/parent_1')
     vi.mocked(db.post.findMany).mockResolvedValue([
