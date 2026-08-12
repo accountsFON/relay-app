@@ -284,6 +284,7 @@ model Client {
   excludedDates       String[]
   assetsFolderUrl     String?
   canvaUrl            String?
+  nectrLocationId     String?
   autoCrawl           String       @default("always")
   crawledData         String?      @db.Text
   crawledDataAt       DateTime?

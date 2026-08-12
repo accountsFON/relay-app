@@ -31,6 +31,7 @@ const mockClient: Client = {
   brandVoice: 'Warm',
   industry: 'Coffee',
   location: 'Addis Ababa',
+  nectrLocationId: null,
   phone: null,
   mainCta: null,
   focus1: null,
