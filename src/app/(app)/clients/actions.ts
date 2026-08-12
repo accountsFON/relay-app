@@ -18,6 +18,14 @@ import {
 import { recordActivity, ActivityKind } from '@/server/services/activity'
 import { db } from '@/db/client'
 import { diffFieldChanges } from '@/lib/field-changes'
+import {
+  getAccounts,
+  getUsers,
+  pickServiceUserId,
+  NectrConfigError,
+  NectrApiError,
+  type NectrConnectionStatus,
+} from '@/lib/nectr-social'
 
 export async function createClientAction(input: ClientInput) {
   // Creation is gated on client.create (admin-only by default), not client.edit,
@@ -161,4 +169,29 @@ export async function completeClientOnboardingAction(clientId: string) {
     payload: {},
   })
   revalidatePath(`/clients/${clientId}`)
+}
+
+/**
+ * Read-only NECTR connection health for a client. Org-scoped like the other
+ * client actions. Returns a status union rather than throwing, so the UI can
+ * render every outcome. Never posts; only GETs accounts + users.
+ */
+export async function checkNectrConnectionAction(clientId: string): Promise<NectrConnectionStatus> {
+  const ctx = await requireClientEditor()
+  const client = await findClientForUser(ctx, clientId)
+  // Out-of-scope / not-found collapses to no-location (benign, no existence
+  // leak; the button only renders on a client the caller can already see).
+  if (!client) return { status: 'no-location' }
+
+  const locationId = client.nectrLocationId?.trim()
+  if (!locationId) return { status: 'no-location' }
+
+  try {
+    const [accounts, users] = await Promise.all([getAccounts(locationId), getUsers(locationId)])
+    return { status: 'ok', accounts, serviceUserId: pickServiceUserId(users) }
+  } catch (e) {
+    if (e instanceof NectrConfigError) return { status: 'not-configured' }
+    if (e instanceof NectrApiError) return { status: 'error', message: e.message }
+    return { status: 'error', message: e instanceof Error ? e.message : 'Connection check failed' }
+  }
 }
