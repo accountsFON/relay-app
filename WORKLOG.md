@@ -11,8 +11,7 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-08-11 AM-team Relay launch meeting:
-- [ ] **Auto-upload post graphics to the client's Google Drive on relay finish** (built, gate green, awaiting merge) — on the scheduling->completed transition, `finishBatchAction` best-effort calls `uploadPostGraphicsToDrive`: find-or-create a `Month Year` folder in the client's Shared-Drive assets folder (service account), upload each post graphic (`01.jpg`, `02.png`; `01-1`/`01-2` for multi-image), overwrite on re-run. A Drive failure never blocks completion; the checklist-panel toasts the outcome with a one-click Retry (`retryDriveUploadAction`). New: `src/lib/google-drive.ts`, `src/server/services/drive-upload.ts`, `googleapis` dep, `GOOGLE_DRIVE_SA_KEY` in Vercel. Spec: `docs/superpowers/specs/2026-08-11-drive-graphics-upload-design.md`. Gate: tsc + 2735 unit (+29 new) + `next build` + eslint clean.
+_(nothing in flight)_
 
 From the 2026-08-06 tooltip clarity rollout (all 8 slices shipped: hover hints + the ⓘ discoverability glyph across every tooltipped control, PRs #390-#399):
 - [ ] **(optional, tooltips) Extend hover hints to any surfaces added later** — the rollout covered the current control set; new action buttons / permission keys / review controls should follow the same pattern (per-surface copy map + `SimpleTooltip` + `InfoHint` on text-labeled controls, bare on icon-only).
@@ -31,6 +30,16 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 ---
 
 ## Shipped
+
+- [x] **2026-08-12 — Auto-upload post graphics to the client's Google Drive on relay finish** (#425)
+  On the scheduling->completed transition, `finishBatchAction` best-effort calls `uploadPostGraphicsToDrive`:
+  find-or-create a `Month Year` folder in the client's Shared-Drive assets folder (service account), upload
+  each post graphic (`01.jpg`, `02.png`; `01-1`/`01-2` multi-image), overwrite on re-run. A Drive failure
+  never blocks completion; checklist-panel toasts the outcome with a one-click Retry (`retryDriveUploadAction`).
+  New: `src/lib/google-drive.ts`, `src/server/services/drive-upload.ts`, `googleapis`, `GOOGLE_DRIVE_SA_KEY`.
+  Verified live: real upload of a 12-image batch to Puppy Avenue's Drive succeeded (status ok, 12 uploaded).
+  **Post-merge fix:** `GOOGLE_DRIVE_SA_KEY` was stored empty in Vercel (CLI `env add` didn't read stdin);
+  re-set via the Vercel REST API, this push redeploys prod to pick it up. Gate: tsc + 2735 unit + build + eslint.
 
 - [x] **2026-08-11 — Client-review "Client feedback" rename + scheduling Drive checklist item** (#423)
   Renamed the batch-page **feedback** section title "Client review" -> "Client feedback" so it matches the
