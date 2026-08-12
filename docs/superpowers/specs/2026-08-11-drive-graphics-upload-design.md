@@ -1,4 +1,4 @@
-# Design: Upload post graphics to the client's Google Drive at scheduling
+# Design: Upload post graphics to the client's Google Drive on relay completion
 
 Date: 2026-08-11
 Author: Julio Aleman (with Claude)
@@ -7,201 +7,184 @@ Origin: 2026-08-11 AM-team Relay launch meeting (Mollie + AMs), meeting item B
 
 ## Problem
 
-At the scheduling step, the AM needs the final post graphics archived in the
-client's Google Drive folder, organized by month. Today this is manual: the AM
-opens Canva, downloads each graphic, and uploads them into the right Drive
-folder by hand. That is slow and easy to get wrong (missing images, wrong
-folder, no month grouping).
+When a relay is finished at the scheduling step, the AM needs the final post
+graphics archived in the client's Google Drive folder, grouped by month. Today
+this is manual: open Canva, download each graphic, upload them into the right
+Drive folder by hand. Slow and easy to get wrong (missing images, wrong folder,
+no month grouping).
 
 The client asset folders already live in the agency's shared Google Drive, and
-Relay already holds the final post images. So Relay can do this in one action.
+Relay already holds the final post images. So Relay can do this automatically.
 
 ## Goal
 
-One AM action on the scheduling step that:
+When a relay is completed from the scheduling step, Relay automatically:
 
-1. Finds or creates a subfolder named for the batch month (e.g. "September 2026")
-   inside the client's existing Drive assets folder.
-2. Uploads each post's final graphic into that folder.
-3. Reports what was uploaded, skipped, and failed.
+1. Finds or creates a subfolder named for the batch month (e.g. "September
+   2026") inside the client's existing Drive assets folder.
+2. Uploads each post's final graphic into that folder, overwriting any file of
+   the same name from a prior run.
+3. Records the outcome and surfaces it to the AM; a failed upload never blocks
+   completing the relay.
 
 Non-goal for v1: uploading the schedule CSV to Drive, video assets, Canva
-integration, or any two-way sync. (This supersedes the earlier "download CSV for
-Drive" idea from the meeting; archiving the graphics is the real need.)
+integration, two-way sync.
+
+## Decisions (locked with Julio, 2026-08-11)
+
+- **Auth:** a single Google **service account** added to the agency **Shared
+  Drive** (confirmed a true Shared Drive / Team Drive). No per-user OAuth.
+- **Trigger: automatic on relay completion.** The upload runs as a side effect
+  when the relay transitions from scheduling to `completed` (the "finish"
+  button). Not a manual button.
+- **File naming:** zero-padded post number plus the source extension, ordered by
+  post date: `01.jpg`, `02.png`, ... Sorts correctly in Drive and is stable.
+- **Re-run behavior: overwrite.** A file of the same name in the month folder is
+  replaced, so the folder always reflects the latest graphics.
+- **Best effort:** a Drive failure is reported but never rolls back or blocks
+  the relay completion.
 
 ## Key facts confirmed in the codebase
 
 - `Client.assetsFolderUrl` holds the client's Google Drive folder URL
   (`src/db/schema.prisma`). This is the parent folder.
 - Post graphics are stored by Relay (Vercel Blob) and exposed as image URLs on
-  the post; the scheduling data shape (`SocialPlannerPost` in
-  `src/lib/social-planner-csv.ts`) already carries each post's image URL and is
-  built from the same batch posts the export uses.
-- The batch month is derived by `resolveBatchTargetMonth()` (YYYY-MM) and
-  formatted by `formatMonthYear()` (e.g. "September 2026") in
-  `src/lib/batch-target-month.ts`.
-- The scheduling action UI lives at
-  `src/components/relay/export-and-schedule-button.tsx`, rendered from the batch
-  page (`src/app/(app)/clients/[id]/batches/[batchId]/page.tsx`, near line 414).
-- The new scheduling checklist item "Graphics have been uploaded to Google
-  Drive" ships in PR #423 and pairs with this button.
+  the post; the scheduling data shape (`SocialPlannerPost`,
+  `src/lib/social-planner-csv.ts`) already carries each post's image URL, built
+  from the same batch posts the export uses.
+- Batch month: `resolveBatchTargetMonth()` (YYYY-MM) + `formatMonthYear()`
+  (e.g. "September 2026") in `src/lib/batch-target-month.ts`.
+- Relay completion is the transition to `RelayStep.completed`, handled in
+  `src/server/services/relay.ts` (the completion path around lines 486-518 sets
+  `completedAt`, validates the transition, reseeds the checklist). This is the
+  hook point for the auto-upload.
+- The scheduling checklist item "Graphics have been uploaded to Google Drive"
+  ships in PR #423 and pairs with this behavior.
 - `googleapis` is NOT yet a dependency and must be added.
 
-## Auth model (decided: service account on the shared drive)
+## Setup (Julio's part, one time)
 
-The agency's client asset folders are in a shared Google Drive, so a single
-Google **service account** added to that drive can create folders and upload
-files server side, with no per-user OAuth. This is the whole reason the feature
-is practical.
+1. Create/reuse a Google Cloud project; enable the Drive API.
+2. Create a service account; download its JSON key.
+3. Add the service account email as **Content manager** on the agency Shared
+   Drive.
+4. Hand the JSON key to Claude to set as a Vercel secret.
 
-Setup (Julio's part, one time):
-1. Create (or reuse) a Google Cloud project and enable the Drive API.
-2. Create a service account and download its JSON key.
-3. Add the service account email as a **Content manager** on the agency shared
-   drive (or the specific parent folder tree).
-4. Hand the JSON key to Claude to set as a secret in Vercel.
+## Auth details
 
-Code side:
-- New env var `GOOGLE_DRIVE_SA_KEY` (the service account JSON, stored as a
-  single-line JSON string or base64). Set in Vercel Production (and Development
-  for local testing). Accessed via `process.env`, matching the existing secret
-  pattern (`BLOB_READ_WRITE_TOKEN`, `DATABASE_URL`).
-- Scope: `https://www.googleapis.com/auth/drive` (create folders + upload).
-- Drive API calls pass `supportsAllDrives: true` and, for lookups,
-  `includeItemsFromAllDrives: true`, so a true Shared Drive is handled correctly.
-
-OPEN CONFIRMATION (does not change the design, only a Drive-call flag): is the
-agency drive a true **Shared Drive** (Team Drive) or a folder in someone's My
-Drive shared with the team? Shared Drive is the clean case (org-owned files,
-pooled storage). A shared My-Drive folder also works, but files are owned by the
-service account. Confirm by inspecting a real client's `assetsFolderUrl`.
+- New env var `GOOGLE_DRIVE_SA_KEY` (service account JSON, single-line or
+  base64). Set in Vercel Production and Development. Accessed via `process.env`,
+  matching the existing secret pattern.
+- Scope: `https://www.googleapis.com/auth/drive`.
+- All Drive calls pass `supportsAllDrives: true` (and lookups
+  `includeItemsFromAllDrives: true`) so the Shared Drive is handled correctly.
 
 ## Architecture
 
-Three new units, each small and independently testable.
+Three small, independently testable units.
 
-### 1. `src/lib/google-drive.ts` (pure-ish Drive service)
+### 1. `src/lib/google-drive.ts` (Drive service)
 
-Wraps the `googleapis` Drive v3 client behind a narrow interface so the rest of
-the app never imports googleapis directly and tests can mock one module.
+Wraps the `googleapis` Drive v3 client so nothing else imports googleapis and
+tests mock one module.
 
 - `getDriveClient()`: builds an authenticated Drive client from
-  `GOOGLE_DRIVE_SA_KEY`. Throws a typed `DriveConfigError` if the env is missing
-  or malformed.
-- `parseDriveFolderId(url: string): string | null`: extracts the folder id from
-  an `assetsFolderUrl` (handles `/folders/{id}`, `?id={id}`, and a bare id).
-  Pure, unit-tested against URL variants.
-- `findOrCreateFolder(drive, { parentId, name }): Promise<{ id, url, created }>`:
-  queries for a non-trashed folder with that exact name under `parentId`
-  (Shared-Drive aware); returns it if found, else creates it. Idempotent.
-- `uploadImage(drive, { folderId, name, contentType, bytes }): Promise<{ id }>`:
-  creates a file in the folder from a byte stream.
-- `listFolderFileNames(drive, folderId): Promise<Set<string>>`: for skip-existing.
+  `GOOGLE_DRIVE_SA_KEY`. Throws a typed `DriveConfigError` if env is missing or
+  malformed.
+- `parseDriveFolderId(url): string | null`: extracts the folder id from an
+  `assetsFolderUrl` (`/folders/{id}`, `?id={id}`, bare id). Pure, unit-tested.
+- `findOrCreateFolder(drive, { parentId, name }): { id, url, created }`: finds a
+  non-trashed folder of that exact name under `parentId` (Shared-Drive aware),
+  else creates it. Idempotent.
+- `upsertImage(drive, { folderId, name, contentType, bytes })`: if a file of
+  that name already exists in the folder, updates its content (overwrite); else
+  creates it. Implements the overwrite decision.
 
-### 2. `src/server/actions/uploadGraphics.ts` (server action)
+### 2. `uploadPostGraphicsToDrive(batchId)` service (`src/server/services/drive-upload.ts`)
 
-`uploadPostGraphicsToDriveAction({ batchId })`:
+Pure orchestration, callable from the completion path and from a retry action:
 
-1. AuthZ: resolve the AM context and scope to a client the caller may act on
-   (reuse the existing client-scoping gate used by other batch actions; AM can
-   only act on their assigned client). Reject otherwise.
-2. Load the batch and its client. If `client.assetsFolderUrl` is empty or
-   unparseable, return an actionable error ("Set the client's assets folder URL
-   first"), no Drive call.
-3. Load the batch posts with their image URL, post date, and 1-based number
-   (same ordering as the export / review numbering).
-4. `month = formatMonthYear(resolveBatchTargetMonth(...))`.
-5. `folder = findOrCreateFolder({ parentId, name: month })`.
-6. `existing = listFolderFileNames(folder.id)`.
-7. For each post with an image: derive the file name (see below); if already in
-   `existing`, skip; else fetch the image bytes from the Blob URL and
-   `uploadImage(...)`. Collect per-post outcome.
-8. Return `{ folderUrl, uploaded: number, skipped: number, failed: Array<{ post, reason }> }`.
+1. Load batch + client. If `client.assetsFolderUrl` is empty/unparseable,
+   return `{ status: 'skipped', reason: 'no-folder' }`, no Drive call.
+2. Load batch posts with image URL, post date, 1-based number (same ordering as
+   the export/review numbering).
+3. `month = formatMonthYear(resolveBatchTargetMonth(...))`.
+4. `folder = findOrCreateFolder({ parentId, name: month })`.
+5. For each post with an image: `name = pad(number) + ext(contentType)`; fetch
+   the bytes from the Blob URL; `upsertImage(...)`. Collect per-post outcome.
+6. Return `{ status, folderUrl, uploaded, overwritten, failed: [...] }`.
 
-Partial failures do not abort the whole run; each post is independent and the
-summary reports failures. Folder-create failure aborts with a clear message
-(nothing to upload into).
+Per-post failures are independent and reported; folder-create failure returns a
+failed status with a clear reason.
 
-File name (v1): zero-padded post number plus the source extension, e.g.
-`01.jpg`, `02.png`, ordered by post date. Simple, stable, sorts correctly in
-Drive. (Alternative discussed: `PA-01` client-initials style the designers use
-in Canva. Deferred; the number-in-a-month-folder is unambiguous.)
+### 3. Wiring into relay completion
 
-### 3. `src/components/relay/upload-graphics-to-drive-button.tsx` (UI)
+In the completion transition (scheduling -> `completed`) in
+`src/server/services/relay.ts`:
 
-- Renders in the scheduling step next to `ExportAndScheduleButton` on the batch
-  page. AM-only (same visibility as the export button).
-- Click calls the action, shows a pending state, then a result toast:
-  "Uploaded 12 graphics to September 2026" with a link to the folder, or a
-  partial/error message listing failures.
-- Idempotent by design: clicking again skips files already there, so a retry
-  after a partial failure is safe.
-- Pairs with the checklist item; does not auto-check it (honor system, matching
-  the rest of the checklist).
+- After the completion is committed (step + `completedAt` persisted), call
+  `uploadPostGraphicsToDrive(batchId)` **best effort**: wrap it so any throw is
+  caught and logged; the relay stays completed regardless.
+- Persist the result summary on the batch (or an ActivityEvent, e.g.
+  `graphics_uploaded`) so the UI can show "12 graphics uploaded to September
+  2026" or a failure with a retry.
 
-## Decision: button, not auto-on-entry
+Runtime: the completion runs in a Next.js server action. For ~12 images (fetch
+from Blob + upload to Drive) this fits the function time budget; the finish
+click shows a brief pending state. If batches grow much larger, move the loop
+into a Trigger.dev job the completion enqueues (the SA key would then also live
+in the Trigger.dev env). Noted as the scale path, not built for v1.
 
-The upload is triggered by an explicit AM button, not automatically when the
-relay enters scheduling. Rationale: Drive uploads can fail (permissions,
-network, a client with no assets folder set), and a visible button gives the AM
-a clear success/error and a safe retry. A silent auto-upload can fail invisibly
-right when the AM assumes it is done. (Reversible later: the same action can be
-called from a step-entry hook if we want auto behavior.)
+### Failure recovery (the one manual affordance)
 
-## Where it runs
-
-A Next.js server action (serverless). For a typical batch (about 12 images, each
-a fetch from Blob plus an upload to Drive) this fits comfortably in the function
-time budget. If batches ever grow much larger, move the loop into a Trigger.dev
-job and have the action enqueue it. Noted, not built for v1.
+Because the trigger is automatic, the only manual control is a small **"Retry
+Drive upload"** action shown on a completed relay when the last attempt failed.
+It calls the same `uploadPostGraphicsToDrive` service. Safe to run on a locked
+relay because it only touches Drive, never relay state. Overwrite semantics make
+retries idempotent.
 
 ## Error handling
 
-- Missing/invalid `GOOGLE_DRIVE_SA_KEY`: `DriveConfigError`, surfaced to the AM
-  as "Drive upload is not configured yet," logged for ops. (Should only happen
-  before setup is complete.)
-- Missing/unparseable `assetsFolderUrl`: actionable message, no Drive call.
-- Per-image fetch/upload failure: collected, reported in the summary, does not
-  block the other images.
-- Auth/permission failure from Drive (service account not on the drive): logged,
-  surfaced as "Could not access the client's Drive folder."
+- Missing/invalid `GOOGLE_DRIVE_SA_KEY`: `DriveConfigError`, logged; surfaced as
+  "Drive upload is not configured yet." Should only occur before setup.
+- Missing/unparseable `assetsFolderUrl`: skipped with an actionable message, no
+  Drive call.
+- Per-image fetch/upload failure: collected, reported; does not block the others.
+- Drive auth/permission failure: logged; surfaced as "Could not access the
+  client's Drive folder."
+- In all cases the relay still completes.
 
 ## Testing (TDD)
 
-Unit (mock the `google-drive` module or the injected drive client, no live
-Drive calls):
-- `parseDriveFolderId`: `/folders/{id}`, `?id={id}`, trailing slash/query, bare
-  id, and a non-Drive URL returns null.
-- File name derivation: zero-padding, extension from content type, ordering by
-  post date.
-- `findOrCreateFolder`: returns existing on hit, creates on miss, passes
-  Shared-Drive flags.
-- Skip-existing: a name already in the folder is skipped.
-- Action: AM scoping (only own client), missing-folder-url error path, happy
-  path calls Drive with the right parent + names, partial-failure summary shape.
+Unit (mock the drive client, no live network):
+- `parseDriveFolderId`: URL variants + non-Drive returns null.
+- File name derivation: zero-padding, extension from content type, order by post
+  date.
+- `findOrCreateFolder`: existing hit, create on miss, Shared-Drive flags.
+- `upsertImage`: overwrites when name exists, creates when absent.
+- `uploadPostGraphicsToDrive`: no-folder skip, happy path (right parent + names),
+  partial-failure summary shape.
+- Completion wiring: a Drive throw does not prevent completion (best-effort),
+  and the result is recorded.
 
-No test performs a real network call; the Drive client is injected/mocked. This
-mirrors how the repo tests other external integrations.
+No test performs a real network call.
 
 ## Dependencies
 
-- Add `googleapis` (Drive v3 + service-account auth). It is a large package but
-  server-only and tree-shakeable to the Drive client; acceptable. If bundle size
-  is a concern we can swap to `google-auth-library` plus direct Drive REST
-  calls, but `googleapis` is the faster path for v1.
+- Add `googleapis` (Drive v3 + service-account auth), server-only. If bundle
+  size is a concern later, swap to `google-auth-library` + direct Drive REST;
+  `googleapis` is the faster path for v1.
 
 ## Rollout
 
-1. Julio completes the Google Cloud + shared-drive setup and hands over the key.
-2. Claude sets `GOOGLE_DRIVE_SA_KEY` in Vercel (Dev first for testing, then
-   Production).
-3. Build behind the existing scheduling UI; test on a pilot client whose
-   `assetsFolderUrl` points at a real month folder.
-4. Ship; verify a real upload lands in the correct "Month Year" folder.
+1. Julio completes the Google Cloud + Shared Drive setup and hands over the key.
+2. Claude sets `GOOGLE_DRIVE_SA_KEY` in Vercel (Dev first, then Production).
+3. Build; test on a pilot client whose `assetsFolderUrl` points at a real
+   folder by completing a relay and confirming the "Month Year" folder fills.
+4. Ship; verify a real completion lands the graphics in the correct folder.
 
-## Open items for review
+## Open items
 
-1. Confirm Shared Drive vs shared My-Drive folder (implementation flag only).
-2. Button vs auto: this spec chooses button. Confirm.
-3. File naming: `01.jpg` style. Confirm or request `PA-01` client-initials.
-4. Re-run behavior: skip files already present (default). Confirm vs overwrite.
+None blocking. All four prior decisions are locked above. The only remaining
+implementation confirmation is cosmetic file naming if the team later prefers
+the designers' `PA-01` Canva labels over `01.jpg`; deferred.
