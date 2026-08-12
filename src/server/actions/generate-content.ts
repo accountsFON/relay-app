@@ -17,6 +17,13 @@ export type GenerateContentInput =
       targetMonth: string
       targetBatchId: string | null
       recrawl: boolean
+      // Explicit "Start a new batch" intent from the confirm dialog. When true
+      // the caller has chosen a separate batch even though one already exists,
+      // so we skip the null-path drift guard (a populated match is expected,
+      // not a race) and always create a fresh batch (targetBatchId=null at
+      // finalize -> auto-new). Only ever set on the second-or-later batch of a
+      // month, since the confirm dialog only shows for an existing match.
+      forceNewBatch?: boolean
     }
 
 export type GenerateContentResult =
@@ -60,6 +67,8 @@ export async function generateContentAction(
   }
 
   // Fire phase.
+  const forceNew = input.forceNewBatch === true
+
   // Drift detection: compare caller's targetBatchId against current state.
   if (input.targetBatchId !== null) {
     // Caller confirmed Replace against a specific batch.
@@ -71,9 +80,11 @@ export async function generateContentAction(
           : null,
       }
     }
-  } else {
+  } else if (!forceNew) {
     // Caller passed null (auto-fire path: no_match or empty_batch).
     // If a populated batch appeared between probe and fire, drift.
+    // Skipped for the explicit "Start a new batch" intent, where a populated
+    // match is exactly what the AM chose to run alongside.
     if (match && match.postCount > 0) {
       return {
         kind: 'drift',
@@ -83,11 +94,14 @@ export async function generateContentAction(
   }
 
   // Determine effective targetBatchId for the ContentRun row.
+  // - Force-new path: always null, so finalize takes the auto-new branch even
+  //   when a populated match exists.
   // - Replace path: caller passed targetBatchId, use it.
   // - Empty-batch path: caller passed null, but match exists with 0 posts. Auto-set.
   // - No-match path: both null, ContentRun gets targetBatchId=null.
-  const effectiveTargetBatchId =
-    input.targetBatchId ?? (match && match.postCount === 0 ? match.id : null)
+  const effectiveTargetBatchId = forceNew
+    ? null
+    : input.targetBatchId ?? (match && match.postCount === 0 ? match.id : null)
 
   try {
     const { contentRunId } = await triggerGeneration(

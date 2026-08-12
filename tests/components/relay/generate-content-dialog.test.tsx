@@ -59,9 +59,10 @@ describe('GenerateContentDialog', () => {
     mockAction.mockResolvedValueOnce({ kind: 'needs_confirm', batchId: 'b1', label: 'May 2026', postCount: 12 })
     await openDialog()
     fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
-    expect(await screen.findByText(/replace/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^replace$/i })).toBeInTheDocument()
     expect(screen.getByText(/12 post/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^replace$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /start a new batch/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
   })
 
@@ -86,6 +87,21 @@ describe('GenerateContentDialog', () => {
     expect(mockAction.mock.calls[1][0]).toMatchObject({
       kind: 'fire',
       targetBatchId: 'b1',
+    })
+  })
+
+  it('confirm Start a new batch calls fire with forceNewBatch and no targetBatchId', async () => {
+    mockAction.mockResolvedValueOnce({ kind: 'needs_confirm', batchId: 'b1', label: 'May 2026', postCount: 12 })
+    mockAction.mockResolvedValueOnce({ kind: 'fired', runId: 'r2' })
+    await openDialog()
+    fireEvent.click(screen.getByRole('button', { name: /start generation/i }))
+    await screen.findByRole('button', { name: /start a new batch/i })
+    fireEvent.click(screen.getByRole('button', { name: /start a new batch/i }))
+    await waitFor(() => expect(mockAction).toHaveBeenCalledTimes(2))
+    expect(mockAction.mock.calls[1][0]).toMatchObject({
+      kind: 'fire',
+      targetBatchId: null,
+      forceNewBatch: true,
     })
   })
 

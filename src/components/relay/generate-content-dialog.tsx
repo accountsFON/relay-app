@@ -74,7 +74,10 @@ export function GenerateContentDialog({
 
   const monthToUse = lockMonth ? targetMonth : pickedMonth
 
-  async function probeThenFire(targetBatchId: string | null) {
+  async function probeThenFire(
+    targetBatchId: string | null,
+    opts?: { forceNew?: boolean },
+  ) {
     const gen = generationRef.current
     setView({ kind: 'firing' })
     const fire = await generateContentAction({
@@ -83,6 +86,7 @@ export function GenerateContentDialog({
       targetMonth: monthToUse,
       targetBatchId,
       recrawl: reCrawl,
+      forceNewBatch: opts?.forceNew,
     })
     if (gen !== generationRef.current) return  // stale, dialog was closed
     return handleFireResult(fire, gen)
@@ -150,6 +154,12 @@ export function GenerateContentDialog({
     await probeThenFire(view.batchId)
   }
 
+  async function handleNewBatch() {
+    if (view.kind !== 'confirm') return
+    // Explicit new-batch intent: keep the existing relay, run a separate one.
+    await probeThenFire(null, { forceNew: true })
+  }
+
   function handleCancelConfirm() {
     setView({ kind: 'picker' })
   }
@@ -205,8 +215,9 @@ export function GenerateContentDialog({
           {view.kind === 'confirm' && (
             <DialogDescription>
               A relay already exists for {formatMonthYear(monthToUse)} with {view.postCount} post
-              {view.postCount === 1 ? '' : 's'}. If you continue, the existing posts will be
-              overwritten when content generation completes. Current posts stay until the new ones are ready.
+              {view.postCount === 1 ? '' : 's'}. Choose <strong>Start a new batch</strong> to keep it
+              and run a separate relay, or <strong>Replace</strong> to overwrite this batch&apos;s posts
+              when generation completes (current posts stay until the new ones are ready).
             </DialogDescription>
           )}
         </DialogHeader>
@@ -271,6 +282,7 @@ export function GenerateContentDialog({
             <DialogFooter>
               <Button variant="outline" onClick={handleCancelConfirm}>Cancel</Button>
               <Button variant="destructive" onClick={handleReplace}>Replace</Button>
+              <Button onClick={handleNewBatch}>Start a new batch</Button>
             </DialogFooter>
           </div>
         )}
