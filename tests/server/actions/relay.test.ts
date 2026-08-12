@@ -44,6 +44,10 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
+vi.mock('@/server/services/drive-upload', () => ({
+  uploadPostGraphicsToDrive: vi.fn(),
+}))
+
 import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
 import {
@@ -56,6 +60,7 @@ import {
 } from '@/server/services/relay'
 import { bulkResolveOnPost } from '@/server/repositories/threads'
 import { notifyHolderOfBatonHandoff } from '@/server/lib/notifyHolderOfBatonHandoff'
+import { uploadPostGraphicsToDrive } from '@/server/services/drive-upload'
 import {
   passBatonAction,
   sendBackBatonAction,
@@ -533,6 +538,35 @@ describe('finishBatchAction holder gate', () => {
       finishBatchAction({ batchId: 'b1' }),
     ).rejects.toThrow(/relay not found/i)
     expect(finishBatch).not.toHaveBeenCalled()
+  })
+
+  it('returns the Drive upload summary on the result', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    mockBatch('u_actor')
+    vi.mocked(uploadPostGraphicsToDrive).mockResolvedValue({
+      status: 'ok',
+      folderUrl: 'https://drive.google.com/drive/folders/f1',
+      month: 'September 2026',
+      uploaded: 12,
+      overwritten: 0,
+      failed: [],
+    })
+
+    const res = await finishBatchAction({ batchId: 'b1' })
+
+    expect(uploadPostGraphicsToDrive).toHaveBeenCalledWith('b1')
+    expect(res.driveUpload).toMatchObject({ status: 'ok', uploaded: 12 })
+  })
+
+  it('still finishes when the Drive upload throws (best-effort)', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    mockBatch('u_actor')
+    vi.mocked(uploadPostGraphicsToDrive).mockRejectedValue(new Error('drive down'))
+
+    const res = await finishBatchAction({ batchId: 'b1' })
+
+    expect(finishBatch).toHaveBeenCalled()
+    expect(res.driveUpload).toBeNull()
   })
 })
 

@@ -11,9 +11,8 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-08-11 AM-team Relay launch meeting (awaiting Julio's Vercel-preview eyeball before merge — visual change):
-- [ ] **Client-review "Client feedback" rename + scheduling Drive checklist item** — (A) renamed the batch-page **feedback** section title "Client review" → "Client feedback" so it matches the "View client feedback" link + "Feedback" badge it contains. The separate "Review link" section (the outbound magic link) keeps its name, and the "Send review link" action strings stay. (C) added a 4th scheduling-step checklist item "Graphics have been uploaded to Google Drive" (`CHECKLIST_SEED[scheduling]`; new relays only). Gate: tsc + targeted tests (47) + `next build` + eslint clean.
-- [ ] **(B, needs design) Auto-upload post graphics to the client's Google Drive at scheduling** — create a `Month Year` folder first, then upload each post image into it via the Drive API. Blocked on: Google Cloud project + Drive auth model (service account vs OAuth), confirm final images live in Relay Blob at scheduling. Own spec/plan.
+From the 2026-08-11 AM-team Relay launch meeting:
+- [ ] **Auto-upload post graphics to the client's Google Drive on relay finish** (built, gate green, awaiting merge) — on the scheduling->completed transition, `finishBatchAction` best-effort calls `uploadPostGraphicsToDrive`: find-or-create a `Month Year` folder in the client's Shared-Drive assets folder (service account), upload each post graphic (`01.jpg`, `02.png`; `01-1`/`01-2` for multi-image), overwrite on re-run. A Drive failure never blocks completion; the checklist-panel toasts the outcome with a one-click Retry (`retryDriveUploadAction`). New: `src/lib/google-drive.ts`, `src/server/services/drive-upload.ts`, `googleapis` dep, `GOOGLE_DRIVE_SA_KEY` in Vercel. Spec: `docs/superpowers/specs/2026-08-11-drive-graphics-upload-design.md`. Gate: tsc + 2735 unit (+29 new) + `next build` + eslint clean.
 
 From the 2026-08-06 tooltip clarity rollout (all 8 slices shipped: hover hints + the ⓘ discoverability glyph across every tooltipped control, PRs #390-#399):
 - [ ] **(optional, tooltips) Extend hover hints to any surfaces added later** — the rollout covered the current control set; new action buttons / permission keys / review controls should follow the same pattern (per-surface copy map + `SimpleTooltip` + `InfoHint` on text-labeled controls, bare on icon-only).
@@ -32,6 +31,13 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 ---
 
 ## Shipped
+
+- [x] **2026-08-11 — Client-review "Client feedback" rename + scheduling Drive checklist item** (#423)
+  Renamed the batch-page **feedback** section title "Client review" -> "Client feedback" so it matches the
+  "View client feedback" link + "Feedback" badge it contains; the separate "Review link" section (the
+  outbound magic link) keeps its name, and the "Send review link" action strings stay. Added a 4th
+  scheduling-step checklist item "Graphics have been uploaded to Google Drive" (`CHECKLIST_SEED[scheduling]`;
+  new relays only). From the AM-team meeting. Gate: tsc + 2712 unit + `next build` + eslint. Merged 64bfe86.
 
 - [x] **2026-08-11 — Helpdesk Tickets: rename + per-ticket delete + delete-all**
   Renamed the admin Feedback dashboard to **Helpdesk Tickets** (tab + page headings; route/table/code stay
