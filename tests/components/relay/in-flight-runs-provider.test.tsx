@@ -31,6 +31,7 @@ const mockRun = {
   errorMessage: null,
   startedAt: new Date().toISOString(),
   targetBatchId: null,
+    forceNewBatch: false,
 }
 
 describe('InFlightRunsProvider', () => {

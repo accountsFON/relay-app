@@ -14,7 +14,7 @@ export async function triggerGeneration(
   clientId: string,
   targetMonth: string,
   reCrawl?: boolean,
-  opts?: { targetBatchId?: string | null },
+  opts?: { targetBatchId?: string | null; forceNewBatch?: boolean },
 ) {
   const ctx = await requireGenerationTrigger()
 
@@ -40,7 +40,9 @@ export async function triggerGeneration(
     // who clicks Generate over a previously-attached batch loses ~$0.40 of
     // AI spend and the attached posts with no recovery path. Soft-delete
     // preserves the run and posts in the trash UI for restore.
-    if (!opts?.targetBatchId) {
+    // Force-new (Start a new batch) keeps the existing run/batch intact, so it
+    // must NOT displace it here either.
+    if (!opts?.targetBatchId && !opts?.forceNewBatch) {
       await archiveContentRun({ runId: existing.id, actorUserId: ctx.userDbId })
     }
   }
@@ -50,6 +52,7 @@ export async function triggerGeneration(
     triggeredById: ctx.userDbId,
     targetMonth,
     targetBatchId: opts?.targetBatchId ?? null,
+    forceNewBatch: opts?.forceNewBatch ?? false,
   })
 
   try {

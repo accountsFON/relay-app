@@ -32,6 +32,7 @@ export type InFlightRun = {
   errorMessage: string | null
   startedAt: string
   targetBatchId: string | null
+  forceNewBatch: boolean
   matchingBatch?: {
     batchId: string
     label: string
@@ -82,6 +83,7 @@ export async function listInFlightRuns(): Promise<InFlightRun[]> {
       errorMessage: true,
       createdAt: true,
       targetBatchId: true,
+      forceNewBatch: true,
       client: { select: { name: true } },
       _count: { select: { posts: true } },
     },
@@ -111,6 +113,7 @@ export async function listInFlightRuns(): Promise<InFlightRun[]> {
         errorMessage: row.errorMessage,
         startedAt: row.createdAt.toISOString(),
         targetBatchId: row.targetBatchId,
+        forceNewBatch: row.forceNewBatch,
       }
 
       if (intent === 'awaiting_choice') {

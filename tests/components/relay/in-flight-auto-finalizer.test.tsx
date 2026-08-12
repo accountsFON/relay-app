@@ -32,6 +32,7 @@ function mkRun(overrides: Partial<InFlightRun>): InFlightRun {
     errorMessage: null,
     startedAt: new Date().toISOString(),
     targetBatchId: null,
+    forceNewBatch: false,
     ...overrides,
   }
 }
@@ -128,6 +129,33 @@ describe('InFlightAutoFinalizer', () => {
     // Allow microtasks to settle.
     await new Promise((r) => setTimeout(r, 50))
     expect(finalizePostGenerationAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('forceNewBatch wins: fires choice=auto-new even when a matchingBatch exists', async () => {
+    // The bug fix: a "Start a new batch" run has targetBatchId null AND a
+    // same-month matchingBatch, which the legacy branch would have replaced.
+    // forceNewBatch must take precedence and create a separate batch.
+    vi.mocked(useInFlightRuns).mockReturnValue({
+      runs: [mkRun({
+        intent: 'awaiting_choice',
+        status: 'complete',
+        postCount: 5,
+        targetBatchId: null,
+        forceNewBatch: true,
+        matchingBatch: { batchId: 'b1', label: 'June 2026', postCount: 3 },
+      })],
+      isLoading: false,
+      error: null,
+      refresh,
+    })
+
+    render(<InFlightAutoFinalizer />)
+
+    await waitFor(() => {
+      expect(finalizePostGenerationAction).toHaveBeenCalledWith(
+        expect.objectContaining({ choice: 'auto-new', runId: 'r1' }),
+      )
+    })
   })
 
   it('calls finalize with choice=replace when run has targetBatchId set', async () => {
