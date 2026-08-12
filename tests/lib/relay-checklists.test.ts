@@ -26,11 +26,12 @@ describe('pipeline rework: checklist seeds', () => {
   it('Pre-Client QA seed is retired (removed as a live step: P1 #13, empty)', () => {
     expect(CHECKLIST_SEED[RelayStep.am_qa_pre_client]).toEqual([])
   })
-  it('Scheduling has the three doc items', () => {
+  it('Scheduling has the four doc items', () => {
     expect(CHECKLIST_SEED[RelayStep.scheduling].map((i) => i.label)).toEqual([
       'All posts have been scheduled',
       'All posting dates have been double checked',
       'All caption and image pairings have been double checked',
+      'Graphics have been uploaded to Google Drive',
     ])
   })
   it('Post Revision has one item', () => {

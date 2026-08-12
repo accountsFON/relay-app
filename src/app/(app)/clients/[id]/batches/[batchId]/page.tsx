@@ -636,7 +636,7 @@ export default async function BatchDetailPage({
             </PageSection>
           )}
           {batch.clientReviewEnabled && clientPill && (
-            <PageSection title="Client review">
+            <PageSection title="Client feedback">
               <div className="space-y-2">
                 <ReviewSessionListRow
                   clientId={client.id}
