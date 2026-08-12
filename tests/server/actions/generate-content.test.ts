@@ -166,7 +166,7 @@ describe('generateContentAction — fire phase', () => {
       CLIENT_ID,
       TARGET_MONTH,
       false,
-      { targetBatchId: null },
+      { targetBatchId: null, forceNewBatch: false },
     )
   })
 
@@ -192,7 +192,7 @@ describe('generateContentAction — fire phase', () => {
       CLIENT_ID,
       TARGET_MONTH,
       false,
-      { targetBatchId: 'batch_empty' },
+      { targetBatchId: 'batch_empty', forceNewBatch: false },
     )
   })
 
@@ -217,7 +217,7 @@ describe('generateContentAction — fire phase', () => {
       CLIENT_ID,
       TARGET_MONTH,
       false,
-      { targetBatchId: 'batch_confirmed' },
+      { targetBatchId: 'batch_confirmed', forceNewBatch: false },
     )
     // triggerGeneration is responsible for writing the ContentRun row —
     // we trust the mock, verifying the arg is sufficient.
@@ -243,6 +243,7 @@ describe('generateContentAction — fire phase', () => {
     expect(result).toEqual({ kind: 'fired', runId: 'run_forced' })
     expect(vi.mocked(triggerGeneration)).toHaveBeenCalledWith(CLIENT_ID, TARGET_MONTH, false, {
       targetBatchId: null,
+      forceNewBatch: true,
     })
   })
 
@@ -266,6 +267,7 @@ describe('generateContentAction — fire phase', () => {
     expect(result).toEqual({ kind: 'fired', runId: 'run_forced_2' })
     expect(vi.mocked(triggerGeneration)).toHaveBeenCalledWith(CLIENT_ID, TARGET_MONTH, false, {
       targetBatchId: null,
+      forceNewBatch: true,
     })
   })
 

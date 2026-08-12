@@ -35,8 +35,13 @@ export function InFlightAutoFinalizer() {
       let payload:
         | { choice: 'replace'; runId: string; batchId: string }
         | { choice: 'new'; runId: string; label: string }
+        | { choice: 'auto-new'; runId: string }
 
-      if (run.targetBatchId) {
+      if (run.forceNewBatch) {
+        // "Start a new batch": always a SEPARATE batch even though a same-month
+        // one exists. auto-new so the server assigns the distinct " (N)" label.
+        payload = { choice: 'auto-new', runId: run.id }
+      } else if (run.targetBatchId) {
         payload = { choice: 'replace', runId: run.id, batchId: run.targetBatchId }
       } else if (run.matchingBatch) {
         // No explicit targetBatchId (rare race between probe and

@@ -108,7 +108,7 @@ export async function generateContentAction(
       input.clientId,
       input.targetMonth,
       input.recrawl,
-      { targetBatchId: effectiveTargetBatchId },
+      { targetBatchId: effectiveTargetBatchId, forceNewBatch: forceNew },
     )
     return { kind: 'fired', runId: contentRunId }
   } catch (e) {

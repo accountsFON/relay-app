@@ -342,6 +342,12 @@ model ContentRun {
   /// to pick from the choice modal. Set when the user dismisses the
   /// generation dialog to "run in background".
   autoFinalize     Boolean   @default(false)
+  /// When true, pipeline completion always creates a SEPARATE new batch
+  /// (auto-new with a distinct " (N)" label), even if a same-month batch
+  /// already exists. Set by the "Start a new batch" choice in the generate
+  /// confirm dialog. Distinguishes an intentional rerun from the legacy
+  /// "targetBatchId null + matching -> attach to match" behavior.
+  forceNewBatch    Boolean   @default(false)
   acknowledgedAt   DateTime?
   /// When set, pipeline completion replaces this batch's posts with the
   /// run's posts in an atomic swap. Null means "create a new batch" on

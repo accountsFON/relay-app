@@ -29,6 +29,7 @@ function mkRun(overrides: Partial<InFlightRun>): InFlightRun {
     errorMessage: null,
     startedAt: new Date().toISOString(),
     targetBatchId: null,
+    forceNewBatch: false,
     ...overrides,
   }
 }

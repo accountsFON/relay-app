@@ -13,6 +13,7 @@ export async function createContentRun(input: {
   triggeredById: string
   targetMonth: string
   targetBatchId?: string | null
+  forceNewBatch?: boolean
 }) {
   return db.contentRun.create({
     data: {
@@ -20,6 +21,7 @@ export async function createContentRun(input: {
       triggeredById: input.triggeredById,
       targetMonth: input.targetMonth,
       targetBatchId: input.targetBatchId ?? null,
+      forceNewBatch: input.forceNewBatch ?? false,
       status: 'queued',
     },
   })
