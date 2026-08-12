@@ -32,6 +32,14 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-12 — Fix: "Start a new batch" merged into the existing batch** (follow-up to #428)
+  The force-new intent reached the ContentRun (targetBatchId=null) but the auto-finalizer's
+  "null + same-month match -> replace the match" branch swallowed it, merging the rerun into the
+  existing batch. Persist it end-to-end: new `ContentRun.forceNewBatch` column (additive migration),
+  threaded through triggerGeneration (which also stops archiving the existing run on force-new),
+  surfaced on InFlightRun, and honored by the auto-finalizer (-> 'auto-new', distinct label, wins over
+  the match branch). Gate: tsc + 2745 unit + next build + eslint.
+
 - [x] **2026-08-12 — Auto-upload post graphics to the client's Google Drive on relay finish** (#425)
   On the scheduling->completed transition, `finishBatchAction` best-effort calls `uploadPostGraphicsToDrive`:
   find-or-create a `Month Year` folder in the client's Shared-Drive assets folder (service account), upload
