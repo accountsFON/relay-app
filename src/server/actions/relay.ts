@@ -17,6 +17,10 @@ import {
 import { legalNextSteps } from '@/server/lib/relay-state-machine'
 import { canOverrideHolder } from '@/lib/relay-holder-override'
 import { notifyHolderOfBatonHandoff } from '@/server/lib/notifyHolderOfBatonHandoff'
+import {
+  uploadPostGraphicsToDrive,
+  type DriveUploadResult,
+} from '@/server/services/drive-upload'
 
 /**
  * Cheap scoped lookup used by the action-layer holder gate. Throws the
@@ -145,8 +149,44 @@ export async function finishBatchAction(input: { batchId: string }) {
     actorOrganizationId: ctx.organizationDbId,
     wasOverride: isOverride,
   })
+
+  // Best-effort: archive the post graphics to the client's Google Drive once
+  // the relay is completed. A Drive failure must never undo the completed
+  // relay, so the whole thing is wrapped; the summary rides back on the result
+  // so the UI can confirm it (or offer a retry). See drive-upload service.
+  let driveUpload: DriveUploadResult | null = null
+  try {
+    driveUpload = await uploadPostGraphicsToDrive(input.batchId)
+  } catch (err) {
+    console.error('[relay] finishBatch drive upload failed', {
+      batchId: input.batchId,
+      err: err instanceof Error ? err.message : String(err),
+    })
+  }
+
   revalidateBatchSurfaces(holder.clientId, input.batchId)
-  return result
+  return { ...result, driveUpload }
+}
+
+/**
+ * Manual retry of the Drive graphics upload for a completed relay. The auto
+ * upload on finish is best-effort; this lets an AM re-run it if it failed or
+ * was skipped (e.g. the assets folder URL was added after finishing). Safe on a
+ * completed relay: it only touches Drive, never relay state, and overwrites so
+ * repeats are idempotent.
+ */
+export async function retryDriveUploadAction(input: {
+  batchId: string
+}): Promise<DriveUploadResult> {
+  const ctx = await requireCan('relay.pass')
+  const holder = await loadHolderForGate(input.batchId, ctx.organizationDbId)
+  const isOverride = ctx.userDbId !== holder.currentHolder
+  if (isOverride && !canOverrideHolder(ctx.role, ctx.platformOwner)) {
+    throw new Error('Only the current holder, an AM, or an admin can retry the Drive upload.')
+  }
+  const driveUpload = await uploadPostGraphicsToDrive(input.batchId)
+  revalidateBatchSurfaces(holder.clientId, input.batchId)
+  return driveUpload
 }
 
 export async function sendBackBatonAction(input: {
