@@ -35,11 +35,15 @@ vi.mock('@/server/actions/relay', () => ({
   passBatonAction: vi.fn(),
   sendBackBatonAction: vi.fn(),
   requestDesignChangesAction: vi.fn(),
+  retryDriveUploadAction: vi.fn(),
   tickChecklistItemAction: vi.fn(),
   forceStepAction: vi.fn(),
 }))
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('sonner', () => {
+  const toast = Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() })
+  return { toast }
+})
 
 function makeBatch(overrides: Partial<BatchSummary> = {}): BatchSummary {
   return {
