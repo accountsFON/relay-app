@@ -4,6 +4,7 @@ import {
   getAccounts,
   getUsers,
   pickServiceUserId,
+  getLocation,
   NectrConfigError,
   NectrApiError,
 } from '@/lib/nectr-social'
@@ -169,5 +170,16 @@ describe('createPost', () => {
     await expect(
       createPost('loc1', { accountIds: ['a'], summary: 's', scheduleDate: 'x', userId: 'u' }, { fetchImpl, token: 't' }),
     ).rejects.toBeInstanceOf(NectrApiError)
+  })
+})
+
+describe('getLocation', () => {
+  it('parses the location timezone', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ location: { timezone: 'America/New_York' } })) as unknown as typeof fetch
+    expect(await getLocation('loc1', { fetchImpl, token: 't' })).toEqual({ timezone: 'America/New_York' })
+  })
+  it('returns null timezone when absent', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ location: {} })) as unknown as typeof fetch
+    expect(await getLocation('loc1', { fetchImpl, token: 't' })).toEqual({ timezone: null })
   })
 })

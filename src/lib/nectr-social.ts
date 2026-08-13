@@ -185,3 +185,13 @@ export async function createPost(
   if (!id) throw new NectrApiError(200, 'NECTR create-post returned no post id')
   return { id }
 }
+
+export async function getLocation(
+  locationId: string,
+  deps?: NectrDeps,
+): Promise<{ timezone: string | null }> {
+  const json = (await nectrGet(`/locations/${locationId}`, deps)) as {
+    location?: { timezone?: string }
+  }
+  return { timezone: json.location?.timezone ?? null }
+}

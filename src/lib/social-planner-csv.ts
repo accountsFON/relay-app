@@ -29,7 +29,7 @@ export function escapeCsv(value: string): string {
  * trailing whitespace (so no leading/trailing blank lines), and a missing part
  * is omitted entirely. Interior line breaks in the caption are preserved.
  */
-function buildContent(caption: string, hashtags: string): string {
+export function buildContent(caption: string, hashtags: string): string {
   return [caption.trim(), hashtags.trim()].filter(Boolean).join('\n\n')
 }
 
