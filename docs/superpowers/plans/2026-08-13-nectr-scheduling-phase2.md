@@ -80,13 +80,13 @@ describe('createPost', () => {
     })
   })
 
-  it('omits media when no url is given', async () => {
+  it('sends an empty media array when no url is given (the API requires media)', async () => {
     const fetchImpl = vi.fn(async () =>
       ({ ok: true, status: 201, json: async () => ({ results: { post: { _id: 'p2' } } }), text: async () => '' }) as unknown as Response,
     ) as unknown as typeof fetch
-    await createPost('loc1', { accountIds: ['a'], summary: 's', scheduleDate: '2026-09-01T08:00:00', userId: 'u' }, { fetchImpl, token: 't' })
+    await createPost('loc1', { accountIds: ['a'], summary: 's', scheduleDate: '2026-09-01T08:00:00.000Z', userId: 'u' }, { fetchImpl, token: 't' })
     const body = JSON.parse((vi.mocked(fetchImpl).mock.calls[0][1] as RequestInit).body as string)
-    expect(body.media).toBeUndefined()
+    expect(body.media).toEqual([])
   })
 
   it('throws NectrApiError on a non-2xx response', async () => {
@@ -151,9 +151,12 @@ export async function createPost(
     scheduleDate: input.scheduleDate,
     userId: input.userId,
   }
-  if (input.mediaUrl) {
-    body.media = [{ url: input.mediaUrl, type: input.mediaType ?? 'image/jpeg' }]
-  }
+  // The API requires `media` on every post (a 422 "media must be an array with
+  // media objects or an empty array" otherwise). Send [] for a text post,
+  // [{url,type}] when there is an image. Confirmed live in the Task 1 spike.
+  body.media = input.mediaUrl
+    ? [{ url: input.mediaUrl, type: input.mediaType ?? 'image/jpeg' }]
+    : []
   const json = (await nectrPost(`/social-media-posting/${locationId}/posts`, body, deps)) as {
     results?: { post?: { _id?: string } }
   }
