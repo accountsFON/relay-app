@@ -115,6 +115,10 @@ export async function scheduleBatchToNectr(batchId: string): Promise<NectrSchedu
   const failed: { post: string; reason: string }[] = []
 
   for (const post of posts) {
+    // Note: this check-then-create is not atomic. A concurrent finish + retry
+    // could both pass the guard for the same post and double-create in NECTR.
+    // The window is narrow (finishBatch does not re-run once completed, and the
+    // client action guards re-entry), so this is accepted for v1.
     if (post.nectrScheduledId) {
       alreadyScheduled++
       continue

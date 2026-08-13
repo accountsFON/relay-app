@@ -232,7 +232,11 @@ export function ChecklistPanel({
       return
     }
     if (res.status === 'ok') {
-      toast.success(`Scheduled ${res.scheduled} post${res.scheduled === 1 ? '' : 's'} to NECTR.`)
+      if (res.scheduled === 0 && res.alreadyScheduled > 0) {
+        toast('All posts were already scheduled to NECTR.')
+      } else {
+        toast.success(`Scheduled ${res.scheduled} post${res.scheduled === 1 ? '' : 's'} to NECTR.`)
+      }
       return
     }
     if (res.status === 'partial') {
@@ -249,6 +253,8 @@ export function ChecklistPanel({
       if (res.reason === 'no-location') toast('Relay finished. No NECTR Location ID is set for this client, so nothing was scheduled.')
       else if (res.reason === 'not-configured') toast('Relay finished. NECTR scheduling is not configured yet.')
       else if (res.reason === 'no-accounts') toast('Relay finished. No connected NECTR accounts, so nothing was scheduled.')
+      else if (res.reason === 'no-user') toast('Relay finished. No NECTR user is available to schedule as, so nothing was scheduled.')
+      else if (res.reason === 'no-posts') toast('Relay finished. This batch has no posts to schedule.')
     }
   }
 
