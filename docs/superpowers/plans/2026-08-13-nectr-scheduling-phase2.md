@@ -26,7 +26,7 @@ Phase 0's scheduled post used a UTC `...Z` `scheduleDate` and did not fire in-wi
 
 - [ ] **Step 1:** Create a `status:"scheduled"` post ~5 minutes out, `scheduleDate` = the location-local wall-clock time as `YYYY-MM-DDTHH:MM:00` (NO `Z`), on one FB account, labeled "tz spike — disregard".
 - [ ] **Step 2:** Poll the post until it flips `scheduled -> published` (or past the expected fire time). If it fires at the intended wall-clock, the tz-naive-local format is confirmed. If the API rejects the no-`Z` value at create time, retry with `...T08:00:00.000Z` (digits = local) and with the location's numeric offset (`...-04:00`), and record which one fires correctly.
-- [ ] **Step 3:** Delete the test post. Record the confirmed template in the ledger; Task 4's `buildNectrScheduleDate` uses it. **Default expectation (write Task 4 against this unless the spike disproves it): `` `${yyyy}-${mm}-${dd}T08:00:00` `` (tz-naive, NECTR applies the location timezone, matching the CSV).** If instead NECTR honors UTC, Task 2/4 gain a `getLocation` tz lookup + a UTC conversion — note that contingency to the human before proceeding.
+- [x] **Step 3: RESULT (ran 2026-08-13).** NECTR requires `.000Z` ISO (tz-naive and numeric-offset forms both 422) AND **honors it as true UTC**: a value that was past-as-UTC but future-as-local was rejected "Schedule Date must be after current date." Also learned: the API **requires `media`** on every post (`[]` for text). So Task 4 converts 8am in the client's timezone -> the UTC `.000Z` instant (via `getLocation` + native `Intl`, DST-aware). Test posts deleted; no footprint.
 
 ---
 
@@ -215,14 +215,47 @@ git commit -m "feat(nectr): add Post.nectrScheduledId idempotency field"
 
 **Files:**
 - Create: `src/server/services/nectr-schedule.ts`
-- Modify: `src/lib/social-planner-csv.ts` (add `export` to `buildContent` only — no behavior change)
-- Test: `tests/server/services/nectr-schedule.test.ts`
+- Modify: `src/lib/nectr-social.ts` (add `getLocation`), `src/lib/social-planner-csv.ts` (add `export` to `buildContent` only — no behavior change)
+- Test: `tests/server/services/nectr-schedule.test.ts`, `tests/lib/nectr-social.test.ts` (extend for `getLocation`)
 
 **Interfaces:**
 - Consumes: `getAccounts`, `getUsers`, `pickServiceUserId`, `createPost`, `NectrConfigError` (Task 2); `buildContent` (exported); `Post.nectrScheduledId` (Task 3).
-- Produces: `scheduleBatchToNectr(batchId: string): Promise<NectrScheduleResult>` and the `NectrScheduleResult` union; `buildNectrScheduleDate(postDate: Date): string`.
+- Produces: `getLocation(locationId, deps?): Promise<{ timezone: string | null }>` (added to the wrapper); `scheduleBatchToNectr(batchId: string): Promise<NectrScheduleResult>` and the `NectrScheduleResult` union; `buildNectrScheduleDate(postDate: Date, timeZone: string): string` (returns the UTC `.000Z` instant for 8am in `timeZone`).
+
+> **Task 1 spike result (governs this task):** NECTR requires `.000Z` ISO and honors it as **true UTC** (a past-UTC/future-local value was rejected as "must be after current date"). So `scheduleDate` must be 8am **converted from the client's timezone to UTC**, not the raw local digits. The API also **requires `media`** on every post (Task 2 handles that).
 
 - [ ] **Step 1: Export `buildContent`** — in `src/lib/social-planner-csv.ts`, change `function buildContent(` to `export function buildContent(`. Nothing else.
+
+- [ ] **Step 1b: Add `getLocation` to the wrapper** — append to `src/lib/nectr-social.ts` (mirrors the existing GET helpers):
+
+```ts
+export async function getLocation(
+  locationId: string,
+  deps?: NectrDeps,
+): Promise<{ timezone: string | null }> {
+  const json = (await nectrGet(`/locations/${locationId}`, deps)) as {
+    location?: { timezone?: string }
+  }
+  return { timezone: json.location?.timezone ?? null }
+}
+```
+
+Append its tests to `tests/lib/nectr-social.test.ts` (reuse the existing `jsonResponse` helper; add `getLocation` to the imports):
+
+```ts
+describe('getLocation', () => {
+  it('parses the location timezone', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ location: { timezone: 'America/New_York' } })) as unknown as typeof fetch
+    expect(await getLocation('loc1', { fetchImpl, token: 't' })).toEqual({ timezone: 'America/New_York' })
+  })
+  it('returns null timezone when absent', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ location: {} })) as unknown as typeof fetch
+    expect(await getLocation('loc1', { fetchImpl, token: 't' })).toEqual({ timezone: null })
+  })
+})
+```
+
+Run `npx vitest run tests/lib/nectr-social.test.ts` → PASS before moving on.
 
 - [ ] **Step 2: Write the failing tests** — `tests/server/services/nectr-schedule.test.ts`:
 
@@ -231,14 +264,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/nectr-social', async (importActual) => {
   const actual = await importActual<typeof import('@/lib/nectr-social')>()
-  return { ...actual, getAccounts: vi.fn(), getUsers: vi.fn(), createPost: vi.fn() }
+  return { ...actual, getAccounts: vi.fn(), getUsers: vi.fn(), createPost: vi.fn(), getLocation: vi.fn() }
 })
 vi.mock('@/db/client', () => ({
   db: { batch: { findUnique: vi.fn() }, post: { findMany: vi.fn(), update: vi.fn() } },
 }))
 
 import { scheduleBatchToNectr, buildNectrScheduleDate } from '@/server/services/nectr-schedule'
-import { getAccounts, getUsers, createPost, NectrConfigError } from '@/lib/nectr-social'
+import { getAccounts, getUsers, createPost, getLocation, NectrConfigError } from '@/lib/nectr-social'
 import { db } from '@/db/client'
 
 const ACCT = (id: string, isExpired = false) => ({ id, platform: 'facebook', name: id, type: 'page', isExpired })
@@ -255,13 +288,19 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getAccounts).mockResolvedValue([ACCT('acc_fb')])
   vi.mocked(getUsers).mockResolvedValue([USER])
+  vi.mocked(getLocation).mockResolvedValue({ timezone: 'America/New_York' })
   vi.mocked(createPost).mockResolvedValue({ id: 'np_1' })
   vi.mocked(db.post.update).mockResolvedValue({} as never)
 })
 
 describe('buildNectrScheduleDate', () => {
-  it('is 8am on the post date (tz-naive local, matching the CSV)', () => {
-    expect(buildNectrScheduleDate(new Date('2026-09-01T00:00:00Z'))).toBe('2026-09-01T08:00:00')
+  it('converts 8am on the post date to the UTC instant for that timezone (EDT)', () => {
+    // 2026-09-01 is EDT (-04:00); 8am EDT = 12:00 UTC
+    expect(buildNectrScheduleDate(new Date('2026-09-01T00:00:00Z'), 'America/New_York')).toBe('2026-09-01T12:00:00.000Z')
+  })
+  it('is DST-aware (EST in January)', () => {
+    // 2026-01-15 is EST (-05:00); 8am EST = 13:00 UTC
+    expect(buildNectrScheduleDate(new Date('2026-01-15T00:00:00Z'), 'America/New_York')).toBe('2026-01-15T13:00:00.000Z')
   })
 })
 
@@ -293,7 +332,7 @@ describe('scheduleBatchToNectr', () => {
     const res = await scheduleBatchToNectr('b1')
     expect(res).toMatchObject({ status: 'ok', scheduled: 2, alreadyScheduled: 0, accounts: 1, failed: [] })
     expect(createPost).toHaveBeenCalledWith('loc1', expect.objectContaining({
-      accountIds: ['acc_fb'], summary: 'A\n\n#x', mediaUrl: 'https://b/1.png', scheduleDate: '2026-09-01T08:00:00', userId: 'svc_user',
+      accountIds: ['acc_fb'], summary: 'A\n\n#x', mediaUrl: 'https://b/1.png', scheduleDate: '2026-09-01T12:00:00.000Z', userId: 'svc_user',
     }), )
     expect(db.post.update).toHaveBeenCalledWith({ where: { id: 'p1' }, data: { nectrScheduledId: 'np_1' } })
   })
@@ -335,7 +374,7 @@ describe('scheduleBatchToNectr', () => {
  * Spec: docs/superpowers/specs/2026-08-13-nectr-auto-scheduling-phase2-design.md
  */
 import { db } from '@/db/client'
-import { getAccounts, getUsers, pickServiceUserId, createPost, NectrConfigError } from '@/lib/nectr-social'
+import { getAccounts, getUsers, pickServiceUserId, createPost, getLocation, NectrConfigError } from '@/lib/nectr-social'
 import { buildContent } from '@/lib/social-planner-csv'
 
 export type NectrScheduleResult =
@@ -348,13 +387,45 @@ export type NectrScheduleResult =
       failed: { post: string; reason: string }[]
     }
 
-/** 8am on the post's date, tz-naive local. NECTR applies the location's timezone,
- * matching the CSV's "<date> 08:00". Format confirmed by the Task 1 spike. */
-export function buildNectrScheduleDate(postDate: Date): string {
-  const y = postDate.getUTCFullYear()
-  const m = String(postDate.getUTCMonth() + 1).padStart(2, '0')
-  const d = String(postDate.getUTCDate()).padStart(2, '0')
-  return `${y}-${m}-${d}T08:00:00`
+/**
+ * The UTC instant for 8:00am on `postDate`'s calendar day (read in UTC) in
+ * `timeZone`, as an ISO `.000Z` string. NECTR requires `.000Z` and honors it as
+ * true UTC (Task 1 spike), so 8am-local must be converted to UTC. DST-aware via
+ * Intl; 8am is far from the 2am DST boundary, so a single offset correction is
+ * exact.
+ */
+export function buildNectrScheduleDate(postDate: Date, timeZone: string): string {
+  const guessUtcMs = Date.UTC(
+    postDate.getUTCFullYear(),
+    postDate.getUTCMonth(),
+    postDate.getUTCDate(),
+    8,
+    0,
+    0,
+  )
+  const offsetMs = tzOffsetMs(timeZone, new Date(guessUtcMs))
+  return new Date(guessUtcMs - offsetMs).toISOString().replace(/\.\d{3}Z$/, '.000Z')
+}
+
+/** Milliseconds `timeZone` is ahead of UTC at instant `at` (EDT => -14400000). */
+function tzOffsetMs(timeZone: string, at: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+      .formatToParts(at)
+      .filter((p) => p.type !== 'literal')
+      .map((p) => [p.type, Number(p.value)]),
+  ) as Record<string, number>
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second)
+  return asUtc - at.getTime()
 }
 
 function imageTypeFromUrl(url: string): string {
@@ -373,9 +444,13 @@ export async function scheduleBatchToNectr(batchId: string): Promise<NectrSchedu
   const locationId = batch?.client.nectrLocationId?.trim()
   if (!locationId) return { status: 'skipped', reason: 'no-location' }
 
-  let accounts, users
+  let accounts, users, location
   try {
-    ;[accounts, users] = await Promise.all([getAccounts(locationId), getUsers(locationId)])
+    ;[accounts, users, location] = await Promise.all([
+      getAccounts(locationId),
+      getUsers(locationId),
+      getLocation(locationId),
+    ])
   } catch (err) {
     if (err instanceof NectrConfigError) return { status: 'skipped', reason: 'not-configured' }
     throw err
@@ -386,6 +461,9 @@ export async function scheduleBatchToNectr(batchId: string): Promise<NectrSchedu
   const accountIds = live.map((a) => a.id)
   const userId = pickServiceUserId(users)
   if (!userId) return { status: 'skipped', reason: 'no-user' }
+  // NECTR honors scheduleDate as true UTC, so 8am-local is converted using the
+  // client location's timezone (fallback Eastern only if the location has none).
+  const tz = location.timezone ?? 'America/New_York'
 
   const posts = await db.post.findMany({
     where: { batchId, deletedAt: null },
@@ -410,7 +488,7 @@ export async function scheduleBatchToNectr(batchId: string): Promise<NectrSchedu
         summary: buildContent(post.caption, post.hashtags.join(' ')),
         mediaUrl,
         mediaType: mediaUrl ? imageTypeFromUrl(mediaUrl) : undefined,
-        scheduleDate: buildNectrScheduleDate(post.postDate),
+        scheduleDate: buildNectrScheduleDate(post.postDate, tz),
         userId,
       })
       await db.post.update({ where: { id: post.id }, data: { nectrScheduledId: id } })
@@ -430,8 +508,8 @@ export async function scheduleBatchToNectr(batchId: string): Promise<NectrSchedu
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/server/services/nectr-schedule.ts src/lib/social-planner-csv.ts tests/server/services/nectr-schedule.test.ts
-git commit -m "feat(nectr): scheduleBatchToNectr push service (idempotent, best-effort)"
+git add src/server/services/nectr-schedule.ts src/lib/nectr-social.ts src/lib/social-planner-csv.ts tests/server/services/nectr-schedule.test.ts tests/lib/nectr-social.test.ts
+git commit -m "feat(nectr): scheduleBatchToNectr push service (idempotent, best-effort, tz-aware)"
 ```
 
 ---
@@ -715,7 +793,7 @@ gh pr create --base main --title "NECTR auto-scheduling Phase 2: true-scheduled 
 
 **Spec coverage:** wrapper `createPost` → Task 2; `Post.nectrScheduledId` + migration → Task 3; the push service (skip reasons, ok/partial, idempotency, expired-filter, 8am scheduleDate, `buildContent` reuse) → Task 4; `finishBatchAction` hook + retry + toast → Task 5; connect deep-link → Task 6; timezone spike → Task 1; gate + PR → Task 7.
 
-**Deviation from the spec (deliberate):** the spec listed `getLocation` + explicit timezone resolution. The plan drops it (YAGNI): the CSV proves NECTR applies the location's timezone to a tz-naive `08:00`, so `buildNectrScheduleDate` emits tz-naive local and no per-run tz lookup is needed. Task 1's spike is the gate; if it shows NECTR honors UTC instead, Task 2 gains `getLocation` and Task 4 converts local→UTC (flagged in Task 1 Step 3).
+**Timezone (resolved by the Task 1 spike):** NECTR honors `scheduleDate` as true UTC, so Task 4 keeps the spec's `getLocation` + timezone resolution and converts 8am-local -> UTC with native `Intl` (no new dependency, matching the repo's email-formatting pattern). An earlier draft of this plan guessed tz-naive-local and dropped `getLocation`; the spike disproved that, and Task 4 was updated before implementation.
 
 **Placeholder scan:** none. The one runtime value to confirm (the exact `scheduleDate` string, and the exact NECTR connect sub-path) are named as explicit validation/confirmation steps, not left vague in code.
 
