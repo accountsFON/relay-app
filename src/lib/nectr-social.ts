@@ -123,3 +123,65 @@ export function pickServiceUserId(users: NectrUser[]): string | null {
   const admin = users.find((u) => u.role === 'admin')
   return (admin ?? users[0]).id
 }
+
+export interface CreatePostInput {
+  accountIds: string[]
+  summary: string
+  mediaUrl?: string
+  mediaType?: string
+  scheduleDate: string
+  userId: string
+}
+
+async function nectrPost(path: string, body: unknown, deps?: NectrDeps): Promise<unknown> {
+  const token = deps?.token ?? getAgencyToken()
+  const fetchImpl = deps?.fetchImpl ?? fetch
+  const res = await fetchImpl(`${NECTR_API_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Version: NECTR_API_VERSION,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    let message = `NECTR API ${res.status}`
+    try {
+      const t = await res.text()
+      if (t) message = `${message}: ${t.slice(0, 300)}`
+    } catch {
+      // status is enough
+    }
+    throw new NectrApiError(res.status, message)
+  }
+  return res.json()
+}
+
+export async function createPost(
+  locationId: string,
+  input: CreatePostInput,
+  deps?: NectrDeps,
+): Promise<{ id: string }> {
+  const body: Record<string, unknown> = {
+    accountIds: input.accountIds,
+    summary: input.summary,
+    status: 'scheduled',
+    type: 'post',
+    scheduleDate: input.scheduleDate,
+    userId: input.userId,
+  }
+  // The API requires `media` on every post (a 422 "media must be an array with
+  // media objects or an empty array" otherwise). Send [] for a text post,
+  // [{url,type}] when there is an image. Confirmed live in the Task 1 spike.
+  body.media = input.mediaUrl
+    ? [{ url: input.mediaUrl, type: input.mediaType ?? 'image/jpeg' }]
+    : []
+  const json = (await nectrPost(`/social-media-posting/${locationId}/posts`, body, deps)) as {
+    results?: { post?: { _id?: string } }
+  }
+  const id = json.results?.post?._id
+  if (!id) throw new NectrApiError(200, 'NECTR create-post returned no post id')
+  return { id }
+}
