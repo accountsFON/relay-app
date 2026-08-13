@@ -13,6 +13,7 @@ import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
 import { updateClientAction } from '@/app/(app)/clients/actions'
+import { NectrConnectionCheck } from './nectr-connection-check'
 import type { ClientUpdate } from '@/lib/schemas/client'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
@@ -91,7 +92,9 @@ export function ClientProfileView({
             ]}
           />
           <ChipsField clientId={client.id} fieldKey="excludedDates" label="Excluded dates" value={client.excludedDates} canEdit={canEdit} placeholder="2026-01-01, 2026-07-04" />
+          <KeyValueField clientId={client.id} fieldKey="nectrLocationId" label="NECTR Location ID" value={client.nectrLocationId} canEdit={canEdit} placeholder="e.g. MM92yp3LqV0bqR0UaTr5" />
         </KeyValueGrid>
+        {canEdit && <NectrConnectionCheck clientId={client.id} />}
       </PageSection>
 
       <PageSection title="Workflow">

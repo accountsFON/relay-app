@@ -130,4 +130,19 @@ describe('clientUpdateSchema', () => {
     const result = clientUpdateSchema.safeParse({ name: '' })
     expect(result.success).toBe(false)
   })
+
+  it('accepts a nectrLocationId string', () => {
+    const result = clientUpdateSchema.safeParse({ nectrLocationId: 'MM92yp3LqV0bqR0UaTr5' })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts an empty nectrLocationId (cleared field)', () => {
+    const result = clientUpdateSchema.safeParse({ nectrLocationId: '' })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a non-string nectrLocationId', () => {
+    const result = clientUpdateSchema.safeParse({ nectrLocationId: 123 })
+    expect(result.success).toBe(false)
+  })
 })
