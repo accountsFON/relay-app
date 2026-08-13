@@ -24,11 +24,10 @@ export type NectrScheduleResult =
  * The UTC instant for 8:00am on `postDate`'s calendar day (read in UTC) in
  * `timeZone`, as an ISO `.000Z` string. NECTR requires `.000Z` and honors it as
  * true UTC (Task 1 spike), so 8am-local must be converted to UTC. DST-aware via
- * Intl; 8am is far from the 2am DST boundary, so a single offset correction is
- * exact.
+ * Intl.
  */
 export function buildNectrScheduleDate(postDate: Date, timeZone: string): string {
-  const guessUtcMs = Date.UTC(
+  const wallUtcMs = Date.UTC(
     postDate.getUTCFullYear(),
     postDate.getUTCMonth(),
     postDate.getUTCDate(),
@@ -36,8 +35,14 @@ export function buildNectrScheduleDate(postDate: Date, timeZone: string): string
     0,
     0,
   )
-  const offsetMs = tzOffsetMs(timeZone, new Date(guessUtcMs))
-  return new Date(guessUtcMs - offsetMs).toISOString().replace(/\.\d{3}Z$/, '.000Z')
+  // Two-pass conversion: guess the offset at the "8am as UTC" instant, correct to
+  // a UTC estimate, then recompute the offset at that estimate. The second pass
+  // fixes the DST-transition-day edge (the zone offset at 8am-UTC can differ from
+  // the offset at 8am-local for zones west of Eastern) and converges for standard
+  // DST rules. 8am is never inside the skipped/repeated wall-clock hour itself.
+  let utcMs = wallUtcMs - tzOffsetMs(timeZone, new Date(wallUtcMs))
+  utcMs = wallUtcMs - tzOffsetMs(timeZone, new Date(utcMs))
+  return new Date(utcMs).toISOString().replace(/\.\d{3}Z$/, '.000Z')
 }
 
 /** Milliseconds `timeZone` is ahead of UTC at instant `at` (EDT => -14400000). */

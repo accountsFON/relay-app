@@ -40,6 +40,15 @@ describe('buildNectrScheduleDate', () => {
     // 2026-01-15 is EST (-05:00); 8am EST = 13:00 UTC
     expect(buildNectrScheduleDate(new Date('2026-01-15T00:00:00Z'), 'America/New_York')).toBe('2026-01-15T13:00:00.000Z')
   })
+  it('handles the Pacific spring-forward day (8am PDT)', () => {
+    expect(buildNectrScheduleDate(new Date('2026-03-08T00:00:00Z'), 'America/Los_Angeles')).toBe('2026-03-08T15:00:00.000Z')
+  })
+  it('handles the Pacific fall-back day (8am PST)', () => {
+    expect(buildNectrScheduleDate(new Date('2026-11-01T00:00:00Z'), 'America/Los_Angeles')).toBe('2026-11-01T16:00:00.000Z')
+  })
+  it('handles Mountain spring-forward (8am MDT)', () => {
+    expect(buildNectrScheduleDate(new Date('2026-03-08T00:00:00Z'), 'America/Denver')).toBe('2026-03-08T14:00:00.000Z')
+  })
 })
 
 describe('scheduleBatchToNectr', () => {
