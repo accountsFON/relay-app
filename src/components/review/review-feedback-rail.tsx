@@ -8,7 +8,6 @@ import { CaptionDiffView } from '@/components/preview/caption-diff-view'
 import { ChangesNavigator, type NavItem } from '@/components/review/changes-navigator'
 import { ResolveCheckbox } from '@/components/review/resolve-checkbox'
 import { DesignerFlagToggle } from '@/components/review/designer-flag-toggle'
-import { DesignerRevisionUpload } from '@/components/review/designer-revision-upload'
 import { diffText } from '@/lib/text-diff'
 import type { HydratedThread } from '@/server/repositories/threads'
 import type {
@@ -30,10 +29,6 @@ export type ReviewFeedbackRailProps = {
   isImplementingRevisions: boolean
   /** Batch sub-state is `awaiting_design_revisions` (rendered by a later task). */
   subStateAwaitingDesigner: boolean
-  /** Viewer holds `post.media.edit` (admin/AM/designer true, client false).
-   *  Gates the per-post image upload. Defaults to false so a caller that has
-   *  not resolved the permission never renders a write control by accident. */
-  canUploadImage?: boolean
   uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   selectedThreadId: string | null
   selectedPostId: string | null
@@ -159,11 +154,6 @@ type FeedbackRowProps = {
   post: FeedbackPostVM
   actions: FeedbackActions
   isDesigner: boolean
-  /** Batch is in the post-revision working step. No longer gates the upload,
-   *  only the wording of its heading. */
-  isImplementingRevisions: boolean
-  /** Viewer holds `post.media.edit`; gates the per-post image upload. */
-  canUploadImage: boolean
   uploadImage?: (file: File) => Promise<{ url: string; width: number; height: number }>
   isSelected: boolean
   selectedThreadId: string | null
@@ -176,8 +166,6 @@ function FeedbackRow({
   post,
   actions,
   isDesigner,
-  isImplementingRevisions,
-  canUploadImage,
   uploadImage,
   isSelected,
   selectedThreadId,
@@ -269,24 +257,9 @@ function FeedbackRow({
       {/* Expanded body — omitted for approved-clean rows */}
       {!collapsed && (
         <div className="space-y-2 px-3 pb-3">
-          {/* Swap in a new image for this post. For the designer this is the
-              one write they need on an otherwise read-only surface; for AMs and
-              admins it is the same fix-it-now affordance the internal preview
-              already offers. Gated on `post.media.edit` rather than on role +
-              step, so it follows the permission matrix; /api/posts/[id]/media
-              re-checks that permission and blocks completed relays server side. */}
-          {canUploadImage && (
-            <DesignerRevisionUpload
-              postId={post.postId}
-              currentMediaUrl={post.mediaUrls[0] ?? null}
-              heading={
-                isDesigner && isImplementingRevisions
-                  ? 'Revised image'
-                  : 'Post image'
-              }
-            />
-          )}
-
+          {/* No image-replace control here. It lives on the post image in the
+              center canvas (ReviewPostsCanvas -> canReplaceImage), matching the
+              internal /preview surface, so the rail stays feedback-only. */}
           {/* Caption suggestion area (AM-only actions) */}
           {showCaptionActions && post.suggestedCaption && (
             post.captionAccepted ? (
@@ -620,7 +593,6 @@ export function ReviewFeedbackRail({
   flagOpen,
   isImplementingRevisions,
   subStateAwaitingDesigner,
-  canUploadImage = false,
   uploadImage,
   selectedPostId,
   selectedThreadId,
@@ -766,8 +738,6 @@ export function ReviewFeedbackRail({
           post={post}
           actions={actions}
           isDesigner={isDesigner}
-          isImplementingRevisions={isImplementingRevisions}
-          canUploadImage={canUploadImage}
           uploadImage={uploadImage}
           isSelected={post.postId === selectedPostId}
           selectedThreadId={selectedThreadId}

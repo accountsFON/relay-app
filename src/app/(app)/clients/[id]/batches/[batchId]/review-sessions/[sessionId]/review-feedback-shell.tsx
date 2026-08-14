@@ -23,8 +23,9 @@ export type ReviewFeedbackShellProps = {
   userDbId?: string
   /**
    * Viewer holds `post.media.edit`. Resolved on the server by the page and
-   * forwarded to the rail, where it gates the per-post image upload. Distinct
-   * from `userDbId` above, which only enables comment-image attach.
+   * forwarded to the posts canvas, where it puts the replace affordance on
+   * the post image itself (same placement as the internal /preview surface).
+   * Distinct from `userDbId` above, which only enables comment-image attach.
    */
   canUploadImage?: boolean
   allAddressed: boolean
@@ -133,7 +134,6 @@ export function ReviewFeedbackShell({
           flagOpen={flagOpen}
           isImplementingRevisions={isImplementingRevisions}
           subStateAwaitingDesigner={subStateAwaitingDesigner}
-          canUploadImage={canUploadImage}
           uploadImage={uploadImage}
           selectedPostId={selectedPostId}
           selectedThreadId={selectedThreadId}
@@ -168,6 +168,7 @@ export function ReviewFeedbackShell({
           platform={platform}
           clientName={clientName}
           clientAvatarUrl={clientAvatarUrl}
+          canReplaceImage={canUploadImage}
         />
       </div>
     </div>

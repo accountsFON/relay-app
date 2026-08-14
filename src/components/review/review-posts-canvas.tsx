@@ -23,6 +23,14 @@ export type ReviewPostsCanvasProps = {
   platform: Platform
   clientName: string
   clientAvatarUrl?: string | null
+  /**
+   * Viewer holds `post.media.edit`. Forwarded to the platform post, which
+   * renders the drag/click replace affordance in the image corner. Same
+   * placement the internal /preview surface uses, so the control lives on the
+   * image itself rather than in the feedback rail. Defaults to false so a
+   * caller that has not resolved the permission renders no write affordance.
+   */
+  canReplaceImage?: boolean
 }
 
 export function ReviewPostsCanvas({
@@ -36,6 +44,7 @@ export function ReviewPostsCanvas({
   platform,
   clientName,
   clientAvatarUrl,
+  canReplaceImage = false,
 }: ReviewPostsCanvasProps) {
   void _unused
   const PostComponent = platform === 'facebook' ? FacebookPost : InstagramFeedPost
@@ -79,6 +88,7 @@ export function ReviewPostsCanvas({
               threads={post.threads}
               mode="internal"
               suppressInlinePopover
+              canReplaceImage={canReplaceImage}
               onOpenThread={(threadId) => onPinClick(post.postId, threadId)}
             />
           </div>

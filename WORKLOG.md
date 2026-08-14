@@ -32,6 +32,22 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-14 — Replace-image moved onto the post image, out of the feedback rail** (#433)
+  Placement fix on top of #432. That PR rendered the per-post upload in the left feedback rail, as a
+  "POST IMAGE" card with a Replace image button sitting among the comment threads. Wrong column: the
+  rail is for feedback, and a write control there reads as part of the comment section.
+  Now it sits where the internal `/preview` surface already puts it, on the post image itself in the
+  center canvas. `ReviewPostsCanvas` takes `canReplaceImage` and forwards it to the IG/FB post
+  component, which renders the existing drag/click corner overlay via `usePostImageReplace` — the
+  identical mechanism `/preview` uses through `InternalReviewShell`. Permission gate
+  (`post.media.edit`), upload route, and hook all unchanged; only placement moved.
+  Removed `DesignerRevisionUpload` + its tests (no remaining callers once the rail block went) and
+  `isImplementingRevisions` from `FeedbackRow` (the upload gate was its only consumer there). The
+  designer loses nothing: the overlay renders for anyone holding `post.media.edit` and the canvas is
+  not role-gated, so their control moved rather than disappeared, and now works at every step instead
+  of only during `implementing_revisions`.
+  Gate: tsc 0 + 2764 unit + `next build` 37/37 + eslint clean. No migration, no `src/server/jobs` change.
+
 - [x] **2026-08-13 — Client feedback: internal pins hidden from the magic link + per-post upload opened up** (#432)
   Two fixes off Julio's review of the client-feedback surface.
   (1) **Leak:** `/review/[token]` hydrated its feed with `listThreadsForBatch`, which filters on
@@ -41,7 +57,7 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
   `listClientThreadsForBatch` (`reviewerToken != null`), which already existed for the AM-side page.
   AM replies still show: `promotePostFeedback` opens that thread as `author: { kind: 'reviewer' }`,
   so the AM's answer is a comment inside a client-authored thread.
-  (2) **Upload gate:** the per-post image upload in the feedback rail was gated on
+  (2) **Upload gate** (placement corrected the next day by #433, see below): the per-post image upload in the feedback rail was gated on
   `isDesigner && isImplementingRevisions`, so AMs and admins never got one and designers only got one
   during a single step. Now follows the `post.media.edit` permission the page already resolved as
   `canUploadImage`, threaded page -> shell -> rail, defaulting false at every hop. No server change:
