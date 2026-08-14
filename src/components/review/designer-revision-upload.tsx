@@ -26,6 +26,10 @@ import { useReplacePostImage } from '@/components/posts/use-replace-post-image'
 export type DesignerRevisionUploadProps = {
   postId: string
   currentMediaUrl?: string | null
+  /** Section heading. Defaults to the designer-revision wording; the rail
+   *  passes a neutral 'Post image' when the viewer is not a designer working
+   *  through revisions, since nothing has been revised yet in that case. */
+  heading?: string
   /** Optional hook fired after a successful upload (in addition to the router
    *  refresh the control performs itself). */
   onUploaded?: (url: string) => void
@@ -34,6 +38,7 @@ export type DesignerRevisionUploadProps = {
 export function DesignerRevisionUpload({
   postId,
   currentMediaUrl,
+  heading = 'Revised image',
   onUploaded,
 }: DesignerRevisionUploadProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -52,7 +57,7 @@ export function DesignerRevisionUpload({
       className="mt-1 rounded-md border-l-2 border-primary bg-primary/5 px-2.5 py-2"
     >
       <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-primary">
-        Revised image
+        {heading}
       </p>
       {currentMediaUrl && (
         // eslint-disable-next-line @next/next/no-img-element
