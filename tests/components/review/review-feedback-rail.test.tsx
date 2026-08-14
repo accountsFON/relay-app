@@ -1122,16 +1122,28 @@ describe('ReviewFeedbackRail — designer flags (AM triage)', () => {
   })
 })
 
-describe('ReviewFeedbackRail — designer revised-image upload', () => {
+describe('ReviewFeedbackRail — per-post image upload', () => {
+  // The control used to be double-gated on `isDesigner && isImplementingRevisions`,
+  // which meant AMs and admins never got a per-post upload and designers only got
+  // one during a single step. It now follows the `post.media.edit` permission the
+  // page already resolves (true for admin/AM/designer, false for client), passed
+  // down as canUploadImage. The server is unchanged and still has the last word:
+  // /api/posts/[id]/media calls requireCan('post.media.edit') and blocks completed
+  // relays regardless of what the UI offers.
   function renderRow(
     posts: ReadonlyArray<FeedbackPostVM>,
-    opts: { isDesigner?: boolean; isImplementingRevisions?: boolean } = {},
+    opts: {
+      isDesigner?: boolean
+      isImplementingRevisions?: boolean
+      canUploadImage?: boolean
+    } = {},
   ) {
     render(
       <ReviewFeedbackRail
         posts={posts}
         actions={noopActions}
         isDesigner={opts.isDesigner ?? true}
+        canUploadImage={opts.canUploadImage ?? true}
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
@@ -1154,20 +1166,45 @@ describe('ReviewFeedbackRail — designer revised-image upload', () => {
     expect(screen.getByTestId('designer-revision-upload-post-1')).toBeInTheDocument()
   })
 
-  it('does not show the upload control for the designer when not implementing revisions', () => {
+  it('shows the upload control for the designer outside the revisions step', () => {
     renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
       isDesigner: true,
       isImplementingRevisions: false,
     })
-    expect(screen.queryByTestId('designer-revision-upload-post-1')).toBeNull()
+    expect(screen.getByTestId('designer-revision-upload-post-1')).toBeInTheDocument()
   })
 
-  it('does not show the upload control in the AM branch even while implementing revisions', () => {
+  it('shows the upload control in the AM branch too', () => {
+    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isDesigner: false,
+      isImplementingRevisions: false,
+    })
+    expect(screen.getByTestId('designer-revision-upload-post-1')).toBeInTheDocument()
+  })
+
+  it('hides the upload control when the viewer lacks post.media.edit', () => {
     renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
       isDesigner: false,
       isImplementingRevisions: true,
+      canUploadImage: false,
     })
     expect(screen.queryByTestId('designer-revision-upload-post-1')).toBeNull()
+  })
+
+  it('labels the section "Revised image" only for a designer working revisions', () => {
+    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isDesigner: true,
+      isImplementingRevisions: true,
+    })
+    expect(screen.getByText('Revised image')).toBeInTheDocument()
+  })
+
+  it('labels the section "Post image" for an AM outside the revisions step', () => {
+    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
+      isDesigner: false,
+      isImplementingRevisions: false,
+    })
+    expect(screen.getByText('Post image')).toBeInTheDocument()
   })
 })
 

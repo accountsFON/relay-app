@@ -21,6 +21,12 @@ export type ReviewFeedbackShellProps = {
    * absent, image attach in the dialogue is suppressed.
    */
   userDbId?: string
+  /**
+   * Viewer holds `post.media.edit`. Resolved on the server by the page and
+   * forwarded to the rail, where it gates the per-post image upload. Distinct
+   * from `userDbId` above, which only enables comment-image attach.
+   */
+  canUploadImage?: boolean
   allAddressed: boolean
   isSuperseded: boolean
   startNextRoundSlot?: React.ReactNode
@@ -47,6 +53,7 @@ export function ReviewFeedbackShell({
   actions,
   isDesigner,
   userDbId,
+  canUploadImage = false,
   allAddressed,
   isSuperseded,
   startNextRoundSlot,
@@ -126,6 +133,7 @@ export function ReviewFeedbackShell({
           flagOpen={flagOpen}
           isImplementingRevisions={isImplementingRevisions}
           subStateAwaitingDesigner={subStateAwaitingDesigner}
+          canUploadImage={canUploadImage}
           uploadImage={uploadImage}
           selectedPostId={selectedPostId}
           selectedThreadId={selectedThreadId}

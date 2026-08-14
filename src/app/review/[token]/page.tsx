@@ -8,7 +8,7 @@ import {
   findActiveClientSessionForLink,
   listSessionsForBatch,
 } from '@/server/repositories/reviewSessions'
-import { listThreadsForBatch } from '@/server/repositories/threads'
+import { listClientThreadsForBatch } from '@/server/repositories/threads'
 import { postHasNewAmReply } from './new-reply'
 import type {
   ReviewItemHydrated,
@@ -34,9 +34,10 @@ const SESSION_COOKIE_NAME = 'magic-link-session'
  *   2. Session valid and reviewer recognized -> load posts + review session
  *      state and render <ReviewSessionShell>.
  *
- * The v2 surface replaces the v1 thread-feed entirely. PostThread infra is
- * still wired for the AM-internal preview page; this page no longer renders
- * threads or per-pin markup affordances on the client surface.
+ * The v2 surface replaces the v1 thread-feed entirely. It still hydrates
+ * PostThread rows to render the reviewer's own pins as numbered badges, but
+ * only CLIENT-authored ones -- AM and designer pins stay on the internal
+ * preview page. See the listClientThreadsForBatch call below.
  */
 export default async function ReviewPage({
   params,
@@ -224,7 +225,16 @@ export default async function ReviewPage({
   // page. P2 #26: include RESOLVED threads too so a resolved pin stays visible
   // (greyed / struck) instead of vanishing; counts that gate submit routing scope
   // to open client pins in the shell.
-  const threadsByPostId = await listThreadsForBatch({
+  //
+  // CLIENT-authored threads only (reviewerToken != null). The unfiltered
+  // listThreadsForBatch also returns the pins AMs and designers leave each
+  // other on the internal preview surface, which is internal chatter the
+  // client must never see -- especially the resolved ones, which render
+  // greyed and would otherwise expose an entire prior AM/designer round.
+  // AM replies to the client still show: promotePostFeedback opens that
+  // thread with author kind 'reviewer', so the AM's answer is a comment
+  // inside a client-authored thread rather than a thread of its own.
+  const threadsByPostId = await listClientThreadsForBatch({
     batchId: link.batch.id,
     includeResolved: true,
   })

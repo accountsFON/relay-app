@@ -552,6 +552,7 @@ export default async function ReviewSessionDetailPage({
           allAddressed={allAddressed}
           isSuperseded={isSuperseded}
           userDbId={shellUserDbId}
+          canUploadImage={canUploadImage}
           clientName={client.name}
           clientAvatarUrl={null}
           startNextRoundSlot={startNextRoundSlot}

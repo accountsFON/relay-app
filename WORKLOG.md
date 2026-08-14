@@ -11,8 +11,8 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
-From the 2026-08-11 AM-team Relay launch meeting:
-- [ ] **Separate batch for the same client+month (rerun)** (built, gate green, awaiting merge) — generate confirm pop-up now offers Cancel / Replace / **Start a new batch** (re-exposes the auto-new path). New `forceNewBatch` fire intent bypasses the null-path drift guard; auto-new gives reruns a distinct " (N)" label (max-suffix+1, base-label match); the Drive month folder carries the suffix so a rerun does not clobber the first batch's graphics. First batch of a month is untouched (no pop-up, clean label, base folder). No migration; matching functions unchanged. Spec: `docs/superpowers/specs/2026-08-12-multiple-batches-per-month-design.md`. Gate: tsc + 2744 unit (+9) + next build + eslint.
+From the 2026-08-13 client-feedback review (Julio):
+- [ ] **(question) Should the designer also get the review-submitted digest email?** — on client submit the assigned AM and designer both get a bell mention, but the digest email goes only to the link creator and the assigned AM. Designer is bell-only today. Julio's call, no work started.
 
 From the 2026-08-06 tooltip clarity rollout (all 8 slices shipped: hover hints + the ⓘ discoverability glyph across every tooltipped control, PRs #390-#399):
 - [ ] **(optional, tooltips) Extend hover hints to any surfaces added later** — the rollout covered the current control set; new action buttons / permission keys / review controls should follow the same pattern (per-surface copy map + `SimpleTooltip` + `InfoHint` on text-labeled controls, bare on icon-only).
@@ -31,6 +31,29 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 ---
 
 ## Shipped
+
+- [x] **2026-08-13 — Client feedback: internal pins hidden from the magic link + per-post upload opened up** (#432)
+  Two fixes off Julio's review of the client-feedback surface.
+  (1) **Leak:** `/review/[token]` hydrated its feed with `listThreadsForBatch`, which filters on
+  `batchId` alone and returned every PostThread on the batch, including the pins AMs and designers
+  leave each other on the internal preview. With `includeResolved: true` (P2 #26) a client opening
+  their link saw a whole prior internal round greyed out on the images. Swapped to
+  `listClientThreadsForBatch` (`reviewerToken != null`), which already existed for the AM-side page.
+  AM replies still show: `promotePostFeedback` opens that thread as `author: { kind: 'reviewer' }`,
+  so the AM's answer is a comment inside a client-authored thread.
+  (2) **Upload gate:** the per-post image upload in the feedback rail was gated on
+  `isDesigner && isImplementingRevisions`, so AMs and admins never got one and designers only got one
+  during a single step. Now follows the `post.media.edit` permission the page already resolved as
+  `canUploadImage`, threaded page -> shell -> rail, defaulting false at every hop. No server change:
+  `/api/posts/[id]/media` already calls `requireCan('post.media.edit')` and blocks completed relays,
+  so the UI was strictly stricter than the enforced rule. Heading reads "Post image" unless a designer
+  is actively working revisions.
+  No migration, no `src/server/jobs` change, so `detect-pipeline-changes` correctly SKIPPED and the
+  merge was a plain Vercel deploy. Gate: tsc 0 + 2769 unit + `next build` + eslint clean.
+
+  **Not a bug, closed during the same review:** "client submit doesn't notify the AM/designer" was the
+  test client having no assigned account manager, so `mentionedUserIds` came back empty. The mention
+  path in `submitSessionAction` is correct and unit tested.
 
 - [x] **2026-08-12 — Fix: "Start a new batch" merged into the existing batch** (follow-up to #428)
   The force-new intent reached the ContentRun (targetBatchId=null) but the auto-finalizer's
