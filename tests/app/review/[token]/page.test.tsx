@@ -47,7 +47,12 @@ const mocks = vi.hoisted(() => {
     // Phase 4 item 22: pins hydration on the v2 client surface. Default
     // returns an empty Map so existing tests do not need to set anything
     // up unless they specifically care about thread rendering.
+    //
+    // The client surface must hydrate CLIENT-authored threads only, so the
+    // unfiltered listThreadsForBatch is mocked purely to assert it is never
+    // reached from this page.
     listThreadsForBatch: vi.fn().mockResolvedValue(new Map()),
+    listClientThreadsForBatch: vi.fn().mockResolvedValue(new Map()),
   }
 })
 
@@ -89,6 +94,8 @@ vi.mock('@/server/repositories/reviewSessions', () => ({
 vi.mock('@/server/repositories/threads', () => ({
   listThreadsForBatch: (...args: unknown[]) =>
     mocks.listThreadsForBatch(...args),
+  listClientThreadsForBatch: (...args: unknown[]) =>
+    mocks.listClientThreadsForBatch(...args),
 }))
 
 // Render-only stubs for the child components -- we are testing the page's
@@ -220,9 +227,38 @@ describe('ReviewPage /review/[token] (v2 surface)', () => {
     expect(html).not.toContain('data-testid="name-modal"')
     // P2 #26: resolved pins must stay visible, so the page hydrates resolved
     // threads too (guards against a silent revert of the includeResolved flag).
-    expect(mocks.listThreadsForBatch).toHaveBeenCalledWith(
+    expect(mocks.listClientThreadsForBatch).toHaveBeenCalledWith(
       expect.objectContaining({ includeResolved: true }),
     )
+  })
+
+  it('hydrates CLIENT-authored threads only, never the unfiltered batch list', async () => {
+    // Tenant/role leak guard. The unfiltered listThreadsForBatch returns every
+    // thread on the batch, including the pins AMs and designers leave each
+    // other on the internal preview surface. Those are internal chatter and
+    // must never reach the client's magic-link view -- including the resolved
+    // ones, which render greyed and would otherwise expose a whole prior
+    // AM/designer round. listClientThreadsForBatch scopes to reviewerToken
+    // != null, which still keeps AM replies: promotePostFeedback creates that
+    // thread with author kind 'reviewer', so the AM's answer lives as a
+    // comment inside a client-authored thread.
+    const cookieValue = signSession({
+      magicLinkId: FAKE_MAGIC_LINK_ID,
+      reviewerId: 'reviewer_1',
+    })
+    mocks.cookiesMock.mockResolvedValue(
+      makeCookieJar({ 'magic-link-session': cookieValue }),
+    )
+    mocks.findUniqueReviewer.mockResolvedValue({
+      id: 'reviewer_1',
+      name: 'Jordan Reviewer',
+      magicLinkId: FAKE_MAGIC_LINK_ID,
+    })
+
+    await renderPage()
+
+    expect(mocks.listClientThreadsForBatch).toHaveBeenCalledTimes(1)
+    expect(mocks.listThreadsForBatch).not.toHaveBeenCalled()
   })
 
   it('returns notFound when middleware-rejected (no x-magic-link-id header)', async () => {
