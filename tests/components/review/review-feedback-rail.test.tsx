@@ -1122,28 +1122,19 @@ describe('ReviewFeedbackRail — designer flags (AM triage)', () => {
   })
 })
 
-describe('ReviewFeedbackRail — per-post image upload', () => {
-  // The control used to be double-gated on `isDesigner && isImplementingRevisions`,
-  // which meant AMs and admins never got a per-post upload and designers only got
-  // one during a single step. It now follows the `post.media.edit` permission the
-  // page already resolves (true for admin/AM/designer, false for client), passed
-  // down as canUploadImage. The server is unchanged and still has the last word:
-  // /api/posts/[id]/media calls requireCan('post.media.edit') and blocks completed
-  // relays regardless of what the UI offers.
+describe('ReviewFeedbackRail — no image-replace control', () => {
+  // The replace-image affordance lives on the post image in the center canvas
+  // (ReviewPostsCanvas -> canReplaceImage), matching the internal /preview
+  // surface. The rail stays feedback-only, for every role and every step.
   function renderRow(
     posts: ReadonlyArray<FeedbackPostVM>,
-    opts: {
-      isDesigner?: boolean
-      isImplementingRevisions?: boolean
-      canUploadImage?: boolean
-    } = {},
+    opts: { isDesigner?: boolean; isImplementingRevisions?: boolean } = {},
   ) {
     render(
       <ReviewFeedbackRail
         posts={posts}
         actions={noopActions}
         isDesigner={opts.isDesigner ?? true}
-        canUploadImage={opts.canUploadImage ?? true}
         selectedPostId={null}
         selectedThreadId={null}
         onToggleThread={vi.fn()}
@@ -1158,53 +1149,22 @@ describe('ReviewFeedbackRail — per-post image upload', () => {
     )
   }
 
-  it('shows the upload control for the designer while implementing revisions', () => {
+  it('renders no upload control for a designer implementing revisions', () => {
     renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
       isDesigner: true,
       isImplementingRevisions: true,
-    })
-    expect(screen.getByTestId('designer-revision-upload-post-1')).toBeInTheDocument()
-  })
-
-  it('shows the upload control for the designer outside the revisions step', () => {
-    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
-      isDesigner: true,
-      isImplementingRevisions: false,
-    })
-    expect(screen.getByTestId('designer-revision-upload-post-1')).toBeInTheDocument()
-  })
-
-  it('shows the upload control in the AM branch too', () => {
-    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
-      isDesigner: false,
-      isImplementingRevisions: false,
-    })
-    expect(screen.getByTestId('designer-revision-upload-post-1')).toBeInTheDocument()
-  })
-
-  it('hides the upload control when the viewer lacks post.media.edit', () => {
-    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
-      isDesigner: false,
-      isImplementingRevisions: true,
-      canUploadImage: false,
     })
     expect(screen.queryByTestId('designer-revision-upload-post-1')).toBeNull()
+    expect(screen.queryByText(/replace image/i)).toBeNull()
   })
 
-  it('labels the section "Revised image" only for a designer working revisions', () => {
-    renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
-      isDesigner: true,
-      isImplementingRevisions: true,
-    })
-    expect(screen.getByText('Revised image')).toBeInTheDocument()
-  })
-
-  it('labels the section "Post image" for an AM outside the revisions step', () => {
+  it('renders no upload control in the AM branch', () => {
     renderRow([vm({ postId: 'post-1', threads: [makeThread('t1')] })], {
       isDesigner: false,
-      isImplementingRevisions: false,
+      isImplementingRevisions: true,
     })
-    expect(screen.getByText('Post image')).toBeInTheDocument()
+    expect(screen.queryByTestId('designer-revision-upload-post-1')).toBeNull()
+    expect(screen.queryByText(/replace image/i)).toBeNull()
   })
 })
 

@@ -2,7 +2,14 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
 vi.mock('@/components/preview/post-image-replace', () => ({
-  usePostImageReplace: () => ({ dragProps: {}, isDragging: false, overlay: null }),
+  usePostImageReplace: () => ({
+    dragProps: {},
+    isDragging: false,
+    // A recognizable node rather than null: the platform post renders the
+    // overlay only behind `canReplaceImage`, so its presence is the proof
+    // that the canvas forwarded the flag.
+    overlay: <div data-testid="image-replace-overlay" />,
+  }),
 }))
 
 import { ReviewPostsCanvas } from '@/components/review/review-posts-canvas'
@@ -282,5 +289,40 @@ describe('ReviewPostsCanvas', () => {
     ).not.toThrow()
     // Caption text is still visible
     expect(screen.getByTestId('instagram-post-caption').textContent).toContain('Test caption')
+  })
+
+  // The replace-image affordance belongs on the post image in the center
+  // canvas, matching the internal /preview surface, not in the left feedback
+  // rail. Gated by the caller on `post.media.edit`.
+  describe('canReplaceImage', () => {
+    it('forwards the flag so the post image renders the replace overlay', () => {
+      render(
+        <ReviewPostsCanvas
+          {...defaultProps}
+          posts={[vm({ postId: 'p1' })]}
+          canReplaceImage
+        />,
+      )
+      expect(screen.getByTestId('image-replace-overlay')).toBeTruthy()
+    })
+
+    it('renders no replace overlay by default', () => {
+      render(
+        <ReviewPostsCanvas {...defaultProps} posts={[vm({ postId: 'p1' })]} />,
+      )
+      expect(screen.queryByTestId('image-replace-overlay')).toBeNull()
+    })
+
+    it('puts an overlay on every post, not just the selected one', () => {
+      render(
+        <ReviewPostsCanvas
+          {...defaultProps}
+          posts={[vm({ postId: 'p1' }), vm({ postId: 'p2', postNumber: 2 })]}
+          selectedPostId="p1"
+          canReplaceImage
+        />,
+      )
+      expect(screen.getAllByTestId('image-replace-overlay')).toHaveLength(2)
+    })
   })
 })
