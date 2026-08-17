@@ -1122,6 +1122,86 @@ describe('ReviewFeedbackRail — designer flags (AM triage)', () => {
   })
 })
 
+describe('ReviewFeedbackRail — action footer', () => {
+  // Regression guard for the real defect behind "too squished": the post-level
+  // flag pill (inline-flex) and the addressed toggle (a bare <button>) used to
+  // be direct siblings of the row's space-y stack. Two inline-level boxes flow
+  // onto the SAME line, and space-y's margin-top does nothing for them, so they
+  // rendered jammed together with no gap. Grouping them as flex items is what
+  // makes the collision structurally impossible, so these tests assert the
+  // grouping rather than any spacing value.
+  function renderRow(
+    posts: ReadonlyArray<FeedbackPostVM>,
+    opts: { isDesigner?: boolean } = {},
+  ) {
+    render(
+      <ReviewFeedbackRail
+        posts={posts}
+        actions={noopActions}
+        isDesigner={opts.isDesigner ?? false}
+        selectedPostId={null}
+        selectedThreadId={null}
+        onToggleThread={vi.fn()}
+        onSelectPost={vi.fn()}
+        registerThreadRef={vi.fn()}
+        onScrollToAnchor={vi.fn()}
+        flagTotal={0}
+        flagOpen={0}
+        isImplementingRevisions={false}
+        subStateAwaitingDesigner={false}
+      />,
+    )
+  }
+
+  it('keeps both actions inside one container so they cannot share a line', () => {
+    renderRow([vm({ postId: 'post-1' })])
+    const footer = screen.getByTestId('rail-actions-post-1')
+    // Both controls must be DESCENDANTS of the footer, not loose siblings.
+    expect(footer).toContainElement(screen.getByTestId('rail-mark-addressed-post-1'))
+    expect(footer).toContainElement(screen.getByTestId('rail-flag-note-post-1-flag'))
+  })
+
+  it('lays the footer out as a flex row with a gap', () => {
+    renderRow([vm({ postId: 'post-1' })])
+    const footer = screen.getByTestId('rail-actions-post-1')
+    // The mechanism, not the cosmetics: inline siblings collide, flex items
+    // with a gap cannot.
+    expect(footer.className).toContain('flex')
+    expect(footer.className).toContain('gap-2')
+  })
+
+  it('renders the footer even when the post carries no flaggable review item', () => {
+    // verdict 'none' suppresses the flag pill; the addressed toggle still needs
+    // its own row rather than dangling as a bare inline sibling.
+    renderRow([vm({ postId: 'post-1', verdict: 'none' })])
+    const footer = screen.getByTestId('rail-actions-post-1')
+    expect(footer).toContainElement(screen.getByTestId('rail-mark-addressed-post-1'))
+    expect(screen.queryByTestId('rail-flag-note-post-1-flag')).toBeNull()
+  })
+
+  it('moves the flagged amber card out of the footer onto its own line', () => {
+    // Flagged, the toggle grows a note field and is too tall to sit beside a
+    // pill, so it must not be a footer child.
+    renderRow([
+      vm({
+        postId: 'post-1',
+        flags: [
+          { id: 'flag-1', threadId: null, reviewItemId: 'ri-1', note: 'redo it', done: false },
+        ],
+      }),
+    ])
+    const card = screen.getByTestId('rail-flag-note-post-1')
+    const footer = screen.getByTestId('rail-actions-post-1')
+    expect(footer).not.toContainElement(card)
+    expect(footer).toContainElement(screen.getByTestId('rail-mark-addressed-post-1'))
+  })
+
+  it('renders no action footer in the designer branch', () => {
+    renderRow([vm({ postId: 'post-1' })], { isDesigner: true })
+    expect(screen.queryByTestId('rail-actions-post-1')).toBeNull()
+  })
+})
+
 describe('ReviewFeedbackRail — no image-replace control', () => {
   // The replace-image affordance lives on the post image in the center canvas
   // (ReviewPostsCanvas -> canReplaceImage), matching the internal /preview

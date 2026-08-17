@@ -176,6 +176,17 @@ function FeedbackRow({
   const [pending, startTransition] = useTransition()
   const [generalDraft, setGeneralDraft] = useState('')
 
+  // Post-level designer flag, resolved once so the footer below can branch on
+  // its shape. Unflagged it is a compact pill that shares the footer row with
+  // the addressed toggle; flagged it becomes an amber card with a note field,
+  // too tall to sit beside a pill, so it takes its own line above the footer.
+  const postLevelFlag =
+    post.flags.find((f) => f.reviewItemId === post.reviewItemId) ?? null
+  const showPostLevelFlag =
+    post.reviewItemId !== null &&
+    post.verdict !== 'none' &&
+    post.verdict !== 'caption_edited'
+
   // ---------------------------------------------------------------------------
   // Auto-address roll-up
   // Resolves the given item (pin thread or note) and, if it is the last unresolved
@@ -256,7 +267,10 @@ function FeedbackRow({
 
       {/* Expanded body — omitted for approved-clean rows */}
       {!collapsed && (
-        <div className="space-y-2 px-3 pb-3">
+        // space-y-3, not -2: the cards inside carry p-2.5, so an 8px gap between
+        // them was tighter than the padding within them and the grouping read
+        // inverted. Between-group space must exceed within-group space.
+        <div className="space-y-3 px-3 pb-3">
           {/* No image-replace control here. It lives on the post image in the
               center canvas (ReviewPostsCanvas -> canReplaceImage), matching the
               internal /preview surface, so the rail stays feedback-only. */}
@@ -390,7 +404,7 @@ function FeedbackRow({
               />
               {/* AM-only: route this client pin to the designer. */}
               {!isDesigner && (
-                <div className="mt-1">
+                <div className="mt-1.5">
                   <DesignerFlagToggle
                     flag={post.flags.find((f) => f.threadId === thread.id) ?? null}
                     onFlag={(note) =>
@@ -516,16 +530,12 @@ function FeedbackRow({
               </div>
             )}
 
-          {/* AM-only: route this post's note/verdict to the designer. Only when
-              the post carries a review item worth flagging. Caption edits are
-              excluded: the AM handles that copy inline (accept/reject), it is
-              not designer work. */}
-          {!isDesigner &&
-            post.reviewItemId &&
-            post.verdict !== 'none' &&
-            post.verdict !== 'caption_edited' && (
+          {/* AM-only, flagged state: the toggle becomes an amber card with a
+              note field, so it takes its own line rather than sharing the
+              footer row below. */}
+          {!isDesigner && showPostLevelFlag && postLevelFlag !== null && (
             <DesignerFlagToggle
-              flag={post.flags.find((f) => f.reviewItemId === post.reviewItemId) ?? null}
+              flag={postLevelFlag}
               onFlag={(note) =>
                 actions.flagForDesigner(post.postId, { reviewItemId: post.reviewItemId! }, note)
               }
@@ -551,25 +561,52 @@ function FeedbackRow({
               ) : null
             })()}
 
-          {/* Mark addressed / Move back (AM only) */}
+          {/* AM action footer.
+              Both controls here are inline-level, and as bare siblings of this
+              space-y stack they shared a single line with no gap between them
+              (margin-top does nothing for inline boxes). Grouping them as flex
+              items is the actual fix, not extra padding: flex items cannot
+              collapse onto each other. The top rule doubles as the row's
+              closing edge, which is what makes each post read as one unit.
+              The flagged card renders above instead, so only the compact pill
+              ever shares this row. */}
           {!isDesigner && (
-            <button
-              type="button"
-              data-testid={`rail-mark-addressed-${post.postId}`}
-              disabled={pending}
-              onClick={() =>
-                startTransition(() => {
-                  if (post.addressed) {
-                    void actions.unmarkAddressed(post.postId, post.reviewItemId)
-                  } else {
-                    void actions.markAddressed(post.postId, post.reviewItemId)
-                  }
-                })
-              }
-              className="text-[12px] text-muted-foreground underline-offset-2 hover:underline disabled:opacity-60"
+            <div
+              data-testid={`rail-actions-${post.postId}`}
+              className="mt-1 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5"
             >
-              {post.addressed ? 'Move back' : 'Mark addressed'}
-            </button>
+              {showPostLevelFlag && postLevelFlag === null && (
+                <DesignerFlagToggle
+                  flag={null}
+                  onFlag={(note) =>
+                    actions.flagForDesigner(
+                      post.postId,
+                      { reviewItemId: post.reviewItemId! },
+                      note,
+                    )
+                  }
+                  onUnflag={actions.unflagForDesigner}
+                  testId={`rail-flag-note-${post.postId}`}
+                />
+              )}
+              <button
+                type="button"
+                data-testid={`rail-mark-addressed-${post.postId}`}
+                disabled={pending}
+                onClick={() =>
+                  startTransition(() => {
+                    if (post.addressed) {
+                      void actions.unmarkAddressed(post.postId, post.reviewItemId)
+                    } else {
+                      void actions.markAddressed(post.postId, post.reviewItemId)
+                    }
+                  })
+                }
+                className="ml-auto inline-flex items-center rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {post.addressed ? 'Move back' : 'Mark addressed'}
+              </button>
+            </div>
           )}
         </div>
       )}

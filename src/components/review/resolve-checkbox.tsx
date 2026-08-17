@@ -108,12 +108,12 @@ export function ResolveCheckbox({
           type="button"
           onClick={onSelect}
           aria-label={`Open pin: ${label}`}
-          className="flex min-w-0 flex-1 flex-col rounded-md text-left hover:bg-neutral-50"
+          className="flex min-w-0 flex-1 flex-col gap-1 rounded-md text-left hover:bg-neutral-50"
         >
           {content}
         </button>
       ) : (
-        <span className="flex min-w-0 flex-col">{content}</span>
+        <span className="flex min-w-0 flex-col gap-1">{content}</span>
       )}
     </div>
   )
