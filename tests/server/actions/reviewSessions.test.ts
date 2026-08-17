@@ -88,6 +88,14 @@ vi.mock('@/server/services/relay', () => ({
   advanceFromClientReview: vi.fn(),
 }))
 
+vi.mock('@/server/services/autoFlagClientPins', () => ({
+  autoFlagClientPins: vi.fn().mockResolvedValue({
+    flagged: 0,
+    skippedCaption: 0,
+    skippedExisting: 0,
+  }),
+}))
+
 vi.mock('@/lib/resend', () => ({
   sendEmail: vi.fn(),
 }))
@@ -135,6 +143,7 @@ import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
 import { getOrgBranding } from '@/server/repositories/organizations'
 import { advanceFromClientReview } from '@/server/services/relay'
+import { autoFlagClientPins } from '@/server/services/autoFlagClientPins'
 import { bulkResolveOnPost, bulkReopenOnPost } from '@/server/repositories/threads'
 import {
   acceptCaptionEditAction,
@@ -631,6 +640,118 @@ describe('submitSessionAction', () => {
       expect.arrayContaining(['user_am_123', 'user_designer_456']),
     )
     expect(activityInput.mentionedUserIds).toHaveLength(2)
+  })
+
+  it('auto-flags the client pins for the designer, attributed to the link creator', async () => {
+    primeReviewerResolve()
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      status: 'in_progress',
+      round: 1,
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      items: [{ id: 'ri_1', postId: 'post_1', decision: 'changes_requested' }],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 0,
+        changesRequested: 1,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      // The scalar the action prefers. Non-null in the schema.
+      createdBy: 'user_creator',
+      creator: { id: 'user_creator', name: 'Caleb', email: 'caleb@fonmarketing.com' },
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        label: 'May 2026',
+        scheduledAt: null,
+        client: {
+          id: CLIENT_ID,
+          name: 'Akkoo Coffee',
+          assignedAmId: 'user_am_123',
+          assignedDesignerId: 'user_designer_456',
+          assignedAm: { id: 'user_am_123', name: 'Mollie', email: 'mollie@fonmarketing.com' },
+        },
+      },
+    } as never)
+    vi.mocked(db.post.findMany).mockResolvedValue([] as never)
+    vi.mocked(sendEmail).mockResolvedValue({ id: 'resend_msg_1' } as never)
+
+    await submitSessionAction({ token: TOKEN })
+
+    expect(autoFlagClientPins).toHaveBeenCalledWith({
+      batchId: BATCH_ID,
+      createdById: 'user_creator',
+    })
+  })
+
+  it('still reports a successful submit when auto-flagging throws', async () => {
+    // The submission is already persisted before this side effect runs, exactly
+    // like the #425 Drive upload. A convenience failure must not surface as a
+    // failed review to the client.
+    primeReviewerResolve()
+    vi.mocked(findActiveClientSessionForLink).mockResolvedValue({
+      id: SESSION_ID,
+      magicLinkId: MAGIC_LINK_ID,
+      status: 'in_progress',
+      round: 1,
+    } as never)
+    vi.mocked(findSessionWithItems).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      items: [{ id: 'ri_1', postId: 'post_1', decision: 'changes_requested' }],
+    } as never)
+    vi.mocked(submitSession).mockResolvedValue({
+      id: SESSION_ID,
+      round: 1,
+      submittedAt: new Date(),
+      submittedSummary: {
+        approved: 0,
+        changesRequested: 1,
+        captionEdited: 0,
+        totalPosts: 1,
+      },
+    } as never)
+    vi.mocked(db.magicLink.findUnique).mockResolvedValue({
+      id: MAGIC_LINK_ID,
+      batchId: BATCH_ID,
+      createdBy: 'user_creator',
+      creator: { id: 'user_creator', name: 'Caleb', email: 'caleb@fonmarketing.com' },
+      batch: {
+        id: BATCH_ID,
+        clientId: CLIENT_ID,
+        label: 'May 2026',
+        scheduledAt: null,
+        client: {
+          id: CLIENT_ID,
+          name: 'Akkoo Coffee',
+          assignedAmId: 'user_am_123',
+          assignedDesignerId: null,
+          assignedAm: { id: 'user_am_123', name: 'Mollie', email: 'mollie@fonmarketing.com' },
+        },
+      },
+    } as never)
+    vi.mocked(db.post.findMany).mockResolvedValue([] as never)
+    vi.mocked(sendEmail).mockResolvedValue({ id: 'resend_msg_1' } as never)
+    vi.mocked(autoFlagClientPins).mockRejectedValueOnce(new Error('db exploded'))
+
+    await expect(submitSessionAction({ token: TOKEN })).resolves.toMatchObject({
+      ok: true,
+    })
+    // The activity event still fired, so the AM is still notified.
+    expect(recordActivity).toHaveBeenCalled()
   })
 
   it('mentions only the AM when assignedDesignerId is null', async () => {

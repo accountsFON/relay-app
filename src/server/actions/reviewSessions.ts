@@ -20,6 +20,7 @@ import { advanceFromClientReview } from '@/server/services/relay'
 import { mapReviewDecision, isApprovedWithFeedback } from '@/lib/relay-review-decision'
 import { snapshotPostVersion } from '@/server/services/postVersions'
 import { recordActivity } from '@/server/services/activity'
+import { autoFlagClientPins } from '@/server/services/autoFlagClientPins'
 import { sendEmail } from '@/lib/resend'
 import { requireClientEditor } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
@@ -462,6 +463,35 @@ export async function submitSessionAction(input: {
       },
       mentionedUserIds,
     })
+  }
+
+  // Route the client's pins to the designer so the AM does not have to click
+  // "Flag for designer" on feedback the client left precisely because they want
+  // the design changed. Image pins and post-level notes only; caption pins are
+  // the AM's copy work. Attributed to the link's creator because
+  // DesignerFlag.createdById needs a real User and a magic-link reviewer is not
+  // one. Idempotent, so a re-submit cannot duplicate.
+  //
+  // Best effort, exactly like the #425 Drive upload: the client's submission has
+  // already been persisted above and must never roll back because a convenience
+  // side effect failed. A flag is also not a notification, so nothing reaches
+  // the designer until the AM presses "Send to designer".
+  // createdBy is non-null in the schema, but guard anyway: passing a falsy id
+  // through would trip the FK inside the loop after some flags had been written.
+  const flagCreatorId = link?.createdBy ?? link?.creator?.id ?? null
+  if (link && flagCreatorId) {
+    try {
+      await autoFlagClientPins({
+        batchId: link.batchId,
+        createdById: flagCreatorId,
+      })
+    } catch (err) {
+      console.error('[review] autoFlagClientPins failed', {
+        reviewSessionId: active.id,
+        batchId: link.batchId,
+        err: err instanceof Error ? err.message : String(err),
+      })
+    }
   }
 
   let emailError: string | undefined
