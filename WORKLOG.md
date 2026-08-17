@@ -32,6 +32,33 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-17 - /api/health now reports the deployed commit** (#436)
+  Built in response to the GitHub outage the same day, though it pays off on any normal deploy too.
+  During the incident (Actions, API and Pull Requests major outage, Webhooks partial) #434 merged and
+  deployed to prod cleanly while neither the GitHub deployment record nor the commit status ever
+  appeared, so the merge looked stuck for 17 minutes; #435 hit the mirror image and got no preview
+  build at all because the push webhook never arrived. The outage was not ours to fix. Not being able
+  to tell what is deployed was.
+  `/api/health` already existed, was already public, and already answered "can this build work"
+  (env vars set, database reachable). It could not answer "WHICH build is this". It now returns a
+  `version` block (`commit`, `fullCommit`, `branch`, `env`, `deploymentId`) from the env vars Vercel
+  sets on every deployment, so verification is `curl relay-app-xi.vercel.app/api/health` compared
+  against `git log --oneline -1`, depending on neither GitHub nor Vercel's API.
+  Two deliberate placements: `version` sits OUTSIDE `checks`, because `allOk` scans every value in
+  `checks` for MISSING/FAILED prefixes and a branch named `fix/MISSING-thing` would otherwise flip the
+  endpoint to degraded (there is a test for that); and `version` reports even when the probe is
+  degraded, since a broken deploy is exactly when you need to know which commit is serving.
+  Exposes only identifiers, no values and no secrets. The endpoint already reported which env vars are
+  set, which is the more sensitive half, unchanged.
+  7 new tests. Gate: tsc 0 + 2789 unit + `next build` + eslint clean. No migration, no schema change.
+  Merged `90cba0d` and **verified against itself on prod**: the live endpoint returns
+  `version.commit: "90cba0d"`, which also confirms Vercel populates `VERCEL_GIT_COMMIT_SHA` at
+  runtime, the one thing the unit tests could not prove.
+  **Note:** preview deployments sit behind Vercel SSO, so an anonymous curl of a preview URL gets a
+  302 to `vercel.com/sso-api`, not the app. Preview URLs work in a browser for logged-in team members.
+  Do not treat a curl against a preview as proof that anything is serving.
+
+
 - [x] **2026-08-17 - Client magic-link pins auto-flag the designer on submit** (#435)
   Julio: when pins are created by the magic link it should auto flag the designer. An AM was
   hand-clicking "Flag for designer" on pins a client left precisely because they want the design
