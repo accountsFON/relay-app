@@ -92,13 +92,17 @@ export function PinCommentRow({
 
         {/* Author + body */}
         <div className="min-w-0 flex-1">
-          <span className="block break-words text-[12px] font-semibold text-foreground">
+          {/* mb-1 + relaxed body leading below: at 12px semibold over 13px
+              regular the two lines are close enough in size that flush
+              stacking reads as one smudge rather than a person and what they
+              said. */}
+          <span className="mb-1 block break-words text-[12px] font-semibold text-foreground">
             {authorName(firstComment.author)}
           </span>
           {firstComment.body ? (
             <p
               className={cn(
-                'whitespace-pre-wrap break-words text-[13px] text-foreground',
+                'whitespace-pre-wrap break-words text-[13px] leading-relaxed text-foreground',
               )}
             >
               {firstComment.body}
