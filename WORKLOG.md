@@ -32,6 +32,29 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-17 — Feedback rail spacing: untangled the row** (#434)
+  Julio: the client-feedback rail is too squished together. Four defects, one an actual layout bug.
+  **The bug:** the row body is a `space-y-2` stack whose last two children were INLINE-level buttons
+  (the flag toggle renders `inline-flex`, Mark addressed was a bare `<button>`). Adjacent inline boxes
+  flow onto the same line and `space-y`'s `margin-top` cannot separate them, so they rendered jammed
+  with no gap. The identical pill higher up escapes it only because it sits in a `<div className="mt-1">`.
+  Fixed by grouping both as flex items in a footer with a `gap` and a `border-t` closing rule, so the
+  collision is structurally impossible rather than padded around. `DesignerFlagToggle` is only a compact
+  pill while unflagged; flagged it becomes an amber card with a note field, so the post-level flag is now
+  resolved once at the top of `FeedbackRow` and rendered either as that card above the footer or as the
+  pill inside it.
+  **Plus three:** author name and comment printed flush (`mb-1` on the name, `leading-relaxed` on the
+  body, `gap-1` on the ResolveCheckbox label column); one uniform 8px gap separating cards that carry
+  10px internal padding, so grouping read inverted (stack to `space-y-3`, per-thread flag wrapper to
+  `mt-1.5`); and Mark addressed as bare underlined text touching a bordered pill, now the same muted pill.
+  Tests assert the grouping, not spacing values: 5 new cases, all of which fail against the old markup.
+  Presentation only, no behavior or permission change.
+  Gate: tsc 0 + 2769 unit + `next build` 37/37 + eslint clean. No migration, no `src/server/jobs` change.
+  Spec: `docs/superpowers/specs/2026-08-17-feedback-rail-spacing-design.md`. Merged `8469c35`.
+  **Note:** Vercel deployed this to prod normally (Ready, aliased to relay-app-xi.vercel.app) but never
+  posted the GitHub deployment or commit status, so `gh` showed no prod deploy. Verify with
+  `vercel ls` rather than trusting GitHub statuses if this recurs.
+
 - [x] **2026-08-14 — Replace-image moved onto the post image, out of the feedback rail** (#433)
   Placement fix on top of #432. That PR rendered the per-post upload in the left feedback rail, as a
   "POST IMAGE" card with a Replace image button sitting among the comment threads. Wrong column: the
