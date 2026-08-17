@@ -32,6 +32,34 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-17 - Client magic-link pins auto-flag the designer on submit** (#435)
+  Julio: when pins are created by the magic link it should auto flag the designer. An AM was
+  hand-clicking "Flag for designer" on pins a client left precisely because they want the design
+  changed. New `autoFlagClientPins` service, called best-effort from `submitSessionAction`.
+  **Why it is safe:** a flag is NOT a notification. The designer is only engaged by the AM's explicit
+  "Send to designer" (`requestDesignChangesAction` -> `awaiting_design_revisions` + notify), so
+  auto-flags pre-fill the AM's triage list without pinging anyone, and the AM can still unflag.
+  What it does change: the AM's job flips from picking what to send to removing what should not go.
+  **Attribution, no migration needed:** `DesignerFlag.createdById` is a required User FK and a
+  magic-link reviewer is a `MagicLinkReviewer`, not a User. Flags are attributed to
+  `MagicLink.createdBy`, the AM who sent the link, which is itself non-null. `Client.assignedAmId` was
+  rejected because it IS nullable, and a null one already caused a false "submit notifications are
+  broken" report on 2026-08-13. Also: `flagFeedbackForDesignerAction` opens with
+  `requireClientEditor()`, so a client can never reach it, hence a service on the already
+  authenticated submit path.
+  **Two decisions (Julio's calls):** ON SUBMIT rather than per pin, because clients add/edit/delete
+  pins while working and an abandoned review would leave stale flags forever; and IMAGE PINS PLUS
+  POST-LEVEL NOTES ONLY, never caption pins, because the rail already hides the flag control for
+  `caption_edited` ("the AM handles that copy inline, it is not designer work").
+  Idempotent against existing flags so re-submit and round 2 cannot duplicate. Verdict is deliberately
+  not a filter: a pin on an approved post is still a change request.
+  Tests: 11 service cases (each kind, idempotency, attribution, counts, plus a guard that the default
+  query only reads open client-authored threads, the same leak class as #432) and 2 action cases.
+  Gate: tsc 0 + 2782 unit + `next build` + eslint clean. No migration, no schema change. Merged `aad00f2`.
+  **Accepted edge:** an AM who deliberately unflags a pin will see it return if the client re-submits
+  that same session. Re-submitting reads as restating the feedback. Easy to change if that annoys anyone.
+
+
 - [x] **2026-08-17 — Feedback rail spacing: untangled the row** (#434)
   Julio: the client-feedback rail is too squished together. Four defects, one an actual layout bug.
   **The bug:** the row body is a `space-y-2` stack whose last two children were INLINE-level buttons
