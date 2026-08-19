@@ -32,6 +32,38 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-19 - Caption editing checks the same permission everywhere** (#437)
+  Reported by Julio: the AM team could open the caption editor, type, and then get "Couldn't save your
+  changes. You may not have permission to edit captions." on Save.
+  **Root cause: the UI and the write path asked different questions.** The batch page and the preview
+  page decided whether to show the editor from `client.edit` (canEditClients); the write enforces
+  `post.edit` deep inside `assertCanEditPost`. An AM holding client.edit but not post.edit got a fully
+  working editor that refused at the last moment. `post.edit` is labelled "Edit captions / hashtags"
+  in the permissions editor, so an admin switching that off produces exactly this.
+  **Three fixes.** (1) The affordance now follows `post.edit` via a new `canEditPostContent(ctx)`,
+  wired into the batch page (PostCard + version history, both of which write post content) and the
+  preview page (canEditCaption); kept separate from canEdit/client.edit which still gates archiving,
+  pins and the checklist. (2) `assertCanEditPost` resolved permissions from only role + personal
+  overrides, silently dropping org role defaults (so a grant or revoke in the role-defaults editor did
+  nothing at that gate) and platformOwner (so an owner whose role lacks post.edit was refused); it now
+  loads all four inputs `can()` takes. (3) Both save surfaces caught EVERY error and rendered the
+  permission message whatever went wrong, which was right by luck here and misleading for a locked
+  relay, an out-of-scope post or a DB fault. `updatePostAction` now returns a typed result naming the
+  reason ('no-permission' | 'locked' | 'not-found'); only unexpected faults throw. Copy in
+  `src/lib/post-save-error.ts`, and the permission case names the exact toggle to flip.
+  Two bonus repairs in that path: the permission check moved AHEAD of the version snapshot so a
+  refused save no longer leaves half-written history, and an out-of-scope save used to hit a bare
+  `return` (editor closed, edit discarded, no message at all) and now reports.
+  Tests: 8 on the assertCanEditPost resolution, 6 on the typed results, 7 on the message helper, 4 on
+  PostCard's save handling, plus page-level guards on BOTH surfaces proving the editor disappears when
+  client.edit is true and post.edit is false. That last pair is the real regression guard.
+  Gate: tsc 0 + 2816 unit + `next build` + eslint clean. No migration, no schema change, no
+  permission-key change. Merged `624dad2`, prod verified via `/api/health` in ~2 minutes.
+  **Does NOT restore access.** The app is now honest (no Edit button when you lack post.edit).
+  Turning "Edit captions / hashtags" back on for the affected AMs is a separate change in
+  Admin -> Users.
+
+
 - [x] **2026-08-17 - /api/health now reports the deployed commit** (#436)
   Built in response to the GitHub outage the same day, though it pays off on any normal deploy too.
   During the incident (Actions, API and Pull Requests major outage, Webhooks partial) #434 merged and
