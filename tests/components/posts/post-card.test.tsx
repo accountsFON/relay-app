@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { toast } from 'sonner'
 import { PostCard } from '@/components/posts/post-card'
 import { updatePostAction } from '@/server/actions/posts'
+import { postSaveErrorMessage, POST_SAVE_UNEXPECTED } from '@/lib/post-save-error'
 import {
   PostListCollapseProvider,
   PostListExpandAllToggle,
@@ -105,16 +106,60 @@ describe('PostCard Edit button permission gate', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
   })
 
-  it('shows a friendly toast and does not throw when saving a caption fails', async () => {
+  it('shows a generic fault toast, without blaming permissions, when the save throws', async () => {
+    // A real fault (database, network) must NOT be reported as a permission
+    // problem, which is what the old blanket catch did for every failure.
     vi.mocked(updatePostAction).mockRejectedValueOnce(new Error('Error 12345'))
     render(<PostCard post={basePost} canEdit />)
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => {
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(POST_SAVE_UNEXPECTED)
+    })
+    expect(vi.mocked(toast.error).mock.calls[0][0]).not.toMatch(/permission/i)
+  })
+
+  it('names the permission and keeps the editor open when the save is refused', async () => {
+    // The 2026-08-19 AM case, now reported accurately instead of guessed at.
+    vi.mocked(updatePostAction).mockResolvedValueOnce({
+      ok: false,
+      reason: 'no-permission',
+    })
+    render(<PostCard post={basePost} canEdit />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
-        "Couldn't save your changes. You may not have permission to edit captions.",
+        postSaveErrorMessage('no-permission'),
       )
     })
+    // Editor stays open so the typed draft is not discarded.
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+  })
+
+  it('tells the user a completed relay is locked rather than guessing at permissions', async () => {
+    vi.mocked(updatePostAction).mockResolvedValueOnce({ ok: false, reason: 'locked' })
+    render(<PostCard post={basePost} canEdit />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
+        postSaveErrorMessage('locked'),
+      )
+    })
+  })
+
+  it('closes the editor on a successful save', async () => {
+    // Cleared explicitly: toast.error is shared across this describe block.
+    vi.mocked(toast.error).mockClear()
+    vi.mocked(updatePostAction).mockResolvedValueOnce({ ok: true })
+    render(<PostCard post={basePost} canEdit />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+    })
+    expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
   })
 })
 

@@ -21,6 +21,11 @@ import {
 } from '@/server/actions/threads'
 import { toast } from 'sonner'
 import { updatePostAction } from '@/server/actions/posts'
+import {
+  postSaveErrorMessage,
+  isPostSaveReason,
+  POST_SAVE_UNEXPECTED,
+} from '@/lib/post-save-error'
 import { uploadCommentImage } from '@/lib/upload-comment-image'
 import type { MentionTarget } from '@/lib/mentions'
 type HydratedThread = FeedPostProps['threads'][number]
@@ -389,16 +394,25 @@ export function InternalReviewShell({
                         canEditCaption && !locked
                           ? async (draft) => {
                               try {
-                                await updatePostAction(post.id, { caption: draft })
+                                const result = await updatePostAction(post.id, {
+                                  caption: draft,
+                                })
+                                if (!result.ok) {
+                                  // Expected refusal: say which one it is, and
+                                  // throw so the card keeps the editor open with
+                                  // the draft intact.
+                                  toast.error(postSaveErrorMessage(result.reason))
+                                  throw new Error(result.reason)
+                                }
                                 startTransition(() => router.refresh())
                               } catch (e) {
-                                // Thrown server-action errors are masked as an
-                                // opaque digest in production; show a generic
-                                // friendly message. Re-throw so the card keeps
-                                // the editor open with the draft intact.
-                                toast.error(
-                                  "Couldn't save your changes. You may not have permission to edit captions.",
-                                )
+                                // Unexpected faults only. Thrown server-action
+                                // errors are masked as an opaque digest in
+                                // production, so e.message would be a reference
+                                // number. Re-thrown for the same reason above.
+                                if (!(e instanceof Error && isPostSaveReason(e.message))) {
+                                  toast.error(POST_SAVE_UNEXPECTED)
+                                }
                                 throw e
                               }
                             }

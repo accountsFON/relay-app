@@ -16,6 +16,7 @@ vi.mock('@/server/auth/access', () => ({
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
   canEditClients: vi.fn(),
+  canEditPostContent: vi.fn(),
   canComment: vi.fn(),
   canUploadPostMedia: vi.fn(),
 }))
@@ -168,6 +169,7 @@ import BatchPreviewPage from '@/app/(app)/clients/[id]/batches/[batchId]/preview
 import {
   requireClientViewer,
   canEditClients,
+  canEditPostContent,
   canComment,
 } from '@/server/middleware/permissions'
 import { findClientForUser } from '@/server/repositories/clients'
@@ -256,6 +258,7 @@ describe('BatchPreviewPage', () => {
     // Default: AM editor context
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtxAM)
     vi.mocked(canEditClients).mockReturnValue(true)
+    vi.mocked(canEditPostContent).mockReturnValue(true)
     vi.mocked(canComment).mockReturnValue(true)
     vi.mocked(findClientForUser).mockResolvedValue(mockClient as never)
     vi.mocked(findBatch).mockResolvedValue(mockBatch as never)
@@ -303,6 +306,18 @@ describe('BatchPreviewPage', () => {
     expect(screen.getByTestId('shell-allowPostPins')).toHaveTextContent('true')
   })
 
+  it('hides the caption editor when the AM holds client.edit but NOT post.edit', async () => {
+    // The 2026-08-19 AM bug. The Edit affordance used to follow client.edit
+    // while the write path enforces post.edit, so an AM in this exact state got
+    // a working editor that refused to save. The affordance must now disappear
+    // instead. allowPostPins still follows client.edit, so it stays on.
+    vi.mocked(canEditClients).mockReturnValue(true)
+    vi.mocked(canEditPostContent).mockReturnValue(false)
+    await renderPage({ id: 'client_1', batchId: 'batch_1' })
+    expect(screen.getByTestId('shell-canEditCaption')).toHaveTextContent('false')
+    expect(screen.getByTestId('shell-allowPostPins')).toHaveTextContent('true')
+  })
+
   it('renders the AM/designer chat FAB for the AM editor', async () => {
     await renderPage({ id: 'client_1', batchId: 'batch_1' })
     expect(screen.getByTestId('internal-chat-fab')).toBeInTheDocument()
@@ -313,6 +328,7 @@ describe('BatchPreviewPage', () => {
   it('gives the assigned designer the markup shell with canEditCaption=false and allowPostPins=false', async () => {
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtxDesigner)
     vi.mocked(canEditClients).mockReturnValue(false)
+    vi.mocked(canEditPostContent).mockReturnValue(false)
     await renderPage({ id: 'client_1', batchId: 'batch_1' })
     expect(screen.getByTestId('internal-review-shell')).toBeInTheDocument()
     expect(screen.getByTestId('shell-canEditCaption')).toHaveTextContent('false')
@@ -322,6 +338,7 @@ describe('BatchPreviewPage', () => {
   it('shows Mark-revisions-done to the designer only when awaiting revisions', async () => {
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtxDesigner)
     vi.mocked(canEditClients).mockReturnValue(false)
+    vi.mocked(canEditPostContent).mockReturnValue(false)
     vi.mocked(findBatch).mockResolvedValue({
       ...mockBatch,
       currentStep: RelayStep.am_review_design,
@@ -334,6 +351,7 @@ describe('BatchPreviewPage', () => {
   it('does NOT show Mark-revisions-done to the designer when not awaiting revisions', async () => {
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtxDesigner)
     vi.mocked(canEditClients).mockReturnValue(false)
+    vi.mocked(canEditPostContent).mockReturnValue(false)
     vi.mocked(findBatch).mockResolvedValue({
       ...mockBatch,
       currentStep: RelayStep.am_review_design,
@@ -346,6 +364,7 @@ describe('BatchPreviewPage', () => {
   it('mounts the FAB for the designer too', async () => {
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtxDesigner)
     vi.mocked(canEditClients).mockReturnValue(false)
+    vi.mocked(canEditPostContent).mockReturnValue(false)
     await renderPage({ id: 'client_1', batchId: 'batch_1' })
     expect(screen.getByTestId('internal-chat-fab')).toBeInTheDocument()
   })
@@ -355,6 +374,7 @@ describe('BatchPreviewPage', () => {
   it('falls back to the read-only PreviewPageShell for a non-AM non-designer viewer', async () => {
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtxViewer)
     vi.mocked(canEditClients).mockReturnValue(false)
+    vi.mocked(canEditPostContent).mockReturnValue(false)
     // viewer_db_1 !== designer_db_1 so not the assigned designer
     await renderPage({ id: 'client_1', batchId: 'batch_1' })
     expect(screen.queryByTestId('internal-review-shell')).not.toBeInTheDocument()

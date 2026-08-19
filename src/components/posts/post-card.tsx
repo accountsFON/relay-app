@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { updatePostAction, redoPostAction } from '@/server/actions/posts'
+import { postSaveErrorMessage, POST_SAVE_UNEXPECTED } from '@/lib/post-save-error'
 import { cn } from '@/lib/utils'
 import { usePostListCollapse } from '@/components/posts/post-list-collapse'
 import { SimpleTooltip } from '@/components/relay/relay-tooltips'
@@ -111,20 +112,24 @@ export function PostCard({
   const handleSave = () => {
     startTransition(async () => {
       try {
-        await updatePostAction(post.id, {
+        const result = await updatePostAction(post.id, {
           caption,
           hashtags: hashtags.split(/\s+/).filter(Boolean),
           graphicHook: graphicHook || null,
           designerNotes: designerNotes || null,
         })
+        if (!result.ok) {
+          // Expected refusals name themselves, so the message can be true.
+          // The editor stays open so the typed text is not thrown away.
+          toast.error(postSaveErrorMessage(result.reason))
+          return
+        }
         setIsEditing(false)
       } catch {
-        // A thrown server-action error is masked as an opaque digest in
-        // production, so we surface a generic friendly message rather than
-        // e.message (which would be the raw reference number).
-        toast.error(
-          "Couldn't save your changes. You may not have permission to edit captions.",
-        )
+        // Only genuinely unexpected faults reach here. A thrown server-action
+        // error is masked as an opaque digest in production, so e.message would
+        // be a reference number rather than anything readable.
+        toast.error(POST_SAVE_UNEXPECTED)
       }
     })
   }
