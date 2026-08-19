@@ -16,6 +16,7 @@ vi.mock('@/server/auth/access', () => ({
 vi.mock('@/server/middleware/permissions', () => ({
   requireClientViewer: vi.fn(),
   canEditClients: vi.fn(),
+  canEditPostContent: vi.fn(),
   canUploadPostMedia: vi.fn(),
   canComment: vi.fn(),
 }))
@@ -193,8 +194,11 @@ vi.mock('@/components/notifications/event-anchor', () => ({
 }))
 
 vi.mock('@/components/posts/post-card', () => ({
-  PostCard: (props: { post: { id: string } }) => (
-    <div data-testid={`post-card-${props.post.id}`} />
+  PostCard: (props: { post: { id: string }; canEdit?: boolean }) => (
+    <div
+      data-testid={`post-card-${props.post.id}`}
+      data-can-edit={String(props.canEdit ?? false)}
+    />
   ),
 }))
 
@@ -246,6 +250,7 @@ import { NECTR_CRM_URL } from '@/lib/nectr'
 import {
   requireClientViewer,
   canEditClients,
+  canEditPostContent,
   canUploadPostMedia,
   canComment,
 } from '@/server/middleware/permissions'
@@ -336,6 +341,7 @@ describe('BatchDetailPage', () => {
     vi.clearAllMocks()
     vi.mocked(requireClientViewer).mockResolvedValue(mockCtx)
     vi.mocked(canEditClients).mockReturnValue(true)
+    vi.mocked(canEditPostContent).mockReturnValue(true)
     vi.mocked(canUploadPostMedia).mockReturnValue(false)
     vi.mocked(canComment).mockReturnValue(false)
     vi.mocked(findClientForUser).mockResolvedValue(mockClient as never)
@@ -1006,6 +1012,45 @@ describe('BatchDetailPage', () => {
 
       const { queryByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
       expect(queryByTestId('copy-gate')).toBeNull()
+    })
+  })
+
+  // ---- Caption edit permission (post.edit vs client.edit) ----
+
+  describe('post editor gating', () => {
+    const editablePost = {
+      id: 'post_a',
+      postDate: new Date('2026-05-10T00:00:00Z'),
+      caption: 'Hello',
+      hashtags: [],
+      graphicHook: null,
+      designerNotes: null,
+      contentRunId: 'run_1',
+      deletedAt: null,
+      mediaUrls: [],
+    }
+
+    it('hides the post editor when the AM holds client.edit but NOT post.edit', async () => {
+      // The 2026-08-19 AM bug: the Edit button followed client.edit while the
+      // write path enforces post.edit, so an AM in this state got a working
+      // editor that then refused to save.
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'account_manager' })
+      vi.mocked(canEditClients).mockReturnValue(true)
+      vi.mocked(canEditPostContent).mockReturnValue(false)
+      vi.mocked(db.post.findMany).mockResolvedValue([editablePost] as never)
+
+      const { getByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(getByTestId('post-card-post_a').dataset.canEdit).toBe('false')
+    })
+
+    it('shows the post editor when the AM holds post.edit', async () => {
+      vi.mocked(requireClientViewer).mockResolvedValue({ ...mockCtx, role: 'account_manager' })
+      vi.mocked(canEditClients).mockReturnValue(true)
+      vi.mocked(canEditPostContent).mockReturnValue(true)
+      vi.mocked(db.post.findMany).mockResolvedValue([editablePost] as never)
+
+      const { getByTestId } = await renderPage({ id: 'client_1', batchId: 'batch_1' })
+      expect(getByTestId('post-card-post_a').dataset.canEdit).toBe('true')
     })
   })
 

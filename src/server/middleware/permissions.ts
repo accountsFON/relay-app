@@ -61,6 +61,23 @@ export function canViewClients(ctx: OrgContext): boolean {
   return can(ctx, 'client.view')
 }
 
+/**
+ * Caption / hashtag editing gate. Every surface that offers the post editor
+ * must use this, NOT `client.edit`. They diverged: the batch page and the
+ * preview page decided whether to show "Edit" from `client.edit`, while the
+ * write path enforces `post.edit` deep in `assertCanEditPost`. An AM holding
+ * client.edit but not post.edit therefore got a working editor that refused to
+ * save, which is what broke caption editing for the AM team on 2026-08-19.
+ * Same shape as the generation.trigger fix above.
+ */
+export function canEditPostContent(ctx: OrgContext): boolean {
+  return can(ctx, 'post.edit')
+}
+
+export async function requirePostContentEditor() {
+  return requireCan('post.edit')
+}
+
 export async function requirePostMediaEditor() {
   return requireCan('post.media.edit')
 }

@@ -1,5 +1,5 @@
 import { RelayStep } from '@prisma/client'
-import { requireClientViewer, canEditClients, canUploadPostMedia, canComment } from '@/server/middleware/permissions'
+import { requireClientViewer, canEditClients, canEditPostContent, canUploadPostMedia, canComment } from '@/server/middleware/permissions'
 import { redirectAccessDenied } from '@/server/auth/access'
 import { findClientForUser } from '@/server/repositories/clients'
 import { findBatch } from '@/server/repositories/batches'
@@ -86,6 +86,10 @@ export default async function BatchDetailPage({
 }) {
   const ctx = await requireClientViewer()
   const canEdit = canEditClients(ctx)
+  // Caption / hashtag editing follows `post.edit`, which is what the write path
+  // enforces. Kept separate from canEdit (client.edit), which still gates
+  // archiving, the checklist and the other client-level controls below.
+  const canEditPosts = canEditPostContent(ctx)
   // Composer gates on the narrow client.comment permission (admin / AM /
   // designer), NOT client.edit — designers post thread comments without
   // edit rights. Mirrors the postCommentAction server gate.
@@ -708,13 +712,13 @@ export default async function BatchDetailPage({
                         >
                           <PostCard
                             post={post}
-                            canEdit={canEdit}
+                            canEdit={canEditPosts}
                             postNumber={idx + 1}
                             mediaUrl={post.mediaUrls?.[0] ?? null}
                             canUploadMedia={canUploadMedia}
                             locked={isLocked}
                           />
-                          <PostVersionHistory postId={post.id} versions={versionRows} canEdit={canEdit} locked={isLocked} />
+                          <PostVersionHistory postId={post.id} versions={versionRows} canEdit={canEditPosts} locked={isLocked} />
                         </div>
                       )
                     }),

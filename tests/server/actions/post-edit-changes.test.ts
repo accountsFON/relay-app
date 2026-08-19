@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/server/middleware/permissions', () => ({ requireClientEditor: vi.fn() }))
+vi.mock('@/server/middleware/permissions', () => ({
+  requireClientEditor: vi.fn(),
+  canEditPostContent: vi.fn(),
+}))
 vi.mock('@/server/repositories/posts', () => ({ findPostById: vi.fn(), updatePost: vi.fn() }))
 vi.mock('@/server/services/postVersions', () => ({
   snapshotPostVersion: vi.fn(),
@@ -14,13 +17,14 @@ vi.mock('@/server/services/activity', () => ({
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 
 import { updatePostAction } from '@/server/actions/posts'
-import { requireClientEditor } from '@/server/middleware/permissions'
+import { requireClientEditor, canEditPostContent } from '@/server/middleware/permissions'
 import { findPostById, updatePost } from '@/server/repositories/posts'
 import { recordActivity } from '@/server/services/activity'
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireClientEditor).mockResolvedValue({ userDbId: 'actor' } as never)
+  vi.mocked(canEditPostContent).mockReturnValue(true)
   vi.mocked(updatePost).mockResolvedValue({} as never)
   vi.mocked(findPostById).mockResolvedValue({
     id: 'p1', clientId: 'c1', contentRunId: 'r1',

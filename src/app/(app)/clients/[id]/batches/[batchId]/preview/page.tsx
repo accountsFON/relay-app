@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react'
 import {
   requireClientViewer,
   canEditClients,
+  canEditPostContent,
   canComment,
   canUploadPostMedia,
 } from '@/server/middleware/permissions'
@@ -73,6 +74,10 @@ export default async function BatchPreviewPage({
   if (!batch || batch.clientId !== client.id) redirectAccessDenied()
 
   const canEdit = canEditClients(ctx)
+  // See the batch page: the caption editor follows `post.edit`, the permission
+  // the write path actually enforces. canEdit still gates pins, the checklist
+  // and the rest of the AM surface.
+  const canEditPosts = canEditPostContent(ctx)
   const isAssignedDesigner =
     !canEdit && ctx.userDbId === client.assignedDesignerId
   const isLocked = isRelayLocked(batch.currentStep)
@@ -242,7 +247,7 @@ export default async function BatchPreviewPage({
             reviewerUserId={ctx.userDbId}
             mentionRoster={mentionRoster}
             posts={feedPosts}
-            canEditCaption={canEdit}
+            canEditCaption={canEditPosts}
             allowPostPins={canEdit}
             canReplaceImage={canReplaceImage}
             locked={isLocked}

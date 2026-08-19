@@ -1,6 +1,7 @@
 import { db } from '@/db/client'
 import { writeTrashAudit } from '@/server/repositories/trashAuditLogs'
 import { can } from '@/server/auth/permissions'
+import type { RoleDefaultsByRole, PermissionKey } from '@/server/auth/permissions'
 import { getClientScopeFilter } from '@/server/auth/scope'
 import type { OrgContext, UserRole } from '@/lib/types'
 
@@ -14,19 +15,41 @@ import type { OrgContext, UserRole } from '@/lib/types'
  * called from repository functions that do not have a Clerk session context.
  */
 async function assertCanEditPost(actorUserId: string, organizationId: string): Promise<void> {
-  const membership = await db.membership.findUnique({
-    where: { userId_organizationId: { userId: actorUserId, organizationId } },
-  })
+  // Resolve the SAME four inputs `can()` expects everywhere else. This used to
+  // pass only role + personal overrides, which silently dropped two of them:
+  // org role defaults (so a grant or revoke made in the role-defaults editor
+  // did nothing at this gate) and platformOwner (so an owner whose membership
+  // role lacks post.edit was refused, even though can() short-circuits true for
+  // owners). Both made this gate disagree with the permission UI.
+  const [membership, actor, roleDefaultRows] = await Promise.all([
+    db.membership.findUnique({
+      where: { userId_organizationId: { userId: actorUserId, organizationId } },
+    }),
+    db.user.findUnique({
+      where: { id: actorUserId },
+      select: { platformOwner: true },
+    }),
+    db.roleDefault.findMany({ where: { organizationId } }),
+  ])
   if (!membership) {
     throw new Error(
       `Not authorized: user ${actorUserId} has no membership in organization ${organizationId}`,
     )
   }
+
+  const roleDefaults: RoleDefaultsByRole = {}
+  for (const rd of roleDefaultRows) {
+    const bucket = (roleDefaults[rd.role as UserRole] ??= {})
+    bucket[rd.permissionKey as PermissionKey] = rd.allow
+  }
+
   const allowed = can(
     {
       role: membership.role as UserRole,
       permissionOverrides:
         (membership.permissionOverrides as Record<string, boolean> | null) ?? null,
+      roleDefaults,
+      platformOwner: actor?.platformOwner ?? false,
     },
     'post.edit',
   )
