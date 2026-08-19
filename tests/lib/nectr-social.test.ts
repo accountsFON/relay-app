@@ -4,6 +4,7 @@ import {
   getAccounts,
   getUsers,
   pickServiceUserId,
+  getLocation,
   NectrConfigError,
   NectrApiError,
 } from '@/lib/nectr-social'
@@ -115,5 +116,70 @@ describe('pickServiceUserId', () => {
 
   it('returns null for an empty list', () => {
     expect(pickServiceUserId([])).toBeNull()
+  })
+})
+
+import { createPost } from '@/lib/nectr-social'
+
+describe('createPost', () => {
+  it('POSTs a scheduled post with the required fields and returns the id', async () => {
+    const fetchImpl = vi.fn(async () =>
+      ({ ok: true, status: 201, json: async () => ({ results: { post: { _id: 'post_123' } } }), text: async () => '' }) as unknown as Response,
+    ) as unknown as typeof fetch
+
+    const res = await createPost(
+      'loc1',
+      {
+        accountIds: ['acc_fb', 'acc_ig'],
+        summary: 'Hello #world',
+        mediaUrl: 'https://blob.example/img.png',
+        mediaType: 'image/png',
+        scheduleDate: '2026-09-01T08:00:00',
+        userId: 'user_1',
+      },
+      { fetchImpl, token: 't' },
+    )
+
+    expect(res).toEqual({ id: 'post_123' })
+    const [url, init] = vi.mocked(fetchImpl).mock.calls[0]
+    expect(url).toBe('https://services.leadconnectorhq.com/social-media-posting/loc1/posts')
+    expect(init).toMatchObject({ method: 'POST' })
+    const body = JSON.parse((init as RequestInit).body as string)
+    expect(body).toMatchObject({
+      accountIds: ['acc_fb', 'acc_ig'],
+      summary: 'Hello #world',
+      status: 'scheduled',
+      type: 'post',
+      scheduleDate: '2026-09-01T08:00:00',
+      userId: 'user_1',
+      media: [{ url: 'https://blob.example/img.png', type: 'image/png' }],
+    })
+  })
+
+  it('sends an empty media array when no url is given (the API requires media)', async () => {
+    const fetchImpl = vi.fn(async () =>
+      ({ ok: true, status: 201, json: async () => ({ results: { post: { _id: 'p2' } } }), text: async () => '' }) as unknown as Response,
+    ) as unknown as typeof fetch
+    await createPost('loc1', { accountIds: ['a'], summary: 's', scheduleDate: '2026-09-01T08:00:00.000Z', userId: 'u' }, { fetchImpl, token: 't' })
+    const body = JSON.parse((vi.mocked(fetchImpl).mock.calls[0][1] as RequestInit).body as string)
+    expect(body.media).toEqual([])
+  })
+
+  it('throws NectrApiError on a non-2xx response', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: false, status: 422, json: async () => ({}), text: async () => 'bad' }) as unknown as Response) as unknown as typeof fetch
+    await expect(
+      createPost('loc1', { accountIds: ['a'], summary: 's', scheduleDate: 'x', userId: 'u' }, { fetchImpl, token: 't' }),
+    ).rejects.toBeInstanceOf(NectrApiError)
+  })
+})
+
+describe('getLocation', () => {
+  it('parses the location timezone', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ location: { timezone: 'America/New_York' } })) as unknown as typeof fetch
+    expect(await getLocation('loc1', { fetchImpl, token: 't' })).toEqual({ timezone: 'America/New_York' })
+  })
+  it('returns null timezone when absent', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ location: {} })) as unknown as typeof fetch
+    expect(await getLocation('loc1', { fetchImpl, token: 't' })).toEqual({ timezone: null })
   })
 })

@@ -14,6 +14,7 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
 import { updateClientAction } from '@/app/(app)/clients/actions'
 import { NectrConnectionCheck } from './nectr-connection-check'
+import { nectrConnectUrl } from '@/lib/nectr'
 import type { ClientUpdate } from '@/lib/schemas/client'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
 
@@ -95,6 +96,16 @@ export function ClientProfileView({
           <KeyValueField clientId={client.id} fieldKey="nectrLocationId" label="NECTR Location ID" value={client.nectrLocationId} canEdit={canEdit} placeholder="e.g. MM92yp3LqV0bqR0UaTr5" />
         </KeyValueGrid>
         {canEdit && <NectrConnectionCheck clientId={client.id} />}
+        {canEdit && client.nectrLocationId && (
+          <a
+            href={nectrConnectUrl(client.nectrLocationId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block text-[12px] text-muted-foreground underline hover:text-foreground"
+          >
+            Connect / manage accounts in NECTR ↗
+          </a>
+        )}
       </PageSection>
 
       <PageSection title="Workflow">

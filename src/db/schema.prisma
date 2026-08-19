@@ -383,6 +383,7 @@ model Post {
   graphicHook   String?
   designerNotes String?
   mediaUrls     String[]
+  nectrScheduledId String?
   scheduledAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

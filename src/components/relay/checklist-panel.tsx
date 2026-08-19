@@ -45,10 +45,12 @@ import {
   passBatonAction,
   requestDesignChangesAction,
   retryDriveUploadAction,
+  retryNectrScheduleAction,
   sendBackBatonAction,
   tickChecklistItemAction,
 } from '@/server/actions/relay'
 import type { DriveUploadResult } from '@/server/services/drive-upload'
+import type { NectrScheduleResult } from '@/server/services/nectr-schedule'
 import { toast } from 'sonner'
 import { AutoAdvanceToggle } from './auto-advance-toggle'
 
@@ -222,12 +224,59 @@ export function ChecklistPanel({
     })
   }
 
+  function notifyNectrResult(res: NectrScheduleResult | null) {
+    if (!res) {
+      toast.error('Relay finished, but NECTR scheduling failed.', {
+        action: { label: 'Retry', onClick: () => retryNectrSchedule() },
+      })
+      return
+    }
+    if (res.status === 'ok') {
+      if (res.scheduled === 0 && res.alreadyScheduled > 0) {
+        toast('All posts were already scheduled to NECTR.')
+      } else {
+        toast.success(`Scheduled ${res.scheduled} post${res.scheduled === 1 ? '' : 's'} to NECTR.`)
+      }
+      return
+    }
+    if (res.status === 'partial') {
+      toast.error(`Scheduled ${res.scheduled} to NECTR, ${res.failed.length} failed.`, {
+        action: { label: 'Retry', onClick: () => retryNectrSchedule() },
+      })
+      return
+    }
+    if (res.status === 'failed') {
+      toast.error('NECTR scheduling failed.', { action: { label: 'Retry', onClick: () => retryNectrSchedule() } })
+      return
+    }
+    if (res.status === 'skipped') {
+      if (res.reason === 'no-location') toast('Relay finished. No NECTR Location ID is set for this client, so nothing was scheduled.')
+      else if (res.reason === 'not-configured') toast('Relay finished. NECTR scheduling is not configured yet.')
+      else if (res.reason === 'no-accounts') toast('Relay finished. No connected NECTR accounts, so nothing was scheduled.')
+      else if (res.reason === 'no-user') toast('Relay finished. No NECTR user is available to schedule as, so nothing was scheduled.')
+      else if (res.reason === 'no-posts') toast('Relay finished. This batch has no posts to schedule.')
+    }
+  }
+
+  function retryNectrSchedule() {
+    startActing(async () => {
+      try {
+        const res = await retryNectrScheduleAction({ batchId: batch.id })
+        router.refresh()
+        notifyNectrResult(res)
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'NECTR scheduling failed')
+      }
+    })
+  }
+
   function finish() {
     startActing(async () => {
       try {
         const res = await finishBatchAction({ batchId: batch.id })
         router.refresh()
         notifyDriveResult(res?.driveUpload ?? null)
+        notifyNectrResult(res?.nectrSchedule ?? null)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Finish failed')
       }

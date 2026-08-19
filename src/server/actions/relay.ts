@@ -21,6 +21,10 @@ import {
   uploadPostGraphicsToDrive,
   type DriveUploadResult,
 } from '@/server/services/drive-upload'
+import {
+  scheduleBatchToNectr,
+  type NectrScheduleResult,
+} from '@/server/services/nectr-schedule'
 
 /**
  * Cheap scoped lookup used by the action-layer holder gate. Throws the
@@ -164,8 +168,20 @@ export async function finishBatchAction(input: { batchId: string }) {
     })
   }
 
+  // Best-effort: schedule the posts into the client's NECTR Social Planner. Same
+  // contract as the Drive upload — a NECTR failure must never undo completion.
+  let nectrSchedule: NectrScheduleResult | null = null
+  try {
+    nectrSchedule = await scheduleBatchToNectr(input.batchId)
+  } catch (err) {
+    console.error('[relay] finishBatch NECTR schedule failed', {
+      batchId: input.batchId,
+      err: err instanceof Error ? err.message : String(err),
+    })
+  }
+
   revalidateBatchSurfaces(holder.clientId, input.batchId)
-  return { ...result, driveUpload }
+  return { ...result, driveUpload, nectrSchedule }
 }
 
 /**
@@ -187,6 +203,22 @@ export async function retryDriveUploadAction(input: {
   const driveUpload = await uploadPostGraphicsToDrive(input.batchId)
   revalidateBatchSurfaces(holder.clientId, input.batchId)
   return driveUpload
+}
+
+/** Manual retry of the NECTR schedule for a completed relay. Idempotent via
+ * Post.nectrScheduledId (already-scheduled posts are skipped). Same holder gate. */
+export async function retryNectrScheduleAction(input: {
+  batchId: string
+}): Promise<NectrScheduleResult> {
+  const ctx = await requireCan('relay.pass')
+  const holder = await loadHolderForGate(input.batchId, ctx.organizationDbId)
+  const isOverride = ctx.userDbId !== holder.currentHolder
+  if (isOverride && !canOverrideHolder(ctx.role, ctx.platformOwner)) {
+    throw new Error('Only the current holder, an AM, or an admin can retry the NECTR schedule.')
+  }
+  const nectrSchedule = await scheduleBatchToNectr(input.batchId)
+  revalidateBatchSurfaces(holder.clientId, input.batchId)
+  return nectrSchedule
 }
 
 export async function sendBackBatonAction(input: {
