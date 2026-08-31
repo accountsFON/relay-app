@@ -97,6 +97,12 @@ export type InternalReviewShellProps = {
    */
   allowPostPins?: boolean
   /**
+   * Whether the viewer may tick feedback resolved. False for the designer:
+   * resolving is the AM's judgement call, and the client-review rail has always
+   * worked that way. This surface had no role check until 2026-08-31.
+   */
+  canResolve?: boolean
+  /**
    * When true, the embedded post chrome offers the "Replace image" affordance
    * (drag/click to swap the post media). Gated upstream on `post.media.edit`
    * (admin/AM/designer true, client false). Defaults to false. Forwarded to
@@ -133,6 +139,7 @@ export function InternalReviewShell({
   posts,
   canEditCaption = true,
   allowPostPins = true,
+  canResolve = true,
   canReplaceImage = false,
   locked = false,
   amControlsSlot,
@@ -347,6 +354,7 @@ export function InternalReviewShell({
             rows={railRows}
             selectedPostId={selectedPostId}
             onSelectPost={selectPost}
+            canResolve={canResolve}
             onResolveThread={handleResolveThread}
             onUnresolveThread={handleUnresolveThread}
             onScrollToPost={selectPost}
@@ -422,7 +430,7 @@ export function InternalReviewShell({
                         handleCreatePin(post.id, pin, body, image)
                       }
                       onAppendThreadComment={handleAppendThreadComment}
-                      onResolveThread={handleResolveThread}
+                      onResolveThread={canResolve ? handleResolveThread : undefined}
                       onUseAsPostImage={(commentId) =>
                         handleUseAsPostImage(post.id, commentId)
                       }

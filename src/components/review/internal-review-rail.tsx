@@ -27,6 +27,13 @@ export type InternalReviewRailProps = {
   rows: ReadonlyArray<InternalRailRow>
   selectedPostId: string | null
   onSelectPost: (postId: string) => void
+  /**
+   * Whether the viewer may tick feedback resolved. False for the designer:
+   * resolving is the AM's judgement call, and the client-review rail has always
+   * gated it that way. This rail had no role check at all until 2026-08-31, so
+   * the designer saw and used a control meant for the AM.
+   */
+  canResolve?: boolean
   onResolveThread: (threadId: string) => Promise<void>
   onUnresolveThread: (threadId: string) => Promise<void>
   onScrollToPost: (postId: string) => void
@@ -38,6 +45,7 @@ export function InternalReviewRail({
   rows,
   selectedPostId,
   onSelectPost,
+  canResolve = true,
   onResolveThread,
   onUnresolveThread,
   onScrollToPost,
@@ -105,19 +113,49 @@ export function InternalReviewRail({
 
               {row.threads.length > 0 && (
                 <div className="flex flex-col gap-1.5 pl-12 pr-3 pb-1">
-                  {row.threads.map((t) => (
-                    <ResolveCheckbox
-                      key={t.id}
-                      label={t.label}
-                      byline={t.author}
-                      resolved={t.status === 'resolved'}
-                      onResolve={() => onResolveThread(t.id)}
-                      onUnresolve={() => onUnresolveThread(t.id)}
-                      onSelect={() => onSelectThread(t.id, row.postId)}
-                      disabled={false}
-                      testId={`internal-rail-resolve-${t.id}`}
-                    />
-                  ))}
+                  {row.threads.map((t) =>
+                    canResolve ? (
+                      <ResolveCheckbox
+                        key={t.id}
+                        label={t.label}
+                        byline={t.author}
+                        resolved={t.status === 'resolved'}
+                        onResolve={() => onResolveThread(t.id)}
+                        onUnresolve={() => onUnresolveThread(t.id)}
+                        onSelect={() => onSelectThread(t.id, row.postId)}
+                        disabled={false}
+                        testId={`internal-rail-resolve-${t.id}`}
+                      />
+                    ) : (
+                      // Read-only twin for the designer: same feedback, same
+                      // click-to-open-the-pin behaviour, no tick. Hiding the
+                      // row entirely would have hidden the feedback itself.
+                      <button
+                        key={t.id}
+                        type="button"
+                        data-testid={`internal-rail-readonly-${t.id}`}
+                        onClick={() => onSelectThread(t.id, row.postId)}
+                        aria-label={`Open pin: ${t.label}`}
+                        className="flex min-w-0 flex-col gap-1 rounded-md px-1 py-0.5 text-left hover:bg-neutral-50"
+                      >
+                        {t.author && (
+                          <span className="text-[12px] font-semibold break-words text-muted-foreground">
+                            {t.author}
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            'text-[13px] leading-tight break-words',
+                            t.status === 'resolved'
+                              ? 'text-muted-foreground line-through'
+                              : 'text-foreground',
+                          )}
+                        >
+                          {t.label}
+                        </span>
+                      </button>
+                    ),
+                  )}
                 </div>
               )}
             </div>

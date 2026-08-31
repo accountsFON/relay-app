@@ -6,6 +6,7 @@ import { promotePostFeedbackToThread } from '@/server/lib/promotePostFeedback'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { requireCan } from '@/server/middleware/permissions'
 import { db } from '@/db/client'
+import { maybeAutoAddressPost } from '@/server/services/autoAddressPost'
 import {
   addComment,
   bulkResolveOnPost,
@@ -154,15 +155,20 @@ async function loadPostScope(
 
 async function loadThreadScope(
   threadId: string,
-): Promise<{ batchId: string | null; organizationId: string } | null> {
+): Promise<{ batchId: string | null; organizationId: string; postId: string } | null> {
   const thread = await db.postThread.findUnique({
     where: { id: threadId },
     select: {
+      postId: true,
       post: { select: { batchId: true, client: { select: { organizationId: true } } } },
     },
   })
   return thread
-    ? { batchId: thread.post.batchId, organizationId: thread.post.client.organizationId }
+    ? {
+        batchId: thread.post.batchId,
+        organizationId: thread.post.client.organizationId,
+        postId: thread.postId,
+      }
     : null
 }
 
@@ -313,12 +319,35 @@ export async function resolveThreadAction(input: {
   resolvedReason: string | null
 }) {
   const { userDbId, actor } = await resolveAmActor()
-  assertScope(actor, await loadThreadScope(input.threadId))
+  const scope = await loadThreadScope(input.threadId)
+  assertScope(actor, scope)
   await resolveThread({
     threadId: input.threadId,
     resolvedBy: userDbId,
     resolvedReason: input.resolvedReason,
   })
+
+  // Roll the post up to "addressed" when this was the last outstanding piece of
+  // client feedback on it, so the AM does not have to click "Mark addressed" as
+  // a separate clerical step.
+  //
+  // This lives here rather than in a click handler because the same threads are
+  // resolved from more than one screen. The review rail had its own client-side
+  // roll-up; the batch preview page calls this action directly and had none, so
+  // resolving there left every "Mark addressed" button unpressed (Julio,
+  // 2026-08-31). Behind the write it covers every surface, including any added
+  // later.
+  //
+  // Strictly after the resolve, and non-fatal: the resolve is the user's actual
+  // request and must stand even if the roll-up cannot run.
+  if (scope?.postId) {
+    try {
+      await maybeAutoAddressPost(scope.postId, userDbId)
+    } catch {
+      // maybeAutoAddressPost is contractually non-throwing; belt and braces.
+    }
+  }
+
   await revalidatePathForThread(input.threadId)
 }
 

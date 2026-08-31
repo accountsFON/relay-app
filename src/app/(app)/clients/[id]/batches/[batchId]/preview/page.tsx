@@ -249,6 +249,10 @@ export default async function BatchPreviewPage({
             posts={feedPosts}
             canEditCaption={canEditPosts}
             allowPostPins={canEdit}
+            // Resolving client feedback is the AM's call, same rule the
+            // client-review rail has always enforced. The designer reads every
+            // comment and replies; she does not tick them resolved.
+            canResolve={canEdit}
             canReplaceImage={canReplaceImage}
             locked={isLocked}
             amControlsSlot={amControlsSlot}

@@ -43,6 +43,33 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-31 - Resolve now marks the post addressed, from any screen; designer stops seeing the AM's tick** (#439)
+  Julio: the designer said she had marked everything resolved, yet every "Mark addressed" button was
+  still unpressed. **Two causes, both real.**
+  **(1) The roll-up was client-side only.** It lived inside the review rail's `resolveThenMaybeAddress`
+  click handler, so it fired only when someone resolved through that one screen. The batch preview page
+  calls `resolveThreadAction` directly and had no roll-up at all, and `listThreadsForBatch` there
+  returns CLIENT threads too, so the designer was resolving the very same threads the review rail
+  shows. Her resolves saved correctly; `addressedAt` was simply never touched. Moved the roll-up behind
+  the WRITE as `maybeAutoAddressPost`, called from `resolveThreadAction`, so it fires from every
+  surface including any added later. Strictly after the resolve and non-fatal, so the user's actual
+  request stands even if the roll-up cannot run.
+  **(2) The preview rail had no role check at all** (`disabled={false}` hardcoded), while the
+  client-review rail has always gated the same control behind `isDesigner`. So the designer saw and
+  used a tick meant for the AM. New `canResolve` prop, threaded from the preview page as
+  `canResolve={canEdit}`. The designer keeps a read-only twin of each row: same feedback, same
+  click-to-open-the-pin behaviour, no tick. A test specifically guards that hiding the control does not
+  also hide the feedback.
+  **Dependency check Julio asked for:** `addressedAt` gates exactly one thing, whether the "Start next
+  round" button renders (`allAddressed` in the review-session page). It is fully reversible via "Move
+  back", and `handled` additionally requires zero open client pins, so addressed alone never
+  short-circuits anything. Auto-firing it is low risk.
+  Correction recorded: `resolveAmActor` is named AM-only but only checks for a Clerk session, so a
+  designer passed it. Her resolves were genuine, not silent failures.
+  Tests: 11 on the service, 2 on the action wiring, 3 on the rail gating. Gate: tsc 0 + 2884 unit +
+  `next build` + eslint clean. No migration, no schema change, no permission-key change.
+
+
 - [x] **2026-08-31 - Drive archive moves to the scheduling button, and the addressed roll-up unsticks** (#438)
   Three follow-ups from Julio on the same day, all in PR #438.
   **(a) The Drive archive moved off Finish onto the Scheduling step's "Export CSV & go to NectrCRM"

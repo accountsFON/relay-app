@@ -325,3 +325,65 @@ describe('InternalReviewRail', () => {
     expect(onSelectThread).toHaveBeenCalledWith('t9', 'p9')
   })
 })
+
+/**
+ * Resolve is the AM's call, so the designer must not see the tick.
+ *
+ * Before 2026-08-31 this rail hardcoded `disabled={false}` and had no role
+ * check at all, while the client-review rail gated the same control behind
+ * `isDesigner`. The two screens disagreed, and the designer was ticking boxes
+ * meant for the AM. Reported by Julio.
+ */
+const withThreads: InternalRailRow[] = [
+  {
+    postId: 'p1',
+    postNumber: 1,
+    thumbnailUrl: '/a.jpg',
+    pinStatus: 'open',
+    openCount: 1,
+    threads: [
+      { id: 't1', label: 'Logo is too small', author: 'Jane', status: 'open' },
+    ],
+  },
+]
+
+describe('InternalReviewRail — who may resolve', () => {
+  it('shows the resolve tick to someone who can resolve', () => {
+    render(
+      <InternalReviewRail
+        rows={withThreads}
+        selectedPostId={null}
+        onSelectPost={vi.fn()}
+        canResolve
+        {...defaultProps}
+      />,
+    )
+    expect(screen.getByTestId('internal-rail-resolve-t1')).toBeInTheDocument()
+  })
+
+  it('hides the resolve tick from someone who may not (the designer)', () => {
+    render(
+      <InternalReviewRail
+        rows={withThreads}
+        selectedPostId={null}
+        onSelectPost={vi.fn()}
+        canResolve={false}
+        {...defaultProps}
+      />,
+    )
+    expect(screen.queryByTestId('internal-rail-resolve-t1')).toBeNull()
+  })
+
+  it('still shows the designer the comment itself, just without the tick', () => {
+    render(
+      <InternalReviewRail
+        rows={withThreads}
+        selectedPostId={null}
+        onSelectPost={vi.fn()}
+        canResolve={false}
+        {...defaultProps}
+      />,
+    )
+    expect(screen.getByText('Logo is too small')).toBeInTheDocument()
+  })
+})

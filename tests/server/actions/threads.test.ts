@@ -81,10 +81,14 @@ vi.mock('@/server/lib/promotePostFeedback', () => ({
 // --- mock notifyClientOfAmReply (Task 4) ---
 vi.mock('@/server/lib/notifyClientOfAmReply', () => ({ notifyClientOfAmReply: vi.fn() }))
 
+// --- mock the auto-address roll-up (2026-08-31) ---
+vi.mock('@/server/services/autoAddressPost', () => ({ maybeAutoAddressPost: vi.fn() }))
+
 // --- mock internal-review notify helpers (internal review notifications) ---
 vi.mock('@/server/lib/notifyInternalThreadReply', () => ({ notifyInternalThreadReply: vi.fn() }))
 vi.mock('@/server/lib/internalMentionRoster', () => ({ internalMentionRosterForClient: vi.fn() }))
 
+import { maybeAutoAddressPost } from '@/server/services/autoAddressPost'
 import { getOrgContext } from '@/server/middleware/auth'
 import { getMagicLinkReviewerFromCookie } from '@/server/auth/magic-link-reviewer'
 import { requireCan } from '@/server/middleware/permissions'
@@ -910,5 +914,52 @@ describe('tenant-scope guards (cross-org / cross-batch)', () => {
       replyToPostFeedbackAction({ reviewItemId: 'ri_x', body: 'hi' }),
     ).rejects.toThrow()
     expect(promotePostFeedbackToThread).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * resolveThreadAction fires the auto-address roll-up.
+ *
+ * Origin (Julio, 2026-08-31): the roll-up lived only in the review rail's click
+ * handler, so it fired only when the AM resolved through that one screen. The
+ * designer resolves the SAME client threads from the batch preview page, which
+ * calls this action directly, and that path never touched addressedAt. So the
+ * designer reported "I marked everything resolved", the threads really were
+ * resolved, and every "Mark addressed" button was still unpressed. Hanging the
+ * roll-up off the write covers every surface.
+ */
+describe('resolveThreadAction — auto-address roll-up', () => {
+  beforeEach(() => {
+    vi.mocked(getOrgContext).mockResolvedValue({
+      userDbId: 'u_am',
+      organizationDbId: 'org_1',
+    } as never)
+    vi.mocked(db.postThread.findUnique).mockResolvedValue({
+      postId: 'p1',
+      post: { batchId: 'b1', clientId: 'c1', client: { organizationId: 'org_1' } },
+    } as never)
+    vi.mocked(db.post.findUnique).mockResolvedValue({
+      batchId: 'b1',
+      clientId: 'c1',
+      client: { organizationId: 'org_1' },
+    } as never)
+  })
+
+  it('rolls the post up to addressed after the thread resolves', async () => {
+    await resolveThreadAction({ threadId: 't1', resolvedReason: null })
+
+    expect(resolveThread).toHaveBeenCalledWith(
+      expect.objectContaining({ threadId: 't1', resolvedBy: 'u_am' }),
+    )
+    expect(maybeAutoAddressPost).toHaveBeenCalledWith('p1', 'u_am')
+  })
+
+  it('resolves the thread first, so a roll-up fault cannot lose the resolve', async () => {
+    vi.mocked(maybeAutoAddressPost).mockRejectedValueOnce(new Error('boom'))
+
+    await expect(
+      resolveThreadAction({ threadId: 't1', resolvedReason: null }),
+    ).resolves.not.toThrow()
+    expect(resolveThread).toHaveBeenCalled()
   })
 })
