@@ -53,7 +53,10 @@ export const CHECKLIST_SEED: Record<RelayStep, ChecklistSeedItem[]> = {
     { label: 'All posts have been scheduled' },
     { label: 'All posting dates have been double checked' },
     { label: 'All caption and image pairings have been double checked' },
-    { label: 'Graphics have been uploaded to Google Drive' },
+    // Verification, not an instruction: the Drive archive fires automatically
+    // when the AM clicks "Export CSV & go to NectrCRM" earlier on this same
+    // step (2026-08-31), so by here the only job left is confirming it landed.
+    { label: 'Check that the designs got uploaded to the Google Drive' },
   ],
   // Retired steps, kept empty for totality + legacy batches before cutover.
   [RelayStep.sent_to_client]: [],

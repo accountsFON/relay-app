@@ -423,6 +423,7 @@ export default async function BatchDetailPage({
           mediaUrl: p.mediaUrls?.[0] ?? '',
         }))}
         filename={`${client.name}-${targetMonth}`}
+        batchId={batch.id}
       />
     ) : undefined
 

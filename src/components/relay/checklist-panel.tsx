@@ -44,13 +44,9 @@ import {
   finishBatchAction,
   passBatonAction,
   requestDesignChangesAction,
-  retryDriveUploadAction,
   sendBackBatonAction,
   tickChecklistItemAction,
 } from '@/server/actions/relay'
-import type { DriveUploadResult } from '@/server/services/drive-upload'
-import { driveUploadMessage } from '@/lib/drive-upload-message'
-import { toast } from 'sonner'
 import { AutoAdvanceToggle } from './auto-advance-toggle'
 
 export interface ChecklistPanelProps {
@@ -169,54 +165,14 @@ export function ChecklistPanel({
     })
   }
 
-  // Surface the best-effort Drive graphics upload. All of the wording lives in
-  // driveUploadMessage so the copy is unit-tested and the same on every surface
-  // that reports an upload. Before 2026-08-31 this function hard-coded a
-  // generic "Drive graphics upload failed", which is what left the Elevated
-  // Tree Solutions read-only-folder problem undiagnosable from the UI.
-  function notifyDriveResult(res: DriveUploadResult | null) {
-    const msg = driveUploadMessage(res)
-    if (!msg) return
-
-    const retry = msg.retryable
-      ? { action: { label: 'Retry', onClick: () => retryDriveUpload() } }
-      : undefined
-
-    if (msg.tone === 'success') {
-      const url = res && 'folderUrl' in res ? res.folderUrl : null
-      toast.success(
-        msg.text,
-        url
-          ? { action: { label: 'Open folder', onClick: () => window.open(url, '_blank') } }
-          : undefined,
-      )
-      return
-    }
-    if (msg.tone === 'error') {
-      toast.error(msg.text, retry)
-      return
-    }
-    toast(msg.text)
-  }
-
-  function retryDriveUpload() {
-    startActing(async () => {
-      try {
-        const res = await retryDriveUploadAction({ batchId: batch.id })
-        router.refresh()
-        notifyDriveResult(res)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Drive upload failed')
-      }
-    })
-  }
-
+  // Finish no longer archives graphics to Drive. That moved to the Scheduling
+  // step's "Export CSV & go to NectrCRM" button on 2026-08-31, and the
+  // Scheduling checklist carries the matching verification item.
   function finish() {
     startActing(async () => {
       try {
-        const res = await finishBatchAction({ batchId: batch.id })
+        await finishBatchAction({ batchId: batch.id })
         router.refresh()
-        notifyDriveResult(res?.driveUpload ?? null)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Finish failed')
       }

@@ -41,6 +41,38 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 
 ## Shipped
 
+- [x] **2026-08-31 - Drive archive moves to the scheduling button, and the addressed roll-up unsticks** (#438)
+  Three follow-ups from Julio on the same day, all in PR #438.
+  **(a) The Drive archive moved off Finish onto the Scheduling step's "Export CSV & go to NectrCRM"
+  button.** That click is the one that actually schedules the posts, so the graphics now land in Drive
+  while the AM is doing the scheduling work rather than minutes later at close-out. NO fallback archive
+  runs at Finish, by Julio's explicit call. Ordering is load-bearing and pinned by a test: the CSV
+  download and `window.open` both fire SYNCHRONOUSLY inside the click, before the server action is
+  awaited, because awaiting first pushes `window.open` into a later task and browsers block the tab as
+  an unrequested popup. `retryDriveUploadAction` renamed to `uploadDriveGraphicsAction` now that it is
+  the primary trigger rather than retry-only; it still backs the Retry action on its own toast, and is
+  still safe to fire on a completed relay (Drive upserts overwrite, so repeats are idempotent).
+  **(b) Scheduling checklist item reworded** from "Graphics have been uploaded to Google Drive" to
+  "Check that the designs got uploaded to the Google Drive". It is a verification prompt now, and it is
+  the human safety net that replaces the removed Finish-time archive. Data-only migration relabels
+  relays already sitting on scheduling (UPDATE not delete+insert, so an existing tick survives);
+  batches that pass in later pick the label up from CHECKLIST_SEED on their own.
+  **(c) Real bug fixed: the auto-address roll-up could never fire on a post whose client note had a
+  reply.** `post.comment` (ReviewItem.comment) and a post-level thread are independent and both get
+  populated, but the rail renders the "General feedback" block, the ONLY control that can set
+  `noteResolved`, behind `postThreads.length === 0`. So the moment anyone replied to a general note,
+  the note's resolve checkbox vanished from the page while the roll-up kept waiting for that tick.
+  `noteDone` was stuck false forever and markAddressed could not fire however many threads the AM
+  resolved, forcing a manual "Mark addressed" every time. The roll-up now mirrors that render guard
+  exactly: when a post-level thread exists, the thread IS the note. Found by reproducing the exact
+  shape of a real Elevated Tree Solutions post Julio screenshotted.
+  Deliberately unchanged: resolving ONE of several open threads still does not mark the post addressed,
+  which is what makes a multi-pin post workable. Two tests guard both directions.
+  Tests: 6 on the scheduling button, 3 on the rail roll-up, 2 on the relay actions, 1 on the checklist
+  seed. Gate: tsc 0 + 2868 unit + `next build` + eslint clean. One data-only migration, no schema
+  change, no permission-key change.
+
+
 - [x] **2026-08-31 - Drive graphics upload: say what failed, and catch a bad folder at save time** (#PR)
   Triggered by a failed Drive upload on the Elevated Tree Solutions relay. **Root cause was data, not
   code:** that client's `assetsFolderUrl` pointed at "Ad Photos", a READ-ONLY folder in the client's

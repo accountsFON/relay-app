@@ -27,11 +27,16 @@ describe('pipeline rework: checklist seeds', () => {
     expect(CHECKLIST_SEED[RelayStep.am_qa_pre_client]).toEqual([])
   })
   it('Scheduling has the four doc items', () => {
+    // The Drive item reads as a VERIFICATION prompt, not an instruction to go
+    // and do the upload: since 2026-08-31 the archive fires automatically when
+    // the AM clicks "Export CSV & go to NectrCRM" earlier on this same step, so
+    // by the time they work this checklist the upload has already happened and
+    // the only job left is to confirm it landed.
     expect(CHECKLIST_SEED[RelayStep.scheduling].map((i) => i.label)).toEqual([
       'All posts have been scheduled',
       'All posting dates have been double checked',
       'All caption and image pairings have been double checked',
-      'Graphics have been uploaded to Google Drive',
+      'Check that the designs got uploaded to the Google Drive',
     ])
   })
   it('Post Revision has one item', () => {

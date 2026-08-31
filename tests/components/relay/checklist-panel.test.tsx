@@ -4,12 +4,10 @@ import { RelayStep, RelayRole } from '@prisma/client'
 import { ChecklistPanel } from '@/components/relay/checklist-panel'
 import type { BatchSummary, ChecklistItem } from '@/components/relay/types'
 import {
-  finishBatchAction,
   passBatonAction,
   requestDesignChangesAction,
   tickChecklistItemAction,
 } from '@/server/actions/relay'
-import { toast } from 'sonner'
 
 const refreshMock = vi.fn()
 
@@ -410,104 +408,5 @@ describe('ChecklistPanel Request changes (merge design steps)', () => {
       />,
     )
     expect(screen.queryByTestId('request-design-changes')).not.toBeInTheDocument()
-  })
-})
-
-/**
- * Drive upload toast copy. Added 2026-08-31 after the Elevated Tree Solutions
- * incident, where a read-only assets folder produced only "Drive graphics
- * upload failed." and the AM had no way to learn the fix was a URL on the
- * client profile.
- */
-describe('ChecklistPanel Drive upload feedback', () => {
-  function renderAtScheduling() {
-    return render(
-      <ChecklistPanel
-        batch={makeBatch({ currentStep: RelayStep.scheduling })}
-        items={[
-          {
-            id: 'item-sched',
-            batchId: 'batch-1',
-            step: RelayStep.scheduling,
-            label: 'All posts have been scheduled',
-            required: true,
-            checked: true,
-            checkedBy: null,
-            checkedAt: null,
-          },
-        ]}
-        canAct
-        nextStep={RelayStep.completed}
-      />,
-    )
-  }
-
-  beforeEach(() => {
-    refreshMock.mockReset()
-    // The sonner mock is module-level, so without this a toast from the
-    // previous case leaks into the next one's assertions.
-    vi.mocked(toast.error).mockReset()
-    vi.mocked(toast.success).mockReset()
-    vi.mocked(finishBatchAction).mockReset()
-  })
-
-  it('names the Assets folder field when Drive refuses the folder', async () => {
-    vi.mocked(finishBatchAction).mockResolvedValue({
-      driveUpload: {
-        status: 'failed',
-        folderUrl: null,
-        month: 'August 2026',
-        uploaded: 0,
-        overwritten: 0,
-        failed: [
-          {
-            name: '(folder August 2026)',
-            reason: 'The user does not have sufficient permissions for this file.',
-          },
-        ],
-      },
-    } as never)
-
-    renderAtScheduling()
-    fireEvent.click(screen.getByRole('button', { name: /finish/i }))
-
-    await waitFor(() => expect(toast.error).toHaveBeenCalled())
-    const text = vi.mocked(toast.error).mock.calls.at(-1)?.[0]
-    expect(String(text)).toMatch(/Assets folder/)
-    expect(String(text)).toMatch(/read only/i)
-  })
-
-  it('confirms the archive with a count and month on success', async () => {
-    vi.mocked(finishBatchAction).mockResolvedValue({
-      driveUpload: {
-        status: 'ok',
-        folderUrl: 'https://drive.google.com/drive/folders/x',
-        month: 'August 2026',
-        uploaded: 12,
-        overwritten: 0,
-        failed: [],
-      },
-    } as never)
-
-    renderAtScheduling()
-    fireEvent.click(screen.getByRole('button', { name: /finish/i }))
-
-    await waitFor(() => expect(toast.success).toHaveBeenCalled())
-    const text = String(vi.mocked(toast.success).mock.calls.at(-1)?.[0])
-    expect(text).toContain('12')
-    expect(text).toContain('August 2026')
-  })
-
-  it('stays silent when the batch had no graphics to archive', async () => {
-    vi.mocked(finishBatchAction).mockResolvedValue({
-      driveUpload: { status: 'skipped', reason: 'no-images' },
-    } as never)
-
-    renderAtScheduling()
-    fireEvent.click(screen.getByRole('button', { name: /finish/i }))
-
-    await waitFor(() => expect(refreshMock).toHaveBeenCalled())
-    expect(toast.error).not.toHaveBeenCalled()
-    expect(toast.success).not.toHaveBeenCalled()
   })
 })

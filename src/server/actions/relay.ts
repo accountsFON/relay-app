@@ -150,39 +150,42 @@ export async function finishBatchAction(input: { batchId: string }) {
     wasOverride: isOverride,
   })
 
-  // Best-effort: archive the post graphics to the client's Google Drive once
-  // the relay is completed. A Drive failure must never undo the completed
-  // relay, so the whole thing is wrapped; the summary rides back on the result
-  // so the UI can confirm it (or offer a retry). See drive-upload service.
-  let driveUpload: DriveUploadResult | null = null
-  try {
-    driveUpload = await uploadPostGraphicsToDrive(input.batchId)
-  } catch (err) {
-    console.error('[relay] finishBatch drive upload failed', {
-      batchId: input.batchId,
-      err: err instanceof Error ? err.message : String(err),
-    })
-  }
-
+  // NOTE: the Google Drive graphics archive used to run here as a best-effort
+  // side effect of finishing. It moved to the Scheduling step's "Export CSV &
+  // go to NectrCRM" button on 2026-08-31 (Julio's call): that click is what
+  // actually schedules the posts, so the graphics get archived at the moment
+  // the AM does the scheduling work rather than minutes later at Finish.
+  //
+  // No fallback archive runs here on purpose. The Scheduling checklist instead
+  // carries a human verification item ("Check that the designs got uploaded to
+  // the Google Drive"), and uploadDriveGraphicsAction stays callable so the AM
+  // can run it from that step at any time.
   revalidateBatchSurfaces(holder.clientId, input.batchId)
-  return { ...result, driveUpload }
+  return result
 }
 
 /**
- * Manual retry of the Drive graphics upload for a completed relay. The auto
- * upload on finish is best-effort; this lets an AM re-run it if it failed or
- * was skipped (e.g. the assets folder URL was added after finishing). Safe on a
- * completed relay: it only touches Drive, never relay state, and overwrites so
- * repeats are idempotent.
+ * Archive the batch's post graphics into the client's Google Drive.
+ *
+ * Fired by the Scheduling step's "Export CSV & go to NectrCRM" button (the
+ * primary trigger since 2026-08-31) and by the Retry action on its toast.
+ * Renamed from retryDriveUploadAction when it stopped being retry-only.
+ *
+ * Safe to call repeatedly and at any step: it only touches Drive, never relay
+ * state, and Drive upserts overwrite by filename so repeats are idempotent.
+ * That also makes it safe on an already-completed relay, which is how an AM
+ * recovers a batch whose assets folder URL was fixed after the fact.
  */
-export async function retryDriveUploadAction(input: {
+export async function uploadDriveGraphicsAction(input: {
   batchId: string
 }): Promise<DriveUploadResult> {
   const ctx = await requireCan('relay.pass')
   const holder = await loadHolderForGate(input.batchId, ctx.organizationDbId)
   const isOverride = ctx.userDbId !== holder.currentHolder
   if (isOverride && !canOverrideHolder(ctx.role, ctx.platformOwner)) {
-    throw new Error('Only the current holder, an AM, or an admin can retry the Drive upload.')
+    throw new Error(
+      'Only the current holder, an AM, or an admin can archive graphics to Drive.',
+    )
   }
   const driveUpload = await uploadPostGraphicsToDrive(input.batchId)
   revalidateBatchSurfaces(holder.clientId, input.batchId)
