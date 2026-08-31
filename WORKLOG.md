@@ -11,6 +11,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
+From the 2026-08-31 Drive upload incident (Julio):
+- [ ] **(data, Julio) Repoint Dixie Lily Foods' Assets folder URL** — currently "AD" in
+  `info@lumacollective.com`'s personal Drive, read only for Relay, so its first finished relay will
+  fail the graphics archive. Correct folder: `1FyOhP_wgzz3Ox2UDtEgsJt4ueD-sICzW` (agency Shared Drive
+  > 1. Active Clients > Dixie Lily Foods). Elevated Tree Solutions was fixed 2026-08-31.
+- [ ] **(data, needs Caleb's ruling) Stale assets-folder links upstream in Airtable** — the bad value
+  originated in the "Bekah AI | Databank" base (Clients v2, field "Google Drive Link (Assets Folder)")
+  and is still there for Dixie Lily Foods. Airtable writes need Caleb's approval, so flagged only.
+
 From the 2026-08-13 client-feedback review (Julio):
 - [ ] **(question) Should the designer also get the review-submitted digest email?** — on client submit the assigned AM and designer both get a bell mention, but the digest email goes only to the link creator and the assigned AM. Designer is bell-only today. Julio's call, no work started.
 
@@ -31,6 +40,41 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 ---
 
 ## Shipped
+
+- [x] **2026-08-31 - Drive graphics upload: say what failed, and catch a bad folder at save time** (#PR)
+  Triggered by a failed Drive upload on the Elevated Tree Solutions relay. **Root cause was data, not
+  code:** that client's `assetsFolderUrl` pointed at "Ad Photos", a READ-ONLY folder in the client's
+  own personal Google Drive (owner `elevatedtreesolutions23@gmail.com`), rather than their folder in
+  the agency Shared Drive. `findOrCreateFolder` was refused by Google, the service correctly returned
+  `status: 'failed'`, and the AM saw "Drive graphics upload failed." with no way to learn the fix was
+  a URL on the client profile. Julio repointed the link; that half needed no code.
+  **A live audit of all 49 active clients** (service account vs every `assetsFolderUrl`) found 29
+  healthy, 18 fake seed rows in the Relay Demo Agency org, and exactly 2 real breakages: Elevated Tree
+  Solutions (now fixed) and **Dixie Lily Foods**, which points at "AD" in `info@lumacollective.com`'s
+  personal Drive, is also read only, and has not failed yet only because it has 0 batches.
+  **Three fixes so this diagnoses itself next time.**
+  (1) `drive-upload.ts` now logs one `console.error` per incomplete upload with batchId, month, status,
+  parent folder id and every reason. Previously `console.error` fired ONLY on a thrown error, and a
+  `failed`/`partial` return logged nothing at all, so the incident left no server-side trace and had
+  to be reproduced by hand against the live Drive API. Vercel log retention (~1h here) had long since
+  dropped everything anyway.
+  (2) All upload copy moved into `src/lib/drive-upload-message.ts`, which classifies Google's raw
+  reason (permission / not-found / unknown) and names the "Assets folder" field plus the agency Shared
+  Drive path in the message. The generic "Drive graphics upload failed" string is gone.
+  (3) **Save-time validation, the fix that prevents recurrence.** New `inspectFolder` (google-drive)
+  plus `checkAssetsFolder` service; `updateClientAction` now runs it whenever an edit CHANGES
+  `assetsFolderUrl` and returns the verdict, and the client profile reports it in a 10s toast naming
+  the offending folder and its owner. Deliberately **advisory, never blocking**: the save always
+  commits first, so a Drive outage cannot stop someone editing a client, and an AM may legitimately
+  paste a folder before the service account has been granted access. A writable folder outside the
+  agency Shared Drive gets a softer warning, since it will work and is probably still wrong.
+  Tests: 20 on the message + check copy, 4 on `inspectFolder`, 9 on the check service, 3 on drive-upload
+  logging, 5 on the action, 3 on the profile-view toast. Gate: tsc 0 + 2863 unit + `next build` +
+  eslint clean on changed files. No migration, no schema change, no permission-key change.
+  **Open, not code:** Dixie Lily Foods still needs its link repointed, and the same stale link lives
+  upstream in the Airtable "Bekah AI | Databank" base (Clients v2, "Google Drive Link (Assets Folder)"),
+  which is where the bad value was imported from originally.
+
 
 - [x] **2026-08-19 - Caption editing checks the same permission everywhere** (#437)
   Reported by Julio: the AM team could open the caption editor, type, and then get "Couldn't save your

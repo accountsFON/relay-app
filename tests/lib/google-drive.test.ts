@@ -4,6 +4,7 @@ import {
   DriveConfigError,
   parseDriveFolderId,
   findOrCreateFolder,
+  inspectFolder,
   upsertImage,
   type DriveClient,
 } from '@/lib/google-drive'
@@ -165,5 +166,80 @@ describe('upsertImage', () => {
       requestBody: { name: '02.png', parents: ['folder_1'] },
       supportsAllDrives: true,
     })
+  })
+})
+
+// ---- inspectFolder ----
+// Added 2026-08-31. The Elevated Tree Solutions upload failed because the
+// client's assetsFolderUrl pointed at a read-only folder in the CLIENT's own
+// personal Drive. Nothing in the app ever asked Drive whether the folder was
+// usable, so the answer only arrived weeks later as a failed upload.
+
+describe('inspectFolder', () => {
+  it('reports a writable Shared Drive folder as usable', async () => {
+    const drive = mockDrive({
+      get: vi.fn().mockResolvedValue({
+        data: {
+          id: 'f1',
+          name: 'Royal Oak Tree Service',
+          mimeType: 'application/vnd.google-apps.folder',
+          driveId: '0APv-2ZG8mZlNUk9PVA',
+          capabilities: { canAddChildren: true },
+          owners: [],
+        },
+      }),
+    })
+    await expect(inspectFolder(drive, 'f1')).resolves.toEqual({
+      id: 'f1',
+      name: 'Royal Oak Tree Service',
+      isFolder: true,
+      canAddChildren: true,
+      sharedDriveId: '0APv-2ZG8mZlNUk9PVA',
+      ownerEmail: null,
+    })
+  })
+
+  it('reports a read-only personal-Drive folder with its owner', async () => {
+    // This is the exact Elevated Tree Solutions shape.
+    const drive = mockDrive({
+      get: vi.fn().mockResolvedValue({
+        data: {
+          id: 'f2',
+          name: 'Ad Photos',
+          mimeType: 'application/vnd.google-apps.folder',
+          capabilities: { canAddChildren: false },
+          owners: [{ emailAddress: 'elevatedtreesolutions23@gmail.com' }],
+        },
+      }),
+    })
+    const res = await inspectFolder(drive, 'f2')
+    expect(res.canAddChildren).toBe(false)
+    expect(res.sharedDriveId).toBeNull()
+    expect(res.ownerEmail).toBe('elevatedtreesolutions23@gmail.com')
+  })
+
+  it('reports a non-folder file so a document link is not mistaken for a folder', async () => {
+    const drive = mockDrive({
+      get: vi.fn().mockResolvedValue({
+        data: {
+          id: 'f3',
+          name: 'Brand deck.pdf',
+          mimeType: 'application/pdf',
+          capabilities: { canAddChildren: false },
+        },
+      }),
+    })
+    const res = await inspectFolder(drive, 'f3')
+    expect(res.isFolder).toBe(false)
+  })
+
+  it('asks Drive with the Shared-Drive flags set', async () => {
+    const get = vi.fn().mockResolvedValue({
+      data: { id: 'f1', name: 'x', mimeType: 'application/vnd.google-apps.folder', capabilities: {} },
+    })
+    await inspectFolder(mockDrive({ get }), 'f1')
+    expect(get).toHaveBeenCalledWith(
+      expect.objectContaining({ fileId: 'f1', supportsAllDrives: true }),
+    )
   })
 })

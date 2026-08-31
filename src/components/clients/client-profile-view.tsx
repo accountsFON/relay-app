@@ -13,6 +13,9 @@ import { BrandCheckbox } from '@/components/ui/brand-checkbox'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
 import { updateClientAction } from '@/app/(app)/clients/actions'
+import type { AssetsFolderCheck } from '@/server/services/assets-folder-check'
+import { assetsFolderCheckMessage } from '@/lib/drive-upload-message'
+import { toast } from 'sonner'
 import { NectrConnectionCheck } from './nectr-connection-check'
 import type { ClientUpdate } from '@/lib/schemas/client'
 import { useUnsavedChanges } from '@/lib/unsaved-changes'
@@ -220,9 +223,16 @@ function useFieldEditor<T>({
     setError(null)
     startTransition(async () => {
       try {
-        await updateClientAction(clientId, { [fieldKey]: serialize(draft) } as ClientUpdate)
+        const res = await updateClientAction(clientId, {
+          [fieldKey]: serialize(draft),
+        } as ClientUpdate)
         setEditing(false)
         router.refresh()
+        // Only ever populated when this edit changed assetsFolderUrl. The save
+        // has already succeeded, so this reports on the folder rather than the
+        // write. See the 2026-08-31 Elevated Tree Solutions incident: a
+        // read-only folder used to be accepted in silence.
+        notifyAssetsFolder(res?.assetsFolder)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Save failed')
       }
@@ -230,6 +240,21 @@ function useFieldEditor<T>({
   }, [isDirty, clientId, fieldKey, draft, serialize, router])
 
   return { editing, draft, setDraft, pending, error, isDirty, startEdit, cancel, save }
+}
+
+/**
+ * Report the save-time Google Drive check on the assets folder.
+ *
+ * Long-lived (10s) and dismissible rather than a flash, because the message
+ * names a specific folder to go swap and the reader needs time to act on it.
+ * Silence is the correct outcome for a good folder.
+ */
+function notifyAssetsFolder(check: AssetsFolderCheck | undefined): void {
+  if (!check) return
+  const msg = assetsFolderCheckMessage(check)
+  if (!msg) return
+  if (msg.tone === 'error') toast.error(msg.text, { duration: 10000 })
+  else toast.warning(msg.text, { duration: 10000 })
 }
 
 function equal(a: unknown, b: unknown): boolean {

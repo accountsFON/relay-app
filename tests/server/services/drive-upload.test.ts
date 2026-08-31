@@ -198,3 +198,67 @@ describe('uploadPostGraphicsToDrive', () => {
     expect(upsertImage).not.toHaveBeenCalled()
   })
 })
+
+/**
+ * Diagnostics, added 2026-08-31 after the Elevated Tree Solutions incident.
+ * The service already collected Google's real reason into failed[].reason and
+ * then only ever returned it to the browser, where a generic toast dropped it.
+ * Nothing reached the server logs unless the call threw outright, so a failed
+ * upload left no trace at all and had to be reproduced by hand against the
+ * live Drive API to diagnose. These lock in that a failure is logged.
+ */
+describe('uploadPostGraphicsToDrive diagnostics', () => {
+  it('logs the batch and Google reason when the folder cannot be created', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockBatch('https://drive.google.com/drive/folders/parent_1')
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      { id: 'p1', postDate: NOW, mediaUrls: ['https://blob/a.jpg'] },
+    ] as never)
+    vi.mocked(findOrCreateFolder).mockRejectedValue(
+      new Error('The user does not have sufficient permissions for this file.'),
+    )
+
+    await uploadPostGraphicsToDrive('batch_1', NOW)
+
+    expect(spy).toHaveBeenCalledTimes(1)
+    const logged = JSON.stringify(spy.mock.calls[0])
+    expect(logged).toContain('batch_1')
+    expect(logged).toContain('sufficient permissions')
+    spy.mockRestore()
+  })
+
+  it('logs the per-image reasons when only some images fail', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockBatch('https://drive.google.com/drive/folders/parent_1')
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      { id: 'p1', postDate: NOW, mediaUrls: ['https://blob/a.jpg'] },
+      { id: 'p2', postDate: NOW, mediaUrls: ['https://blob/b.jpg'] },
+    ] as never)
+    stubImageFetch()
+    vi.mocked(upsertImage)
+      .mockResolvedValueOnce({ id: 'file_a', overwritten: false })
+      .mockRejectedValueOnce(new Error('quota exceeded'))
+
+    const res = await uploadPostGraphicsToDrive('batch_1', NOW)
+
+    expect(res.status).toBe('partial')
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(spy.mock.calls[0])).toContain('quota exceeded')
+    spy.mockRestore()
+  })
+
+  it('stays quiet when every graphic uploads cleanly', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockBatch('https://drive.google.com/drive/folders/parent_1')
+    vi.mocked(db.post.findMany).mockResolvedValue([
+      { id: 'p1', postDate: NOW, mediaUrls: ['https://blob/a.jpg'] },
+    ] as never)
+    stubImageFetch()
+
+    const res = await uploadPostGraphicsToDrive('batch_1', NOW)
+
+    expect(res.status).toBe('ok')
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+})
