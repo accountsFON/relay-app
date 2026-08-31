@@ -207,7 +207,19 @@ function FeedbackRow({
     const pinsDone = post.threads.every(
       (t) => t.status === 'resolved' || (kind === 'pin' && t.id === threadId),
     )
-    const noteDone = !post.comment || post.noteResolved || kind === 'note'
+    // `noteStandsAlone` has to mirror the render guard on the General feedback
+    // block below EXACTLY. The note is only its own checkable item when there
+    // is no post-level thread; once one exists (which is what a general note
+    // becomes as soon as anyone replies to it, i.e. every normal AM/designer
+    // conversation) the thread IS the note, its own resolve tick covers it, and
+    // no separate note checkbox is rendered at all.
+    //
+    // Without this the roll-up asked for a tick the UI never offered, so
+    // `noteDone` was stuck false forever and markAddressed could not fire no
+    // matter how many threads the AM resolved. Reported by Julio 2026-08-31.
+    const noteStandsAlone = !post.threads.some((t) => t.pin.kind === 'post')
+    const noteDone =
+      !post.comment || !noteStandsAlone || post.noteResolved || kind === 'note'
     const capDone =
       post.verdict !== 'caption_edited' || post.captionAccepted
 

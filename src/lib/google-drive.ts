@@ -94,6 +94,51 @@ export function parseDriveFolderId(url: string | null | undefined): string | nul
   return null
 }
 
+/** What Drive knows about one folder id, reduced to what we act on. */
+export interface DriveFolderInfo {
+  id: string
+  name: string
+  /** False when the id resolves to a file (a doc link pasted by mistake). */
+  isFolder: boolean
+  /** False when we can read the folder but cannot create anything inside it. */
+  canAddChildren: boolean
+  /** The Shared Drive it lives in, or null when it sits in someone's My Drive. */
+  sharedDriveId: string | null
+  /** Owner of a personal-Drive folder. Null on Shared Drive items, which have no owner. */
+  ownerEmail: string | null
+}
+
+/**
+ * Read one folder's identity and whether the service account may write into it.
+ *
+ * Exists because of the 2026-08-31 Elevated Tree Solutions upload failure: the
+ * client's `assetsFolderUrl` pointed at a read-only folder in the client's own
+ * personal Drive, and nothing ever asked Drive whether that folder was usable,
+ * so the answer surfaced weeks later as a failed relay upload. `canAddChildren`
+ * is the single field that would have caught it at save time.
+ *
+ * Throws whatever the Drive API throws (404 / 403). Callers classify.
+ */
+export async function inspectFolder(
+  drive: DriveClient,
+  folderId: string,
+): Promise<DriveFolderInfo> {
+  const res = await drive.files.get({
+    fileId: folderId,
+    fields: 'id,name,mimeType,driveId,capabilities(canAddChildren),owners(emailAddress)',
+    supportsAllDrives: true,
+  })
+  const d = res.data
+  return {
+    id: d.id ?? folderId,
+    name: d.name ?? '',
+    isFolder: d.mimeType === FOLDER_MIME,
+    canAddChildren: d.capabilities?.canAddChildren === true,
+    sharedDriveId: d.driveId ?? null,
+    ownerEmail: d.owners?.[0]?.emailAddress ?? null,
+  }
+}
+
 /** Escape a value for use inside a Drive `q` string literal. */
 function escapeDriveQueryValue(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")

@@ -65,6 +65,7 @@ import {
   passBatonAction,
   sendBackBatonAction,
   finishBatchAction,
+  uploadDriveGraphicsAction,
   forceStepAction,
   requestDesignChangesAction,
   markDesignRevisionsDoneAction,
@@ -540,7 +541,33 @@ describe('finishBatchAction holder gate', () => {
     expect(finishBatch).not.toHaveBeenCalled()
   })
 
-  it('returns the Drive upload summary on the result', async () => {
+  /**
+   * The Drive archive MOVED off Finish on 2026-08-31 (Julio's call). It now
+   * fires from "Export CSV & go to NectrCRM" earlier on the same Scheduling
+   * step, which is the click that actually schedules the posts, so the graphics
+   * are archived at the moment the AM does the scheduling work rather than
+   * minutes later when they close the relay. Finish keeps no fallback copy of
+   * it: the Scheduling checklist now carries a human "check that the designs
+   * got uploaded" verification instead.
+   */
+  it('does NOT archive graphics to Drive (that moved to the scheduling button)', async () => {
+    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
+    mockBatch('u_actor')
+
+    await finishBatchAction({ batchId: 'b1' })
+
+    expect(finishBatch).toHaveBeenCalled()
+    expect(uploadPostGraphicsToDrive).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * uploadDriveGraphicsAction: the Drive archive, callable on demand. Fired by
+ * the scheduling button and by the Retry affordance on its toast. Renamed from
+ * retryDriveUploadAction on 2026-08-31 when it stopped being retry-only.
+ */
+describe('uploadDriveGraphicsAction', () => {
+  it('archives the batch graphics and returns the summary', async () => {
     vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
     mockBatch('u_actor')
     vi.mocked(uploadPostGraphicsToDrive).mockResolvedValue({
@@ -552,21 +579,10 @@ describe('finishBatchAction holder gate', () => {
       failed: [],
     })
 
-    const res = await finishBatchAction({ batchId: 'b1' })
+    const res = await uploadDriveGraphicsAction({ batchId: 'b1' })
 
     expect(uploadPostGraphicsToDrive).toHaveBeenCalledWith('b1')
-    expect(res.driveUpload).toMatchObject({ status: 'ok', uploaded: 12 })
-  })
-
-  it('still finishes when the Drive upload throws (best-effort)', async () => {
-    vi.mocked(requireCan).mockResolvedValue(makeCtx('account_manager'))
-    mockBatch('u_actor')
-    vi.mocked(uploadPostGraphicsToDrive).mockRejectedValue(new Error('drive down'))
-
-    const res = await finishBatchAction({ batchId: 'b1' })
-
-    expect(finishBatch).toHaveBeenCalled()
-    expect(res.driveUpload).toBeNull()
+    expect(res).toMatchObject({ status: 'ok', uploaded: 12 })
   })
 })
 

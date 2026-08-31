@@ -11,6 +11,17 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
+From the 2026-08-31 Drive upload incident (Julio):
+- [ ] **(parked by Julio 2026-08-31) Stale assets-folder links upstream in Airtable** — the bad values
+  originated in the "Bekah AI | Databank" base (Clients v2, field "Google Drive Link (Assets Folder)")
+  and Dixie Lily Foods is still wrong there. Relay's own copies are now correct, so this only matters
+  if anyone re-imports from that base. Airtable writes need Caleb's approval anyway. Not a blocker.
+
+Cleared 2026-08-31: both real assets-folder breakages repointed by Julio and re-verified against the
+live Drive API (Elevated Tree Solutions and Dixie Lily Foods, both now writable in the agency Shared
+Drive). A re-audit of all 49 active clients shows **0** read-only or unreachable folders; the only
+remaining 404s are the 18 fake seed rows in the Relay Demo Agency org.
+
 From the 2026-08-13 client-feedback review (Julio):
 - [ ] **(question) Should the designer also get the review-submitted digest email?** — on client submit the assigned AM and designer both get a bell mention, but the digest email goes only to the link creator and the assigned AM. Designer is bell-only today. Julio's call, no work started.
 
@@ -31,6 +42,73 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 ---
 
 ## Shipped
+
+- [x] **2026-08-31 - Drive archive moves to the scheduling button, and the addressed roll-up unsticks** (#438)
+  Three follow-ups from Julio on the same day, all in PR #438.
+  **(a) The Drive archive moved off Finish onto the Scheduling step's "Export CSV & go to NectrCRM"
+  button.** That click is the one that actually schedules the posts, so the graphics now land in Drive
+  while the AM is doing the scheduling work rather than minutes later at close-out. NO fallback archive
+  runs at Finish, by Julio's explicit call. Ordering is load-bearing and pinned by a test: the CSV
+  download and `window.open` both fire SYNCHRONOUSLY inside the click, before the server action is
+  awaited, because awaiting first pushes `window.open` into a later task and browsers block the tab as
+  an unrequested popup. `retryDriveUploadAction` renamed to `uploadDriveGraphicsAction` now that it is
+  the primary trigger rather than retry-only; it still backs the Retry action on its own toast, and is
+  still safe to fire on a completed relay (Drive upserts overwrite, so repeats are idempotent).
+  **(b) Scheduling checklist item reworded** from "Graphics have been uploaded to Google Drive" to
+  "Check that the designs got uploaded to the Google Drive". It is a verification prompt now, and it is
+  the human safety net that replaces the removed Finish-time archive. Data-only migration relabels
+  relays already sitting on scheduling (UPDATE not delete+insert, so an existing tick survives);
+  batches that pass in later pick the label up from CHECKLIST_SEED on their own.
+  **(c) Real bug fixed: the auto-address roll-up could never fire on a post whose client note had a
+  reply.** `post.comment` (ReviewItem.comment) and a post-level thread are independent and both get
+  populated, but the rail renders the "General feedback" block, the ONLY control that can set
+  `noteResolved`, behind `postThreads.length === 0`. So the moment anyone replied to a general note,
+  the note's resolve checkbox vanished from the page while the roll-up kept waiting for that tick.
+  `noteDone` was stuck false forever and markAddressed could not fire however many threads the AM
+  resolved, forcing a manual "Mark addressed" every time. The roll-up now mirrors that render guard
+  exactly: when a post-level thread exists, the thread IS the note. Found by reproducing the exact
+  shape of a real Elevated Tree Solutions post Julio screenshotted.
+  Deliberately unchanged: resolving ONE of several open threads still does not mark the post addressed,
+  which is what makes a multi-pin post workable. Two tests guard both directions.
+  Tests: 6 on the scheduling button, 3 on the rail roll-up, 2 on the relay actions, 1 on the checklist
+  seed. Gate: tsc 0 + 2868 unit + `next build` + eslint clean. One data-only migration, no schema
+  change, no permission-key change.
+
+
+- [x] **2026-08-31 - Drive graphics upload: say what failed, and catch a bad folder at save time** (#PR)
+  Triggered by a failed Drive upload on the Elevated Tree Solutions relay. **Root cause was data, not
+  code:** that client's `assetsFolderUrl` pointed at "Ad Photos", a READ-ONLY folder in the client's
+  own personal Google Drive (owner `elevatedtreesolutions23@gmail.com`), rather than their folder in
+  the agency Shared Drive. `findOrCreateFolder` was refused by Google, the service correctly returned
+  `status: 'failed'`, and the AM saw "Drive graphics upload failed." with no way to learn the fix was
+  a URL on the client profile. Julio repointed the link; that half needed no code.
+  **A live audit of all 49 active clients** (service account vs every `assetsFolderUrl`) found 29
+  healthy, 18 fake seed rows in the Relay Demo Agency org, and exactly 2 real breakages: Elevated Tree
+  Solutions (now fixed) and **Dixie Lily Foods**, which points at "AD" in `info@lumacollective.com`'s
+  personal Drive, is also read only, and has not failed yet only because it has 0 batches.
+  **Three fixes so this diagnoses itself next time.**
+  (1) `drive-upload.ts` now logs one `console.error` per incomplete upload with batchId, month, status,
+  parent folder id and every reason. Previously `console.error` fired ONLY on a thrown error, and a
+  `failed`/`partial` return logged nothing at all, so the incident left no server-side trace and had
+  to be reproduced by hand against the live Drive API. Vercel log retention (~1h here) had long since
+  dropped everything anyway.
+  (2) All upload copy moved into `src/lib/drive-upload-message.ts`, which classifies Google's raw
+  reason (permission / not-found / unknown) and names the "Assets folder" field plus the agency Shared
+  Drive path in the message. The generic "Drive graphics upload failed" string is gone.
+  (3) **Save-time validation, the fix that prevents recurrence.** New `inspectFolder` (google-drive)
+  plus `checkAssetsFolder` service; `updateClientAction` now runs it whenever an edit CHANGES
+  `assetsFolderUrl` and returns the verdict, and the client profile reports it in a 10s toast naming
+  the offending folder and its owner. Deliberately **advisory, never blocking**: the save always
+  commits first, so a Drive outage cannot stop someone editing a client, and an AM may legitimately
+  paste a folder before the service account has been granted access. A writable folder outside the
+  agency Shared Drive gets a softer warning, since it will work and is probably still wrong.
+  Tests: 20 on the message + check copy, 4 on `inspectFolder`, 9 on the check service, 3 on drive-upload
+  logging, 5 on the action, 3 on the profile-view toast. Gate: tsc 0 + 2863 unit + `next build` +
+  eslint clean on changed files. No migration, no schema change, no permission-key change.
+  **Open, not code:** Dixie Lily Foods still needs its link repointed, and the same stale link lives
+  upstream in the Airtable "Bekah AI | Databank" base (Clients v2, "Google Drive Link (Assets Folder)"),
+  which is where the bad value was imported from originally.
+
 
 - [x] **2026-08-19 - Caption editing checks the same permission everywhere** (#437)
   Reported by Julio: the AM team could open the caption editor, type, and then get "Couldn't save your

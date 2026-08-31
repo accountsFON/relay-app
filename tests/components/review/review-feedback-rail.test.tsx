@@ -1511,3 +1511,67 @@ describe('ReviewFeedbackRail — author bylines', () => {
     expect(name.className).not.toContain('whitespace-nowrap')
   })
 })
+
+/**
+ * Regression: the auto-address roll-up could never fire on a post whose client
+ * note arrived as a POST-LEVEL THREAD (the shape you get as soon as the
+ * designer replies to a general note, which is the normal AM/designer
+ * conversation).
+ *
+ * The trap: `post.comment` (ReviewItem.comment) and a post-level thread are
+ * independent, and both get populated. The rail renders the "General feedback"
+ * block, the ONLY control that can set noteResolved, behind
+ * `postThreads.length === 0`. So the moment a post-level thread exists, the
+ * note's resolve checkbox is not on the page, `noteDone` is stuck false, and
+ * markAddressed can never fire however many threads the AM resolves. They were
+ * forced to click "Mark addressed" by hand every time.
+ *
+ * Reported by Julio 2026-08-31 from a real Elevated Tree Solutions post.
+ */
+describe('ReviewFeedbackRail — auto-address with a post-level thread', () => {
+  function screenshotShapedPost() {
+    // One image pin + one post-level thread carrying the designer's reply,
+    // plus the client's general note text on the review item.
+    return vm({
+      comment: 'note note note blah blah blah',
+      noteResolved: false,
+      threads: [makeThread('t1'), makePostThread('t2')],
+      addressed: false,
+      verdict: 'changes_requested',
+    })
+  }
+
+  it('does not render a separate note checkbox once a post-level thread exists', () => {
+    renderRailNew([screenshotShapedPost()], {})
+    // Proves the note can only be resolved through the thread, never on its own.
+    expect(screen.queryByTestId('rail-note-resolve-post-1')).toBeNull()
+  })
+
+  it('fires markAddressed when the last thread is resolved', async () => {
+    const resolve = vi.fn(() => Promise.resolve())
+    const markAddressed = vi.fn(() => Promise.resolve())
+    // t1 already resolved, so resolving t2 clears the post.
+    const post = screenshotShapedPost()
+    post.threads[0].status = 'resolved'
+    renderRailNew([post], { resolve, markAddressed }, { selectedThreadId: 't2' })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pin-comment-resolve-t2'))
+    })
+
+    expect(resolve).toHaveBeenCalledWith('t2')
+    expect(markAddressed).toHaveBeenCalledWith('post-1', 'ri-1')
+  })
+
+  it('still holds off while another thread is open', async () => {
+    const resolve = vi.fn(() => Promise.resolve())
+    const markAddressed = vi.fn(() => Promise.resolve())
+    renderRailNew([screenshotShapedPost()], { resolve, markAddressed }, { selectedThreadId: 't2' })
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pin-comment-resolve-t2'))
+    })
+
+    expect(markAddressed).not.toHaveBeenCalled()
+  })
+})

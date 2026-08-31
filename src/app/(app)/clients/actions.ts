@@ -26,6 +26,10 @@ import {
   NectrApiError,
   type NectrConnectionStatus,
 } from '@/lib/nectr-social'
+import {
+  checkAssetsFolder,
+  type AssetsFolderCheck,
+} from '@/server/services/assets-folder-check'
 
 export async function createClientAction(input: ClientInput) {
   // Creation is gated on client.create (admin-only by default), not client.edit,
@@ -52,7 +56,19 @@ export async function createClientAction(input: ClientInput) {
 
 const USER_ID_FIELDS = new Set(['assignedAmId', 'assignedDesignerId'])
 
-export async function updateClientAction(id: string, input: ClientUpdate) {
+export interface UpdateClientResult {
+  /**
+   * Present only when this edit changed `assetsFolderUrl`. Reports whether the
+   * new link is a Drive folder Relay can actually write into. Advisory: the
+   * save has already happened by the time this is populated.
+   */
+  assetsFolder?: AssetsFolderCheck
+}
+
+export async function updateClientAction(
+  id: string,
+  input: ClientUpdate,
+): Promise<UpdateClientResult | undefined> {
   const ctx = await requireClientEditor()
   const parsed = clientUpdateSchema.parse(input)
 
@@ -94,6 +110,26 @@ export async function updateClientAction(id: string, input: ClientUpdate) {
 
   revalidatePath(`/clients/${id}`)
   revalidatePath('/clients')
+
+  // Validate the assets folder AFTER the write, and only when this edit
+  // actually changed it. Deliberately advisory rather than blocking: a Drive
+  // outage must never stop someone editing a client, and the AM may legitimately
+  // paste a folder before the service account has been given access to it.
+  //
+  // Origin: 2026-08-31 Elevated Tree Solutions, where a read-only folder in the
+  // client's own personal Drive was accepted silently and only surfaced weeks
+  // later as a refused relay upload.
+  const nextUrl = parsed.assetsFolderUrl
+  if (nextUrl !== undefined && nextUrl !== before.assetsFolderUrl) {
+    try {
+      return { assetsFolder: await checkAssetsFolder(nextUrl) }
+    } catch {
+      // checkAssetsFolder is contractually non-throwing; belt and braces so a
+      // future change there can never turn a successful save into an error.
+      return {}
+    }
+  }
+  return {}
 }
 
 export async function deactivateClientAction(id: string) {

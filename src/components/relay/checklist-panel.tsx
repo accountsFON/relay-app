@@ -44,12 +44,9 @@ import {
   finishBatchAction,
   passBatonAction,
   requestDesignChangesAction,
-  retryDriveUploadAction,
   sendBackBatonAction,
   tickChecklistItemAction,
 } from '@/server/actions/relay'
-import type { DriveUploadResult } from '@/server/services/drive-upload'
-import { toast } from 'sonner'
 import { AutoAdvanceToggle } from './auto-advance-toggle'
 
 export interface ChecklistPanelProps {
@@ -168,66 +165,14 @@ export function ChecklistPanel({
     })
   }
 
-  // Surface the best-effort Drive graphics upload that runs on finish. Success
-  // is a quiet confirmation; anything less offers a one-click retry (the manual
-  // affordance from the spec). A plain skip (no folder / not configured) is an
-  // FYI, and "no images" is silent.
-  function notifyDriveResult(res: DriveUploadResult | null) {
-    if (!res) {
-      toast.error('Relay finished, but the Drive upload failed.', {
-        action: { label: 'Retry', onClick: () => retryDriveUpload() },
-      })
-      return
-    }
-    if (res.status === 'ok') {
-      const total = res.uploaded + res.overwritten
-      const url = res.folderUrl
-      toast.success(
-        `Uploaded ${total} graphic${total === 1 ? '' : 's'} to Drive (${res.month}).`,
-        url ? { action: { label: 'Open folder', onClick: () => window.open(url, '_blank') } } : undefined,
-      )
-      return
-    }
-    if (res.status === 'partial') {
-      const total = res.uploaded + res.overwritten
-      toast.error(`Uploaded ${total} to Drive, ${res.failed.length} failed.`, {
-        action: { label: 'Retry', onClick: () => retryDriveUpload() },
-      })
-      return
-    }
-    if (res.status === 'failed') {
-      toast.error('Drive graphics upload failed.', {
-        action: { label: 'Retry', onClick: () => retryDriveUpload() },
-      })
-      return
-    }
-    if (res.status === 'skipped') {
-      if (res.reason === 'no-folder') {
-        toast('Relay finished. No Google Drive folder is set for this client, so graphics were not uploaded.')
-      } else if (res.reason === 'not-configured') {
-        toast('Relay finished. Google Drive upload is not configured yet.')
-      }
-    }
-  }
-
-  function retryDriveUpload() {
-    startActing(async () => {
-      try {
-        const res = await retryDriveUploadAction({ batchId: batch.id })
-        router.refresh()
-        notifyDriveResult(res)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Drive upload failed')
-      }
-    })
-  }
-
+  // Finish no longer archives graphics to Drive. That moved to the Scheduling
+  // step's "Export CSV & go to NectrCRM" button on 2026-08-31, and the
+  // Scheduling checklist carries the matching verification item.
   function finish() {
     startActing(async () => {
       try {
-        const res = await finishBatchAction({ batchId: batch.id })
+        await finishBatchAction({ batchId: batch.id })
         router.refresh()
-        notifyDriveResult(res?.driveUpload ?? null)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Finish failed')
       }

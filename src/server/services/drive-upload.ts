@@ -137,13 +137,25 @@ export async function uploadPostGraphicsToDrive(
     folder = await findOrCreateFolder(drive, { parentId: folderId, name: month })
     folderUrl = folder.url
   } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err)
+    // Log before returning. This is the failure that bit Elevated Tree
+    // Solutions on 2026-08-31 (a read-only folder in the client's personal
+    // Drive), and it previously left no server-side trace whatsoever: the
+    // reason rode back to the browser and a generic toast dropped it.
+    logDriveFailure({
+      batchId,
+      month,
+      status: 'failed',
+      parentFolderId: folderId,
+      failed: [{ name: `(folder ${month})`, reason }],
+    })
     return {
       status: 'failed',
       folderUrl: null,
       month,
       uploaded: 0,
       overwritten: 0,
-      failed: [{ name: `(folder ${month})`, reason: err instanceof Error ? err.message : String(err) }],
+      failed: [{ name: `(folder ${month})`, reason }],
     }
   }
 
@@ -172,6 +184,34 @@ export async function uploadPostGraphicsToDrive(
   }
 
   const anySucceeded = uploaded + overwritten > 0
-  const status = failed.length === 0 ? 'ok' : anySucceeded ? 'partial' : 'failed'
+  if (failed.length === 0) {
+    return { status: 'ok', folderUrl, month, uploaded, overwritten, failed }
+  }
+  const status = anySucceeded ? 'partial' : 'failed'
+  logDriveFailure({ batchId, month, status, parentFolderId: folderId, failed })
   return { status, folderUrl, month, uploaded, overwritten, failed }
+}
+
+/**
+ * Single server-side record of an upload that did not fully succeed.
+ *
+ * Deliberately one `console.error` per upload rather than one per image, so a
+ * batch where every graphic 404s produces one readable line instead of twelve.
+ * Includes the parent folder id because the useful question during the
+ * 2026-08-31 incident was "which folder was it actually pointed at".
+ */
+function logDriveFailure(detail: {
+  batchId: string
+  month: string
+  status: 'failed' | 'partial'
+  parentFolderId: string
+  failed: { name: string; reason: string }[]
+}): void {
+  console.error('[drive-upload] graphics upload did not complete', {
+    batchId: detail.batchId,
+    month: detail.month,
+    status: detail.status,
+    parentFolderId: detail.parentFolderId,
+    failed: detail.failed,
+  })
 }

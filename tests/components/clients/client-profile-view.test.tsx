@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Client } from '@prisma/client'
 import { ClientProfileView } from '@/components/clients/client-profile-view'
+import { toast } from 'sonner'
 
 const updateClientAction = vi.hoisted(() => vi.fn())
 
@@ -13,6 +14,11 @@ vi.mock('@/app/(app)/clients/actions', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }))
+
+vi.mock('sonner', () => {
+  const toast = Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), warning: vi.fn() })
+  return { toast }
+})
 
 function makeClient(overrides: Partial<Client> = {}): Client {
   return {
@@ -268,5 +274,65 @@ describe('ClientProfileView — draft stays in sync with upstream value', () => 
 
     // The in-progress draft survives; it is not reset to the new upstream value.
     expect(screen.getByDisplayValue('Roofing')).toBeInTheDocument()
+  })
+})
+
+/**
+ * Assets folder feedback on save. Added 2026-08-31 after Elevated Tree
+ * Solutions, where a read-only folder in the client's personal Drive was
+ * accepted with no feedback at all and only surfaced weeks later as a failed
+ * relay upload. The AM has the correct link in hand at exactly this moment.
+ */
+describe('ClientProfileView — assets folder feedback', () => {
+  beforeEach(() => {
+    updateClientAction.mockReset()
+    vi.mocked(toast.error).mockReset()
+    vi.mocked(toast.warning).mockReset()
+  })
+
+  async function editAssetsFolder(value: string) {
+    render(<ClientProfileView client={makeClient({ assetsFolderUrl: null })} canEdit={true} />)
+    await userEvent.click(screen.getByRole('button', { name: /Edit Assets folder/i }))
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    await userEvent.clear(input)
+    await userEvent.type(input, value)
+    await userEvent.keyboard('{Enter}')
+  }
+
+  it('warns the AM when the saved folder is read only for Relay', async () => {
+    updateClientAction.mockResolvedValue({
+      assetsFolder: {
+        status: 'read-only',
+        name: 'Ad Photos',
+        ownerEmail: 'elevatedtreesolutions23@gmail.com',
+      },
+    })
+
+    await editAssetsFolder('https://drive.google.com/drive/folders/bad')
+
+    expect(toast.error).toHaveBeenCalled()
+    const text = String(vi.mocked(toast.error).mock.calls.at(-1)?.[0])
+    expect(text).toContain('Ad Photos')
+    expect(text).toMatch(/read only/i)
+  })
+
+  it('stays quiet when the saved folder is a writable Shared Drive folder', async () => {
+    updateClientAction.mockResolvedValue({
+      assetsFolder: { status: 'ok', name: 'Royal Oak Tree Service', inSharedDrive: true },
+    })
+
+    await editAssetsFolder('https://drive.google.com/drive/folders/good')
+
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(toast.warning).not.toHaveBeenCalled()
+  })
+
+  it('does not report anything for an edit that returns no folder verdict', async () => {
+    updateClientAction.mockResolvedValue({})
+
+    await editAssetsFolder('https://drive.google.com/drive/folders/x')
+
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(toast.warning).not.toHaveBeenCalled()
   })
 })
