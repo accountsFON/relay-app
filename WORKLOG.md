@@ -12,13 +12,15 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 ## Open / in progress
 
 From the 2026-08-31 Drive upload incident (Julio):
-- [ ] **(data, Julio) Repoint Dixie Lily Foods' Assets folder URL** — currently "AD" in
-  `info@lumacollective.com`'s personal Drive, read only for Relay, so its first finished relay will
-  fail the graphics archive. Correct folder: `1FyOhP_wgzz3Ox2UDtEgsJt4ueD-sICzW` (agency Shared Drive
-  > 1. Active Clients > Dixie Lily Foods). Elevated Tree Solutions was fixed 2026-08-31.
-- [ ] **(data, needs Caleb's ruling) Stale assets-folder links upstream in Airtable** — the bad value
+- [ ] **(parked by Julio 2026-08-31) Stale assets-folder links upstream in Airtable** — the bad values
   originated in the "Bekah AI | Databank" base (Clients v2, field "Google Drive Link (Assets Folder)")
-  and is still there for Dixie Lily Foods. Airtable writes need Caleb's approval, so flagged only.
+  and Dixie Lily Foods is still wrong there. Relay's own copies are now correct, so this only matters
+  if anyone re-imports from that base. Airtable writes need Caleb's approval anyway. Not a blocker.
+
+Cleared 2026-08-31: both real assets-folder breakages repointed by Julio and re-verified against the
+live Drive API (Elevated Tree Solutions and Dixie Lily Foods, both now writable in the agency Shared
+Drive). A re-audit of all 49 active clients shows **0** read-only or unreachable folders; the only
+remaining 404s are the 18 fake seed rows in the Relay Demo Agency org.
 
 From the 2026-08-13 client-feedback review (Julio):
 - [ ] **(question) Should the designer also get the review-submitted digest email?** — on client submit the assigned AM and designer both get a bell mention, but the digest email goes only to the link creator and the assigned AM. Designer is bell-only today. Julio's call, no work started.
