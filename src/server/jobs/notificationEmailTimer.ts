@@ -30,7 +30,7 @@
 import { logger, task, tasks } from '@trigger.dev/sdk/v3'
 import { notificationEmailTick } from '@/server/services/notificationEmailTick'
 import { anyMentionPendingSoon } from '@/server/repositories/activityEvents'
-import { notificationEmailTimerIdempotencyKey } from '@/server/services/activity'
+import { notificationEmailTimerRearmIdempotencyKey } from '@/server/services/activity'
 import { ROLLUP_WINDOW_MS } from '@/lib/notification-email-rollup'
 
 export const notificationEmailTimerTask = task({
@@ -49,11 +49,19 @@ export const notificationEmailTimerTask = task({
 
 /**
  * Books a follow up run for the NEXT bucket when a too-young mention is
- * still waiting. Uses the same `notif-email-${bucket}` key format as the
- * ordinary schedule in `activity.ts` (via the shared
- * `notificationEmailTimerIdempotencyKey` helper) so a re-arm and any
- * ordinary scheduling that lands in that same next window collapse into one
- * run instead of two.
+ * still waiting. Uses `notificationEmailTimerRearmIdempotencyKey`, its OWN
+ * `notif-email-rearm-` namespace, deliberately separate from the ordinary
+ * schedule's `notif-email-` key for that same bucket (see the comment on
+ * `buildNotificationEmailTimerKey` in `activity.ts` for the full reasoning).
+ *
+ * Do not collapse these back into one shared key to "save a run": a re-arm
+ * booked in bucket B for bucket B+1 fires partway through B+1, not at its
+ * start, so a mention created in B+1 after that re-armed run has already
+ * fired would find the shared key already consumed and get no run of its
+ * own, stranding it exactly the way Fix 1 exists to prevent, just shifted
+ * one bucket along. Two runs landing in one bucket is fine: both are
+ * payload-free nudges, and concurrent sweeps are already proven safe by
+ * claim-then-send.
  *
  * Wrapped so a probe or scheduling failure can never throw out of the task;
  * the bell poll tapper is still a backstop if this is lost.
@@ -73,7 +81,7 @@ export async function rearmIfPendingSoon(): Promise<void> {
       {},
       {
         delay: '5m',
-        idempotencyKey: notificationEmailTimerIdempotencyKey(nextBucket),
+        idempotencyKey: notificationEmailTimerRearmIdempotencyKey(nextBucket),
         idempotencyKeyTTL: '15m',
       },
     )

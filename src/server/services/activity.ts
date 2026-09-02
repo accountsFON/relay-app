@@ -12,15 +12,46 @@ export type ActivityPayload = Record<string, unknown>
 type DbOrTx = DbClient | DbTx
 
 /**
- * Builds the idempotency key for a notification-email-timer run, given the
- * five minute bucket it belongs to. The ONE place this format is written, so
- * a normal schedule (this file, bucketed to the CURRENT window) and the
- * timer's self re-arm (`notificationEmailTimer.ts`, bucketed to the NEXT
- * window) can never drift apart and produce two different key shapes for
- * what is supposed to collapse into one run.
+ * The ONE place a notification-email-timer idempotency key's shape is
+ * written. Two thin exported wrappers below build on this so the ordinary
+ * schedule and the timer's self re-arm can never drift apart in HOW they
+ * format a key, while still landing in deliberately SEPARATE namespaces.
+ *
+ * Those namespaces must stay separate. An earlier version of this key had
+ * both the ordinary schedule and a re-arm write to the same
+ * `notif-email-${bucket}` key for a given bucket, on the reasoning that
+ * doing so collapses a re-arm and an ordinary schedule for that bucket into
+ * one run. That backfires: a re-arm booked in bucket B for bucket B+1 fires
+ * partway through B+1, not at its start. A mention created in B+1 AFTER
+ * that re-armed run has already fired computes the SAME key for its own
+ * ordinary schedule, finds it already consumed (the 15 minute idempotency
+ * TTL outlives the completed run), and books nothing. That mention then has
+ * no run of its own and waits for the next unrelated activity or someone's
+ * bell poll, the exact overnight stranding Fix 1 exists to kill, just
+ * shifted one bucket along. Giving re-arms their own `notif-email-rearm-`
+ * namespace means a re-arm can never consume the key an ordinary schedule
+ * for that same bucket needs. Two runs landing in one bucket is an
+ * acceptable trade: both are payload-free nudges, and concurrent sweeps are
+ * already proven safe by claim-then-send, so the worst case is one extra
+ * Trigger.dev run.
  */
+function buildNotificationEmailTimerKey(namespace: string, bucket: number): string {
+  return `${namespace}-${bucket}`
+}
+
+/** Ordinary schedule key: bucketed to the CURRENT five minute window. */
 export function notificationEmailTimerIdempotencyKey(bucket: number): string {
-  return `notif-email-${bucket}`
+  return buildNotificationEmailTimerKey('notif-email', bucket)
+}
+
+/**
+ * Re-arm key: bucketed to the NEXT five minute window, in its own namespace
+ * so it can never collide with (and silently consume) the ordinary schedule
+ * key for that same bucket. See the comment above
+ * `buildNotificationEmailTimerKey` for the stranding case this prevents.
+ */
+export function notificationEmailTimerRearmIdempotencyKey(bucket: number): string {
+  return buildNotificationEmailTimerKey('notif-email-rearm', bucket)
 }
 
 /**

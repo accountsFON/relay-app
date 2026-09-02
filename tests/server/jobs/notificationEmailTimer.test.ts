@@ -7,8 +7,21 @@
  * too young when that run fires. rearmIfPendingSoon is what books a follow
  * up run for the next bucket when that happens, so these tests pin: it fires
  * when a straggler is pending, stays silent when nothing is, and the key it
- * uses is the NEXT bucket in the exact same format `activity.ts` uses for an
- * ordinary schedule.
+ * uses is the NEXT bucket, in its OWN `notif-email-rearm-` namespace,
+ * separate from the ordinary schedule's `notif-email-` namespace in
+ * `activity.ts`.
+ *
+ * Separate namespaces matter: an earlier version of this fix had the re-arm
+ * reuse the ordinary `notif-email-${bucket}` key for the next bucket, on the
+ * reasoning that this collapses a re-arm and an ordinary schedule for that
+ * bucket into one run. That backfires, because a re-arm fires PARTWAY
+ * through the bucket it targets, not at its start: a mention created in that
+ * bucket after the re-armed run already fired would compute the same key,
+ * find it already consumed, and get no run of its own. See
+ * tests/server/jobs/notificationEmailTimer-rearm-namespace.test.ts for the
+ * end to end regression proof (calls the real re-arm and the real ordinary
+ * schedule for the same bucket and asserts their keys differ), which fails
+ * against the pre-namespace-fix code and passes against this fix.
  *
  * Exercises the exported `rearmIfPendingSoon` directly rather than the
  * task's `run`: Trigger.dev's `Task` type does not expose `.run()` to
@@ -36,7 +49,10 @@ vi.mock('@/server/repositories/activityEvents', () => ({
 import { tasks } from '@trigger.dev/sdk/v3'
 import { anyMentionPendingSoon } from '@/server/repositories/activityEvents'
 import { rearmIfPendingSoon } from '@/server/jobs/notificationEmailTimer'
-import { notificationEmailTimerIdempotencyKey } from '@/server/services/activity'
+import {
+  notificationEmailTimerIdempotencyKey,
+  notificationEmailTimerRearmIdempotencyKey,
+} from '@/server/services/activity'
 import { ROLLUP_WINDOW_MS } from '@/lib/notification-email-rollup'
 
 beforeEach(() => {
@@ -68,7 +84,7 @@ describe('rearmIfPendingSoon', () => {
     expect(tasks.trigger).not.toHaveBeenCalled()
   })
 
-  it('books the re-arm for the next bucket, in the same format activity.ts uses', async () => {
+  it('books the re-arm for the next bucket, in its own rearm namespace', async () => {
     vi.useFakeTimers()
     const now = new Date('2026-09-02T15:00:10Z')
     vi.setSystemTime(now)
@@ -78,11 +94,26 @@ describe('rearmIfPendingSoon', () => {
 
     const key = vi.mocked(tasks.trigger).mock.calls[0][2]?.idempotencyKey
     const currentBucket = Math.floor(now.getTime() / ROLLUP_WINDOW_MS)
-    expect(key).toBe(notificationEmailTimerIdempotencyKey(currentBucket + 1))
-    // Not the current bucket's key: a re-arm that reused the current bucket
-    // would collapse into the run that is already executing instead of
-    // booking a fresh one for the straggler.
-    expect(key).not.toBe(notificationEmailTimerIdempotencyKey(currentBucket))
+
+    // The next bucket, not the current one: a re-arm that targeted the
+    // current bucket would fire before the run that is already executing.
+    expect(key).toBe(notificationEmailTimerRearmIdempotencyKey(currentBucket + 1))
+    expect(key).not.toBe(notificationEmailTimerRearmIdempotencyKey(currentBucket))
+
+    // Its own `notif-email-rearm-` namespace, not the ordinary schedule's
+    // `notif-email-` namespace for that same next bucket. This is the fix:
+    // see notificationEmailTimer-rearm-namespace.test.ts for why a shared
+    // namespace here is a real bug, not a harmless simplification.
+    expect(key).not.toBe(notificationEmailTimerIdempotencyKey(currentBucket + 1))
+    expect(key).toBe(`notif-email-rearm-${currentBucket + 1}`)
+  })
+
+  it("does not touch the ordinary schedule's key format or bucket", () => {
+    const bucket = 5961205
+    // Unchanged: still `notif-email-${bucket}` for the CURRENT bucket, no
+    // rearm prefix, no bucket offset. Ordinary scheduling in activity.ts
+    // was not part of this fix and must not have moved.
+    expect(notificationEmailTimerIdempotencyKey(bucket)).toBe(`notif-email-${bucket}`)
   })
 
   it('does not throw when the pending probe itself fails', async () => {

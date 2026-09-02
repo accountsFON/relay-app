@@ -10,7 +10,10 @@
 -- first deploy.
 --
 -- The index supports the hot probe, which runs on every notification bell poll
--- (every 20s per signed in user) and almost always matches nothing.
+-- (every 20s per signed in user) and almost always matches nothing. It is
+-- built AFTER the backfill below so it is written once over final data,
+-- instead of once at column-add time and again as the backfill's UPDATE
+-- touches every row.
 --
 -- The backfill below marks every mention that exists AT MIGRATION TIME as
 -- already emailed, on Julio's ruling. Without it, every unread mention from
@@ -26,9 +29,9 @@ BEGIN;
 
 ALTER TABLE "mentions" ADD COLUMN "emailedAt" TIMESTAMP(3);
 
+UPDATE "mentions" SET "emailedAt" = now() WHERE "emailedAt" IS NULL;
+
 CREATE INDEX "mentions_emailedAt_readAt_createdAt_idx"
   ON "mentions" ("emailedAt", "readAt", "createdAt");
-
-UPDATE "mentions" SET "emailedAt" = now() WHERE "emailedAt" IS NULL;
 
 COMMIT;
