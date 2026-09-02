@@ -4,7 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { ActivityKind, EventVisibility, RelayRole, RelayStep } from '@prisma/client'
 import { db } from '@/db/client'
 import { requireCan } from '@/server/middleware/permissions'
-import { recordActivity } from '@/server/services/activity'
+import {
+  recordActivity,
+  scheduleNotificationEmailTimer,
+} from '@/server/services/activity'
 import {
   HOLDER_ROLE,
   reseedChecklistForStep,
@@ -147,7 +150,14 @@ export async function completeOnboardingAction(input: {
     throw new Error('Forbidden: client not in active org')
   }
 
-  return db.$transaction(async (tx) => {
+  // Set inside the transaction below, read after it commits.
+  // recordActivity will not self-schedule tapper two while a `tx` is
+  // passed (holding an interactive transaction open across the
+  // Trigger.dev network call risks a Prisma timeout and an unwanted
+  // rollback of this action's state change), so this function schedules
+  // it post commit instead.
+  let scheduleEmailTimer = false
+  const result = await db.$transaction(async (tx) => {
     if (!client.onboardingCompletedAt) {
       await tx.client.update({
         where: { id: client.id },
@@ -198,6 +208,7 @@ export async function completeOnboardingAction(input: {
     })
     await reseedChecklistForStep(tx, batch.id, RelayStep.copy, client.clientReviewEnabled)
 
+    const mentionedUserIds = holderId !== ctx.userDbId ? [holderId] : []
     await recordActivity(
       {
         clientId: client.id,
@@ -209,14 +220,19 @@ export async function completeOnboardingAction(input: {
           label,
           startStep: RelayStep.copy,
         },
-        mentionedUserIds: holderId !== ctx.userDbId ? [holderId] : [],
+        mentionedUserIds,
       },
       tx,
     )
+    scheduleEmailTimer = mentionedUserIds.length > 0
 
     revalidateBatchSurfaces(client.id, batch.id)
     return { batchId: batch.id, created: true }
   })
+  if (scheduleEmailTimer) {
+    await scheduleNotificationEmailTimer()
+  }
+  return result
 }
 
 export async function createBatchAction(input: {
@@ -242,7 +258,11 @@ export async function createBatchAction(input: {
     throw new Error('Client onboarding not complete; cannot create relay yet')
   }
 
-  return db.$transaction(async (tx) => {
+  // Set inside the transaction below, read after it commits. See the
+  // comment in completeOnboardingAction above for why this cannot schedule
+  // from inside recordActivity while `tx` is passed.
+  let scheduleEmailTimer = false
+  const result = await db.$transaction(async (tx) => {
     const existing = await tx.batch.findFirst({
       where: { clientId: client.id, label: input.label },
       select: { id: true },
@@ -266,6 +286,7 @@ export async function createBatchAction(input: {
       select: { id: true },
     })
     await reseedChecklistForStep(tx, batch.id, RelayStep.copy, client.clientReviewEnabled)
+    const mentionedUserIds = holderId !== ctx.userDbId ? [holderId] : []
     await recordActivity(
       {
         clientId: client.id,
@@ -273,13 +294,18 @@ export async function createBatchAction(input: {
         kind: ActivityKind.batch_created,
         visibility: EventVisibility.internal,
         payload: { batchId: batch.id, label: input.label, startStep: RelayStep.copy },
-        mentionedUserIds: holderId !== ctx.userDbId ? [holderId] : [],
+        mentionedUserIds,
       },
       tx,
     )
+    scheduleEmailTimer = mentionedUserIds.length > 0
     revalidateBatchSurfaces(client.id, batch.id)
     return { batchId: batch.id }
   })
+  if (scheduleEmailTimer) {
+    await scheduleNotificationEmailTimer()
+  }
+  return result
 }
 
 function defaultMonthLabel(clientName: string): string {

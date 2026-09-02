@@ -625,6 +625,10 @@ model Mention {
   activityEventId String
   mentionedUserId String
   readAt          DateTime?
+  /// Set when this mention has been included in a sent rollup email.
+  /// Null means "still owed an email". Together with readAt this is the
+  /// whole notification-email queue; there is no separate queue table.
+  emailedAt       DateTime?
   createdAt       DateTime  @default(now())
 
   event ActivityEvent @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
@@ -632,6 +636,7 @@ model Mention {
 
   @@unique([activityEventId, mentionedUserId])
   @@index([mentionedUserId, readAt])
+  @@index([emailedAt, readAt, createdAt])
   @@map("mentions")
 }
 

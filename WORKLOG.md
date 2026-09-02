@@ -11,6 +11,16 @@ Test), and was deployed to prod (`accountsfons-projects/relay-app`).
 
 ## Open / in progress
 
+From the 2026-09-02 notification email rollout (Julio):
+- [ ] **(optional, notification email) Backstop alarm for the overnight window.** The two tappers
+  cover each other during working hours, but overnight and at weekends nobody is signed in, so the
+  Trigger.dev timer works alone. A Trigger.dev outage starting Friday evening would hold those
+  emails until the first sign in on Monday; bell notifications are unaffected. Declined for now,
+  deliberately.
+- [ ] **(optional, notification email) Per user opt out.** Deliberately out of scope because read
+  suppression already keeps the volume low. If asked for later, it is a nullable `User` column plus
+  a Settings switch, and nothing in the current design has to change to accept it.
+
 From the 2026-08-31 Drive upload incident (Julio):
 - [ ] **(parked by Julio 2026-08-31) Stale assets-folder links upstream in Airtable** — the bad values
   originated in the "Bekah AI | Databank" base (Clients v2, field "Google Drive Link (Assets Folder)")
@@ -42,6 +52,42 @@ Cleared 2026-08-07: Bell "Post N" copy (#415); `LIVE_PIPELINE_STEPS` client-impo
 ---
 
 ## Shipped
+
+- [x] **2026-09-02 - Email rollups alongside every in app notification** (#PR)
+  Every bell notification to an internal teammate now also arrives by email, as one rollup per
+  person every five minutes. `Mention` IS the queue: a row is owed an email while `readAt` and
+  `emailedAt` are both null and its `createdAt` sits inside the window, so there is no queue table
+  and `recordActivity` needed no send logic of its own. Copy comes from `renderSummary` and
+  `resolveHref`, the same functions the bell uses, so email and bell copy cannot drift and a future
+  ActivityKind gets email copy for free. Already read mentions are skipped, and an all read pile
+  sends nothing at all, so anyone working inside Relay gets close to zero email while anyone away
+  gets everything. No cron, by Julio's call. Two independent tappers run the same sweep: the
+  existing 20 second notification bell poll (global, not scoped to the caller, because the person
+  who caused a notification is almost always the one still signed in) and a durable Trigger.dev
+  delayed run scheduled from `recordActivity`, with an idempotency key bucketed to the window so a
+  burst makes one run.
+  **Concurrency is claim then send, there is no lock anywhere.** `claimMentionsForEmail` uses
+  Prisma's `updateManyAndReturn` in a single atomic statement, which both stamps `emailedAt` and
+  reports back exactly the rows that one call won, so two overlapping sweeps split the pile instead
+  of double sending. A failed send releases its claim so a later sweep retries it.
+  **The Trigger.dev schedule call is deliberately kept outside the transaction.** `recordActivity`
+  only calls `scheduleNotificationEmailTimer` itself when no `tx` was passed in; awaiting a
+  Trigger.dev HTTP call from inside an interactive Prisma transaction would hold that transaction
+  open across a network round trip and risks rolling back the user's action if Trigger.dev is slow.
+  The 8 transactional call sites that carry mentions with rollup eligible kinds (six in `relay.ts`,
+  two in `relay-admin.ts`) instead call `scheduleNotificationEmailTimer` after their own
+  `db.$transaction(...)` commits, following the existing `notifyHolderOfBatonHandoff` pattern.
+  The three kinds that already have bespoke emails (`batch_passed`, `batch_sent_back`,
+  `review_session_submitted`) are excluded from the rollup so nobody gets two emails for the same
+  event. The 24 hour maximum age is load bearing twice: it stops the first deploy from mailing
+  everyone about historical unread mentions, and it is the give up rule for a permanently
+  undeliverable address.
+  Tests: 2921 passing across 334 files on this branch; the merge base (verified by checking it out
+  in a scratch worktree) carried 2868, so this branch added 53. Gate: tsc 0 errors, full unit suite
+  green, `next build` clean, eslint clean (one pre existing unused param warning on `_req` in the
+  summary route, unrelated to this branch and present before this work started). One additive
+  migration (`Mention.emailedAt` plus a composite index on `[emailedAt, readAt, createdAt]`), no
+  permission key change.
 
 - [x] **2026-08-31 - Drive archive moves to the scheduling button, and the addressed roll-up unsticks** (#438)
   Three follow-ups from Julio on the same day, all in PR #438.

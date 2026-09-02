@@ -6,6 +6,14 @@ vi.mock('@/server/middleware/permissions', () => ({
 
 vi.mock('@/server/services/activity', () => ({
   recordActivity: vi.fn(),
+  // Task 9 review Finding 1: completeOnboardingAction and createBatchAction
+  // now call this post commit when their batch_created activity mentions a
+  // holder other than the acting user. Every case in this file currently
+  // self-mentions (assignedAmId === ctx.userDbId), so this never actually
+  // fires today, but it must exist or a future differing-holder test would
+  // throw "scheduleNotificationEmailTimer is not a function" instead of
+  // exercising the real assertion.
+  scheduleNotificationEmailTimer: vi.fn(),
 }))
 
 vi.mock('@/server/lib/relay-state-machine', async (importOriginal) => {
