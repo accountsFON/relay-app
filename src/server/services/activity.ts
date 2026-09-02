@@ -21,8 +21,13 @@ type DbOrTx = DbClient | DbTx
  *
  * The idempotency key is bucketed to the current five minute window, so a
  * burst of mentions in one window produces a single delayed run.
+ *
+ * Exported so transactional callers of `recordActivity` (a `tx` was passed)
+ * can call this themselves AFTER their `db.$transaction(...)` commits.
+ * `recordActivity` will not call it for them in that case; see the guard
+ * inside `recordActivity` for why.
  */
-async function scheduleNotificationEmailTimer(): Promise<void> {
+export async function scheduleNotificationEmailTimer(): Promise<void> {
   try {
     await tasks.trigger(
       'notification-email-timer',
@@ -91,7 +96,17 @@ export async function recordActivity(
       },
       select: { id: true },
     })
-    if (input.mentionedUserIds?.length) {
+    // Schedule tapper two only when NOT running inside a caller's
+    // transaction. Awaiting the Trigger.dev HTTP call from inside a `tx`
+    // holds an interactive Prisma transaction open across a network round
+    // trip; if Trigger.dev is slow, the transaction can blow past Prisma's
+    // timeout and the caller's whole state change rolls back on the NEXT
+    // query, outside this function's try/catch. Transactional callers
+    // schedule for themselves, post commit, by calling the exported
+    // `scheduleNotificationEmailTimer` after their `db.$transaction(...)`
+    // resolves (same pattern `notifyHolderOfBatonHandoff` uses for the
+    // baton handoff email).
+    if (!tx && input.mentionedUserIds?.length) {
       await scheduleNotificationEmailTimer()
     }
     return event

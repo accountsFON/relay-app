@@ -12,7 +12,10 @@ import {
   reseedChecklistForStep,
   validateTransition,
 } from '@/server/lib/relay-state-machine'
-import { recordActivity } from '@/server/services/activity'
+import {
+  recordActivity,
+  scheduleNotificationEmailTimer,
+} from '@/server/services/activity'
 
 /**
  * Steps the client cares about. A pass_forward landing at one of these
@@ -350,7 +353,13 @@ export interface AdvanceFromClientReviewResult {
 export async function advanceFromClientReview(
   input: AdvanceFromClientReviewInput,
 ): Promise<AdvanceFromClientReviewResult> {
-  return db.$transaction(async (tx) => {
+  // Set inside the transaction below, read after it commits. recordActivity
+  // will not self-schedule tapper two while a `tx` is passed (holding an
+  // interactive transaction open across the Trigger.dev network call risks
+  // a Prisma timeout and an unwanted rollback of the caller's state change),
+  // so this function schedules it post commit instead.
+  let scheduleEmailTimer = false
+  const result = await db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
       where: { id: input.batchId },
       select: {
@@ -436,9 +445,14 @@ export async function advanceFromClientReview(
       },
       tx,
     )
+    scheduleEmailTimer = next.notifyUserIds.length > 0
 
     return { advanced: true, toStep, newHolderId: next.userId }
   })
+  if (scheduleEmailTimer) {
+    await scheduleNotificationEmailTimer()
+  }
+  return result
 }
 
 /**
@@ -554,7 +568,11 @@ export async function finishBatch(input: FinishBatchInput) {
  * (internal visibility).
  */
 export async function forceStep(input: ForceStepInput) {
-  return db.$transaction(async (tx) => {
+  // Set inside the transaction below, read after it commits. See the
+  // comment in advanceFromClientReview above for why this cannot schedule
+  // from inside recordActivity while `tx` is passed.
+  let scheduleEmailTimer = false
+  const result = await db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
       where: { id: input.batchId },
       select: {
@@ -624,6 +642,10 @@ export async function forceStep(input: ForceStepInput) {
 
     await reseedChecklistForStep(tx, batch.id, input.toStep, batch.clientReviewEnabled)
 
+    const mentionedUserIds = mentionsExcludingActor(
+      next.notifyUserIds,
+      input.actorId,
+    )
     await recordActivity(
       {
         clientId: batch.clientId,
@@ -641,16 +663,18 @@ export async function forceStep(input: ForceStepInput) {
           newHolderId: next.userId,
           reason: input.reason ?? null,
         },
-        mentionedUserIds: mentionsExcludingActor(
-          next.notifyUserIds,
-          input.actorId,
-        ),
+        mentionedUserIds,
       },
       tx,
     )
+    scheduleEmailTimer = mentionedUserIds.length > 0
 
     return { batchId: batch.id, toStep: input.toStep, newHolderId: next.userId }
   })
+  if (scheduleEmailTimer) {
+    await scheduleNotificationEmailTimer()
+  }
+  return result
 }
 
 export async function sendBackBaton(input: SendBackBatonInput) {
@@ -767,7 +791,11 @@ export async function sendBackBaton(input: SendBackBatonInput) {
  *   empty but the sub-state still flips.
  */
 export async function requestDesignChanges(input: RequestDesignChangesInput) {
-  return db.$transaction(async (tx) => {
+  // Set inside the transaction below, read after it commits. See the
+  // comment in advanceFromClientReview above for why this cannot schedule
+  // from inside recordActivity while `tx` is passed.
+  let scheduleEmailTimer = false
+  const result = await db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
       where: { id: input.batchId },
       select: {
@@ -796,6 +824,9 @@ export async function requestDesignChanges(input: RequestDesignChangesInput) {
       data: { currentSubState: 'awaiting_design_revisions' },
     })
 
+    const mentionedUserIds = designerId
+      ? mentionsExcludingActor([designerId], input.actorId)
+      : []
     await recordActivity(
       {
         clientId: batch.clientId,
@@ -807,15 +838,18 @@ export async function requestDesignChanges(input: RequestDesignChangesInput) {
           batchLabel: batch.label,
           surface: 'internal_review',
         },
-        mentionedUserIds: designerId
-          ? mentionsExcludingActor([designerId], input.actorId)
-          : [],
+        mentionedUserIds,
       },
       tx,
     )
+    scheduleEmailTimer = mentionedUserIds.length > 0
 
     return { batchId: batch.id, subState: 'awaiting_design_revisions' as const }
   })
+  if (scheduleEmailTimer) {
+    await scheduleNotificationEmailTimer()
+  }
+  return result
 }
 
 /**
@@ -839,7 +873,11 @@ export async function requestDesignChanges(input: RequestDesignChangesInput) {
  *   `/preview` (see resolveHref in src/lib/notification-copy.ts).
  */
 export async function markDesignRevisionsDone(input: MarkDesignRevisionsDoneInput) {
-  return db.$transaction(async (tx) => {
+  // Set inside the transaction below, read after it commits. See the
+  // comment in advanceFromClientReview above for why this cannot schedule
+  // from inside recordActivity while `tx` is passed.
+  let scheduleEmailTimer = false
+  const result = await db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
       where: { id: input.batchId },
       select: {
@@ -874,6 +912,9 @@ export async function markDesignRevisionsDone(input: MarkDesignRevisionsDoneInpu
       data: { currentSubState: null },
     })
 
+    const mentionedUserIds = amId
+      ? mentionsExcludingActor([amId], input.actorId)
+      : []
     await recordActivity(
       {
         clientId: batch.clientId,
@@ -885,15 +926,18 @@ export async function markDesignRevisionsDone(input: MarkDesignRevisionsDoneInpu
           batchLabel: batch.label,
           surface: 'internal_review',
         },
-        mentionedUserIds: amId
-          ? mentionsExcludingActor([amId], input.actorId)
-          : [],
+        mentionedUserIds,
       },
       tx,
     )
+    scheduleEmailTimer = mentionedUserIds.length > 0
 
     return { batchId: batch.id, subState: null }
   })
+  if (scheduleEmailTimer) {
+    await scheduleNotificationEmailTimer()
+  }
+  return result
 }
 
 /**
@@ -914,7 +958,11 @@ export async function markDesignRevisionsDone(input: MarkDesignRevisionsDoneInpu
 export async function markClientRevisionDesignDone(
   input: MarkClientRevisionDesignDoneInput,
 ) {
-  return db.$transaction(async (tx) => {
+  // Set inside the transaction below, read after it commits. See the
+  // comment in advanceFromClientReview above for why this cannot schedule
+  // from inside recordActivity while `tx` is passed.
+  let scheduleEmailTimer = false
+  const result = await db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
       where: { id: input.batchId },
       select: {
@@ -954,6 +1002,9 @@ export async function markClientRevisionDesignDone(
       data: { currentSubState: null },
     })
 
+    const mentionedUserIds = amId
+      ? mentionsExcludingActor([amId], input.actorId)
+      : []
     await recordActivity(
       {
         clientId: batch.clientId,
@@ -965,15 +1016,18 @@ export async function markClientRevisionDesignDone(
           batchLabel: batch.label,
           surface: 'client_review',
         },
-        mentionedUserIds: amId
-          ? mentionsExcludingActor([amId], input.actorId)
-          : [],
+        mentionedUserIds,
       },
       tx,
     )
+    scheduleEmailTimer = mentionedUserIds.length > 0
 
     return { batchId: batch.id, subState: null }
   })
+  if (scheduleEmailTimer) {
+    await scheduleNotificationEmailTimer()
+  }
+  return result
 }
 
 /**
@@ -992,7 +1046,11 @@ export async function markClientRevisionDesignDone(
 export async function sendFlaggedFeedbackToDesigner(
   input: SendFlaggedFeedbackToDesignerInput,
 ) {
-  return db.$transaction(async (tx) => {
+  // Set inside the transaction below, read after it commits. See the
+  // comment in advanceFromClientReview above for why this cannot schedule
+  // from inside recordActivity while `tx` is passed.
+  let scheduleEmailTimer = false
+  const result = await db.$transaction(async (tx) => {
     const batch = await tx.batch.findUnique({
       where: { id: input.batchId },
       select: {
@@ -1025,6 +1083,9 @@ export async function sendFlaggedFeedbackToDesigner(
       data: { currentSubState: 'awaiting_design_revisions' },
     })
 
+    const mentionedUserIds = designerId
+      ? mentionsExcludingActor([designerId], input.actorId)
+      : []
     await recordActivity(
       {
         clientId: batch.clientId,
@@ -1038,13 +1099,16 @@ export async function sendFlaggedFeedbackToDesigner(
           surface: 'client_review',
           count,
         },
-        mentionedUserIds: designerId
-          ? mentionsExcludingActor([designerId], input.actorId)
-          : [],
+        mentionedUserIds,
       },
       tx,
     )
+    scheduleEmailTimer = mentionedUserIds.length > 0
 
     return { batchId: batch.id, subState: 'awaiting_design_revisions' as const, count }
   })
+  if (scheduleEmailTimer) {
+    await scheduleNotificationEmailTimer()
+  }
+  return result
 }

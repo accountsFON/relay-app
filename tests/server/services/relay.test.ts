@@ -6,6 +6,13 @@ import {
   RelayStep,
 } from '@prisma/client'
 
+// Mocked so post-commit scheduling (Finding 1 fix, task 9 review) never
+// makes a real Trigger.dev network call from these unit tests, and so
+// tests can assert `tasks.trigger` was actually called.
+vi.mock('@trigger.dev/sdk/v3', () => ({
+  tasks: { trigger: vi.fn() },
+}))
+
 type Calls = Record<string, unknown[][]>
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyMock = any
@@ -128,9 +135,11 @@ import {
   sendBackBaton,
   sendFlaggedFeedbackToDesigner,
 } from '@/server/services/relay'
+import { tasks } from '@trigger.dev/sdk/v3'
 
 beforeEach(() => {
   currentTx = makeTx()
+  vi.mocked(tasks.trigger).mockClear()
 })
 
 describe('getNotifyTargetsForStep', () => {
@@ -462,6 +471,34 @@ describe('requestDesignChanges', () => {
     expect(payload.batchId).toBe('b1')
     // designer is mentioned
     expect(data.mentions.create).toEqual([{ mentionedUserId: 'user_designer' }])
+  })
+
+  // Task 9 review Finding 1 (Important): requestDesignChanges is one of the
+  // 12 transactional recordActivity call sites. recordActivity itself will
+  // not schedule tapper two while a `tx` is passed (would hold the
+  // transaction open across a Trigger.dev network round trip), so
+  // requestDesignChanges must schedule it AFTER db.$transaction resolves.
+  it('schedules the notification email timer post commit when mentions were created', async () => {
+    mockBatchAt(RelayStep.am_review_design, 'user_designer')
+    await requestDesignChanges({
+      batchId: 'b1',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(tasks.trigger).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(tasks.trigger).mock.calls[0][0]).toBe(
+      'notification-email-timer',
+    )
+  })
+
+  it('does not schedule the notification email timer when no designer is mentioned', async () => {
+    mockBatchAt(RelayStep.am_review_design, null)
+    await requestDesignChanges({
+      batchId: 'b1',
+      actorId: 'u_am',
+      actorOrganizationId: 'org_1',
+    })
+    expect(tasks.trigger).not.toHaveBeenCalled()
   })
 
   it('no-ops the mention if no designer is assigned but still sets sub-state', async () => {

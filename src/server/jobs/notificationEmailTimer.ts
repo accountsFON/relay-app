@@ -1,9 +1,14 @@
 /**
  * notification-email-timer, tapper two for notification rollup emails.
  *
- * Scheduled by recordActivity with a five minute delay whenever mentions are
- * created, and deduped by an idempotency key bucketed to the current window,
- * so a burst of twenty mentions produces ONE delayed run.
+ * Scheduled with a five minute delay whenever mentions are created, and
+ * deduped by an idempotency key bucketed to the current window, so a burst
+ * of twenty mentions produces ONE delayed run. `recordActivity` schedules it
+ * directly for non-transactional callers; transactional callers (a `tx` was
+ * passed) schedule it themselves, post commit, via the exported
+ * `scheduleNotificationEmailTimer` in `@/server/services/activity`, so the
+ * Trigger.dev network call never holds an interactive Prisma transaction
+ * open.
  *
  * The run carries no payload. It is a bare "go look at the pile" nudge, which
  * is what makes it safe to schedule from inside a transaction: if that
