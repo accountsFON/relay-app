@@ -148,10 +148,11 @@ summary work.
 - **A cheap indexed probe runs first.** Almost every call finds nothing due and
   returns in about a millisecond, which is what a route hit every 20 seconds by
   every signed in user requires.
-- **If something is due, take `pg_advisory_xact_lock` before sweeping**,
-  following `designerFlags.ts:95`. A concurrent request that cannot take the
-  lock returns immediately. This is what stops fifty simultaneous polls from
-  sending fifty copies.
+- **If something is due, claim before sending** (see "concurrency" below).
+  This is what stops fifty simultaneous polls from sending fifty copies.
+- **Bounded per call.** A single poll handles at most five recipients, so a
+  backlog can never slow the bell down. The timer tapper drains the rest with
+  a much higher cap.
 - **The sweep is global, not scoped to the caller.** This is the point of the
   mechanism: the person who caused a notification is almost always still signed
   in, because they just did the thing, so their browser is what gets their
@@ -183,7 +184,7 @@ correctly, because both read the same list and stamp what they send.
 
 | Situation | Outcome |
 |---|---|
-| Both fire together | The lock lets one work, the other no-ops |
+| Both fire together | Only one can claim a row, so the other no-ops |
 | Heartbeat fails | The timer sends everything |
 | Timer fails | The next signed in user's poll sends everything |
 | Both fail | Nothing is lost; it goes out on the next tap |
@@ -243,12 +244,33 @@ caller swallows).
 
 - **Per recipient try/catch.** One bad address cannot stop the other nine
   people receiving theirs.
-- **Stamp after sending, never before.** A send that succeeds and then fails to
-  stamp costs one duplicate on the next tap. Stamping first would lose a failed
-  send permanently. Duplicate is the correct direction to fail in.
 - **Log every failure** with recipient, item count and reason. Per the Drive
   upload incident on 2026-08-31, a silent partial failure leaves nothing to
   diagnose from.
+
+### Concurrency: claim, then send, and release on failure
+
+Revised during planning on 2026-09-02, replacing an earlier "advisory lock,
+stamp after sending" sketch. **Stamping `emailedAt` IS the claim:**
+
+1. `UPDATE mentions SET emailedAt = now() WHERE id IN (...) AND emailedAt IS
+   NULL`, then read back which rows now carry this stamp. Only one caller can
+   win a row.
+2. Send the email for the rows this caller won.
+3. If the send fails, set `emailedAt` back to null so a later tap retries.
+
+Why this replaced the lock. An advisory lock in Postgres is either transaction
+scoped, which would mean holding a transaction open across every Resend call in
+the sweep, or session scoped, which is unsafe behind a pooled connection
+because the unlock can land on a different connection and strand the lock. A
+conditional update has neither problem, needs no lock, and is atomic by
+definition.
+
+The trade, stated plainly: a hard process death between the claim and the send
+drops that one email, where the earlier sketch would have retried it. Accepted,
+because the bell notification is untouched and still shows the item, and
+because the alternative risks stranding a lock that would stop **all** sending.
+Ordinary send failures still retry, since they release the claim.
 
 ## Testing
 
@@ -268,9 +290,10 @@ Behavioural, against a mocked db and a mocked `sendEmail`:
 - a mention younger than five minutes is not sent yet
 - a mention older than 24 hours is not sent
 - one recipient's send failing still sends the others
-- `emailedAt` lands only after a successful send
+- the claim happens before the send, in that order
+- a failed send releases its claim so a later tap retries
+- a recipient whose mentions were claimed by another sweep is skipped
 - the route tap never throws and never alters the summary response
-- two concurrent sweeps produce one set of emails
 - a timer waking to an empty pile is a clean no-op
 
 Gate, per repo norms: `tsc` 0, full unit suite, `next build`, eslint clean.
