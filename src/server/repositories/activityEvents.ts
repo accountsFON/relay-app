@@ -15,9 +15,14 @@
  * Callers MUST verify client visibility before calling listActivityForClient.
  * This repo does not re-check org/scope; it queries by clientId directly.
  */
-import { EventVisibility, Prisma } from '@prisma/client'
+import { ActivityKind, EventVisibility, Prisma } from '@prisma/client'
 import { db } from '@/db/client'
 import { buildPostNumberMap } from '@/lib/post-numbering'
+import {
+  ROLLUP_WINDOW_MS,
+  ROLLUP_MAX_AGE_MS,
+  EXCLUDED_ROLLUP_KINDS,
+} from '@/lib/notification-email-rollup'
 import type {
   ActivityEventView,
   ActivityPayload,
@@ -310,5 +315,161 @@ export async function deleteAllMentionsForUser(
       mentionedUserId: userId,
       event: { client: { organizationId, ...clientScope } },
     },
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Notification rollup emails
+//
+// Mention is the queue: a row is owed an email while readAt and emailedAt are
+// both null and its createdAt sits inside the age window. See
+// src/lib/notification-email-rollup.ts for why the 24 hour bound matters twice.
+//
+// This section also holds claimMentionsForEmail and releaseMentionsForEmail,
+// two write helpers, even though the file header above describes an older
+// split where Caleb owns reads and Rails owns writes. That split does not
+// apply here on purpose: these two writes exist only to claim and release
+// rows that the read query above defines, so they stay next to the query
+// whose rows they claim rather than moving to a separate write file.
+// ---------------------------------------------------------------------------
+
+export interface DueMentionRow extends MentionInboxRow {
+  recipient: { id: string; name: string; email: string }
+}
+
+/**
+ * The one place the due rule is expressed. Both tappers reach it through the
+ * functions below, so they cannot disagree about what is owed an email.
+ */
+function dueWhere(now: Date): Prisma.MentionWhereInput {
+  return {
+    readAt: null,
+    emailedAt: null,
+    createdAt: {
+      lte: new Date(now.getTime() - ROLLUP_WINDOW_MS),
+      gte: new Date(now.getTime() - ROLLUP_MAX_AGE_MS),
+    },
+    user: {
+      role: { not: 'client' },
+      deactivatedAt: null,
+      email: { not: '' },
+    },
+    event: {
+      kind: { notIn: EXCLUDED_ROLLUP_KINDS as string[] as ActivityKind[] },
+    },
+  }
+}
+
+/**
+ * Cheap indexed probe. Runs on every notification bell poll, so it must stay
+ * a single indexed lookup that almost always matches nothing.
+ */
+export async function anyMentionDueForEmail(now: Date): Promise<boolean> {
+  const hit = await db.mention.findFirst({
+    where: dueWhere(now),
+    select: { id: true },
+  })
+  return hit != null
+}
+
+export async function listMentionsDueForEmail(
+  now: Date,
+  limit = 500,
+): Promise<DueMentionRow[]> {
+  const mentions = await db.mention.findMany({
+    where: dueWhere(now),
+    orderBy: { createdAt: 'asc' },
+    take: limit,
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      event: {
+        include: {
+          actor: { select: { id: true, name: true, avatarUrl: true } },
+          client: { select: { id: true, name: true } },
+          post: { select: { batchId: true } },
+        },
+      },
+    },
+  })
+
+  // Same per batch index listMentionsForUser builds, so the email renders
+  // "Post N" exactly as the bell does.
+  const batchIds = [
+    ...new Set(
+      mentions
+        .map((m) => m.event.post?.batchId)
+        .filter((b): b is string => !!b),
+    ),
+  ]
+  let postNumberById = new Map<string, number>()
+  if (batchIds.length > 0) {
+    const posts = await db.post.findMany({
+      where: { batchId: { in: batchIds } },
+      select: { id: true, batchId: true },
+      orderBy: { postDate: 'asc' },
+    })
+    postNumberById = buildPostNumberMap(posts)
+  }
+
+  return mentions.map((m) => {
+    const postNumber = m.event.postId
+      ? postNumberById.get(m.event.postId)
+      : undefined
+    const payload =
+      postNumber != null
+        ? ({ ...(m.event.payload as Record<string, unknown>), postNumber } as unknown as ActivityPayload)
+        : (m.event.payload as unknown as ActivityPayload)
+
+    return {
+      mentionId: m.id,
+      readAt: m.readAt,
+      recipient: { id: m.user.id, name: m.user.name, email: m.user.email },
+      client: { id: m.event.client.id, name: m.event.client.name },
+      postBatchId: m.event.post?.batchId ?? null,
+      event: {
+        id: m.event.id,
+        clientId: m.event.clientId,
+        runId: m.event.runId,
+        postId: m.event.postId,
+        kind: m.event.kind,
+        createdAt: m.event.createdAt,
+        actor: m.event.actor,
+        payload,
+      },
+    } satisfies DueMentionRow
+  })
+}
+
+/**
+ * Atomically claim mentions for sending by stamping emailedAt, then report
+ * which ones this caller actually won. Two sweeps running at once cannot both
+ * claim the same row, which is what makes a lock unnecessary.
+ *
+ * A send that then fails calls releaseMentionsForEmail to hand the rows back.
+ */
+export async function claimMentionsForEmail(
+  mentionIds: string[],
+  at: Date,
+): Promise<string[]> {
+  if (mentionIds.length === 0) return []
+
+  await db.mention.updateMany({
+    where: { id: { in: mentionIds }, emailedAt: null },
+    data: { emailedAt: at },
+  })
+
+  const won = await db.mention.findMany({
+    where: { id: { in: mentionIds }, emailedAt: at },
+    select: { id: true },
+  })
+  return won.map((w) => w.id)
+}
+
+/** Hand rows back to the queue after a failed send so a later tap retries. */
+export async function releaseMentionsForEmail(mentionIds: string[]): Promise<void> {
+  if (mentionIds.length === 0) return
+  await db.mention.updateMany({
+    where: { id: { in: mentionIds } },
+    data: { emailedAt: null },
   })
 }
