@@ -24,6 +24,12 @@ export interface SweepDeps {
 }
 
 export interface SweepResult {
+  /**
+   * Recipients CONSIDERED this tap, up to maxRecipients. Includes any
+   * recipient skipped because their claim came back empty (every mention of
+   * theirs was already claimed by a concurrent sweep), not only the ones an
+   * email actually went out to.
+   */
   recipients: number
   emailsSent: number
   mentionsEmailed: number
@@ -59,10 +65,26 @@ export async function runNotificationEmailSweep(
     const recipient = rows[0].recipient
 
     // Claim first. Whoever wins the update owns these mentions for this tap.
-    const claimedIds = await deps.claim(
-      rows.map((r) => r.mentionId),
-      now,
-    )
+    // Guarded on its own: a claim failure (db blip, deadlock, pool
+    // exhaustion) must not abort the whole sweep and take every remaining
+    // recipient down with it.
+    let claimedIds: string[]
+    try {
+      claimedIds = await deps.claim(
+        rows.map((r) => r.mentionId),
+        now,
+      )
+    } catch (err) {
+      failures += 1
+      console.error('[notificationEmailSweep] claim failed', {
+        recipientId: recipient.id,
+        items: rows.length,
+        err: err instanceof Error ? err.message : String(err),
+      })
+      // No release here on purpose: if the claim itself threw, nothing was
+      // claimed, so there is nothing to hand back.
+      continue
+    }
     if (claimedIds.length === 0) continue
 
     const claimed = new Set(claimedIds)
