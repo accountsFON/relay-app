@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   buildRollupContent,
   buildRollupSubject,
+  buildRollupHeadline,
   ROLLUP_WINDOW_MS,
   ROLLUP_MAX_AGE_MS,
   EXCLUDED_ROLLUP_KINDS,
@@ -136,5 +137,35 @@ describe('buildRollupSubject', () => {
     )
 
     expect(buildRollupSubject(content)).toBe('[Relay] 3 updates across 2 clients')
+  })
+})
+
+describe('buildRollupHeadline', () => {
+  it('returns a single-update message for one item', () => {
+    const content = buildRollupContent([row({ actorName: 'Mollie' })], BASE)
+
+    expect(buildRollupHeadline(content)).toBe('1 update while you were away')
+  })
+
+  it('counts items when several are from one client', () => {
+    const content = buildRollupContent(
+      [row({ mentionId: 'm1' }), row({ mentionId: 'm2' }), row({ mentionId: 'm3' })],
+      BASE,
+    )
+
+    expect(buildRollupHeadline(content)).toBe('3 updates on Elevated Tree Solutions')
+  })
+
+  it('counts clients when items span multiple clients', () => {
+    const content = buildRollupContent(
+      [
+        row({ mentionId: 'm1', clientId: 'c1', clientName: 'Alpha Co' }),
+        row({ mentionId: 'm2', clientId: 'c2', clientName: 'Beta Co' }),
+        row({ mentionId: 'm3', clientId: 'c2', clientName: 'Beta Co' }),
+      ],
+      BASE,
+    )
+
+    expect(buildRollupHeadline(content)).toBe('3 updates across 2 clients')
   })
 })
