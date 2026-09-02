@@ -5,6 +5,7 @@ const mockRequireOrgContext = vi.fn()
 const mockListMentionsForUser = vi.fn()
 const mockUnreadMentionCount = vi.fn()
 const mockVisibilityForViewer = vi.fn()
+const mockNotificationEmailTick = vi.fn()
 
 vi.mock('@/server/middleware/auth', () => ({
   requireOrgContext: () => mockRequireOrgContext(),
@@ -16,6 +17,14 @@ vi.mock('@/server/repositories/activityEvents', () => ({
   visibilityForViewer: (...args: unknown[]) => mockVisibilityForViewer(...args),
 }))
 
+// The route also taps the notification rollup sweep on every poll (Task 8).
+// Mocked here so every test in this file, old and new, gets the stub instead
+// of pulling in the real module, which imports the repositories and, through
+// them, the live database client.
+vi.mock('@/server/services/notificationEmailTick', () => ({
+  notificationEmailTick: (...args: unknown[]) => mockNotificationEmailTick(...args),
+}))
+
 import { GET } from '@/app/api/notifications/summary/route'
 
 describe('GET /api/notifications/summary', () => {
@@ -25,6 +34,8 @@ describe('GET /api/notifications/summary', () => {
     mockUnreadMentionCount.mockReset()
     mockVisibilityForViewer.mockReset()
     mockVisibilityForViewer.mockReturnValue(['internal', 'public'])
+    mockNotificationEmailTick.mockReset()
+    mockNotificationEmailTick.mockResolvedValue(null)
   })
 
   it('returns 200 with count + items shape', async () => {
@@ -123,5 +134,35 @@ describe('GET /api/notifications/summary', () => {
     expect(res.status).toBe(401)
     const body = await res.json()
     expect(body).toEqual({ error: 'Unauthorized' })
+  })
+
+  describe('rollup sweep tap', () => {
+    beforeEach(() => {
+      mockRequireOrgContext.mockResolvedValue({ userDbId: 'u1', organizationDbId: 'org1', role: 'account_manager' })
+      mockUnreadMentionCount.mockResolvedValue(0)
+      mockListMentionsForUser.mockResolvedValue([])
+    })
+
+    it('taps the rollup sweep on every poll', async () => {
+      const req = new NextRequest('http://localhost/api/notifications/summary')
+      await GET(req)
+      expect(mockNotificationEmailTick).toHaveBeenCalledTimes(1)
+    })
+
+    it('caps recipients per tap so the poll stays fast', async () => {
+      const req = new NextRequest('http://localhost/api/notifications/summary')
+      await GET(req)
+      expect(mockNotificationEmailTick.mock.calls[0][0]).toMatchObject({
+        maxRecipients: 5,
+      })
+    })
+
+    it('still returns the normal summary when the tap throws', async () => {
+      mockNotificationEmailTick.mockRejectedValue(new Error('boom'))
+      const req = new NextRequest('http://localhost/api/notifications/summary')
+      const res = await GET(req)
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ count: 0, items: [] })
+    })
   })
 })
