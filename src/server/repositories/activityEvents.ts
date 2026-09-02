@@ -435,15 +435,19 @@ export async function listMentionsDueForEmail(
         createdAt: m.event.createdAt,
         actor: m.event.actor,
         payload,
+        myMention: { id: m.id, readAt: m.readAt },
       },
     } satisfies DueMentionRow
   })
 }
 
 /**
- * Atomically claim mentions for sending by stamping emailedAt, then report
- * which ones this caller actually won. Two sweeps running at once cannot both
- * claim the same row, which is what makes a lock unnecessary.
+ * Atomically claim mentions for sending. updateManyAndReturn both stamps
+ * emailedAt and reports exactly the rows that one statement touched, in a
+ * single call. That single statement is what two concurrent sweeps cannot
+ * both win: a second query keyed on the value of `at` could match rows a
+ * different caller just stamped with the same timestamp and misattribute
+ * them, which is the double send this function exists to prevent.
  *
  * A send that then fails calls releaseMentionsForEmail to hand the rows back.
  */
@@ -453,13 +457,9 @@ export async function claimMentionsForEmail(
 ): Promise<string[]> {
   if (mentionIds.length === 0) return []
 
-  await db.mention.updateMany({
+  const won = await db.mention.updateManyAndReturn({
     where: { id: { in: mentionIds }, emailedAt: null },
     data: { emailedAt: at },
-  })
-
-  const won = await db.mention.findMany({
-    where: { id: { in: mentionIds }, emailedAt: at },
     select: { id: true },
   })
   return won.map((w) => w.id)

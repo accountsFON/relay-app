@@ -6,6 +6,7 @@ vi.mock('@/db/client', () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
       updateMany: vi.fn(),
+      updateManyAndReturn: vi.fn(),
     },
     post: { findMany: vi.fn() },
   },
@@ -120,24 +121,31 @@ describe('listMentionsDueForEmail', () => {
 })
 
 describe('claimMentionsForEmail', () => {
-  it('claims only rows still unemailed and returns the winners', async () => {
-    vi.mocked(db.mention.updateMany).mockResolvedValue({ count: 1 } as never)
-    vi.mocked(db.mention.findMany).mockResolvedValue([{ id: 'm1' }] as never)
+  it('claims and reports winners in one atomic updateManyAndReturn call', async () => {
+    vi.mocked(db.mention.updateManyAndReturn).mockResolvedValue([{ id: 'm1' }] as never)
 
     const claimed = await claimMentionsForEmail(['m1', 'm2'], NOW)
 
-    const where = vi.mocked(db.mention.updateMany).mock.calls[0][0]!.where as never as {
-      id: { in: string[] }
-      emailedAt: null
-    }
+    expect(db.mention.updateManyAndReturn).toHaveBeenCalledTimes(1)
+    const call = vi.mocked(db.mention.updateManyAndReturn).mock.calls[0][0]!
+    const where = call.where as never as { id: { in: string[] }; emailedAt: null }
     expect(where.id.in).toEqual(['m1', 'm2'])
     expect(where.emailedAt).toBeNull()
+    expect(call.data).toEqual({ emailedAt: NOW })
     expect(claimed).toEqual(['m1'])
+  })
+
+  it('does not fall back to a separate findMany read-back', async () => {
+    vi.mocked(db.mention.updateManyAndReturn).mockResolvedValue([{ id: 'm1' }] as never)
+
+    await claimMentionsForEmail(['m1', 'm2'], NOW)
+
+    expect(db.mention.findMany).not.toHaveBeenCalled()
   })
 
   it('is a no-op on an empty list', async () => {
     expect(await claimMentionsForEmail([], NOW)).toEqual([])
-    expect(db.mention.updateMany).not.toHaveBeenCalled()
+    expect(db.mention.updateManyAndReturn).not.toHaveBeenCalled()
   })
 })
 
