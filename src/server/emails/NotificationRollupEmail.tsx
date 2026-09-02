@@ -6,7 +6,7 @@
  * same functions the notification bell uses, so this file only lays out what
  * it is handed. Subject is owned by the caller.
  *
- * Internal teammates only. Client-role recipients are excluded by the query.
+ * Internal teammates only. Client role recipients are excluded by the query.
  *
  * Style tokens mirror RelayHandoffEmail so the transactional thread looks
  * consistent. Inline styles are intentional; email clients drop most
@@ -27,12 +27,12 @@ import {
   Text,
 } from '@react-email/components'
 import { greetingName } from '@/lib/greeting'
-import type { RollupEmailContent } from '@/lib/notification-email-rollup'
+import { buildRollupHeadline, type RollupEmailContent } from '@/lib/notification-email-rollup'
 
 export interface NotificationRollupEmailProps {
   /// Full recipient name. Greeting uses the full name.
   recipientName: string
-  /// Grouped, ordered, already absolute-linked content.
+  /// Grouped, ordered, with absolute URLs for all hrefs.
   content: RollupEmailContent
   /// Fully qualified URL to the recipient's Relay inbox.
   inboxUrl: string
@@ -94,15 +94,22 @@ const itemLinkStyle: React.CSSProperties = {
   textDecoration: 'none',
 }
 
+const h1Style: React.CSSProperties = {
+  margin: '0 0 14px',
+  fontSize: 22,
+  fontWeight: 600,
+  letterSpacing: '-0.01em',
+}
+
 const buttonStyle: React.CSSProperties = {
+  display: 'inline-block',
   background: '#1a1a1a',
   color: '#ffffff',
-  borderRadius: 8,
-  padding: '11px 20px',
-  fontSize: 14,
-  fontWeight: 600,
   textDecoration: 'none',
-  display: 'inline-block',
+  padding: '14px 28px',
+  borderRadius: 999,
+  fontWeight: 600,
+  fontSize: 16,
 }
 
 const footerStyle: React.CSSProperties = {
@@ -116,13 +123,7 @@ export function NotificationRollupEmail({
   content,
   inboxUrl,
 }: NotificationRollupEmailProps) {
-  const { groups, totalCount, clientCount } = content
-  const headline =
-    totalCount === 1
-      ? '1 update while you were away'
-      : clientCount === 1
-        ? `${totalCount} updates on ${groups[0].clientName}`
-        : `${totalCount} updates across ${clientCount} clients`
+  const headline = buildRollupHeadline(content)
 
   return (
     <Html>
@@ -135,15 +136,13 @@ export function NotificationRollupEmail({
           </Section>
 
           <Section style={contentSectionStyle}>
-            <Text style={{ fontSize: 16, margin: '0 0 4px' }}>
-              Hi {greetingName(recipientName)},
-            </Text>
+            <Text style={h1Style}>Hi {greetingName(recipientName)},</Text>
             <Text style={{ fontSize: 15, margin: '0 0 8px', color: '#4a4a45' }}>
               {headline}. You have not opened these in Relay yet.
             </Text>
 
-            {groups.map((group) => (
-              <Section key={group.clientName}>
+            {content.groups.map((group) => (
+              <Section key={group.clientId}>
                 <Text style={clientHeadingStyle}>{group.clientName}</Text>
                 {group.items.map((item) => (
                   <Text key={item.href} style={itemStyle}>

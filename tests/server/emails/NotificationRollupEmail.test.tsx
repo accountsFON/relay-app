@@ -8,6 +8,7 @@ const content: RollupEmailContent = {
   clientCount: 2,
   groups: [
     {
+      clientId: 'c_alpha',
       clientName: 'Alpha Co',
       items: [
         { summary: 'Mollie replied on Post 3', href: 'https://x.test/a1', createdAt: new Date() },
@@ -15,6 +16,7 @@ const content: RollupEmailContent = {
       ],
     },
     {
+      clientId: 'c_beta',
       clientName: 'Beta Co',
       items: [
         { summary: 'Caleb opened a thread on Post 1', href: 'https://x.test/b1', createdAt: new Date() },

@@ -48,6 +48,7 @@ export interface RollupItem {
 }
 
 export interface RollupClientGroup {
+  clientId: string
   clientName: string
   items: RollupItem[]
 }
@@ -85,7 +86,7 @@ export function buildRollupContent(
     if (existing) {
       existing.items.push(item)
     } else {
-      byClient.set(r.client.id, { clientName, items: [item] })
+      byClient.set(r.client.id, { clientId: r.client.id, clientName, items: [item] })
     }
   }
 
@@ -103,15 +104,28 @@ export function buildRollupContent(
   }
 }
 
-export function buildRollupSubject(content: RollupEmailContent): string {
+/**
+ * Generates the headline text for rollup emails based on update counts.
+ * Used by both the email body and the subject line to ensure they stay in sync.
+ */
+export function buildRollupHeadline(content: RollupEmailContent): string {
   const { groups, totalCount, clientCount } = content
+
+  if (totalCount === 1) {
+    return '1 update while you were away'
+  }
+  if (clientCount === 1) {
+    return `${totalCount} updates on ${groups[0].clientName}`
+  }
+  return `${totalCount} updates across ${clientCount} clients`
+}
+
+export function buildRollupSubject(content: RollupEmailContent): string {
+  const { groups, totalCount } = content
 
   if (totalCount === 1) {
     const g = groups[0]
     return `[Relay] ${g.clientName}: ${g.items[0].summary}`
   }
-  if (clientCount === 1) {
-    return `[Relay] ${totalCount} updates on ${groups[0].clientName}`
-  }
-  return `[Relay] ${totalCount} updates across ${clientCount} clients`
+  return `[Relay] ${buildRollupHeadline(content)}`
 }
