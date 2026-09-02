@@ -1,13 +1,44 @@
 import type { Prisma } from '@prisma/client'
 import { ActivityKind, EventVisibility } from '@prisma/client'
+import { tasks } from '@trigger.dev/sdk/v3'
 import { db } from '@/db/client'
 import type { DbClient, DbTx } from '@/db/client'
+import { ROLLUP_WINDOW_MS } from '@/lib/notification-email-rollup'
 
 export { ActivityKind, EventVisibility }
 
 export type ActivityPayload = Record<string, unknown>
 
 type DbOrTx = DbClient | DbTx
+
+/**
+ * Schedule tapper two for notification rollup emails.
+ *
+ * Best effort and completely silent on failure: recordActivity's contract is
+ * that it must not throw, and a Trigger.dev hiccup must never cost us an
+ * activity row. If this scheduling is lost, the bell poll tapper still sends
+ * the pile.
+ *
+ * The idempotency key is bucketed to the current five minute window, so a
+ * burst of mentions in one window produces a single delayed run.
+ */
+async function scheduleNotificationEmailTimer(): Promise<void> {
+  try {
+    await tasks.trigger(
+      'notification-email-timer',
+      {},
+      {
+        delay: '5m',
+        idempotencyKey: `notif-email-${Math.floor(Date.now() / ROLLUP_WINDOW_MS)}`,
+        idempotencyKeyTTL: '15m',
+      },
+    )
+  } catch (err) {
+    console.error('[activity] notification email timer scheduling failed', {
+      err: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
 
 export interface RecordActivityInput {
   clientId: string
@@ -60,6 +91,9 @@ export async function recordActivity(
       },
       select: { id: true },
     })
+    if (input.mentionedUserIds?.length) {
+      await scheduleNotificationEmailTimer()
+    }
     return event
   } catch (err) {
     console.error('[activity] recordActivity failed', {
