@@ -173,7 +173,9 @@ function row(
       kind: (over.kind ?? 'post_comment_added') as never,
       createdAt: over.createdAt ?? new Date('2026-09-02T14:00:00Z'),
       actor: { id: 'u_actor', name: over.actorName ?? 'Mollie', avatarUrl: null },
-      payload: (over.payload ?? {}) as never,
+      // postNumber makes renderSummary's postRef() deterministic ("Post 3")
+      // instead of falling back to a short-hash of an absent postId.
+      payload: (over.payload ?? { postNumber: 3 }) as never,
     },
   } as MentionInboxRow
 }
@@ -199,7 +201,7 @@ describe('buildRollupContent', () => {
     // groups by client, so repeating it on every line is noise.
     const content = buildRollupContent([row({ actorName: 'Mollie' })], BASE)
 
-    expect(content.groups[0].items[0].summary).toBe('Mollie replied on post .')
+    expect(content.groups[0].items[0].summary).toBe('Mollie replied on Post 3.')
     expect(content.groups[0].items[0].summary).not.toContain('Elevated Tree Solutions ·')
   })
 
@@ -233,8 +235,8 @@ describe('buildRollupContent', () => {
     )
 
     expect(content.groups[0].items.map((i) => i.summary)).toEqual([
-      'Earlier replied on post .',
-      'Later replied on post .',
+      'Earlier replied on Post 3.',
+      'Later replied on Post 3.',
     ])
   })
 })
@@ -244,7 +246,7 @@ describe('buildRollupSubject', () => {
     const content = buildRollupContent([row({ actorName: 'Mollie' })], BASE)
 
     expect(buildRollupSubject(content)).toBe(
-      '[Relay] Elevated Tree Solutions: Mollie replied on post .',
+      '[Relay] Elevated Tree Solutions: Mollie replied on Post 3.',
     )
   })
 
@@ -408,7 +410,7 @@ export function buildRollupSubject(content: RollupEmailContent): string {
 Run: `npx vitest run tests/lib/notification-email-rollup.test.ts`
 Expected: PASS, 8 tests.
 
-If a summary assertion fails on exact wording, read `renderSummary`'s `post_comment_added` branch in `src/lib/notification-copy.ts` and correct the **test's** expected string to match what the shared function actually returns. Never change `notification-copy.ts` to satisfy this test; that file is the bell's copy and is out of scope.
+`src/lib/notification-copy.ts` is out of scope and must not be edited. It is the bell's copy, and this feature deliberately borrows it unchanged. If a summary assertion fails, the bug is in `stripClientPrefix` or in the test fixture, never in `notification-copy.ts`.
 
 - [ ] **Step 5: Commit**
 
