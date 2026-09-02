@@ -164,17 +164,49 @@ summary work.
 
 ### Tapper two: the timer
 
-`recordActivity()` schedules a Trigger.dev run with `delay: "5m"` when it has
-created at least one mention.
+`recordActivity()` schedules a Trigger.dev run with `delay: "5m"` for
+non-transactional callers when it has created at least one mention. This
+section describes what shipped, which reverses an earlier version of this
+design; read the note below before touching any of the eight transactional
+call sites it references.
 
 - **Idempotency key bucketed to the current five minute window**, so a burst of
   twenty mentions creates one delayed run rather than twenty.
 - **The run carries no payload.** It is a bare "go look at the pile" nudge, and
   it calls the same sweep the heartbeat calls.
-- Because it carries no payload, **a timer scheduled inside a transaction that
-  later rolls back is harmless**: it wakes, finds nothing due, and stops. This
-  is what makes it safe to touch `recordActivity`, whose contract is that it
-  must never throw. The scheduling call is inside the existing try/catch.
+- **`recordActivity` schedules directly only when no `tx` was passed.** An
+  earlier version of this design called scheduling "harmless" even inside a
+  caller's transaction, on the reasoning that a bare-payload run scheduled
+  inside a transaction that later rolls back just wakes up, finds nothing due,
+  and stops. That reasoning is true for the ROLLED BACK case but misses the
+  COMMITTED case: `tasks.trigger()` is a network call to Trigger.dev, and
+  awaiting it from inside an interactive Prisma transaction holds that
+  transaction open across the round trip. If Trigger.dev is slow, the
+  transaction can blow past Prisma's timeout and roll back the CALLER'S state
+  change, not this scheduling call, from outside `recordActivity`'s own
+  try/catch. That is the bug the earlier design would have shipped.
+- **The eight transactional call sites schedule themselves, post commit.**
+  Six in `src/server/services/relay.ts` and two in
+  `src/server/actions/relay-admin.ts` call the exported
+  `scheduleNotificationEmailTimer` (from `@/server/services/activity`) after
+  their own `db.$transaction(...)` resolves, the same pattern
+  `notifyHolderOfBatonHandoff` already used for the baton handoff email. Do
+  not "simplify" this back to scheduling inside `recordActivity` regardless of
+  `tx`; that reintroduces the held-open-transaction bug above.
+- **The timer re-arms itself when its own window has a tail.** The
+  idempotency key above books a run for the FIRST mention that opens a five
+  minute bucket, firing five minutes after that mention. A mention created
+  later in the same bucket is still younger than five minutes when that run
+  fires, so it is not due yet and gets no run of its own, unless something
+  re-arms one. `src/server/jobs/notificationEmailTimer.ts` checks
+  `anyMentionPendingSoon` after every sweep and, if a too-young mention is
+  still waiting, books another run five minutes out for the next bucket,
+  using the same `notif-email-${bucket}` key format so an ordinary schedule
+  landing in that same next window collapses into the one re-armed run
+  instead of firing twice. This is what makes "the timer sends everything"
+  in the table below actually true; without it, a straggler mention could
+  wait for the next unrelated activity or someone's bell poll, which is a
+  real gap overnight.
 
 ### Why two tappers
 
@@ -185,7 +217,7 @@ correctly, because both read the same list and stamp what they send.
 | Situation | Outcome |
 |---|---|
 | Both fire together | Only one can claim a row, so the other no-ops |
-| Heartbeat fails | The timer sends everything |
+| Heartbeat fails | The timer sends everything, including stragglers, via its self re-arm |
 | Timer fails | The next signed in user's poll sends everything |
 | Both fail | Nothing is lost; it goes out on the next tap |
 | Read in the bell first | Drops out of the query, never mailed |

@@ -1845,6 +1845,28 @@ git commit -m "feat(notifications): tap the rollup sweep from the bell poll"
 
 ### Task 9: Tapper two, the Trigger.dev delayed run
 
+**Shipped note (post-review, do not revert):** the steps below are the plan
+as originally written, which had `recordActivity` schedule the Trigger.dev
+run unconditionally, even inside a caller's `tx`, on the reasoning that a
+bare-payload run is harmless if the transaction rolls back. That reasoning
+only covers the rollback case. It misses that `tasks.trigger()` is a network
+call, and awaiting it from inside an interactive Prisma transaction holds
+that transaction open across the round trip; a slow Trigger.dev response can
+blow past Prisma's timeout and roll back the CALLER'S state change from
+outside `recordActivity`'s own try/catch. What shipped instead:
+`recordActivity` self-schedules only when no `tx` is passed, and eight
+transactional call sites (six in `src/server/services/relay.ts`, two in
+`src/server/actions/relay-admin.ts`) call the exported
+`scheduleNotificationEmailTimer` themselves, after their
+`db.$transaction(...)` commits, following the existing
+`notifyHolderOfBatonHandoff` pattern. A later review (Finding 1, Important)
+also found that the idempotency key bucketing below only books a run for the
+mention that opens a bucket, so `src/server/jobs/notificationEmailTimer.ts`
+re-arms itself (via `anyMentionPendingSoon`) when a too-young straggler is
+still pending after a sweep. Do not "simplify" the guard or the eight call
+sites back to unconditional in-transaction scheduling; that reintroduces the
+held-open-transaction bug this note describes.
+
 **Files:**
 - Create: `src/server/jobs/notificationEmailTimer.ts`
 - Modify: `src/server/services/activity.ts` (`recordActivity`)

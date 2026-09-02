@@ -11,6 +11,7 @@
  */
 import { renderSummary, resolveHref } from '@/lib/notification-copy'
 import type { MentionInboxRow } from '@/components/activity/types'
+import type { ActivityKind } from '@prisma/client'
 
 /**
  * Rollup debounce. A mention becomes eligible for email only once it is
@@ -35,13 +36,14 @@ export const ROLLUP_MAX_AGE_MS = 24 * 60 * 60 * 1000
  * ReviewSubmittedDigestEmail covers the client review submission. The bell
  * still fires for all three exactly as before.
  */
-export const EXCLUDED_ROLLUP_KINDS: readonly string[] = [
+export const EXCLUDED_ROLLUP_KINDS: readonly ActivityKind[] = [
   'batch_passed',
   'batch_sent_back',
   'review_session_submitted',
 ]
 
 export interface RollupItem {
+  mentionId: string
   summary: string
   href: string
   createdAt: Date
@@ -78,6 +80,7 @@ export function buildRollupContent(
   for (const r of rows) {
     const clientName = r.client.name
     const item: RollupItem = {
+      mentionId: r.mentionId,
       summary: stripClientPrefix(renderSummary(r), clientName),
       href: `${baseUrl}${resolveHref(r)}`,
       createdAt: r.event.createdAt,

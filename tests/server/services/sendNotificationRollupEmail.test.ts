@@ -26,8 +26,18 @@ const content: RollupEmailContent = {
       clientId: 'c1',
       clientName: 'Alpha Co',
       items: [
-        { summary: 'Mollie replied on Post 3', href: 'https://x.test/a1', createdAt: new Date() },
-        { summary: 'Mollie resolved the thread on Post 3', href: 'https://x.test/a2', createdAt: new Date() },
+        {
+          mentionId: 'mention_a1',
+          summary: 'Mollie replied on Post 3',
+          href: 'https://x.test/a1',
+          createdAt: new Date(),
+        },
+        {
+          mentionId: 'mention_a2',
+          summary: 'Mollie resolved the thread on Post 3',
+          href: 'https://x.test/a2',
+          createdAt: new Date(),
+        },
       ],
     },
   ],

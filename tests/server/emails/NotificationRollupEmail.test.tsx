@@ -11,15 +11,30 @@ const content: RollupEmailContent = {
       clientId: 'c_alpha',
       clientName: 'Alpha Co',
       items: [
-        { summary: 'Mollie replied on Post 3', href: 'https://x.test/a1', createdAt: new Date() },
-        { summary: 'Mollie resolved the thread on Post 3', href: 'https://x.test/a2', createdAt: new Date() },
+        {
+          mentionId: 'mention_a1',
+          summary: 'Mollie replied on Post 3',
+          href: 'https://x.test/a1',
+          createdAt: new Date(),
+        },
+        {
+          mentionId: 'mention_a2',
+          summary: 'Mollie resolved the thread on Post 3',
+          href: 'https://x.test/a2',
+          createdAt: new Date(),
+        },
       ],
     },
     {
       clientId: 'c_beta',
       clientName: 'Beta Co',
       items: [
-        { summary: 'Caleb opened a thread on Post 1', href: 'https://x.test/b1', createdAt: new Date() },
+        {
+          mentionId: 'mention_b1',
+          summary: 'Caleb opened a thread on Post 1',
+          href: 'https://x.test/b1',
+          createdAt: new Date(),
+        },
       ],
     },
   ],
@@ -55,6 +70,47 @@ describe('NotificationRollupEmail', () => {
     expect(html).toContain('https://x.test/a2')
     expect(html).toContain('https://x.test/b1')
     expect(html).toContain('https://x.test/inbox')
+  })
+
+  // Fix 4: two mentions on the same post share the same href, which used to
+  // be the React key. Both items must still render even though their hrefs
+  // collide, because they now key on the mention's own id instead.
+  it('renders both items when two mentions share the same href', async () => {
+    const duplicateHrefContent: RollupEmailContent = {
+      totalCount: 2,
+      clientCount: 1,
+      groups: [
+        {
+          clientId: 'c_gamma',
+          clientName: 'Gamma Co',
+          items: [
+            {
+              mentionId: 'mention_g1',
+              summary: 'Mollie replied on Post 5',
+              href: 'https://x.test/g1',
+              createdAt: new Date(),
+            },
+            {
+              mentionId: 'mention_g2',
+              summary: 'Caleb replied on Post 5',
+              href: 'https://x.test/g1',
+              createdAt: new Date(),
+            },
+          ],
+        },
+      ],
+    }
+
+    const html = await render(
+      <NotificationRollupEmail
+        recipientName="Julio Aleman"
+        content={duplicateHrefContent}
+        inboxUrl="https://x.test/inbox"
+      />,
+    )
+
+    expect(html).toContain('Mollie replied on Post 5')
+    expect(html).toContain('Caleb replied on Post 5')
   })
 
   it('renders a plain text alternative carrying the same summaries', async () => {

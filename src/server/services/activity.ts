@@ -3,13 +3,25 @@ import { ActivityKind, EventVisibility } from '@prisma/client'
 import { tasks } from '@trigger.dev/sdk/v3'
 import { db } from '@/db/client'
 import type { DbClient, DbTx } from '@/db/client'
-import { ROLLUP_WINDOW_MS } from '@/lib/notification-email-rollup'
+import { ROLLUP_WINDOW_MS, EXCLUDED_ROLLUP_KINDS } from '@/lib/notification-email-rollup'
 
 export { ActivityKind, EventVisibility }
 
 export type ActivityPayload = Record<string, unknown>
 
 type DbOrTx = DbClient | DbTx
+
+/**
+ * Builds the idempotency key for a notification-email-timer run, given the
+ * five minute bucket it belongs to. The ONE place this format is written, so
+ * a normal schedule (this file, bucketed to the CURRENT window) and the
+ * timer's self re-arm (`notificationEmailTimer.ts`, bucketed to the NEXT
+ * window) can never drift apart and produce two different key shapes for
+ * what is supposed to collapse into one run.
+ */
+export function notificationEmailTimerIdempotencyKey(bucket: number): string {
+  return `notif-email-${bucket}`
+}
 
 /**
  * Schedule tapper two for notification rollup emails.
@@ -34,7 +46,9 @@ export async function scheduleNotificationEmailTimer(): Promise<void> {
       {},
       {
         delay: '5m',
-        idempotencyKey: `notif-email-${Math.floor(Date.now() / ROLLUP_WINDOW_MS)}`,
+        idempotencyKey: notificationEmailTimerIdempotencyKey(
+          Math.floor(Date.now() / ROLLUP_WINDOW_MS),
+        ),
         idempotencyKeyTTL: '15m',
       },
     )
@@ -106,7 +120,16 @@ export async function recordActivity(
     // `scheduleNotificationEmailTimer` after their `db.$transaction(...)`
     // resolves (same pattern `notifyHolderOfBatonHandoff` uses for the
     // baton handoff email).
-    if (!tx && input.mentionedUserIds?.length) {
+    //
+    // Also skip kinds in EXCLUDED_ROLLUP_KINDS: those already have their own
+    // purpose built email (RelayHandoffEmail, ReviewSubmittedDigestEmail), so
+    // a mention on one of them can never turn into a rollup row. Booking a
+    // Trigger.dev run for it would only wake the timer to find nothing due.
+    if (
+      !tx &&
+      input.mentionedUserIds?.length &&
+      !EXCLUDED_ROLLUP_KINDS.includes(input.kind)
+    ) {
       await scheduleNotificationEmailTimer()
     }
     return event

@@ -145,7 +145,7 @@ export function NotificationRollupEmail({
               <Section key={group.clientId}>
                 <Text style={clientHeadingStyle}>{group.clientName}</Text>
                 {group.items.map((item) => (
-                  <Text key={item.href} style={itemStyle}>
+                  <Text key={item.mentionId} style={itemStyle}>
                     <Link href={item.href} style={itemLinkStyle}>
                       {item.summary}
                     </Link>

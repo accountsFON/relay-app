@@ -109,4 +109,18 @@ describe('recordActivity email timer scheduling', () => {
 
     expect(tasks.trigger).toHaveBeenCalledTimes(1)
   })
+
+  // Fix 5: a kind in EXCLUDED_ROLLUP_KINDS already has its own purpose built
+  // email (RelayHandoffEmail, ReviewSubmittedDigestEmail), so a mention on
+  // one of them can never produce a rollup row. Booking a Trigger.dev run for
+  // it would only wake the timer to find nothing due.
+  it('does not schedule for a kind that already has its own bespoke email', async () => {
+    await recordActivity({
+      ...base,
+      kind: 'batch_passed' as never,
+      mentionedUserIds: ['u1'],
+    })
+
+    expect(tasks.trigger).not.toHaveBeenCalled()
+  })
 })

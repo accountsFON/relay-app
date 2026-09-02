@@ -15,6 +15,7 @@ vi.mock('@/db/client', () => ({
 import { db } from '@/db/client'
 import {
   anyMentionDueForEmail,
+  anyMentionPendingSoon,
   listMentionsDueForEmail,
   claimMentionsForEmail,
   releaseMentionsForEmail,
@@ -77,6 +78,54 @@ describe('anyMentionDueForEmail', () => {
     const where = vi.mocked(db.mention.findFirst).mock.calls[0][0]!.where as never as {
       event: { kind: { notIn: string[] } }
     }
+    expect([...where.event.kind.notIn].sort()).toEqual([
+      'batch_passed',
+      'batch_sent_back',
+      'review_session_submitted',
+    ])
+  })
+})
+
+describe('anyMentionPendingSoon', () => {
+  it('is true when a too-young mention is waiting', async () => {
+    vi.mocked(db.mention.findFirst).mockResolvedValue({ id: 'm1' } as never)
+
+    expect(await anyMentionPendingSoon(NOW)).toBe(true)
+  })
+
+  it('is false when nothing is pending', async () => {
+    vi.mocked(db.mention.findFirst).mockResolvedValue(null as never)
+
+    expect(await anyMentionPendingSoon(NOW)).toBe(false)
+  })
+
+  it('matches mentions younger than the rollup window, not older ones', async () => {
+    vi.mocked(db.mention.findFirst).mockResolvedValue(null as never)
+
+    await anyMentionPendingSoon(NOW)
+
+    const where = vi.mocked(db.mention.findFirst).mock.calls[0][0]!.where as never as {
+      readAt: null
+      emailedAt: null
+      createdAt: { gt: Date }
+    }
+    expect(where.readAt).toBeNull()
+    expect(where.emailedAt).toBeNull()
+    expect(where.createdAt.gt).toEqual(new Date(NOW.getTime() - ROLLUP_WINDOW_MS))
+  })
+
+  it('shares the same recipient and kind filters as the due rule', async () => {
+    vi.mocked(db.mention.findFirst).mockResolvedValue(null as never)
+
+    await anyMentionPendingSoon(NOW)
+
+    const where = vi.mocked(db.mention.findFirst).mock.calls[0][0]!.where as never as {
+      user: { role: { not: string }; deactivatedAt: null; email: { not: string } }
+      event: { kind: { notIn: string[] } }
+    }
+    expect(where.user.role).toEqual({ not: 'client' })
+    expect(where.user.deactivatedAt).toBeNull()
+    expect(where.user.email).toEqual({ not: '' })
     expect([...where.event.kind.notIn].sort()).toEqual([
       'batch_passed',
       'batch_sent_back',

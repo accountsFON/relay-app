@@ -15,7 +15,7 @@
  * Callers MUST verify client visibility before calling listActivityForClient.
  * This repo does not re-check org/scope; it queries by clientId directly.
  */
-import { ActivityKind, EventVisibility, Prisma } from '@prisma/client'
+import { EventVisibility, Prisma } from '@prisma/client'
 import { db } from '@/db/client'
 import { buildPostNumberMap } from '@/lib/post-numbering'
 import {
@@ -338,6 +338,28 @@ export interface DueMentionRow extends MentionInboxRow {
 }
 
 /**
+ * Recipient and kind eligibility, factored out of dueWhere so
+ * anyMentionPendingSoon (the too-young counterpart used by the timer's
+ * self re-arm, Fix 1) shares the exact same definition rather than a copy
+ * that could quietly drift from it.
+ */
+function eligibleRecipientAndKind(): Pick<Prisma.MentionWhereInput, 'user' | 'event'> {
+  return {
+    user: {
+      role: { not: 'client' },
+      deactivatedAt: null,
+      email: { not: '' },
+    },
+    event: {
+      // Prisma's `notIn` wants a mutable array; spreading the readonly
+      // constant is a plain copy, not a cast, so a typo'd kind still fails
+      // to compile instead of silently stopping the exclusion.
+      kind: { notIn: [...EXCLUDED_ROLLUP_KINDS] },
+    },
+  }
+}
+
+/**
  * The one place the due rule is expressed. Both tappers reach it through the
  * functions below, so they cannot disagree about what is owed an email.
  */
@@ -349,14 +371,7 @@ function dueWhere(now: Date): Prisma.MentionWhereInput {
       lte: new Date(now.getTime() - ROLLUP_WINDOW_MS),
       gte: new Date(now.getTime() - ROLLUP_MAX_AGE_MS),
     },
-    user: {
-      role: { not: 'client' },
-      deactivatedAt: null,
-      email: { not: '' },
-    },
-    event: {
-      kind: { notIn: EXCLUDED_ROLLUP_KINDS as string[] as ActivityKind[] },
-    },
+    ...eligibleRecipientAndKind(),
   }
 }
 
@@ -367,6 +382,31 @@ function dueWhere(now: Date): Prisma.MentionWhereInput {
 export async function anyMentionDueForEmail(now: Date): Promise<boolean> {
   const hit = await db.mention.findFirst({
     where: dueWhere(now),
+    select: { id: true },
+  })
+  return hit != null
+}
+
+/**
+ * True when a mention exists that passes the same recipient and kind filters
+ * as the due rule, but is too YOUNG to be due yet: created after
+ * `now - ROLLUP_WINDOW_MS`. Powers the timer's self re-arm (Fix 1).
+ *
+ * Without this, only the mention that opens a 5 minute idempotency bucket
+ * gets a run booked for it: the run fires 5 minutes after THAT mention, and
+ * anything created later in the same bucket is still younger than 5 minutes
+ * when the run fires, so it is skipped and waits for the next unrelated
+ * activity or someone's bell poll. Overnight, with nobody polling, that can
+ * strand it until morning, exactly the case this feature exists to cover.
+ */
+export async function anyMentionPendingSoon(now: Date): Promise<boolean> {
+  const hit = await db.mention.findFirst({
+    where: {
+      readAt: null,
+      emailedAt: null,
+      createdAt: { gt: new Date(now.getTime() - ROLLUP_WINDOW_MS) },
+      ...eligibleRecipientAndKind(),
+    },
     select: { id: true },
   })
   return hit != null
